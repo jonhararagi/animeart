@@ -4,7 +4,7 @@ DÍA:
 1
 
 ESTADO:
-IMPLEMENTACIÓN INICIAL REALIZADA EN main. El repositorio estaba prácticamente vacío y ahora contiene la fundación Android. BUILD/TEST FINAL TODAVÍA NO VERIFICADO POR EL CONECTOR; la CI quedó configurada para realizarlo.
+IMPLEMENTACIÓN INICIAL REALIZADA EN main. El repositorio estaba prácticamente vacío y ahora contiene la fundación Android. BUILD/TEST VERIFICADO EN GITHUB ACTIONS. La ejecución real #6 terminó correctamente.
 
 IMPLEMENTADO:
 - Proyecto Android Kotlin/Compose.
@@ -38,14 +38,14 @@ ARCHIVOS IMPORTANTES:
 TESTS:
 - DocumentReducerTest added.
 - CI workflow configured to run assembleDebug and test.
-- Execution result: PENDIENTE DE VERIFICACIÓN.
+- Execution result: SUCCESS — GitHub Actions run #6 (commit be1bd6e02c55ba7eae2c6d64f2e5e680ea650e59).
 
 ERRORES:
-- No compile errors could be executed/confirmed through the GitHub connector.
+- CI #2 y #3 detectaron incompatibilidad JVM y errores de compilación Compose; fueron corregidos en los commits d6be0aaabdd8aca37eda12c3df590cfccf579a66, 418c6da81de4530852a62ea6d4939bc51f768a58, 5de9e6afa038a0f7ccd2fe1b2a3f8b047b06649d y be1bd6e02c55ba7eae2c6d64f2e5e680ea650e59. La CI #6 confirmó build y unit tests exitosos.
 
 RIESGOS:
-- Gradle/Android compatibility must be verified in CI.
-- Compose BOM/version compatibility must be verified.
+- GitHub Actions muestra un warning no bloqueante al empaquetar libandroidx.graphics.path.so sin strip; la librería se empaqueta sin strip y el build termina correctamente.
+- GitHub Actions muestra además un warning de deprecación de Node 20 en acciones v4; es warning del runner, no un fallo del proyecto.
 - Theme/resource setup may need adjustment during first build.
 - Recovery serialization is intentionally partial on Day 1.
 
@@ -70,4 +70,4 @@ PRIMERA TAREA DEL DÍA 2:
 Verify the Day 1 CI build and tests. If CI reports failures, isolate and repair them before adding editor features. Then implement the first real drawing/stroke pipeline while preserving the document/layer/viewport architecture.
 
 VERIFICACIÓN:
-NO VERIFICADO — CI must run before claiming the APK/build is valid.
+VERIFICADO — CI #6: build SUCCESS + unit tests SUCCESS. Commit verificado: be1bd6e02c55ba7eae2c6d64f2e5e680ea650e59.
