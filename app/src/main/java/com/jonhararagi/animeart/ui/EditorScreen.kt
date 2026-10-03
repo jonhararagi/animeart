@@ -1,5 +1,7 @@
 package com.jonhararagi.animeart.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
@@ -25,10 +27,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.jonhararagi.animeart.document.*
+import com.jonhararagi.animeart.importexport.ReferenceImageStore
 import com.jonhararagi.animeart.editor.DrawingEditor
 import com.jonhararagi.animeart.editor.LayerTransformMath
 import com.jonhararagi.animeart.editor.ViewportTransform
 import com.jonhararagi.animeart.persistence.ProjectPersistence
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.max
 
 @Composable
