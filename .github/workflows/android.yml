@@ -31,11 +31,11 @@ jobs:
       - name: Lint
         run: gradle lintDebug
       - name: Android startup smoke test
-        timeout-minutes: 8
+        timeout-minutes: 6
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
-          target: google_apis
+          api-level: 30
+          target: default
           arch: x86_64
           profile: pixel_2
           cores: 2
