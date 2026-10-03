@@ -30,3 +30,13 @@ The design avoids full-document bitmap copies for undo. Future work should measu
 - The JSON recovery store grows with point count.
 - Future handles, selection hit-testing and reference images should avoid per-frame allocations.
 - Do not introduce bitmap snapshots for transform undo unless profiling proves they are necessary.
+
+
+## Day 4 — Reference image performance
+
+- Reference source bytes are copied once into app-private project storage instead of duplicating a bitmap in the document JSON.
+- Preview decode uses bounds inspection and controlled `inSampleSize` with a 2048px maximum dimension by default.
+- Reference bitmaps are cached by layer ID in the Compose screen and loaded off the main thread.
+- Layer transforms remain non-destructive; moving/scaling/rotating a reference does not rasterize or duplicate it.
+- Drawing strokes remain vector-like point lists and cannot be appended to a reference layer; tracing uses a separate normal drawing layer above the reference.
+- Existing warnings about `libandroidx.graphics.path.so` stripping and GitHub Actions Node 20 are non-blocking and pre-existing.
