@@ -14,7 +14,8 @@ class DocumentReducerTest {
         assertEquals("Lineart", renamed.layers.last().name)
         val removed = DocumentReducer.removeLayer(renamed, id)
         assertEquals(1, removed.layers.size)
-        assertEquals(renamed.layers.first(), DocumentReducer.removeLayer(renamed, renamed.layers.first().id).layers.first())
+        val afterDeletingFirst = DocumentReducer.removeLayer(renamed, renamed.layers.first().id)
+        assertEquals(renamed.layers.last().id, afterDeletingFirst.layers.single().id)
     }
 
     @Test fun visibilityLockAndOpacity() {
