@@ -27,6 +27,7 @@ jobs:
       - name: Lint
         run: gradle lintDebug
       - name: Android startup smoke test
+        timeout-minutes: 8
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -39,7 +40,17 @@ jobs:
           force-avd-creation: true
           disable-animations: true
           emulator-options: -no-window -noaudio -no-boot-anim -gpu swiftshader_indirect
-          script: gradle connectedDebugAndroidTest --stacktrace
+          script: |
+            gradle installDebug
+            adb shell am force-stop com.jonhararagi.animeart
+            adb shell am start -W -n com.jonhararagi.animeart/.MainActivity
+            sleep 5
+            if ! adb shell pidof com.jonhararagi.animeart | tr -d '\r' | grep -q '[0-9]'; then
+              echo "MainActivity no dejó vivo el proceso de AnimeArt."
+              adb logcat -d -t 300
+              exit 1
+            fi
+            adb shell am force-stop com.jonhararagi.animeart
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
