@@ -24,6 +24,14 @@ jobs:
         run: gradle assembleDebug
       - name: Unit tests
         run: gradle test
+      - name: Android startup smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: default
+          arch: x86_64
+          profile: pixel_2
+          script: gradle connectedDebugAndroidTest --stacktrace
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
