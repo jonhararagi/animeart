@@ -87,6 +87,7 @@ class ProjectPersistence(private val context: Context) {
                         )
                     }
                 }
+                val layerContent = l.readContent()
                 val transform = l.optJSONObject("transform")?.let {
                     Transform(
                         translationX = it.optDouble("translationX", 0.0).toFloat(),
@@ -140,10 +141,10 @@ private fun contentValue(content: LayerContent): String = when (content) {
 
 private fun JSONObject.readContent(): LayerContent? = when (optString("contentType", "drawing")) {
     "empty" -> LayerContent.Empty
-    "image" -> LayerContent.Image(layer.optString("contentValue"))
-    "reference" -> LayerContent.Reference(layer.optString("contentValue"))
-    "text" -> LayerContent.Text(layer.optString("contentValue"))
-    "shape" -> LayerContent.Shape(layer.optString("contentValue"))
+    "image" -> LayerContent.Image(optString("contentValue"))
+    "reference" -> LayerContent.Reference(optString("contentValue"))
+    "text" -> LayerContent.Text(optString("contentValue"))
+    "shape" -> LayerContent.Shape(optString("contentValue"))
     "drawing" -> null
     else -> null
 }
