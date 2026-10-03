@@ -32,10 +32,10 @@ import com.jonhararagi.animeart.persistence.ProjectPersistence
 import kotlin.math.max
 
 @Composable
-fun EditorScreen() {
+fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
     val context = LocalContext.current
     val persistence = remember { ProjectPersistence(context) }
-    val editor = remember { DrawingEditor(EditorState(document = persistence.loadDocument() ?: CanvasDocument())) }
+    val editor = remember { DrawingEditor(EditorState(document = initialDocument)) }
     var tick by remember { mutableIntStateOf(0) }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     var renameText by remember { mutableStateOf("") }
