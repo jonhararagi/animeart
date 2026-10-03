@@ -24,6 +24,8 @@ jobs:
         run: gradle assembleDebug
       - name: Unit tests
         run: gradle test
+      - name: Lint
+        run: gradle lintDebug
       - name: Android startup smoke test
         uses: reactivecircus/android-emulator-runner@v2
         with:
