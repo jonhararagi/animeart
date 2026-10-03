@@ -17,6 +17,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke as DrawStroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.*
@@ -24,6 +25,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.CompositingStrategy
 import com.jonhararagi.animeart.document.*
 import com.jonhararagi.animeart.editor.DrawingEditor
 import com.jonhararagi.animeart.editor.LayerTransformMath
@@ -124,6 +126,7 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
 
         Canvas(
             Modifier.fillMaxWidth().weight(1f)
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                 .onSizeChanged { canvasSize = it }
                 .pointerInput(state.activeTool, state.selectedLayerId, state.viewport) {
                     awaitEachGesture {
