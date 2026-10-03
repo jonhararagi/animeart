@@ -29,10 +29,16 @@ jobs:
       - name: Android startup smoke test
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
-          target: default
+          api-level: 34
+          target: google_apis
           arch: x86_64
           profile: pixel_2
+          cores: 2
+          ram-size: 2048M
+          heap-size: 512M
+          force-avd-creation: true
+          disable-animations: true
+          emulator-options: -no-window -noaudio -no-boot-anim -gpu swiftshader_indirect
           script: gradle connectedDebugAndroidTest --stacktrace
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
