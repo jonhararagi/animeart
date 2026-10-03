@@ -1,5 +1,9 @@
 name: Android CI
 
+concurrency:
+  group: animeart-android-ci
+  cancel-in-progress: true
+
 on:
   push:
     branches: ["main"]
