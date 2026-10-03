@@ -153,3 +153,79 @@ NO REPETIR:
 
 SIGUIENTE DÍA:
 4 — tracing + reference layer, reutilizando Layer y el pipeline existente.
+
+
+---
+
+## DÍA 4 — EN CURSO / CI VERDE
+
+BASE:
+- Día 3 aprobado en `bef67a9f9a04e6ef9aef6e5615c7c62fc5810a45`.
+- PR #2: Day 4: tracing and reference layer.
+
+IMPLEMENTADO:
+- Reference como `LayerContent.Reference` dentro del Layer existente.
+- Importación Android mediante selector de documentos para PNG/JPEG/WebP.
+- Copia de la imagen a almacenamiento privado del proyecto; no depende de una ruta temporal del selector.
+- Renderizado de referencia en el Canvas existente.
+- Opacidad, visibility, lock, selección, reorder, rename, duplicate y delete mediante el panel normal de capas.
+- Transformación de referencia reutilizando `LayerTransformMath` y el gesto Transform existente.
+- Dibujo aislado en drawing layers; una referencia no acepta strokes.
+- Persistencia de tipo, ruta estable, dimensiones, propiedades y transform.
+- Preview con decode controlado para imágenes grandes.
+- Tests unitarios de referencia, transform, propiedades e aislamiento.
+
+CI:
+- Run #40 — SUCCESS.
+- `assembleDebug` — SUCCESS.
+- Unit tests — SUCCESS.
+
+FALLOS REPARADOS DURANTE DÍA 4:
+- Run #38: decoder de persistencia de referencia y sintaxis UI; corregidos.
+- Run #39: persistencia todavía contenía secuencias literales de salto de línea; decoder reescrito y CI repetido.
+
+VERIFICACIÓN MANUAL:
+- La prueba manual en un dispositivo/emulador Android real no pudo ejecutarse desde el conector GitHub utilizado en esta sesión.
+- Por ese motivo, Día 4 NO se marca todavía como VISTO BUENO aunque CI #40 esté verde.
+
+SIGUIENTE PASO DE CIERRE:
+- Ejecutar la prueba manual completa del prompt Día 4: importar imagen, bajar a 40%, bloquear, crear/seleccionar drawing layer, dibujar encima, desbloquear y mover/escalar/rotar, guardar, cerrar/reabrir y probar undo/redo.
+
+DEUDA TÉCNICA:
+- Persistencia continúa basada en SharedPreferences/JSON para metadata; las imágenes binarias se almacenan fuera del JSON en almacenamiento privado del proyecto.
+- La UI todavía no expone handles visuales específicos para referencia; utiliza el bounding box de selección existente.
+
+
+### Mini-prompt de continuidad
+
+CONTINUIDAD PROYECTO — ANIMEART
+
+DÍA ACTUAL:
+DÍA 4
+
+ÚLTIMO SHA:
+118f8bd2213693f38f9c60b965aa4329e03e7f67
+
+CI:
+Run #40 — SUCCESS
+
+ESTADO:
+amarillo — CI/build/tests verdes; falta verificación manual Android real para aprobar Día 4.
+
+IMPLEMENTADO:
+[Reference Layer integrado en Layer; importación; almacenamiento privado; render; opacity; visibility; lock; move/scale/rotation; dibujo sobre drawing layer; persistence; undo/redo; tests]
+
+FALLOS REPARADOS:
+[Decoder de persistencia y sintaxis de UI detectados por CI #38/#39 y reparados]
+
+DEUDA TÉCNICA:
+[Prueba manual Android; persistencia futura más robusta; handles específicos opcionales]
+
+NO REPETIR:
+[No crear ReferenceLayer paralelo; no crear renderer/transform/persistence/history paralelos]
+
+SIGUIENTE OBJETIVO:
+DÍA 5 — BACKGROUND REMOVAL + SELECTION + EDGE REFINEMENT
+
+REGLA:
+REUTILIZAR > ADAPTAR > CREAR
