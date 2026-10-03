@@ -39,3 +39,12 @@ ProjectPersistence stores document dimensions, ordered layer metadata, transform
 ## Reuse
 
 No third-party source code is copied. External projects remain architectural references because the Day 1 reuse audit did not establish a need or compatible licensing path for direct code reuse.
+
+
+## Day 4 — Reference layers
+
+The reference feature remains inside the existing Layer pipeline. A reference is represented by `LayerContent.Reference` with its project-local image path and source dimensions. No parallel ReferenceLayer or renderer exists.
+
+Rendering remains the existing Compose Canvas pipeline: Canvas -> Viewport -> Layer Transform -> content. Reference images reuse `LayerTransformMath` and the existing layer selection/lock/visibility/opacity/history operations.
+
+Imported reference files are copied into app-private project storage so a transient Android content URI is not required after import. The original stored bytes are retained while editor preview decoding is downsampled to a bounded preview size.
