@@ -8,6 +8,9 @@ import kotlin.math.sin
 
 object LayerTransformMath {
     fun contentPivot(content: LayerContent): Offset {
+        if (content is LayerContent.Reference && content.width > 0 && content.height > 0) {
+            return Offset(content.width / 2f, content.height / 2f)
+        }
         val points = (content as? LayerContent.Drawing)?.strokes?.flatMap { it.points }.orEmpty()
         if (points.isEmpty()) return Offset.Zero
         var minX = Float.POSITIVE_INFINITY
