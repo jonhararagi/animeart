@@ -244,7 +244,7 @@ fun EditorScreen() {
                     }
                 }
             }
-        )
+        }
 
         Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
             Text("Zoom " + (state.viewport.scale * 100).toInt() + "%")
