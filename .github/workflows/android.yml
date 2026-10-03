@@ -46,12 +46,23 @@ jobs:
           emulator-options: -no-window -noaudio -no-boot-anim -gpu swiftshader_indirect
           script: |
             gradle installDebug
+            adb wait-for-device
+            adb shell input keyevent 82 || true
+            adb logcat -c || true
             adb shell am force-stop com.jonhararagi.animeart
-            adb shell am start -W -n com.jonhararagi.animeart/.MainActivity
+            set +e
+            timeout 60s adb shell am start -W -n com.jonhararagi.animeart/.MainActivity
+            start_status=$?
+            set -e
+            if [ "$start_status" -ne 0 ]; then
+              echo "MainActivity no pudo iniciar dentro de 60 segundos (exit=$start_status). Logcat:"
+              adb logcat -d -t 500
+              exit 1
+            fi
             sleep 5
             if ! adb shell pidof com.jonhararagi.animeart | tr -d '\r' | grep -q '[0-9]'; then
-              echo "MainActivity no dejó vivo el proceso de AnimeArt."
-              adb logcat -d -t 300
+              echo "MainActivity terminó inmediatamente después del arranque. Logcat:"
+              adb logcat -d -t 500
               exit 1
             fi
             adb shell am force-stop com.jonhararagi.animeart
