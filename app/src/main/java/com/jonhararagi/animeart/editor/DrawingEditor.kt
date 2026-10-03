@@ -25,6 +25,23 @@ class DrawingEditor(initial: EditorState = EditorState()) {
         if (state.document.layers.any { it.id == id }) state = state.copy(selectedLayerId = id)
     }
 
+    fun addReferenceImage(path: String, width: Int, height: Int, name: String = "Reference Character") {
+        if (width <= 0 || height <= 0) return
+        val before = state.document
+        val id = java.util.UUID.randomUUID().toString()
+        val layer = Layer(
+            id = id,
+            name = name,
+            content = LayerContent.Reference(path, width, height),
+            transform = Transform(
+                translationX = (before.width - width) / 2f,
+                translationY = (before.height - height) / 2f
+            )
+        )
+        val after = before.copy(layers = before.layers + layer)
+        executeDocumentCommand(before, after, id)
+    }
+
     fun createLayer(name: String = "Layer") {
         val before = state.document
         val index = before.layers.size
