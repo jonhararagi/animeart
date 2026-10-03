@@ -102,3 +102,44 @@ VERIFICACIÓN FINAL:
 - Unit tests: SUCCESS.
 - Commit verificado: ed1ef00ab356392380fa1db185049ea4cfaed55e.
 - No avanzar a Día 3 hasta que el alcance del Día 2 permanezca estable.
+
+
+---
+
+## DÍA 3 — IMPLEMENTACIÓN EN CURSO
+
+BASE APROBADA:
+- Día 2: commit ed1ef00ab356392380fa1db1850494cfaed55e.
+- Day 3 branch: day-3-layers-transforms.
+- PR: #1.
+
+IMPLEMENTADO EN LA RAMA:
+- Ciclo completo de capas: crear, seleccionar, renombrar, visibilidad, lock, opacidad, reorder, duplicar y eliminar.
+- ID estable por capa y selección mediante selectedLayerId.
+- Duplicación con aislamiento de contenido.
+- Transform no destructivo por capa: translation, scale, rotation.
+- Transformación inversa para editar strokes dentro de una capa transformada.
+- Modo Transformar con gesto de 1 dedo y multitouch de 2 dedos.
+- Overlay de bounding box del contenido seleccionado.
+- Undo/Redo para operaciones de capa y una transformación completa como una sola operación.
+- Persistencia de metadata, transform y tipo de contenido.
+- Pruebas unitarias de lifecycle, aislamiento, undo/redo y transform math.
+- Documentación DAY-03, arquitectura y rendimiento actualizadas.
+
+NO HACER:
+- No crear segundo Document, LayerManager, renderer, canvas o history.
+- No avanzar a tracing, background removal, smart selection o shading avanzado hasta cerrar Día 3.
+
+CI:
+- PR #1 dispara GitHub Actions run #25 sobre el SHA inicial de la rama.
+- Debe verificarse el SHA final después de las últimas modificaciones de docs/código.
+- Si CI falla: identificar archivo -> identificar causa -> reparar -> build/test/CI nuevamente.
+
+PENDIENTE PARA VISTO BUENO:
+- Verificar build final del último SHA.
+- Verificar unit tests final del último SHA.
+- Verificar GitHub Actions verde en el último SHA.
+- Confirmar manualmente flujo de capas y transformación.
+
+SIGUIENTE DÍA:
+4 — tracing + reference layer, reutilizando Layer y el pipeline existente.
