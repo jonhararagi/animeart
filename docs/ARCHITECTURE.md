@@ -39,3 +39,27 @@ ProjectPersistence stores document dimensions, ordered layer metadata, transform
 ## Reuse
 
 No third-party source code is copied. External projects remain architectural references because the Day 1 reuse audit did not establish a need or compatible licensing path for direct code reuse.
+
+## Startup and verification pipeline
+
+The app startup path is intentionally single-directional:
+
+Android launcher
+-> MainActivity.onCreate
+-> guarded recovery load
+-> fallback to new CanvasDocument
+-> Compose setContent
+-> EditorScreen(initialDocument)
+-> DrawingEditor(EditorState(document))
+-> existing Canvas renderer
+
+Startup recovery must never be allowed to abort Activity creation. Persistence errors are isolated at the boundary and fall back to a fresh document.
+
+CI verification is layered:
+1. Build — Kotlin/Android compilation.
+2. Unit tests — domain/editor behavior.
+3. Lint — Android/static correctness.
+4. Android smoke — install the debug APK, verify ADB/device readiness, launch MainActivity, verify the process remains alive, and print logcat on failure.
+5. APK artifact — only after all previous layers pass.
+
+An emulator/ADB failure is infrastructure evidence, not evidence of an application crash. The smoke step therefore records emulator readiness separately before installing the APK.
