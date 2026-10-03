@@ -148,7 +148,11 @@ private fun contentValue(content: LayerContent): String = when (content) {
 private fun JSONObject.readContent(): LayerContent? = when (optString("contentType", "drawing")) {
     "empty" -> LayerContent.Empty
     "image" -> LayerContent.Image(optString("contentValue"))
-    "reference" -> LayerContent.Reference(\n        uri = optString("contentValue"),\n        width = optInt("referenceWidth", 0),\n        height = optInt("referenceHeight", 0)\n    )
+    "reference" -> LayerContent.Reference(
+        uri = optString("contentValue"),
+        width = optInt("referenceWidth", 0),
+        height = optInt("referenceHeight", 0)
+    )
     "text" -> LayerContent.Text(optString("contentValue"))
     "shape" -> LayerContent.Shape(optString("contentValue"))
     "drawing" -> null
