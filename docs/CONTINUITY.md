@@ -106,40 +106,50 @@ VERIFICACIÓN FINAL:
 
 ---
 
-## DÍA 3 — IMPLEMENTACIÓN EN CURSO
+## DÍA 3 — VISTO BUENO
 
-BASE APROBADA:
-- Día 2: commit ed1ef00ab356392380fa1db1850494cfaed55e.
-- Day 3 branch: day-3-layers-transforms.
-- PR: #1.
+ESTADO FINAL:
+DÍA 3 COMPLETADO Y VERIFICADO EN CI.
 
-IMPLEMENTADO EN LA RAMA:
-- Ciclo completo de capas: crear, seleccionar, renombrar, visibilidad, lock, opacidad, reorder, duplicar y eliminar.
-- ID estable por capa y selección mediante selectedLayerId.
+BASE:
+- Día 2 aprobado: ed1ef00ab356392380fa1db1850494cfaed55e.
+- PR #1: Day 3: complete editable layers and transforms.
+- Merge commit final: 099e0048db4ab19c0b8624219d8f6c687144af11.
+
+IMPLEMENTADO:
+- Crear, seleccionar, renombrar, ocultar/mostrar, bloquear/desbloquear, opacidad, reorder, duplicar y eliminar capas.
+- Stable Layer IDs y selectedLayerId.
 - Duplicación con aislamiento de contenido.
 - Transform no destructivo por capa: translation, scale, rotation.
-- Transformación inversa para editar strokes dentro de una capa transformada.
-- Modo Transformar con gesto de 1 dedo y multitouch de 2 dedos.
-- Overlay de bounding box del contenido seleccionado.
-- Undo/Redo para operaciones de capa y una transformación completa como una sola operación.
-- Persistencia de metadata, transform y tipo de contenido.
-- Pruebas unitarias de lifecycle, aislamiento, undo/redo y transform math.
-- Documentación DAY-03, arquitectura y rendimiento actualizadas.
+- Inverse layer transform para edición de strokes.
+- Modo Transformar: 1 dedo mover; 2 dedos mover/escala/rotación.
+- Bounding box de selección.
+- Undo/Redo para operaciones de capa y transformación completa como una sola operación.
+- Persistencia de layer metadata, transform, content type y strokes.
+- Tests de lifecycle, aislamiento, undo/redo y transform math.
+- Documentación DAY-03, ARCHITECTURE y PERFORMANCE actualizada.
 
-NO HACER:
-- No crear segundo Document, LayerManager, renderer, canvas o history.
-- No avanzar a tracing, background removal, smart selection o shading avanzado hasta cerrar Día 3.
+ERRORES REALES REPARADOS:
+- ProjectPersistence.kt: decoder de content type tenía referencias inválidas; corregido y recompilado.
+- DocumentReducerTest.kt: expectativa incorrecta al borrar la primera capa; corregida.
+- CI #32: fallo de compilación por decoder de persistencia.
+- CI #33: build verde pero un test fallaba; aislado en DocumentReducerTest.
+- CI #34: BUILD SUCCESS + UNIT TESTS SUCCESS.
+- CI #35: merge final en main, BUILD SUCCESS + UNIT TESTS SUCCESS.
 
-CI:
-- PR #1 dispara GitHub Actions run #25 sobre el SHA inicial de la rama.
-- Debe verificarse el SHA final después de las últimas modificaciones de docs/código.
-- Si CI falla: identificar archivo -> identificar causa -> reparar -> build/test/CI nuevamente.
+VERIFICACIÓN FINAL:
+- GitHub Actions run #35: SUCCESS.
+- Build: SUCCESS.
+- Unit tests: SUCCESS.
+- Commit final verificado: 099e0048db4ab19c0b8624219d8f6c687144af11.
 
-PENDIENTE PARA VISTO BUENO:
-- Verificar build final del último SHA.
-- Verificar unit tests final del último SHA.
-- Verificar GitHub Actions verde en el último SHA.
-- Confirmar manualmente flujo de capas y transformación.
+PENDIENTE / DEUDA:
+- Merge Down no se implementó porque no era necesario para estabilizar Día 3.
+- Persistencia sigue usando SharedPreferences/JSON y deberá evolucionar a un formato de proyecto más robusto cuando el alcance lo justifique.
+- No se avanzó a tracing, background removal, smart selection ni shading avanzado.
+
+NO REPETIR:
+- No crear un segundo Document, renderer, canvas, history o sistema paralelo de reference layers.
 
 SIGUIENTE DÍA:
 4 — tracing + reference layer, reutilizando Layer y el pipeline existente.
