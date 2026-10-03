@@ -35,7 +35,10 @@ import kotlin.math.max
 fun EditorScreen() {
     val context = LocalContext.current
     val persistence = remember { ProjectPersistence(context) }
+    val referenceStore = remember { ReferenceImageStore(context) }
     val editor = remember { DrawingEditor(EditorState(document = persistence.loadDocument() ?: CanvasDocument())) }
+    val scope = rememberCoroutineScope()
+    val referenceBitmaps = remember { mutableStateMapOf<String, ImageBitmap>() }
     var tick by remember { mutableIntStateOf(0) }
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     var renameText by remember { mutableStateOf("") }
@@ -43,6 +46,32 @@ fun EditorScreen() {
 
     val state = editor.state
     val selectedLayer = state.document.layers.firstOrNull { it.id == state.selectedLayerId }
+    val referenceLayers = state.document.layers.filter { it.content is LayerContent.Reference }
+
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { referenceStore.importImage("default", uri) }
+            }.onSuccess { stored ->
+                editor.addReferenceImage(stored.path, stored.width, stored.height)
+                persistence.save("default", editor.state.document)
+                refresh()
+            }
+        }
+    }
+
+    LaunchedEffect(referenceLayers.map { it.id to (it.content as LayerContent.Reference).uri }) {
+        val activeIds = referenceLayers.map { it.id }.toSet()
+        referenceBitmaps.keys.toList().filterNot(activeIds::contains).forEach(referenceBitmaps::remove)
+        referenceLayers.forEach { layer ->
+            if (!referenceBitmaps.containsKey(layer.id)) {
+                val reference = layer.content as LayerContent.Reference
+                val bitmap = withContext(Dispatchers.IO) { referenceStore.decodeForPreview(reference.uri) }
+                if (bitmap != null) referenceBitmaps[layer.id] = bitmap.asImageBitmap()
+            }
+        }
+    }
 
     LaunchedEffect(state.selectedLayerId, selectedLayer?.name) {
         renameText = selectedLayer?.name.orEmpty()
@@ -50,38 +79,20 @@ fun EditorScreen() {
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("AnimeArt — Día 3", style = MaterialTheme.typography.titleMedium)
+            Text("AnimeArt — Día 4", style = MaterialTheme.typography.titleMedium)
             Row {
+                TextButton(onClick = { picker.launch(arrayOf("image/png", "image/jpeg", "image/webp")) }) { Text("Importar referencia") }
                 TextButton(onClick = { editor.undo(); refresh() }, enabled = editor.canUndo()) { Text("↶") }
                 TextButton(onClick = { editor.redo(); refresh() }, enabled = editor.canRedo()) { Text("↷") }
                 TextButton(onClick = { persistence.save("default", editor.state.document) }) { Text("Guardar") }
             }
         }
 
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            FilterChip(
-                selected = state.activeTool == EditorTool.DRAW,
-                onClick = { editor.setTool(EditorTool.DRAW); refresh() },
-                label = { Text("Pincel") }
-            )
-            FilterChip(
-                selected = state.activeTool == EditorTool.ERASE,
-                onClick = { editor.setTool(EditorTool.ERASE); refresh() },
-                label = { Text("Borrador") }
-            )
-            FilterChip(
-                selected = state.activeTool == EditorTool.PAN,
-                onClick = { editor.setTool(EditorTool.PAN); refresh() },
-                label = { Text("Pan") }
-            )
-            FilterChip(
-                selected = state.activeTool == EditorTool.SELECT,
-                onClick = { editor.setTool(EditorTool.SELECT); refresh() },
-                label = { Text("Transformar") }
-            )
+        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            FilterChip(selected = state.activeTool == EditorTool.DRAW, onClick = { editor.setTool(EditorTool.DRAW); refresh() }, label = { Text("Pincel") })
+            FilterChip(selected = state.activeTool == EditorTool.ERASE, onClick = { editor.setTool(EditorTool.ERASE); refresh() }, label = { Text("Borrador") })
+            FilterChip(selected = state.activeTool == EditorTool.PAN, onClick = { editor.setTool(EditorTool.PAN); refresh() }, label = { Text("Pan") })
+            FilterChip(selected = state.activeTool == EditorTool.SELECT, onClick = { editor.setTool(EditorTool.SELECT); refresh() }, label = { Text("Transformar") })
         }
 
         LayerPanel(
@@ -90,12 +101,8 @@ fun EditorScreen() {
             onRenameText = { renameText = it },
             onCreate = { editor.createLayer("Layer"); refresh() },
             onSelect = { editor.selectLayer(it); refresh() },
-            onVisibility = { id, value ->
-                editor.selectLayer(id); editor.setLayerVisibility(value); refresh()
-            },
-            onLock = { id, value ->
-                editor.selectLayer(id); editor.setLayerLocked(value); refresh()
-            },
+            onVisibility = { id, value -> editor.selectLayer(id); editor.setLayerVisibility(value); refresh() },
+            onLock = { id, value -> editor.selectLayer(id); editor.setLayerLocked(value); refresh() },
             onRename = { editor.renameLayer(renameText); refresh() },
             onDuplicate = { editor.duplicateSelectedLayer(); refresh() },
             onDelete = { editor.deleteSelectedLayer(); refresh() },
@@ -106,11 +113,9 @@ fun EditorScreen() {
 
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(0xFF111111L, 0xFFFF3355L, 0xFF3366FFL, 0xFF22AA66L, 0xFFFFFFFFL).forEach { color ->
-                Button(
-                    onClick = { editor.setColor(color); refresh() },
-                    contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier.size(42.dp)
-                ) { Text("●", color = Color(color.toULong())) }
+                Button(onClick = { editor.setColor(color); refresh() }, contentPadding = PaddingValues(0.dp), modifier = Modifier.size(42.dp)) {
+                    Text("●", color = Color(color.toULong()))
+                }
             }
             Column(Modifier.weight(1f)) {
                 Text("Pincel " + state.brushSize.toInt())
@@ -125,7 +130,7 @@ fun EditorScreen() {
         Canvas(
             Modifier.fillMaxWidth().weight(1f)
                 .onSizeChanged { canvasSize = it }
-                .pointerInput(state.activeTool, state.selectedLayerId, state.viewport) {
+                .pointerInput(state.activeTool, state.selectedLayerId, state.viewport, selectedLayer?.locked) {
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)
                         var navigation = false
@@ -168,11 +173,7 @@ fun EditorScreen() {
                                     old.translationX + pan.x - (center.x - canvasSize.width / 2f) * (factor - 1f),
                                     old.translationY + pan.y - (center.y - canvasSize.height / 2f) * (factor - 1f)
                                 )
-                                editor.setViewport(old.copy(
-                                    scale = newScale,
-                                    translationX = newTranslation.x,
-                                    translationY = newTranslation.y
-                                ))
+                                editor.setViewport(old.copy(scale = newScale, translationX = newTranslation.x, translationY = newTranslation.y))
                                 pressed.forEach { it.consume() }
                                 refresh()
                                 continue
@@ -183,14 +184,9 @@ fun EditorScreen() {
                             if (navigation || editor.state.activeTool == EditorTool.PAN) {
                                 val delta = change.position - change.previousPosition
                                 val old = editor.state.viewport
-                                editor.setViewport(old.copy(
-                                    translationX = old.translationX + delta.x,
-                                    translationY = old.translationY + delta.y
-                                ))
+                                editor.setViewport(old.copy(translationX = old.translationX + delta.x, translationY = old.translationY + delta.y))
                             } else {
-                                val documentPoint = ViewportTransform.screenToDocument(
-                                    change.position, editor.state.viewport, center
-                                )
+                                val documentPoint = ViewportTransform.screenToDocument(change.position, editor.state.viewport, center)
                                 if (editor.activeStroke() == null) editor.beginStroke(documentPoint)
                                 else editor.appendStrokePoint(documentPoint)
                             }
@@ -207,22 +203,26 @@ fun EditorScreen() {
                 translate(viewport.translationX, viewport.translationY)
                 scale(viewport.scale, viewport.scale, pivot = center)
             }) {
-                drawRect(
-                    Color.White,
-                    topLeft = Offset(center.x - 540f, center.y - 540f),
-                    size = Size(1080f, 1080f)
-                )
+                drawRect(Color.White, topLeft = Offset(center.x - 540f, center.y - 540f), size = Size(1080f, 1080f))
                 state.document.layers.filter { it.visible }.forEach { layer ->
-                    val drawing = layer.content as? LayerContent.Drawing ?: return@forEach
                     val pivot = LayerTransformMath.contentPivot(layer.content)
                     withTransform({
                         translate(layer.transform.translationX, layer.transform.translationY)
                         rotate(layer.transform.rotation, pivot = pivot)
                         scale(layer.transform.scale, layer.transform.scale, pivot = pivot)
                     }) {
-                        drawing.strokes.forEach { stroke -> drawStroke(stroke, layer.opacity) }
-                        if (layer.id == state.selectedLayerId && state.activeTool == EditorTool.SELECT) {
-                            drawSelectionOverlay(drawing)
+                        when (val content = layer.content) {
+                            is LayerContent.Drawing -> {
+                                content.strokes.forEach { stroke -> drawStroke(stroke, layer.opacity) }
+                                if (layer.id == state.selectedLayerId && state.activeTool == EditorTool.SELECT) drawDrawingSelectionOverlay(content)
+                            }
+                            is LayerContent.Reference -> {
+                                referenceBitmaps[layer.id]?.let { bitmap -> drawImage(bitmap, topLeft = Offset.Zero, alpha = layer.opacity) }
+                                if (layer.id == state.selectedLayerId && state.activeTool == EditorTool.SELECT) {
+                                    drawRect(Color(0xFF3366FF), topLeft = Offset.Zero, size = Size(content.width.toFloat(), content.height.toFloat()), style = DrawStroke(width = 2f))
+                                }
+                            }
+                            else -> Unit
                         }
                     }
                 }
@@ -234,18 +234,13 @@ fun EditorScreen() {
                             translate(layer.transform.translationX, layer.transform.translationY)
                             rotate(layer.transform.rotation, pivot = pivot)
                             scale(layer.transform.scale, layer.transform.scale, pivot = pivot)
-                        }) {
-                            drawStroke(active, 1f)
-                        }
+                        }) { drawStroke(active, 1f) }
                     }
                 }
             }
-        }
+        )
 
-        Row(
-            Modifier.fillMaxWidth().padding(8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
+        Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
             Text("Zoom " + (state.viewport.scale * 100).toInt() + "%")
             Text("Capa: " + (selectedLayer?.name ?: "—"))
             Text(if (state.activeTool == EditorTool.SELECT) "1 dedo = mover · 2 dedos = mover/escala/rotación" else "2 dedos = zoom/pan")
@@ -273,13 +268,7 @@ private fun LayerPanel(
     Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Button(onClick = onCreate) { Text("+ Capa") }
-            OutlinedTextField(
-                value = renameText,
-                onValueChange = onRenameText,
-                modifier = Modifier.weight(1f),
-                singleLine = true,
-                label = { Text("Nombre") }
-            )
+            OutlinedTextField(value = renameText, onValueChange = onRenameText, modifier = Modifier.weight(1f), singleLine = true, label = { Text("Nombre") })
             TextButton(onClick = onRename) { Text("Renombrar") }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -290,34 +279,20 @@ private fun LayerPanel(
         }
         LazyColumn(Modifier.heightIn(max = 150.dp)) {
             items(state.document.layers.asReversed(), key = { it.id }) { layer ->
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    TextButton(onClick = { onVisibility(layer.id, !layer.visible) }) {
-                        Text(if (layer.visible) "👁" else "·")
-                    }
-                    TextButton(onClick = { onLock(layer.id, !layer.locked) }) {
-                        Text(if (layer.locked) "🔒" else "🔓")
-                    }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = { onVisibility(layer.id, !layer.visible) }) { Text(if (layer.visible) "👁" else "·") }
+                    TextButton(onClick = { onLock(layer.id, !layer.locked) }) { Text(if (layer.locked) "🔒" else "🔓") }
                     Text(
-                        layer.name,
+                        if (layer.content is LayerContent.Reference) "🖼 \${layer.name}" else layer.name,
                         modifier = Modifier.weight(1f),
-                        style = if (layer.id == state.selectedLayerId) MaterialTheme.typography.labelLarge
-                        else MaterialTheme.typography.bodyMedium
+                        style = if (layer.id == state.selectedLayerId) MaterialTheme.typography.labelLarge else MaterialTheme.typography.bodyMedium
                     )
-                    TextButton(onClick = { onSelect(layer.id) }) {
-                        Text(if (layer.id == state.selectedLayerId) "●" else "○")
-                    }
+                    TextButton(onClick = { onSelect(layer.id) }) { Text(if (layer.id == state.selectedLayerId) "●" else "○") }
                 }
             }
         }
         Text("Opacidad de capa " + ((state.document.layers.firstOrNull { it.id == state.selectedLayerId }?.opacity ?: 1f) * 100).toInt() + "%")
-        Slider(
-            value = state.document.layers.firstOrNull { it.id == state.selectedLayerId }?.opacity ?: 1f,
-            onValueChange = onOpacity,
-            valueRange = 0f..1f
-        )
+        Slider(value = state.document.layers.firstOrNull { it.id == state.selectedLayerId }?.opacity ?: 1f, onValueChange = onOpacity, valueRange = 0f..1f)
     }
 }
 
@@ -328,25 +303,15 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawStroke(stroke: 
         stroke.points.drop(1).forEach { lineTo(it.x, it.y) }
     }
     val color = Color(stroke.colorArgb.toULong()).copy(alpha = stroke.opacity * layerOpacity)
-    drawPath(
-        path = path,
-        color = if (stroke.tool == StrokeTool.ERASER) Color.Transparent else color,
-        style = DrawStroke(width = stroke.size, cap = StrokeCap.Round, join = StrokeJoin.Round),
-        blendMode = if (stroke.tool == StrokeTool.ERASER) BlendMode.Clear else BlendMode.SrcOver
-    )
+    drawPath(path = path, color = if (stroke.tool == StrokeTool.ERASER) Color.Transparent else color, style = DrawStroke(width = stroke.size, cap = StrokeCap.Round, join = StrokeJoin.Round), blendMode = if (stroke.tool == StrokeTool.ERASER) BlendMode.Clear else BlendMode.SrcOver)
 }
 
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSelectionOverlay(drawing: LayerContent.Drawing) {
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawDrawingSelectionOverlay(drawing: LayerContent.Drawing) {
     val points = drawing.strokes.flatMap { it.points }
     if (points.isEmpty()) return
     val minX = points.minOf { it.x }
     val minY = points.minOf { it.y }
     val maxX = points.maxOf { it.x }
     val maxY = points.maxOf { it.y }
-    drawRect(
-        color = Color(0xFF3366FF),
-        topLeft = Offset(minX, minY),
-        size = Size((maxX - minX).coerceAtLeast(1f), (maxY - minY).coerceAtLeast(1f)),
-        style = DrawStroke(width = 2f)
-    )
+    drawRect(color = Color(0xFF3366FF), topLeft = Offset(minX, minY), size = Size((maxX - minX).coerceAtLeast(1f), (maxY - minY).coerceAtLeast(1f)), style = DrawStroke(width = 2f))
 }
