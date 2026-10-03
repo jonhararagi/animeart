@@ -51,7 +51,11 @@ class ProjectPersistence(private val context: Context) {
         prefs.edit().putString("project", root.toString()).apply()
     }
 
-    fun loadDocument(): CanvasDocument? {
+    fun loadDocument(): CanvasDocument? = runCatching {
+        loadDocumentUnsafe()
+    }.getOrNull()
+
+    private fun loadDocumentUnsafe(): CanvasDocument? {
         val root = prefs.getString("project", null)?.let(::JSONObject) ?: return null
         val layersJson = root.optJSONArray("layers") ?: return null
         val layers = buildList {
