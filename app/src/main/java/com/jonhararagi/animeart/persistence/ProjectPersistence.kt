@@ -30,6 +30,8 @@ class ProjectPersistence(private val context: Context) {
                     .put("visible", layer.visible)
                     .put("locked", layer.locked)
                     .put("opacity", layer.opacity)
+                    .put("contentType", contentType(layer.content))
+                    .put("contentValue", contentValue(layer.content))
                     .put("transform", JSONObject()
                         .put("translationX", layer.transform.translationX)
                         .put("translationY", layer.transform.translationY)
@@ -101,7 +103,7 @@ class ProjectPersistence(private val context: Context) {
                         locked = l.optBoolean("locked", false),
                         opacity = l.optDouble("opacity", 1.0).toFloat().coerceIn(0f, 1f),
                         transform = transform,
-                        content = LayerContent.Drawing(strokes)
+                        content = layerContent ?: LayerContent.Drawing(strokes)
                     )
                 )
             }
@@ -115,4 +117,33 @@ class ProjectPersistence(private val context: Context) {
 
     fun loadRecovery(): JSONObject? = prefs.getString("project", null)?.let(::JSONObject)
     fun clearRecovery() { prefs.edit().remove("project").apply() }
+}
+
+
+private fun contentType(content: LayerContent): String = when (content) {
+    LayerContent.Empty -> "empty"
+    is LayerContent.Drawing -> "drawing"
+    is LayerContent.Image -> "image"
+    is LayerContent.Reference -> "reference"
+    is LayerContent.Text -> "text"
+    is LayerContent.Shape -> "shape"
+}
+
+private fun contentValue(content: LayerContent): String = when (content) {
+    LayerContent.Empty -> ""
+    is LayerContent.Drawing -> ""
+    is LayerContent.Image -> content.uri
+    is LayerContent.Reference -> content.uri
+    is LayerContent.Text -> content.value
+    is LayerContent.Shape -> content.type
+}
+
+private fun JSONObject.readContent(layer: JSONObject): LayerContent? = when (layer.optString("contentType", "drawing")) {
+    "empty" -> LayerContent.Empty
+    "image" -> LayerContent.Image(layer.optString("contentValue"))
+    "reference" -> LayerContent.Reference(layer.optString("contentValue"))
+    "text" -> LayerContent.Text(layer.optString("contentValue"))
+    "shape" -> LayerContent.Shape(layer.optString("contentValue"))
+    "drawing" -> null
+    else -> null
 }
