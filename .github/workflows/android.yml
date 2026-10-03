@@ -46,13 +46,7 @@ jobs:
           emulator-options: -no-window -noaudio -no-boot-anim -no-snapshot -no-snapshot-save -gpu swiftshader_indirect
           script: |
             adb wait-for-device
-            for i in $(seq 1 120); do
-              booted=$(timeout 5s adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-              if [ "$booted" = "1" ]; then
-                break
-              fi
-              sleep 2
-            done
+            booted=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
             if [ "$booted" != "1" ]; then
               echo "El emulador no alcanzó sys.boot_completed=1. Diagnóstico:"
               adb devices -l || true
