@@ -49,6 +49,7 @@ fun EditorScreen() {
                 scale(scale, scale, pivot = center)
             }) {
                 drawRect(
+                    color = androidx.compose.ui.graphics.Color.LightGray,
                     topLeft = Offset(
                         center.x - size.minDimension * 0.35f,
                         center.y - size.minDimension * 0.35f
