@@ -138,7 +138,7 @@ private fun contentValue(content: LayerContent): String = when (content) {
     is LayerContent.Shape -> content.type
 }
 
-private fun JSONObject.readContent(layer: JSONObject): LayerContent? = when (layer.optString("contentType", "drawing")) {
+private fun JSONObject.readContent(): LayerContent? = when (optString("contentType", "drawing")) {
     "empty" -> LayerContent.Empty
     "image" -> LayerContent.Image(layer.optString("contentValue"))
     "reference" -> LayerContent.Reference(layer.optString("contentValue"))
