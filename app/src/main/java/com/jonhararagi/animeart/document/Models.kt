@@ -2,11 +2,19 @@ package com.jonhararagi.animeart.document
 
 import java.util.UUID
 
-data class Transform(val translationX: Float = 0f, val translationY: Float = 0f, val scale: Float = 1f, val rotation: Float = 0f)
+data class Transform(
+    val translationX: Float = 0f,
+    val translationY: Float = 0f,
+    val scale: Float = 1f,
+    val rotation: Float = 0f
+)
+
 enum class BlendMode { NORMAL, MULTIPLY, SCREEN, ADD }
 
 data class StrokePoint(val x: Float, val y: Float, val pressure: Float = 1f, val timestamp: Long = 0L)
+
 enum class StrokeTool { BRUSH, ERASER }
+
 data class Stroke(
     val id: String = UUID.randomUUID().toString(),
     val points: List<StrokePoint> = emptyList(),
@@ -19,7 +27,11 @@ data class Stroke(
 sealed interface LayerContent {
     data object Empty : LayerContent
     data class Image(val uri: String) : LayerContent
-    data class Reference(val uri: String) : LayerContent
+    data class Reference(
+        val uri: String,
+        val width: Int = 0,
+        val height: Int = 0
+    ) : LayerContent
     data class Text(val value: String) : LayerContent
     data class Shape(val type: String) : LayerContent
     data class Drawing(val strokes: List<Stroke> = emptyList()) : LayerContent
@@ -43,9 +55,14 @@ data class CanvasDocument(
     val metadata: Map<String, String> = emptyMap()
 )
 
-data class Viewport(val scale: Float = 1f, val translationX: Float = 0f, val translationY: Float = 0f, val rotation: Float = 0f)
-enum class EditorTool { DRAW, PAN, ERASE, SELECT }
+data class Viewport(
+    val scale: Float = 1f,
+    val translationX: Float = 0f,
+    val translationY: Float = 0f,
+    val rotation: Float = 0f
+)
 
+enum class EditorTool { DRAW, PAN, ERASE, SELECT }
 data class EditorState(
     val document: CanvasDocument = CanvasDocument(),
     val selectedLayerId: String? = null,
