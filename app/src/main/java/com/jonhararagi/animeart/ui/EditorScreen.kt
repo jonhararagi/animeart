@@ -49,7 +49,7 @@ fun EditorScreen() {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(0xFF111111L, 0xFFFF3355L, 0xFF3366FFL, 0xFF22AA66L, 0xFFFFFFFFL).forEach { color ->
                 Button(onClick = { editor.setColor(color); refresh() }, contentPadding = PaddingValues(0.dp), modifier = Modifier.size(42.dp)) {
-                    Text("●", color = Color(color))
+                    Text("●", color = Color(color.toULong()))
                 }
             }
             Column(Modifier.weight(1f)) {
