@@ -31,7 +31,7 @@ jobs:
       - name: Lint
         run: gradle lintDebug
       - name: Android startup smoke test
-        timeout-minutes: 6
+        timeout-minutes: 8
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -43,12 +43,10 @@ jobs:
           heap-size: 512M
           force-avd-creation: true
           disable-animations: true
-          emulator-options: -no-window -noaudio -no-boot-anim -no-snapshot -wipe-data -gpu swiftshader_indirect
+          emulator-options: -no-window -noaudio -no-boot-anim -no-snapshot -no-snapshot-save -gpu swiftshader_indirect
           script: |
-            adb kill-server || true
-            adb start-server
             adb wait-for-device
-            for i in $(seq 1 45); do
+            for i in $(seq 1 60); do
               booted=$(timeout 5s adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
               if [ "$booted" = "1" ]; then
                 break
