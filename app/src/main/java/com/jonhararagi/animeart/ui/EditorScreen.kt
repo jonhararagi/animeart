@@ -9,6 +9,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.platform.LocalContext
@@ -25,6 +27,7 @@ fun EditorScreen() {
     val persistence = remember { ProjectPersistence(context) }
     val editor = remember { DrawingEditor(EditorState(document = persistence.loadDocument() ?: CanvasDocument())) }
     var tick by remember { mutableIntStateOf(0) }
+    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     fun refresh() { tick++ }
     val state = editor.state
 
@@ -60,7 +63,7 @@ fun EditorScreen() {
         }
 
         Canvas(
-            Modifier.fillMaxWidth().weight(1f).pointerInput(state.activeTool, state.viewport) {
+            Modifier.fillMaxWidth().weight(1f).onSizeChanged { canvasSize = it }.pointerInput(state.activeTool, state.viewport) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
                     var navigation = false
@@ -81,8 +84,8 @@ fun EditorScreen() {
                             val newScale = (old.scale * zoom).coerceIn(0.25f, 8f)
                             val factor = newScale / max(old.scale, 0.0001f)
                             val newTranslation = Offset(
-                                old.translationX + pan.x - (center.x - size.width / 2f) * (factor - 1f),
-                                old.translationY + pan.y - (center.y - size.height / 2f) * (factor - 1f)
+                                old.translationX + pan.x - (center.x - canvasSize.width / 2f) * (factor - 1f),
+                                old.translationY + pan.y - (center.y - canvasSize.height / 2f) * (factor - 1f)
                             )
                             editor.setViewport(old.copy(scale = newScale, translationX = newTranslation.x, translationY = newTranslation.y))
                             pressed.forEach { it.consume() }
@@ -90,7 +93,7 @@ fun EditorScreen() {
                             continue
                         }
                         val change = pressed.first()
-                        val center = Offset(size.width / 2f, size.height / 2f)
+                        val center = Offset(canvasSize.width / 2f, canvasSize.height / 2f)
                         if (navigation || editor.state.activeTool == EditorTool.PAN) {
                             val delta = change.position - change.previousPosition
                             val old = editor.state.viewport
@@ -135,7 +138,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawStroke(stroke: 
         moveTo(stroke.points.first().x, stroke.points.first().y)
         stroke.points.drop(1).forEach { lineTo(it.x, it.y) }
     }
-    val color = Color(stroke.colorArgb).copy(alpha = stroke.opacity * layerOpacity)
+    val color = Color(stroke.colorArgb.toULong()).copy(alpha = stroke.opacity * layerOpacity)
     drawPath(
         path = path,
         color = if (stroke.tool == StrokeTool.ERASER) Color.Transparent else color,
