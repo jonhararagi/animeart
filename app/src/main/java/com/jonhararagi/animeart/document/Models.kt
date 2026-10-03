@@ -2,24 +2,11 @@ package com.jonhararagi.animeart.document
 
 import java.util.UUID
 
-data class Transform(
-    val translationX: Float = 0f,
-    val translationY: Float = 0f,
-    val scale: Float = 1f,
-    val rotation: Float = 0f
-)
-
+data class Transform(val translationX: Float = 0f, val translationY: Float = 0f, val scale: Float = 1f, val rotation: Float = 0f)
 enum class BlendMode { NORMAL, MULTIPLY, SCREEN, ADD }
 
-data class StrokePoint(
-    val x: Float,
-    val y: Float,
-    val pressure: Float = 1f,
-    val timestamp: Long = 0L
-)
-
+data class StrokePoint(val x: Float, val y: Float, val pressure: Float = 1f, val timestamp: Long = 0L)
 enum class StrokeTool { BRUSH, ERASER }
-
 data class Stroke(
     val id: String = UUID.randomUUID().toString(),
     val points: List<StrokePoint> = emptyList(),
@@ -56,13 +43,7 @@ data class CanvasDocument(
     val metadata: Map<String, String> = emptyMap()
 )
 
-data class Viewport(
-    val scale: Float = 1f,
-    val translationX: Float = 0f,
-    val translationY: Float = 0f,
-    val rotation: Float = 0f
-)
-
+data class Viewport(val scale: Float = 1f, val translationX: Float = 0f, val translationY: Float = 0f, val rotation: Float = 0f)
 enum class EditorTool { DRAW, PAN, ERASE, SELECT }
 
 data class EditorState(
