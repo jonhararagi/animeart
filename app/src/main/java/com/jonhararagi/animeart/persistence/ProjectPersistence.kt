@@ -32,6 +32,8 @@ class ProjectPersistence(private val context: Context) {
                     .put("opacity", layer.opacity)
                     .put("contentType", contentType(layer.content))
                     .put("contentValue", contentValue(layer.content))
+                    .put("referenceWidth", referenceWidth(layer.content))
+                    .put("referenceHeight", referenceHeight(layer.content))
                     .put("transform", JSONObject()
                         .put("translationX", layer.transform.translationX)
                         .put("translationY", layer.transform.translationY)
@@ -129,6 +131,10 @@ private fun contentType(content: LayerContent): String = when (content) {
     is LayerContent.Text -> "text"
     is LayerContent.Shape -> "shape"
 }
+
+private fun referenceWidth(content: LayerContent): Int = (content as? LayerContent.Reference)?.width ?: 0
+
+private fun referenceHeight(content: LayerContent): Int = (content as? LayerContent.Reference)?.height ?: 0
 
 private fun contentValue(content: LayerContent): String = when (content) {
     LayerContent.Empty -> ""
