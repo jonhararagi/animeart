@@ -2,7 +2,7 @@ package com.jonhararagi.animeart.document
 
 object DocumentReducer {
     fun addLayer(document: CanvasDocument, name: String): CanvasDocument =
-        document.copy(layers = document.layers + Layer(name = name))
+        document.copy(layers = document.layers + Layer(name = name, content = LayerContent.Drawing()))
 
     fun removeLayer(document: CanvasDocument, id: String): CanvasDocument =
         document.copy(layers = document.layers.filterNot { it.id == id })
@@ -24,4 +24,24 @@ object DocumentReducer {
         copy.add(toIndex.coerceIn(0, copy.size), layer)
         return document.copy(layers = copy)
     }
+
+    fun appendStroke(document: CanvasDocument, layerId: String, stroke: Stroke): CanvasDocument =
+        document.copy(layers = document.layers.map { layer ->
+            if (layer.id != layerId || layer.locked || !layer.visible) layer
+            else {
+                val drawing = layer.content as? LayerContent.Drawing ?: LayerContent.Drawing()
+                layer.copy(content = drawing.copy(strokes = drawing.strokes + stroke))
+            }
+        })
+
+    fun replaceLayerStrokes(document: CanvasDocument, layerId: String, strokes: List<Stroke>): CanvasDocument =
+        document.copy(layers = document.layers.map { layer ->
+            if (layer.id != layerId) layer
+            else layer.copy(content = LayerContent.Drawing(strokes))
+        })
+
+    fun activeStrokes(document: CanvasDocument, layerId: String?): List<Stroke> =
+        document.layers.firstOrNull { it.id == layerId }
+            ?.let { (it.content as? LayerContent.Drawing)?.strokes.orEmpty() }
+            .orEmpty()
 }
