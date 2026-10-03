@@ -46,7 +46,7 @@ fun EditorScreen() {
         ) {
             withTransform({
                 translate(offset.x, offset.y)
-                scale(scale, scale, center = center)
+                scale(scale, scale, pivot = center)
             }) {
                 drawRect(
                     topLeft = Offset(
