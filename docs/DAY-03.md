@@ -2,7 +2,10 @@
 
 ## Estado
 
-Día 3 implementado sobre el commit aprobado de Día 2.
+DÍA 3 APROBADO — implementado sobre el commit aprobado de Día 2.
+
+Commit final en main: `099e0048db4ab19c0b8624219d8f6c687144af11`.
+GitHub Actions final: run `#35` — SUCCESS (build + unit tests).
 
 ### Objetivo
 
@@ -114,8 +117,16 @@ No se copian bitmaps ni documentos completos durante cada movimiento del gesto. 
 
 ## Criterio de salida
 
-No declarar Día 3 aprobado hasta que el último commit modificado tenga:
+Cumplido en main:
 1. build real exitoso;
 2. unit tests reales exitosos;
 3. GitHub Actions verde;
-4. revisión de logs de CI sin fallos bloqueantes.
+4. logs revisados sin fallos bloqueantes en el run final #35.
+
+### Errores reparados durante el cierre
+- `ProjectPersistence.kt`: referencias inválidas en el decoder de contenido persistido.
+- `DocumentReducerTest.kt`: expectativa incorrecta sobre eliminación de la primera capa.
+- Run #32: fallo de compilación corregido.
+- Run #33: fallo unitario corregido.
+- Run #34: pull request final verde.
+- Run #35: main final verde después del merge.
