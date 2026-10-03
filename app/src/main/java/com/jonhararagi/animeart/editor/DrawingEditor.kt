@@ -87,7 +87,7 @@ class DrawingEditor(initial: EditorState = EditorState()) {
     fun beginStroke(point: Offset) {
         val layerId = state.selectedLayerId ?: return
         val layer = state.document.layers.firstOrNull { it.id == layerId } ?: return
-        if (!layer.visible || layer.locked || state.activeTool !in listOf(EditorTool.DRAW, EditorTool.ERASE)) return
+        if (!layer.visible || layer.locked || layer.content !is LayerContent.Drawing || state.activeTool !in listOf(EditorTool.DRAW, EditorTool.ERASE)) return
         activeLayerId = layerId
         val localPoint = LayerTransformMath.inverse(point, layer.transform, LayerTransformMath.contentPivot(layer.content))
         activeStroke = Stroke(
