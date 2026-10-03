@@ -71,3 +71,34 @@ Verify the Day 1 CI build and tests. If CI reports failures, isolate and repair 
 
 VERIFICACIÓN:
 VERIFICADO — CI #6: build SUCCESS + unit tests SUCCESS. Commit verificado: be1bd6e02c55ba7eae2c6d64f2e5e680ea650e59.
+
+
+---
+
+## DÍA 2 — VISTO BUENO
+
+ESTADO FINAL:
+DÍA 2 COMPLETADO Y VERIFICADO EN CI.
+
+IMPLEMENTACIÓN VERIFICADA:
+- Modelo Stroke/StrokePoint y herramientas de dibujo integrado al Document/Layer existente.
+- DrawingEditor con pincel, borrador, commit de trazo y undo/redo.
+- Transformación Screen ↔ Document mediante ViewportTransform.
+- Canvas real conectado al mismo pipeline de documento; no se creó un segundo renderer.
+- Gestos de un dedo para dibujo/pan y dos dedos para zoom/pan.
+- Persistencia y recuperación de documentos con trazos.
+- Pruebas unitarias de trazo, capa bloqueada y round-trip de viewport.
+- Documentación de arquitectura y rendimiento actualizada.
+
+INCIDENCIA REAL DETECTADA Y REPARADA:
+- CI run #22 falló por imports faltantes de APIs Compose de gestos y transformaciones de DrawScope en EditorScreen.kt.
+- Se aisló el fallo en los logs de GitHub Actions.
+- Se corrigió en commit ed1ef00ab356392380fa1db185049ea4cfaed55e.
+- La ejecución CI #23 posterior terminó SUCCESS.
+
+VERIFICACIÓN FINAL:
+- GitHub Actions run #23: SUCCESS.
+- Build: SUCCESS.
+- Unit tests: SUCCESS.
+- Commit verificado: ed1ef00ab356392380fa1db185049ea4cfaed55e.
+- No avanzar a Día 3 hasta que el alcance del Día 2 permanezca estable.
