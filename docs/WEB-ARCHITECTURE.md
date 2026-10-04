@@ -30,3 +30,34 @@ The current Web persistence boundary is browser `localStorage`. T020 fixes legac
 ## Deferred stages
 
 Zoom/pan state, Web undo/redo, richer transforms, durable project storage, PWA/offline packaging and Android WebView/container integration remain later stages. They are not silently represented as implemented by the foundation.
+
+## T021 — Web domain contracts
+
+The Web domain remains plain JavaScript ES modules and does not duplicate Android Kotlin classes.
+
+### Contract boundary
+
+- **Document**: versioned plain data with dimensions and an ordered non-empty layer list.
+- **Layer**: stable id, name, visibility, lock state, opacity, transform and drawing strokes.
+- **LayerContent**: not introduced as a separate Web runtime abstraction yet. The current Web foundation has one supported content kind (drawing), represented directly by `layer.strokes`. Introducing a tagged content hierarchy before another content type exists would add abstraction without behavior.
+- **Stroke**: minimal drawing record containing `tool`, positive `size` and a point list.
+- **StrokePoint**: minimal `x/y` coordinate record. Pressure, timestamp and tilt are not added because the Web editor does not currently consume them.
+- **Transform**: plain `x/y/scale/rotation` data. It is layer metadata and remains independent from Canvas APIs.
+- **Viewport**: not implemented as a Web domain contract in T021. The current Web pan behavior is still presentation-only and is not promoted into a domain model. T022 may introduce the minimum pure viewport contract before implementing real navigation.
+
+### Domain invariants
+
+Normalization and restoration now enforce the minimum Web contract:
+
+- restored documents have the current document version and at least one layer;
+- layer opacity is clamped to 0..1;
+- transform coordinates/rotation are finite and scale is positive;
+- strokes have a positive size and an array of valid points;
+- stroke points contain finite numeric coordinates;
+- legacy v1 migration continues to run before current normalization.
+
+`isValidDocument()` provides a pure validation boundary for the normalized model.
+
+### Reuse decision
+
+Android remains the canonical reference for the conceptual vocabulary (`CanvasDocument`, `Layer`, `LayerContent`, `Stroke`, `StrokePoint`, `Transform`, `Viewport`). Web reuses those concepts as compatible plain-data contracts without importing Kotlin implementation details or creating a shared runtime layer.
