@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import android.os.SystemClock
-import android.util.Log
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -35,15 +33,8 @@ import com.jonhararagi.animeart.editor.ViewportTransform
 import com.jonhararagi.animeart.persistence.ProjectPersistence
 import kotlin.math.max
 
-private const val STARTUP_DIAGNOSTIC_CANVAS_MODE = 1
-
 @Composable
 fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
-    val compositionStartNanos = remember { SystemClock.elapsedRealtimeNanos().also { Log.i("AnimeArtDiag", "EDITOR_COMPOSITION_START ns=" + it + " mode=" + STARTUP_DIAGNOSTIC_CANVAS_MODE) } }
-    var canvasFirstDrawLogged by remember { mutableStateOf(false) }
-    var documentRenderLogged by remember { mutableStateOf(false) }
-    SideEffect { if (compositionStartNanos != 0L) Log.i("AnimeArtDiag", "EDITOR_COMPOSITION_END ns=" + SystemClock.elapsedRealtimeNanos() + " mode=" + STARTUP_DIAGNOSTIC_CANVAS_MODE) }
-    LaunchedEffect(Unit) { withFrameNanos { Log.i("AnimeArtDiag", "FIRST_FRAME ns=" + SystemClock.elapsedRealtimeNanos() + " mode=" + STARTUP_DIAGNOSTIC_CANVAS_MODE) } }
     val context = LocalContext.current
     val persistence = remember { ProjectPersistence(context) }
     val editor = remember { DrawingEditor(EditorState(document = initialDocument)) }
@@ -213,7 +204,6 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
                     }
                 }
         ) {
-            if (!canvasFirstDrawLogged) { canvasFirstDrawLogged = true; Log.i("AnimeArtDiag", "CANVAS_FIRST_DRAW ns=" + SystemClock.elapsedRealtimeNanos() + " mode=" + STARTUP_DIAGNOSTIC_CANVAS_MODE) }
             drawRect(Color(0xFFF3F3F3))
             val viewport = state.viewport
             val center = Offset(size.width / 2f, size.height / 2f)
@@ -226,42 +216,32 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
                     topLeft = Offset(center.x - 540f, center.y - 540f),
                     size = Size(1080f, 1080f)
                 )
-                if (STARTUP_DIAGNOSTIC_CANVAS_MODE == 0) {
-                    if (!documentRenderLogged) {
-                        documentRenderLogged = true
-                        Log.i("AnimeArtDiag", "DOCUMENT_RENDER_START ns=" + SystemClock.elapsedRealtimeNanos() + " mode=" + STARTUP_DIAGNOSTIC_CANVAS_MODE + " layers=" + state.document.layers.size)
+                state.document.layers.filter { it.visible }.forEach { layer ->
+                    val drawing = layer.content as? LayerContent.Drawing ?: return@forEach
+                    val pivot = LayerTransformMath.contentPivot(layer.content)
+                    withTransform({
+                        translate(layer.transform.translationX, layer.transform.translationY)
+                        rotate(layer.transform.rotation, pivot = pivot)
+                        scale(layer.transform.scale, layer.transform.scale, pivot = pivot)
+                    }) {
+                        drawing.strokes.forEach { stroke -> drawStroke(stroke, layer.opacity) }
+                        if (layer.id == state.selectedLayerId && state.activeTool == EditorTool.SELECT) {
+                            drawSelectionOverlay(drawing)
+                        }
                     }
-                    state.document.layers.filter { it.visible }.forEach { layer ->
-                        val drawing = layer.content as? LayerContent.Drawing ?: return@forEach
+                }
+                editor.activeStroke()?.let { active ->
+                    val layer = state.document.layers.firstOrNull { it.id == state.selectedLayerId }
+                    if (layer != null) {
                         val pivot = LayerTransformMath.contentPivot(layer.content)
                         withTransform({
                             translate(layer.transform.translationX, layer.transform.translationY)
                             rotate(layer.transform.rotation, pivot = pivot)
                             scale(layer.transform.scale, layer.transform.scale, pivot = pivot)
                         }) {
-                            drawing.strokes.forEach { stroke -> drawStroke(stroke, layer.opacity) }
-                            if (layer.id == state.selectedLayerId && state.activeTool == EditorTool.SELECT) {
-                                drawSelectionOverlay(drawing)
-                            }
+                            drawStroke(active, 1f)
                         }
                     }
-                    editor.activeStroke()?.let { active ->
-                        val layer = state.document.layers.firstOrNull { it.id == state.selectedLayerId }
-                        if (layer != null) {
-                            val pivot = LayerTransformMath.contentPivot(layer.content)
-                            withTransform({
-                                translate(layer.transform.translationX, layer.transform.translationY)
-                                rotate(layer.transform.rotation, pivot = pivot)
-                                scale(layer.transform.scale, layer.transform.scale, pivot = pivot)
-                            }) {
-                                drawStroke(active, 1f)
-                            }
-                        }
-                    }
-                    Log.i("AnimeArtDiag", "DOCUMENT_RENDER_END ns=" + SystemClock.elapsedRealtimeNanos() + " mode=" + STARTUP_DIAGNOSTIC_CANVAS_MODE)
-                } else if (!documentRenderLogged) {
-                    documentRenderLogged = true
-                    Log.i("AnimeArtDiag", "DOCUMENT_RENDER_SKIPPED ns=" + SystemClock.elapsedRealtimeNanos() + " mode=" + STARTUP_DIAGNOSTIC_CANVAS_MODE + " layers=" + state.document.layers.size)
                 }
             }
         }
