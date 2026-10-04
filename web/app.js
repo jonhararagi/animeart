@@ -1,5 +1,5 @@
 import { createDocument, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
-import { createViewport, documentToScreen, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
+import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
 
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
