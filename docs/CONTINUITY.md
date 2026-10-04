@@ -153,3 +153,28 @@ NO REPETIR:
 
 SIGUIENTE DÍA:
 4 — tracing + reference layer, reutilizando Layer y el pipeline existente.
+
+
+---
+
+## AUDITORÍA DE ESTADO — 2026-10-03
+
+Se realizó una auditoría del repositorio contra el mandato del CEREBRO.
+
+**Estado auditado: 🔴 RED**
+
+- main auditado inicialmente en `99f68ad0f75e7354e332b471bf2542327aedab9e`.
+- Android CI #68: Build SUCCESS, Unit tests SUCCESS, Lint SUCCESS, Android startup smoke FAILURE.
+- La causa observada del fallo de #68 está en la ejecución del bloque shell del smoke test dentro del workflow/action, no en compilación de la aplicación.
+- PR #3 `web-first-foundation`: Web CI #10 SUCCESS; Android CI #78 estaba IN PROGRESS al momento de la auditoría.
+- PR #2 `day-4-reference-layer`: Android CI #45 SUCCESS, pero el PR está `mergeable=false` y diverge de main (+20/-23); no fusionar sin reconciliación.
+- README.md continúa describiendo Day 1 y debe actualizarse cuando el estado documental sea estabilizado.
+- Web todavía no está integrada en main.
+
+### Documento de auditoría
+
+`docs/AUDITS/2026-10-03-REPO-AUDIT.md`
+
+### Decisión del CEREBRO
+
+No declarar GREEN. Prioridad: reparar/verificar Android CI, completar la evidencia de PR #3, revisar integración Web/Android y después reconciliar PR #2. No expandir funcionalidades mientras CI siga rojo.
