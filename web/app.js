@@ -1,4 +1,4 @@
-import { createDocument, createLayer, restoreDocument } from "./domain/model.mjs";
+import { createDocument, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
 
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
@@ -58,7 +58,7 @@ function redraw() {
 
 function pointFromEvent(event) {
   const rect = canvas.getBoundingClientRect();
-  return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  return createStrokePoint(event.clientX - rect.left, event.clientY - rect.top);
 }
 
 function renderLayers() {
@@ -93,7 +93,7 @@ canvas.addEventListener("pointerdown", event => {
   if (!layer || layer.locked) return;
   state.drawing = true;
   canvas.setPointerCapture(event.pointerId);
-  layer.strokes.push({ tool: state.tool, size: 5, points: [pointFromEvent(event)] });
+  layer.strokes.push(createStroke(state.tool, 5, [pointFromEvent(event)]));
 });
 
 canvas.addEventListener("pointermove", event => {
