@@ -35,7 +35,7 @@ import com.jonhararagi.animeart.editor.ViewportTransform
 import com.jonhararagi.animeart.persistence.ProjectPersistence
 import kotlin.math.max
 
-private const val STARTUP_DIAGNOSTIC_CANVAS_MODE = 0
+private const val STARTUP_DIAGNOSTIC_CANVAS_MODE = 1
 
 @Composable
 fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
