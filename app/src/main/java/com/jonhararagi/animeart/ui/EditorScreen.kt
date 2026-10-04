@@ -1,5 +1,7 @@
 package com.jonhararagi.animeart.ui
 
+import android.os.SystemClock
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
@@ -35,6 +37,9 @@ import kotlin.math.max
 
 @Composable
 fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
+    val startupMarker = remember { StartupDiagnosticMarker().also {
+        Log.i("AnimeArtStartup", "T8 EditorScreen COMPOSITION START ns=" + SystemClock.elapsedRealtimeNanos())
+    } }
     val context = LocalContext.current
     val persistence = remember { ProjectPersistence(context) }
     val editor = remember { DrawingEditor(EditorState(document = initialDocument)) }
@@ -44,6 +49,22 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
     fun refresh() { tick++ }
 
     val state = editor.state
+
+    SideEffect {
+        if (!startupMarker.compositionCompleted) {
+            startupMarker.compositionCompleted = true
+            Log.i("AnimeArtStartup", "T9 EditorScreen COMPOSITION END ns=" + SystemClock.elapsedRealtimeNanos())
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        withFrameNanos {
+            if (!startupMarker.frameReported) {
+                startupMarker.frameReported = true
+                Log.i("AnimeArtStartup", "T11 FIRST FRAME CALLBACK ns=" + SystemClock.elapsedRealtimeNanos())
+            }
+        }
+    }
     val selectedLayer = state.document.layers.firstOrNull { it.id == state.selectedLayerId }
 
     LaunchedEffect(state.selectedLayerId, selectedLayer?.name) {
@@ -203,6 +224,10 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
                     }
                 }
         ) {
+            if (!startupMarker.canvasDrawn) {
+                startupMarker.canvasDrawn = true
+                Log.i("AnimeArtStartup", "T10 Canvas FIRST DRAW ns=" + SystemClock.elapsedRealtimeNanos())
+            }
             drawRect(Color(0xFFF3F3F3))
             val viewport = state.viewport
             val center = Offset(size.width / 2f, size.height / 2f)
@@ -352,4 +377,11 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSelectionOverla
         size = Size((maxX - minX).coerceAtLeast(1f), (maxY - minY).coerceAtLeast(1f)),
         style = DrawStroke(width = 2f)
     )
+}
+
+
+private class StartupDiagnosticMarker {
+    var compositionCompleted = false
+    var canvasDrawn = false
+    var frameReported = false
 }
