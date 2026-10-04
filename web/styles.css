@@ -1,0 +1,29 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #111318;
+  color: #f3f4f6;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; overflow: hidden; }
+.topbar { height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; border-bottom: 1px solid #2a2d35; }
+.brand { font-weight: 800; letter-spacing: .08em; }
+.status { font-size: .8rem; opacity: .7; }
+.workspace { height: calc(100vh - 48px); display: grid; grid-template-columns: 76px 1fr 180px; }
+.toolbar, .layers { padding: 10px; border-right: 1px solid #2a2d35; background: #17191f; }
+.layers { border-right: 0; border-left: 1px solid #2a2d35; }
+.toolbar { display: flex; flex-direction: column; gap: 8px; }
+button { border: 1px solid #353944; border-radius: 8px; background: #20232b; color: inherit; padding: 9px 6px; cursor: pointer; }
+button:hover, button.active { background: #303440; }
+.canvas-wrap { position: relative; min-width: 0; min-height: 0; display: grid; place-items: center; overflow: hidden; background: #0d0f13; touch-action: none; }
+canvas { display: block; width: min(92%, 1100px); height: min(88%, 800px); background: white; border-radius: 4px; box-shadow: 0 12px 40px rgba(0,0,0,.35); touch-action: none; }
+.layers h2 { margin: 4px 0 12px; font-size: 1rem; }
+.layers ol { margin: 0; padding-left: 28px; }
+.layers li { padding: 7px 4px; }
+@media (max-width: 700px) {
+  .workspace { grid-template-columns: 58px 1fr; }
+  .layers { display: none; }
+  .toolbar { padding: 7px 5px; }
+  button { font-size: .72rem; padding: 8px 2px; }
+  canvas { width: 96%; height: 86%; }
+}
