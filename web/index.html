@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111318">
+  <title>AnimeArt Web</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">ANIMEART</div>
+    <div class="status" id="status">Local-first editor</div>
+  </header>
+  <main class="workspace">
+    <aside class="toolbar" aria-label="Tools">
+      <button class="tool active" data-tool="brush">Brush</button>
+      <button class="tool" data-tool="eraser">Eraser</button>
+      <button class="tool" data-tool="pan">Pan</button>
+      <button id="add-layer">+ Layer</button>
+      <button id="save">Save</button>
+      <button id="clear">Clear</button>
+    </aside>
+    <section class="canvas-wrap">
+      <canvas id="canvas" aria-label="AnimeArt canvas"></canvas>
+    </section>
+    <aside class="layers" aria-label="Layers">
+      <h2>Layers</h2>
+      <ol id="layers"></ol>
+    </aside>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
