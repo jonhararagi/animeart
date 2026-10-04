@@ -54,4 +54,6 @@ if [ -z "$top_activity" ]; then
 fi
 
 echo "Startup confirmado: pid=$pid; MainActivity resumida=$top_activity"
+echo "=== AnimeArtDiag ==="
+adb logcat -d -s AnimeArtDiag:I "*:S" || true
 adb shell am force-stop com.jonhararagi.animeart
