@@ -312,6 +312,7 @@ private fun LayerPanel(
     onOpacity: (Float) -> Unit
 ) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+        SideEffect { Log.i("AnimeArtDiag", "LAYER_PANEL_COMPOSED ns=" + SystemClock.elapsedRealtimeNanos()) }
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             Button(onClick = onCreate) { Text("+ Capa") }
             OutlinedTextField(
