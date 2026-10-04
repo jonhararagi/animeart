@@ -187,3 +187,13 @@ No declarar GREEN. Prioridad: reparar/verificar Android CI, completar la evidenc
 - Attempted minimal Canvas change `98e60f64cb2d94135c6bb01d640248a1bf94185a`: keep `graphicsLayer` but switch to Auto during normal startup. Run 102 (`37196303447`) still failed Startup Smoke with `Status: timeout`. Change was reverted in `6b1c6e1f471f5790d7f97ade81dd67c0bb3cebd0`.
 - Applied a more targeted Compose fix in `38e40f88ea3fbb994aababeb6380d6551be697e5`: omit the Canvas graphics layer entirely unless the eraser tool is active, preserving Offscreen only where `BlendMode.Clear` requires it. Run 104 (`37197102468`) still failed Startup Smoke with `Status: timeout`; Build/Tests/Lint passed.
 - Applied a Compose phase-flow fix in `ae3278875da3859ed185684bee1195ac016a8326`: removed the `onSizeChanged -> canvasSize` state feedback and used the measured `PointerInputScope.size` directly for gesture calculations. Run 105 (`37197882889`) exposed an initial compile error because four canvasSize references remained; corrected in `1b8de25e8085fbb26b91b55c505cd92fff864402`. Run 106 (`37198192008`) reached Build/Tests/Lint PASS but its smoke job was externally cancelled before a startup result was produced; no GREEN conclusion is drawn.
+
+
+### T019 final verified result
+
+- GREEN candidate commit: `a72f76245f73ed098fc090fba8cec348c5d4a39b`.
+- GitHub Actions Run 108 / ID `37198547816` completed successfully.
+- Build: PASS; Unit Tests: PASS; Lint: PASS; Android Startup Smoke: PASS; artifact upload: PASS; Overall: PASS.
+- Smoke evidence: `Status: ok`; `Activity: com.jonhararagi.animeart/.MainActivity`; `Startup confirmado: pid=2220; MainActivity resumida=...`.
+- Final startup log contained 0 `Choreographer: Skipped` matches, 0 `OpenGLRenderer: Davey` matches, and 0 `FATAL EXCEPTION` matches.
+- The final workflow still uses the existing 15-minute job timeout and the smoke script still uses its existing 60-second `am start -W` timeout; neither was increased or weakened.
