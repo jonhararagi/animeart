@@ -61,3 +61,42 @@ Normalization and restoration now enforce the minimum Web contract:
 ### Reuse decision
 
 Android remains the canonical reference for the conceptual vocabulary (`CanvasDocument`, `Layer`, `LayerContent`, `Stroke`, `StrokePoint`, `Transform`, `Viewport`). Web reuses those concepts as compatible plain-data contracts without importing Kotlin implementation details or creating a shared runtime layer.
+
+## T022 — Web Viewport / Zoom / Pan
+
+### Coordinate boundary
+
+The Web editor keeps three coordinate concepts separate:
+
+1. Pointer/screen coordinates: CSS-pixel coordinates relative to the canvas element client rectangle.
+2. Document coordinates: coordinates stored by StrokePoint. They are never mutated by viewport zoom or pan.
+3. Canvas backing pixels: physical bitmap resolution. Existing devicePixelRatio scaling is applied once by the renderer and is not part of document/viewport math.
+
+The viewport is applied once at presentation time around the canvas center:
+
+screen = (document - center) * zoom + center + pan.
+
+The inverse is:
+
+document = (screen - center - pan) / zoom + center.
+
+Pointer input is converted with screenToDocument before creating or extending strokes. Rendering applies the viewport with one Canvas transform before drawing the document.
+
+### Viewport contract
+
+Defaults are zoom=1, panX=0, panY=0. Zoom must be finite and > 0; pan values must be finite. Invalid constructed values normalize to safe defaults. Viewport is session state and is not stored in localStorage project data in T022.
+
+### Interaction
+
+- Wheel zooms in/out around the pointer location and clamps the session zoom to a centralized safe range of 0.25..4.
+- Pan tool + Pointer Events changes viewport pan state only; it never creates a stroke.
+- Existing Pointer Events are reused for drawing and pan. No parallel mouse/touch event system is introduced.
+- Pinch, inertia, animation and advanced navigation remain deferred.
+
+### Layer transform vs viewport
+
+Layer transforms remain part of Layer metadata and are applied in document space before the viewport presentation transform. Viewport does not mutate Layer Transform and does not alter stored StrokePoint coordinates.
+
+### Persistence
+
+Viewport is intentionally view/session state in T022 and is not persisted with the project document.
