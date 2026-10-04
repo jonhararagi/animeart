@@ -246,3 +246,53 @@ DEUDA TÉCNICA:
 - El dominio Web sigue en JavaScript/ES modules para mantener la dependencia mínima.
 - `localStorage` es una persistencia inicial y no un formato de proyecto definitivo.
 - La Web todavía no tiene viewport/history equivalentes porque esas etapas fueron explícitamente diferidas.
+
+---
+
+## T021 — Contratos de dominio Web
+
+ESTADO:
+IMPLEMENTACIÓN EN RAMA T021; pendiente de CI real y merge.
+
+BASELINE:
+main @ 757176db08f6a13c986712a225f35648beb50751.
+
+BRANCH:
+t021-web-domain-contracts.
+
+AUDITORÍA ANDROID:
+- `Models.kt` contiene los conceptos reales CanvasDocument, Layer, LayerContent, Stroke, StrokePoint, Transform, Viewport y EditorState.
+- `DocumentReducer` es el punto de modificación de documentos/capas y normaliza escala y opacidad en sus operaciones.
+- `ProjectPersistence` serializa documentos, capas, transformaciones y strokes; no se reutiliza directamente desde Web.
+- `CommandHistory` y `ViewportTransform` existen en Android, pero no se duplican en Web durante T021.
+
+AUDITORÍA WEB:
+- `web/domain/model.mjs` ya era la frontera de dominio y restauración desde T020.
+- Se formalizaron los contratos mínimos dentro del mismo módulo, sin crear un segundo dominio.
+- `app.js` consume los constructores de Stroke/StrokePoint en lugar de crear registros paralelos manualmente.
+- `LayerContent` no se implementó como abstracción separada: el único contenido Web actual es drawing/strokes.
+- `Viewport` no se implementó como modelo Web todavía.
+
+MATRIZ DE CONTRATOS:
+- Document: Android CanvasDocument | Web Document | compatible conceptualmente | ADAPTAR/MANTENER.
+- Layer: Android Layer | Web layer record | compatible en metadatos principales | ADAPTAR/MANTENER.
+- LayerContent: Android sealed interface | Web implícito como strokes | no requiere abstracción Web todavía | NO IMPLEMENTAR TODAVÍA.
+- Stroke: Android Stroke | Web {tool,size,points} | compatible en núcleo | ADAPTAR.
+- StrokePoint: Android {x,y,pressure,timestamp} | Web {x,y} | compatible mínimo | ADAPTAR.
+- Transform: Android Transform | Web {x,y,scale,rotation} | compatible semánticamente | ADAPTAR.
+- Viewport: Android Viewport | Web sin modelo de dominio | no implementado | NO IMPLEMENTAR TODAVÍA.
+
+DECISIONES:
+- Mantener JavaScript ES Modules.
+- No migrar a TypeScript.
+- No crear un Shared Domain runtime.
+- No introducir LayerContent hasta que exista un segundo tipo de contenido Web que lo justifique.
+- No introducir Zoom/Pan de dominio en T021.
+- Mantener restoreDocument -> migrateLegacyDocument -> normalizeDocument.
+
+CAMBIOS:
+- Constructores mínimos para StrokePoint y Stroke.
+- Normalización explícita de Stroke, Transform y Layer.
+- Validación pura mediante isValidDocument.
+- Tests de invariantes y regresión legacy.
+- app.js reutiliza los constructores del dominio.
