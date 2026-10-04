@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
+import android.os.SystemClock
+import android.util.Log
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -33,8 +35,22 @@ import com.jonhararagi.animeart.editor.ViewportTransform
 import com.jonhararagi.animeart.persistence.ProjectPersistence
 import kotlin.math.max
 
+private const val STARTUP_DIAGNOSTIC_CANVAS_MODE = 0
+
 @Composable
 fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
+    val diagnostic = remember { StartupDiagnosticState() }
+    SideEffect {
+        if (!diagnostic.screenEnd) {
+            diagnostic.screenEnd = true
+            Log.i("AnimeArtDiag", "SCREEN_COMPOSITION_END ns=" + SystemClock.elapsedRealtimeNanos())
+        }
+    }
+    LaunchedEffect(Unit) {
+        withFrameNanos {
+            Log.i("AnimeArtDiag", "FIRST_FRAME ns=" + SystemClock.elapsedRealtimeNanos())
+        }
+    }
     val context = LocalContext.current
     val persistence = remember { ProjectPersistence(context) }
     val editor = remember { DrawingEditor(EditorState(document = initialDocument)) }
@@ -52,7 +68,9 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
     }
 
     Column(Modifier.fillMaxSize()) {
+        DiagnosticMark("ROOT", diagnostic)
         Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            DiagnosticMark("HEADER", diagnostic)
             Text("AnimeArt — Día 3", style = MaterialTheme.typography.titleMedium)
             Row {
                 TextButton(onClick = { editor.undo(); refresh() }, enabled = editor.canUndo()) { Text("↶") }
@@ -65,6 +83,7 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
             Modifier.fillMaxWidth().padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            DiagnosticMark("TOOLBAR", diagnostic)
             FilterChip(
                 selected = state.activeTool == EditorTool.DRAW,
                 onClick = { editor.setTool(EditorTool.DRAW); refresh() },
@@ -108,6 +127,7 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
         )
 
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            DiagnosticMark("CONTROLS", diagnostic)
             listOf(0xFF111111L, 0xFFFF3355L, 0xFF3366FFL, 0xFF22AA66L, 0xFFFFFFFFL).forEach { color ->
                 Button(
                     onClick = { editor.setColor(color); refresh() },
@@ -204,7 +224,9 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
                     }
                 }
         ) {
+            if (!diagnostic.canvasDrawn) { diagnostic.canvasDrawn = true; Log.i("AnimeArtDiag", "CANVAS_FIRST_DRAW ns=" + SystemClock.elapsedRealtimeNanos() + " mode=" + STARTUP_DIAGNOSTIC_CANVAS_MODE) }
             drawRect(Color(0xFFF3F3F3))
+            if (STARTUP_DIAGNOSTIC_CANVAS_MODE == 1) return@Canvas
             val viewport = state.viewport
             val center = Offset(size.width / 2f, size.height / 2f)
             withTransform({
@@ -216,7 +238,7 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
                     topLeft = Offset(center.x - 540f, center.y - 540f),
                     size = Size(1080f, 1080f)
                 )
-                state.document.layers.filter { it.visible }.forEach { layer ->
+                if (STARTUP_DIAGNOSTIC_CANVAS_MODE == 0) state.document.layers.filter { it.visible }.forEach { layer ->
                     val drawing = layer.content as? LayerContent.Drawing ?: return@forEach
                     val pivot = LayerTransformMath.contentPivot(layer.content)
                     withTransform({
@@ -256,6 +278,21 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
         }
     }
     @Suppress("UNUSED_VARIABLE") val forceRecompose = tick
+}
+
+@Composable
+private fun DiagnosticMark(name: String, state: StartupDiagnosticState) {
+    SideEffect {
+        if (state.marked.add(name)) {
+            Log.i("AnimeArtDiag", name + "_COMPOSED ns=" + SystemClock.elapsedRealtimeNanos())
+        }
+    }
+}
+
+private class StartupDiagnosticState {
+    val marked = mutableSetOf<String>()
+    var screenEnd = false
+    var canvasDrawn = false
 }
 
 @Composable
