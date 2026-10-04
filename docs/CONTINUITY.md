@@ -332,3 +332,18 @@ TESTS:
 PENDIENTES:
 - Verificación CI real Web + Android y merge.
 - Pinch/gestos avanzados siguen fuera de alcance.
+
+
+## T022 — Verificación final
+
+- Implementación fusionada en main: 0eaa9856432ce07911acf270e3010fe93a8b4d43.
+- PR de implementación: #6, merged.
+- Pre-merge Web CI run 37245025099 (#15): SUCCESS — Build, Test y Verify build output.
+- Pre-merge Android CI run 37245025092 (#114): SUCCESS — Build, Unit Tests, Lint, Startup Smoke y Artifact.
+- Pre-merge startup smoke: Status ok; MainActivity com.jonhararagi.animeart/.MainActivity; FATAL EXCEPTION 0; Choreographer Skipped 0; OpenGLRenderer Davey 0; Startup confirmado 1.
+- Post-merge Web CI run 37245195503 (#16): SUCCESS — Build, Test y Verify build output.
+- Post-merge Android CI run 37245195488 (#115): SUCCESS — Build, Unit Tests, Lint, Startup Smoke y Artifact.
+- Post-merge startup smoke: Status ok; MainActivity com.jonhararagi.animeart/.MainActivity; FATAL EXCEPTION 0; Choreographer Skipped 0; OpenGLRenderer Davey 0; Startup confirmado 1.
+- PR #2 permanece abierto y sin modificaciones.
+- Viewport sigue siendo estado de sesión; no se persiste con el documento.
+- Pendiente futuro: pruebas de interacción avanzada/pinch y navegación avanzada; no forman parte de T022.
