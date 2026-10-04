@@ -127,7 +127,13 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
 
         Canvas(
             Modifier.fillMaxWidth().weight(1f)
-                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                .then(
+                    if (state.activeTool == EditorTool.ERASE) {
+                        Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    } else {
+                        Modifier
+                    }
+                )
                 .onSizeChanged { canvasSize = it }
                 .pointerInput(state.activeTool, state.selectedLayerId, state.viewport) {
                     awaitEachGesture {
