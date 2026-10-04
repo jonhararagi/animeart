@@ -197,3 +197,52 @@ No declarar GREEN. Prioridad: reparar/verificar Android CI, completar la evidenc
 - Smoke evidence: `Status: ok`; `Activity: com.jonhararagi.animeart/.MainActivity`; `Startup confirmado: pid=2220; MainActivity resumida=...`.
 - Final startup log contained 0 `Choreographer: Skipped` matches, 0 `OpenGLRenderer: Davey` matches, and 0 `FATAL EXCEPTION` matches.
 - The final workflow still uses the existing 15-minute job timeout and the smoke script still uses its existing 60-second `am start -W` timeout; neither was increased or weakened.
+
+
+## T020 — WEB FOUNDATION AUDIT + STABILIZATION (2026-10-04)
+
+ESTADO:
+YELLOW — la fundación Web está verificada en su rama de trabajo y preparada como PR separada contra el main actual; no se fusionó automáticamente.
+
+BRANCH DE TRABAJO: t020-web-foundation
+BASE REAL: main @ 0c19d4d72a2656d4795231913d2d4ddfdcb895a7
+
+HALLAZGOS:
+- main no contiene `web/`; la Web existente estaba aislada en `web-first-foundation`.
+- `web-first-foundation` estaba divergida: 20 commits ahead y 31 behind respecto de main, con PR #3 abierto y mergeable=false.
+- La rama Web también modificaba `.github/workflows/android.yml`, por lo que no era seguro incorporarla directamente sobre el baseline T019.
+- Web CI run #10 (37171214001) terminó SUCCESS para la rama Web anterior: install, build, test y verify build output PASS.
+- Android CI run #78 de esa rama fue CANCELLED durante startup smoke; no se usa como evidencia de regresión ni como GREEN.
+- main conserva Android CI run #109 (37198876309) SUCCESS después de T019.
+
+AUDITORÍA DE REUTILIZACIÓN:
+- Document: Android `CanvasDocument`; Web `Document` shape. ADAPTAR/MANTENER frontera de plataforma; no duplicar Android classes.
+- Layer: Android `Layer`; Web layer records. ADAPTAR concepto, no crear segunda implementación Android.
+- Stroke/StrokePoint: Android tipados; Web stroke records. ADAPTAR en la frontera Web hasta una futura decisión explícita de contratos compartidos.
+- Viewport: Android `Viewport`; Web todavía NO implementado como modelo real. No crear paralelo en T020.
+- History: Android `CommandHistory`; Web todavía NO implementado. No duplicar en T020.
+- Persistence: Android `ProjectPersistence`; Web `localStorage`. Mantener separación de plataforma en esta etapa.
+- Transform: Android `Transform`; Web conserva transform metadata en el modelo mínimo existente.
+- Renderer: Compose Canvas en Android y Canvas 2D en Web. Separación correcta por plataforma.
+
+REPARACIÓN REAL:
+- Se detectó una pérdida de compatibilidad en restauración Web: `app.js` intentaba `normalizeDocument(saved)` antes de `migrateLegacyDocument(saved)`. La forma v1 contenía `layers + strokes`, por lo que era aceptada por el normalizador y sus strokes podían perderse.
+- Se introdujo `restoreDocument()` en el límite de dominio Web para priorizar migración legacy y después normalización.
+- Se añadió un test de regresión que verifica que los strokes v1 sobreviven a `restoreDocument()`.
+- Se eliminó del workflow Web una configuración de cache que apuntaba a un `package-lock.json` inexistente; la CI usa `npm install` sin depender de ese archivo.
+- No se alteró Android Startup, sus timeouts ni su smoke.
+
+VERIFICACIÓN PREVIA DISPONIBLE:
+- Web CI #10 / 37171214001: SUCCESS sobre la versión anterior de la rama Web.
+- Android CI #109 / 37198876309: SUCCESS sobre main @ 0c19d4d72a2656d4795231913d2d4ddfdcb895a7.
+- CI de esta rama T020 posterior a los cambios: PENDIENTE en este punto del registro.
+
+PENDIENTES:
+- Ejecutar CI real del PR T020 y verificar Web + Android.
+- Resolver integración de la Web sobre el main actual sin arrastrar el workflow Android obsoleto de PR #3.
+- No implementar aún zoom/pan real, history Web, PWA, WebView, backend o IA.
+
+DEUDA TÉCNICA:
+- El dominio Web sigue en JavaScript/ES modules para mantener la dependencia mínima.
+- `localStorage` es una persistencia inicial y no un formato de proyecto definitivo.
+- La Web todavía no tiene viewport/history equivalentes porque esas etapas fueron explícitamente diferidas.
