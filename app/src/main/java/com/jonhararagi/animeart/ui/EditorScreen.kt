@@ -21,9 +21,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke as DrawStroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.input.pointer.*
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.CompositingStrategy
 import com.jonhararagi.animeart.document.*
@@ -39,7 +37,6 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
     val persistence = remember { ProjectPersistence(context) }
     val editor = remember { DrawingEditor(EditorState(document = initialDocument)) }
     var tick by remember { mutableIntStateOf(0) }
-    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
     var renameText by remember { mutableStateOf("") }
     fun refresh() { tick++ }
 
@@ -134,7 +131,6 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
                         Modifier
                     }
                 )
-                .onSizeChanged { canvasSize = it }
                 .pointerInput(state.activeTool, state.selectedLayerId, state.viewport) {
                     awaitEachGesture {
                         awaitFirstDown(requireUnconsumed = false)
