@@ -100,3 +100,17 @@ Layer transforms remain part of Layer metadata and are applied in document space
 ### Persistence
 
 Viewport is intentionally view/session state in T022 and is not persisted with the project document.
+
+
+## T022 — Final verification
+
+T022 is merged in main at 0eaa9856432ce07911acf270e3010fe93a8b4d43. Web viewport state remains session/view state and is intentionally excluded from persisted project data.
+
+CI evidence:
+- Pre-merge Web CI 37245025099 (#15): SUCCESS.
+- Pre-merge Android CI 37245025092 (#114): SUCCESS, including startup smoke and artifact.
+- Post-merge Web CI 37245195503 (#16): SUCCESS.
+- Post-merge Android CI 37245195488 (#115): SUCCESS, including startup smoke and artifact.
+- Both Android smoke runs reported Status: ok, MainActivity resumed, zero FATAL EXCEPTION, zero skipped-frame matches and zero Davey matches.
+
+PR #2 remains open and untouched. Advanced pinch/gesture navigation remains deferred.
