@@ -39,9 +39,7 @@ private const val STARTUP_DIAGNOSTIC_CANVAS_MODE = 0
 
 @Composable
 fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
-    val compositionStartNanos = remember {
-        SystemClock.elapsedRealtimeNanos().also { Log.i("AnimeArtDiag", "EDITOR_COMPOSITION_START ns=" + it + " mode=" + STARTUP_DIAGNOSTIC_CANVAS_MODE) }
-    }
+    val compositionStartNanos = remember { SystemClock.elapsedRealtimeNanos().also { Log.i("AnimeArtDiag", "EDITOR_COMPOSITION_START ns=" + it + " mode=" + STARTUP_DIAGNOSTIC_CANVAS_MODE) } }
     var canvasFirstDrawLogged by remember { mutableStateOf(false) }
     var documentRenderLogged by remember { mutableStateOf(false) }
     SideEffect { if (compositionStartNanos != 0L) Log.i("AnimeArtDiag", "EDITOR_COMPOSITION_END ns=" + SystemClock.elapsedRealtimeNanos() + " mode=" + STARTUP_DIAGNOSTIC_CANVAS_MODE) }
