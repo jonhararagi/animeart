@@ -1,19 +1,32 @@
 import { createDocument, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
+import { createViewport, documentToScreen, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
 
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
 const status = document.querySelector("#status");
 const layersEl = document.querySelector("#layers");
 
+const MIN_ZOOM = 0.25;
+const MAX_ZOOM = 4;
+
 const state = {
   tool: "brush",
   drawing: false,
+  panning: false,
   selectedLayerId: null,
+  panPointerId: null,
+  lastPanPoint: null,
+  viewport: createViewport(),
   document: createDocument()
 };
 
 function selectedLayer() {
   return state.document.layers.find(layer => layer.id === state.selectedLayerId) || state.document.layers[0];
+}
+
+function canvasCenter() {
+  const rect = canvas.getBoundingClientRect();
+  return { x: rect.width / 2, y: rect.height / 2 };
 }
 
 function resizeCanvas() {
@@ -24,22 +37,23 @@ function resizeCanvas() {
   redraw();
 }
 
-function redraw() {
-  const rect = canvas.getBoundingClientRect();
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, rect.width, rect.height);
+function applyViewport() {
+  const center = canvasCenter();
+  ctx.translate(center.x + state.viewport.panX, center.y + state.viewport.panY);
+  ctx.scale(state.viewport.zoom, state.viewport.zoom);
+  ctx.translate(-center.x, -center.y);
+}
 
+function drawDocument() {
   for (const layer of state.document.layers) {
     if (!layer.visible) continue;
     ctx.save();
     ctx.globalAlpha = layer.opacity;
     ctx.translate(layer.transform.x, layer.transform.y);
-    ctx.translate(rect.width / 2, rect.height / 2);
+    ctx.translate(canvasCenter().x, canvasCenter().y);
     ctx.rotate(layer.transform.rotation * Math.PI / 180);
     ctx.scale(layer.transform.scale, layer.transform.scale);
-    ctx.translate(-rect.width / 2, -rect.height / 2);
+    ctx.translate(-canvasCenter().x, -canvasCenter().y);
 
     for (const stroke of layer.strokes) {
       if (stroke.points.length < 2) continue;
@@ -56,9 +70,28 @@ function redraw() {
   }
 }
 
+function redraw() {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, rect.width, rect.height);
+
+  ctx.save();
+  applyViewport();
+  drawDocument();
+  ctx.restore();
+}
+
 function pointFromEvent(event) {
   const rect = canvas.getBoundingClientRect();
-  return createStrokePoint(event.clientX - rect.left, event.clientY - rect.top);
+  const screenPoint = { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  return createStrokePoint(screenToDocument(screenPoint, state.viewport, canvasCenter()));
+}
+
+function screenPointFromEvent(event) {
+  const rect = canvas.getBoundingClientRect();
+  return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 
 function renderLayers() {
@@ -81,14 +114,23 @@ function markChanged() {
   status.textContent = "Unsaved local changes";
 }
 
+function setViewport(viewport) {
+  state.viewport = {
+    ...viewport,
+    zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, viewport.zoom))
+  };
+  redraw();
+}
+
 canvas.addEventListener("pointerdown", event => {
   if (state.tool === "pan") {
     state.panning = true;
     state.panPointerId = event.pointerId;
-    state.lastPanPoint = { x: event.clientX, y: event.clientY };
+    state.lastPanPoint = screenPointFromEvent(event);
     canvas.setPointerCapture(event.pointerId);
     return;
   }
+
   const layer = selectedLayer();
   if (!layer || layer.locked) return;
   state.drawing = true;
@@ -98,13 +140,14 @@ canvas.addEventListener("pointerdown", event => {
 
 canvas.addEventListener("pointermove", event => {
   if (state.panning && event.pointerId === state.panPointerId) {
+    const current = screenPointFromEvent(event);
     const previous = state.lastPanPoint;
-    state.lastPanPoint = { x: event.clientX, y: event.clientY };
-    if (previous) {
-      canvas.style.transform = `translate(${event.clientX - previous.x}px, ${event.clientY - previous.y}px)`;
-    }
+    state.lastPanPoint = current;
+    if (previous) state.viewport = panBy(state.viewport, current.x - previous.x, current.y - previous.y);
+    redraw();
     return;
   }
+
   if (!state.drawing) return;
   const layer = selectedLayer();
   const stroke = layer?.strokes.at(-1);
@@ -118,9 +161,9 @@ canvas.addEventListener("pointerup", event => {
     state.panning = false;
     state.panPointerId = null;
     state.lastPanPoint = null;
-    canvas.style.transform = "";
     return;
   }
+
   if (!state.drawing) return;
   state.drawing = false;
   markChanged();
@@ -134,6 +177,15 @@ canvas.addEventListener("pointercancel", event => {
   }
   state.drawing = false;
 });
+
+canvas.addEventListener("wheel", event => {
+  event.preventDefault();
+  const currentZoom = state.viewport.zoom;
+  const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
+  const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, currentZoom * factor));
+  if (nextZoom === currentZoom) return;
+  setViewport(zoomAt(state.viewport, nextZoom, screenPointFromEvent(event), canvasCenter()));
+}, { passive: false });
 
 document.querySelectorAll(".tool").forEach(button => {
   button.addEventListener("click", () => {
