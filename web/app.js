@@ -8,9 +8,6 @@ const layersEl = document.querySelector("#layers");
 const state = {
   tool: "brush",
   drawing: false,
-  panning: false,
-  panPointerId: null,
-  lastPanPoint: null,
   selectedLayerId: null,
   document: createDocument()
 };
