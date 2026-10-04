@@ -28,8 +28,11 @@ if [ "$start_status" -ne 0 ]; then
 fi
 
 sleep 5
-pid="$(timeout 10s adb shell pidof com.jonhararagi.animeart | tr -d '\r')"
-if ! printf '%s' "$pid" | grep -q '[0-9]'; then
+set +e
+pid="$(timeout 10s adb shell pidof com.jonhararagi.animeart 2>/dev/null | tr -d '\r')"
+pid_status=$?
+set -e
+if [ "$pid_status" -ne 0 ] || ! printf '%s' "$pid" | grep -q '[0-9]'; then
   echo "MainActivity terminó inmediatamente después del arranque. Logcat:"
   adb logcat -d -t 500 || true
   exit 1
