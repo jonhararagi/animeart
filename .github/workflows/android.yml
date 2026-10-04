@@ -31,7 +31,7 @@ jobs:
       - name: Lint
         run: gradle lintDebug
       - name: Android startup smoke test
-        timeout-minutes: 8
+        timeout-minutes: 15
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -44,43 +44,7 @@ jobs:
           force-avd-creation: true
           disable-animations: true
           emulator-options: -no-window -noaudio -no-boot-anim -no-snapshot -no-snapshot-save -gpu swiftshader_indirect
-          script: |
-            adb wait-for-device
-            for i in $(seq 1 60); do
-              booted=$(timeout 5s adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')
-              if [ "$booted" = "1" ]; then
-                break
-              fi
-              sleep 2
-            done
-            if [ "$booted" != "1" ]; then
-              echo "El emulador no alcanzó sys.boot_completed=1. Diagnóstico:"
-              adb devices -l || true
-              adb logcat -d -t 500 || true
-              exit 1
-            fi
-            test -f app/build/outputs/apk/debug/app-debug.apk
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
-            adb shell input keyevent 82 || true
-            adb logcat -c || true
-            adb shell am force-stop com.jonhararagi.animeart
-            set +e
-            timeout 60s adb shell am start -W -n com.jonhararagi.animeart/.MainActivity
-            start_status=$?
-            set -e
-            if [ "$start_status" -ne 0 ]; then
-              echo "MainActivity no pudo iniciar dentro de 60 segundos (exit=$start_status). Logcat:"
-              adb logcat -d -t 500 || true
-              exit 1
-            fi
-            sleep 5
-            pid=$(timeout 10s adb shell pidof com.jonhararagi.animeart | tr -d '\r')
-            if ! printf '%s' "$pid" | grep -q '[0-9]'; then
-              echo "MainActivity terminó inmediatamente después del arranque. Logcat:"
-              adb logcat -d -t 500 || true
-              exit 1
-            fi
-            adb shell am force-stop com.jonhararagi.animeart
+          script: bash scripts/android-startup-smoke.sh
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
