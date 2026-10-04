@@ -8,9 +8,9 @@
 
 `web-first-foundation`
 
-## Último commit conocido antes de este sistema
+## Último commit del sistema de trabajo
 
-`bddc123ac3e31bab33bf72c6849a26cec55bf098`
+`11a7407a0048ef33bf6c292b9494b779fe17f983`
 
 ## Punto arquitectónico
 
@@ -32,8 +32,9 @@ Ver: `problema de huesos/REGISTRO.md`.
 
 ## Última evidencia conocida
 
-- Web CI #8: SUCCESS.
-- Android CI #76: revisar/confirmar en GitHub antes de declarar GREEN para el commit `bddc123...`.
+- Web CI #9: IN_PROGRESS.
+- Android CI #77: IN_PROGRESS.
+- El commit `11a7407...` todavía no se declara GREEN.
 
 ## Regla para la próxima sesión
 
