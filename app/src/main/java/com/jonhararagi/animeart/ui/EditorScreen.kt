@@ -171,8 +171,8 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
                                 val newScale = (old.scale * zoom).coerceIn(0.25f, 8f)
                                 val factor = newScale / max(old.scale, 0.0001f)
                                 val newTranslation = Offset(
-                                    old.translationX + pan.x - (center.x - canvasSize.width / 2f) * (factor - 1f),
-                                    old.translationY + pan.y - (center.y - canvasSize.height / 2f) * (factor - 1f)
+                                    old.translationX + pan.x - (center.x - size.width / 2f) * (factor - 1f),
+                                    old.translationY + pan.y - (center.y - size.height / 2f) * (factor - 1f)
                                 )
                                 editor.setViewport(old.copy(
                                     scale = newScale,
@@ -185,7 +185,7 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
                             }
 
                             val change = pressed.first()
-                            val center = Offset(canvasSize.width / 2f, canvasSize.height / 2f)
+                            val center = Offset(size.width / 2f, size.height / 2f)
                             if (navigation || editor.state.activeTool == EditorTool.PAN) {
                                 val delta = change.position - change.previousPosition
                                 val old = editor.state.viewport
