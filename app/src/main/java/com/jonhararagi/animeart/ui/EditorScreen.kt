@@ -112,7 +112,7 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
                     onClick = { editor.setColor(color); refresh() },
                     contentPadding = PaddingValues(0.dp),
                     modifier = Modifier.size(42.dp)
-                ) { Text("●", color = Color(color.toULong())) }
+                ) { Text("●", color = Color(color.toInt())) }
             }
             Column(Modifier.weight(1f)) {
                 Text("Pincel " + state.brushSize.toInt())
@@ -330,7 +330,7 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawStroke(stroke: 
         moveTo(stroke.points.first().x, stroke.points.first().y)
         stroke.points.drop(1).forEach { lineTo(it.x, it.y) }
     }
-    val color = Color(stroke.colorArgb.toULong()).copy(alpha = stroke.opacity * layerOpacity)
+    val color = Color(stroke.colorArgb.toInt()).copy(alpha = stroke.opacity * layerOpacity)
     drawPath(
         path = path,
         color = if (stroke.tool == StrokeTool.ERASER) Color.Transparent else color,
