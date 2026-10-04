@@ -6,17 +6,18 @@ The Web foundation is additive to the existing Android editor. Android remains n
 
 ## Current Web foundation
 
-- web/index.html is the browser entry point.
-- web/app.js owns the browser UI/interaction wiring.
-- web/domain/model.mjs is the Web domain boundary for document/layer persistence shape.
-- web/domain/viewport.mjs is the pure Web viewport and coordinate-math boundary.
-- web/test/ contains Node tests for domain contracts, viewport math and entrypoint smoke checks.
-- web/scripts/build.mjs produces a static dist tree.
-- web/package.json has only build/test tooling and no runtime dependency.
+- `web/index.html` is the browser entry point.
+- `web/app.js` owns the current browser UI/interaction wiring.
+- `web/domain/model.mjs` is the current Web domain boundary for document/layer persistence shape.
+- `web/test/` contains Node tests for the domain and entrypoint smoke checks.
+- `web/scripts/build.mjs` produces a static `dist/` tree.
+- `web/package.json` has only build/test tooling and no runtime dependency.
 
 ## Reuse boundary
 
-Android already has canonical concepts for CanvasDocument, Layer, Stroke, StrokePoint, Viewport, CommandHistory, transforms and persistence. The Web implementation reuses those concepts as compatible plain-data contracts without duplicating Android classes across platforms.
+Android already has canonical concepts for `CanvasDocument`, `Layer`, `Stroke`, `StrokePoint`, `Viewport`, `CommandHistory`, transforms and persistence. The Web prototype mirrors those concepts but does not duplicate Android classes across platforms.
+
+The Web model currently represents the subset needed by the foundation: document metadata, ordered layers, visibility/lock/opacity/transform metadata and strokes. Viewport history and advanced persistence are intentionally not implemented yet.
 
 ## Renderer rule
 
@@ -24,21 +25,42 @@ Android Compose Canvas and Web Canvas are separate platform renderers. No univer
 
 ## Persistence rule
 
-The current Web persistence boundary is browser localStorage. Viewport is session/view state in T022 and is not persisted with the project document.
+The current Web persistence boundary is browser `localStorage`. T020 fixes legacy-project restoration so the existing v1 shape is migrated before normalization; no advanced storage layer is introduced.
+
+## Deferred stages
+
+Zoom/pan state, Web undo/redo, richer transforms, durable project storage, PWA/offline packaging and Android WebView/container integration remain later stages. They are not silently represented as implemented by the foundation.
 
 ## T021 — Web domain contracts
 
-The Web domain remains plain JavaScript ES modules and does not duplicate Android Kotlin classes. Document restoration continues through restoreDocument -> migrateLegacyDocument -> normalizeDocument.
+The Web domain remains plain JavaScript ES modules and does not duplicate Android Kotlin classes.
 
 ### Contract boundary
 
-- Document: versioned plain data with dimensions and an ordered non-empty layer list.
-- Layer: stable id, name, visibility, lock state, opacity, transform and drawing strokes.
-- LayerContent: not introduced as a separate Web runtime abstraction yet; the current Web foundation has one supported content kind (drawing).
-- Stroke: minimal drawing record containing tool, positive size and document-coordinate points.
-- StrokePoint: minimal x/y document coordinate record.
-- Transform: plain x/y/scale/rotation layer metadata, independent from Canvas APIs.
-- Viewport: Web view state containing zoom, panX and panY; pure, validated and independent of the DOM.
+- **Document**: versioned plain data with dimensions and an ordered non-empty layer list.
+- **Layer**: stable id, name, visibility, lock state, opacity, transform and drawing strokes.
+- **LayerContent**: not introduced as a separate Web runtime abstraction yet. The current Web foundation has one supported content kind (drawing), represented directly by `layer.strokes`. Introducing a tagged content hierarchy before another content type exists would add abstraction without behavior.
+- **Stroke**: minimal drawing record containing `tool`, positive `size` and a point list.
+- **StrokePoint**: minimal `x/y` coordinate record. Pressure, timestamp and tilt are not added because the Web editor does not currently consume them.
+- **Transform**: plain `x/y/scale/rotation` data. It is layer metadata and remains independent from Canvas APIs.
+- **Viewport**: not implemented as a Web domain contract in T021. The current Web pan behavior is still presentation-only and is not promoted into a domain model. T022 may introduce the minimum pure viewport contract before implementing real navigation.
+
+### Domain invariants
+
+Normalization and restoration now enforce the minimum Web contract:
+
+- restored documents have the current document version and at least one layer;
+- layer opacity is clamped to 0..1;
+- transform coordinates/rotation are finite and scale is positive;
+- strokes have a positive size and an array of valid points;
+- stroke points contain finite numeric coordinates;
+- legacy v1 migration continues to run before current normalization.
+
+`isValidDocument()` provides a pure validation boundary for the normalized model.
+
+### Reuse decision
+
+Android remains the canonical reference for the conceptual vocabulary (`CanvasDocument`, `Layer`, `LayerContent`, `Stroke`, `StrokePoint`, `Transform`, `Viewport`). Web reuses those concepts as compatible plain-data contracts without importing Kotlin implementation details or creating a shared runtime layer.
 
 ## T022 — Web Viewport / Zoom / Pan
 
@@ -47,8 +69,8 @@ The Web domain remains plain JavaScript ES modules and does not duplicate Androi
 The Web editor keeps three coordinate concepts separate:
 
 1. Pointer/screen coordinates: CSS-pixel coordinates relative to the canvas element client rectangle.
-2. Document coordinates: the coordinates stored by StrokePoint. They are never mutated by viewport zoom or pan.
-3. Canvas backing pixels: the physical canvas bitmap resolution. Existing devicePixelRatio scaling is applied once by the renderer and is not part of document/viewport math.
+2. Document coordinates: coordinates stored by StrokePoint. They are never mutated by viewport zoom or pan.
+3. Canvas backing pixels: physical bitmap resolution. Existing devicePixelRatio scaling is applied once by the renderer and is not part of document/viewport math.
 
 The viewport is applied once at presentation time around the canvas center:
 
@@ -75,6 +97,6 @@ Defaults are zoom=1, panX=0, panY=0. Zoom must be finite and > 0; pan values mus
 
 Layer transforms remain part of Layer metadata and are applied in document space before the viewport presentation transform. Viewport does not mutate Layer Transform and does not alter stored StrokePoint coordinates.
 
-## Deferred stages
+### Persistence
 
-Web undo/redo, richer transforms, durable project storage, PWA/offline packaging, pinch gestures and Android WebView/container integration remain later stages.
+Viewport is intentionally view/session state in T022 and is not persisted with the project document.
