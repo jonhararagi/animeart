@@ -823,3 +823,41 @@ PR #14/T029 continúa OPEN y no fusionada.
 
 SIGUIENTE TAREA:
 NO INICIADA.
+
+### T030 — Verificación CI y reparación
+
+FALLO REAL:
+- Web CI #62 / ID `37376420183` sobre SHA `540e0efb248617dc1e8c09c605699c6c4c6a15cc`: FAILURE.
+- Build PASS.
+- Test FAIL: 204 tests, 202 PASS, 2 FAIL.
+- La misma prueba apareció en la salida de build y en `dist`: `clipboard read failure leaves document and history untouched`.
+- Causa: assertion esperaba `/could not read/` en minúsculas, mientras el error contractual existente es `Could not read image file`.
+- No fue un fallo funcional de importación; fue una expectativa de test con casing incorrecto.
+
+REPARACIÓN:
+- Se corrigió únicamente la expectativa a `/Could not read/`.
+- Nuevo HEAD de código: `75ecc0d55975234d21f7a3b38a302e896a4881f8`.
+
+WEB CI FINAL DE CÓDIGO:
+- Web CI #63 / ID `37376509829`.
+- SHA `75ecc0d55975234d21f7a3b38a302e896a4881f8`.
+- SUCCESS.
+- Build PASS.
+- Test PASS.
+- Verify build output PASS.
+
+ANDROID CI:
+- Android CI #162 / ID `37376509835`.
+- SHA `75ecc0d55975234d21f7a3b38a302e896a4881f8`.
+- Estado observado: `queued`.
+- No se declara PASS mientras no finalice Build, Unit Tests, Lint, Startup Smoke y APK.
+- Android CI #160 / ID `37376406231` sobre un SHA intermedio quedó CANCELLED durante cleanup; no se usa como evidencia final.
+- No hubo cambios Android.
+
+ESTADO ACTUAL T030:
+- Web: verificado GREEN a nivel de CI sobre el código final.
+- Android: pendiente de ejecución real.
+- T030 global: YELLOW hasta disponer de Android CI final sobre el HEAD definitivo de documentación.
+
+PENDIENTE DE VERIFICACIÓN:
+- La documentación presente genera un nuevo commit y requiere una nueva Web CI + Android CI sobre ese nuevo HEAD antes del cierre.
