@@ -222,4 +222,5 @@ test("degenerate corner geometry safely returns null instead of NaN or Infinity"
   assert.ok(nearZero);
   for (const value of Object.values(nearZero)) assert.equal(Number.isFinite(value), true);
   assert.ok(nearZero.scale > 0);
+  assert.ok(nearZero.scale >= 0.05);
 });
