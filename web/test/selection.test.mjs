@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createDocument } from "../domain/model.mjs";
+import { createDocument, createImageLayer } from "../domain/model.mjs";
 import { DocumentHistory } from "../domain/history.mjs";
 import { rotateLayer, scaleLayer, translateLayer, updateLayerTransform } from "../domain/document-operations.mjs";
 import { hitTestHandle, hitTestLayer, layerLocalBounds, layerCorners, resizeTransformFromCorner, selectionGeometry, transformPoint } from "../domain/selection.mjs";
@@ -223,4 +223,49 @@ test("degenerate corner geometry safely returns null instead of NaN or Infinity"
   for (const value of Object.values(nearZero)) assert.equal(Number.isFinite(value), true);
   assert.ok(nearZero.scale > 0);
   assert.ok(nearZero.scale >= 0.05);
+});
+
+
+test("Image Layer bounds use image dimensions", () => {
+  const layer = createImageLayer("Image", 120, 80);
+  assert.deepEqual(layerLocalBounds(layer), { minX: 0, minY: 0, maxX: 120, maxY: 80 });
+});
+
+test("Image Layer selection bounds follow transform and viewport zoom/pan", () => {
+  const layer = createImageLayer("Image", 120, 80);
+  layer.transform = { x: 20, y: -10, scale: 1.5, rotation: 30 };
+  const viewport = createViewport(0.5, 40, -25);
+  const geometry = selectionGeometry(layer, viewport, { x: 200, y: 150 });
+  assert.equal(geometry.corners.length, 4);
+  const hit = hitTestLayer(layer, transformPoint({ x: 60, y: 40 }, layer.transform, { x: 200, y: 150 }), { x: 200, y: 150 });
+  assert.equal(hit, true);
+});
+
+test("Image Layer exposes the same selection handles for move resize and rotate", () => {
+  const layer = createImageLayer("Image", 120, 80);
+  const viewport = createViewport(2, -30, 15);
+  const geometry = selectionGeometry(layer, viewport, { x: 200, y: 150 });
+  assert.equal(hitTestHandle(geometry.corners[0], geometry), "scale-nw");
+  assert.equal(hitTestHandle(geometry.corners[1], geometry), "scale-ne");
+  assert.equal(hitTestHandle(geometry.corners[2], geometry), "scale-se");
+  assert.equal(hitTestHandle(geometry.corners[3], geometry), "scale-sw");
+  assert.equal(hitTestHandle(geometry.rotationHandle, geometry), "rotate");
+  assert.equal(hitTestHandle({ x: geometry.center.x, y: geometry.center.y }, geometry), "move");
+});
+
+test("Image Layer resize keeps the opposite corner fixed", () => {
+  const layer = createImageLayer("Image", 120, 80);
+  layer.transform = { x: 15, y: -8, scale: 1, rotation: 22 };
+  const pivot = { x: 200, y: 150 };
+  const before = layerCorners(layer, pivot);
+  const target = {
+    x: before[2].x + 30,
+    y: before[2].y + 20
+  };
+  const nextTransform = resizeTransformFromCorner(layer, pivot, "scale-se", target);
+  assert.ok(nextTransform);
+  const nextLayer = { ...layer, transform: nextTransform };
+  const after = layerCorners(nextLayer, pivot);
+  assertPointClose(after[0], before[0]);
+  assert.ok(nextTransform.scale > 0);
 });
