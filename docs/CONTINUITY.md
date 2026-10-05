@@ -478,3 +478,33 @@ T024 Web Undo / Redo is merged in main.
 - Android artifact: `animeart-debug-apk`, artifact ID `11323584341`, SHA-256 `a8561dce158430361f6a8289484f5825c104aa7fa6cea18ec8ba7a423cfcc10f`.
 - PR #2 remains open and was not merged; it is based on an old main commit and reports mergeable=false.
 - Final main-head CI after this documentation update is still required before T024 can be declared GREEN.
+
+
+## T025 — Web Layer Transform Boundary
+
+### Decisión arquitectónica
+
+La auditoría de T025 determinó que el siguiente bloque correcto no era importar imágenes ni fusionar la Reference Layer antigua. El modelo Web ya contenía `Layer.transform`, el renderer ya aplicaba esa transformación y T024 ya proporcionaba la frontera única de Document History. Faltaba una frontera pura para mutar transformaciones de Layer sin acoplarlas a Viewport ni repetir lógica dentro de la UI.
+
+### Implementado
+
+- `web/domain/document-operations.mjs` concentra las operaciones puras de transformación de Layer: translate, scale, rotate y update de transform.
+- Las operaciones clonan/normalizan el Document y no mutan el estado de entrada.
+- `app.js` usa esa frontera y registra cada transformación completa mediante el History existente.
+- Se añadieron controles mínimos para mover, escalar y rotar la capa seleccionada.
+- Viewport, zoom y pan siguen fuera del historial y no participan en las operaciones de Layer.
+
+### Fuera de alcance
+
+No se implementaron importación de imágenes, Reference Layer, LayerContent Web, PWA, WebView, IA ni cambios Android.
+
+### PR #2
+
+PR #2 permanece abierta, basada en `bef67a9f9a04e6ef9aef6e5615c7c62fc5810a45`, con `mergeable=false`/estado dirty. Su implementación incluye cambios Android y un sistema de contenido/reference que no corresponde copiar sobre el Web actual. Se reutilizó únicamente el concepto arquitectónico de que una Reference Layer debe reutilizar Layer/Transform/Renderer cuando llegue su momento; no se copió código.
+
+### Verificación T025
+
+- Web CI #29 / `37267420167`: SUCCESS — Build, Test, Verify build output.
+- Android CI #128 / `37267420194`: SUCCESS — Build, Unit Tests, Lint, Android Startup Smoke Test, APK.
+- El primer Web CI T025 (#28 / `37267358947`) falló por un error introducido en el test al duplicar imports; fue corregido separando `transform.test.mjs`. No se eliminó ninguna assertion ni test existente.
+- CI final y merge todavía pendientes.
