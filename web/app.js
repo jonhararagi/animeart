@@ -507,7 +507,8 @@ imageFileInput.addEventListener("change", async () => {
     try {
       persistDocumentSnapshot(localStorage, "animeart-web-document", next);
     } catch (error) {
-      state.history.undo(next);
+      state.document = before;
+      state.history.discardLastRecord();
       throw error;
     }
     state.document = next;
