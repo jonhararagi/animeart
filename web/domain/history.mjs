@@ -56,6 +56,12 @@ export class DocumentHistory {
     return cloneDocument(entry.after);
   }
 
+  discardLastRecord() {
+    if (this.past.length === 0) return false;
+    this.past.pop();
+    return true;
+  }
+
   size() {
     return this.past.length;
   }
