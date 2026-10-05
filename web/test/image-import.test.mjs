@@ -144,22 +144,30 @@ test("failed import persistence keeps document and history unchanged", async () 
   history.record(before, previous);
   const historySizeBefore = history.size();
   const documentBefore = structuredClone(previous);
+  const historicalFuture = structuredClone(previous);
+  historicalFuture.layers[0].strokes.push({ id: "stroke-2", tool: "brush", size: 5, points: [{ x: 3, y: 3 }, { x: 4, y: 4 }] });
+  history.record(previous, historicalFuture);
+  const currentBeforeAttempt = history.undo(historicalFuture);
+  assert.equal(history.canRedo(), true);
+  const historySizeBeforeAttempt = history.size();
   const storage = { setItem() { throw new Error("quota"); } };
   const { layer } = await importImageFile(
     { name: "failed.png", type: "image/png", size: 100 },
     { Reader: FakeReader, ImageCtor: FakeImage }
   );
-  const next = structuredClone(previous);
+  const next = structuredClone(currentBeforeAttempt);
   next.layers.push(layer);
-  assert.equal(history.record(previous, next), true);
+  assert.equal(history.record(currentBeforeAttempt, next), true);
   assert.throws(() => persistDocumentSnapshot(storage, "animeart-web-document", next), /could not be saved/);
   history.discardLastRecord();
-  const restoredDocument = documentBefore;
-  assert.deepEqual(restoredDocument, documentBefore);
+  const restoredDocument = currentBeforeAttempt;
+  assert.deepEqual(restoredDocument, currentBeforeAttempt);
   assert.equal(restoredDocument.layers.some(item => item.contentType === "image" && item.name === "failed"), false);
-  assert.equal(history.size(), historySizeBefore);
-  assert.equal(history.canRedo(), false);
-  assert.deepEqual(history.undo(previous), before);
+  assert.equal(history.size(), historySizeBeforeAttempt);
+  assert.equal(history.canRedo(), true);
+  assert.deepEqual(history.redo(currentBeforeAttempt), historicalFuture);
+  assert.deepEqual(history.undo(historicalFuture), currentBeforeAttempt);
+  assert.deepEqual(history.undo(currentBeforeAttempt), before);
 });
 
 test("storage failure is reported without hiding the error", () => {
