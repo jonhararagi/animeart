@@ -29,6 +29,12 @@ class FakeImage {
   }
 }
 
+class InvalidReader {
+  readAsDataURL() {
+    queueMicrotask(() => this.onerror?.());
+  }
+}
+
 class InvalidImage {
   set src(value) {
     queueMicrotask(() => this.onerror?.());
@@ -258,4 +264,22 @@ test("drag lifecycle has explicit browser navigation protection and feedback cle
   assert.match(app, /canvas\.addEventListener\("dragleave"/);
   assert.match(app, /canvas\.addEventListener\("dragend"[\s\S]*?clearDropFeedback/);
   assert.match(app, /canvas\.addEventListener\("drop"[\s\S]*?event\.preventDefault\(\)[\s\S]*?clearDropFeedback/);
+});
+
+test("clipboard read failure leaves document and history untouched", async () => {
+  const before = createDocument();
+  const history = new DocumentHistory(before);
+  const pasted = clipboardImageFile([{ type: "image/png", getAsFile: () => file("unreadable.png") }]);
+  await assert.rejects(
+    () => applyImageFileImport(pasted, {
+      document: before,
+      history,
+      persist: () => {},
+      Reader: InvalidReader,
+      ImageCtor: FakeImage
+    }),
+    /could not read/
+  );
+  assert.equal(history.size(), 0);
+  assert.equal(before.layers.length, 1);
 });
