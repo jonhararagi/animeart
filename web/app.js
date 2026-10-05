@@ -6,6 +6,8 @@ const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
 const status = document.querySelector("#status");
 const layersEl = document.querySelector("#layers");
+const undoButton = document.querySelector("#undo");
+const redoButton = document.querySelector("#redo");
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
@@ -125,6 +127,11 @@ function persistDocument() {
   status.textContent = "Saved locally";
 }
 
+function refreshHistoryControls() {
+  undoButton.disabled = !state.history.canUndo();
+  redoButton.disabled = !state.history.canRedo();
+}
+
 function syncSelection() {
   if (!state.document.layers.some(layer => layer.id === state.selectedLayerId)) {
     state.selectedLayerId = state.document.layers.at(-1)?.id || null;
@@ -135,6 +142,7 @@ function refreshDocument(message = "Unsaved local changes") {
   syncSelection();
   renderLayers();
   redraw();
+  refreshHistoryControls();
   status.textContent = message;
 }
 
@@ -217,6 +225,7 @@ canvas.addEventListener("pointerup", event => {
   if (before) {
     state.history.record(before, state.document);
     persistDocument();
+    refreshHistoryControls();
   }
   markChanged();
 });
@@ -254,8 +263,8 @@ document.querySelectorAll(".tool").forEach(button => {
   });
 });
 
-document.querySelector("#undo").addEventListener("click", undo);
-document.querySelector("#redo").addEventListener("click", redo);
+undoButton.addEventListener("click", undo);
+redoButton.addEventListener("click", redo);
 
 document.querySelector("#add-layer").addEventListener("click", () => {
   const before = cloneDocument(state.document);
@@ -286,11 +295,13 @@ function load() {
     const saved = JSON.parse(raw);
     state.document = restoreDocument(saved) || createDocument();
     state.history.reset(state.document);
+    refreshHistoryControls();
     state.selectedLayerId = state.document.layers.at(-1)?.id || null;
     status.textContent = "Recovered local project";
   } catch {
     state.document = createDocument();
     state.history.reset(state.document);
+    refreshHistoryControls();
     state.selectedLayerId = state.document.layers[0].id;
     status.textContent = "New local project";
   }
@@ -299,5 +310,6 @@ function load() {
 state.selectedLayerId = state.document.layers[0].id;
 load();
 renderLayers();
+refreshHistoryControls();
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
