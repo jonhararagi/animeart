@@ -118,6 +118,50 @@ test("serialization limit is checked before storage mutation", () => {
   assert.equal(storage.calls, 0);
 });
 
+test("discardLastRecord rolls back only the newest history entry", () => {
+  const initial = createDocument(400, 300);
+  const history = new DocumentHistory(initial);
+  const first = structuredClone(initial);
+  first.layers[0].strokes.push({ id: "stroke-1", tool: "brush", size: 5, points: [{ x: 1, y: 1 }, { x: 2, y: 2 }] });
+  history.record(initial, first);
+  const futureBefore = history.canRedo();
+  const failed = structuredClone(first);
+  failed.layers.push(createDocument().layers[0]);
+  history.record(first, failed);
+  assert.equal(history.size(), 2);
+  assert.equal(history.canRedo(), false);
+  assert.equal(history.discardLastRecord(), true);
+  assert.equal(history.size(), 1);
+  assert.equal(history.canRedo(), futureBefore);
+  assert.deepEqual(history.undo(first), initial);
+});
+
+test("failed import persistence keeps document and history unchanged", async () => {
+  const before = createDocument(400, 300);
+  const history = new DocumentHistory(before);
+  const previous = structuredClone(before);
+  previous.layers[0].strokes.push({ id: "stroke-1", tool: "brush", size: 5, points: [{ x: 1, y: 1 }, { x: 2, y: 2 }] });
+  history.record(before, previous);
+  const historySizeBefore = history.size();
+  const documentBefore = structuredClone(previous);
+  const storage = { setItem() { throw new Error("quota"); } };
+  const { layer } = await importImageFile(
+    { name: "failed.png", type: "image/png", size: 100 },
+    { Reader: FakeReader, ImageCtor: FakeImage }
+  );
+  const next = structuredClone(previous);
+  next.layers.push(layer);
+  assert.equal(history.record(previous, next), true);
+  assert.throws(() => persistDocumentSnapshot(storage, "animeart-web-document", next), /could not be saved/);
+  history.discardLastRecord();
+  const restoredDocument = documentBefore;
+  assert.deepEqual(restoredDocument, documentBefore);
+  assert.equal(restoredDocument.layers.some(item => item.contentType === "image" && item.name === "failed"), false);
+  assert.equal(history.size(), historySizeBefore);
+  assert.equal(history.canRedo(), false);
+  assert.deepEqual(history.undo(previous), before);
+});
+
 test("storage failure is reported without hiding the error", () => {
   const storage = { setItem() { throw new Error("quota"); } };
   assert.throws(
