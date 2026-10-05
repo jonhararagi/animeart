@@ -1,10 +1,13 @@
 import { createDocument, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
+import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
 
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
 const status = document.querySelector("#status");
 const layersEl = document.querySelector("#layers");
+const undoButton = document.querySelector("#undo");
+const redoButton = document.querySelector("#redo");
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
@@ -17,9 +20,13 @@ const state = {
   panPointerId: null,
   drawingPointerId: null,
   lastPanPoint: null,
+  strokeBefore: null,
   viewport: createViewport(),
-  document: createDocument()
+  document: createDocument(),
+  history: null
 };
+
+state.history = new DocumentHistory(state.document);
 
 function selectedLayer() {
   return state.document.layers.find(layer => layer.id === state.selectedLayerId) || state.document.layers[0];
@@ -115,6 +122,30 @@ function markChanged() {
   status.textContent = "Unsaved local changes";
 }
 
+function persistDocument() {
+  localStorage.setItem("animeart-web-document", JSON.stringify(state.document));
+  status.textContent = "Saved locally";
+}
+
+function refreshHistoryControls() {
+  undoButton.disabled = !state.history.canUndo();
+  redoButton.disabled = !state.history.canRedo();
+}
+
+function syncSelection() {
+  if (!state.document.layers.some(layer => layer.id === state.selectedLayerId)) {
+    state.selectedLayerId = state.document.layers.at(-1)?.id || null;
+  }
+}
+
+function refreshDocument(message = "Unsaved local changes") {
+  syncSelection();
+  renderLayers();
+  redraw();
+  refreshHistoryControls();
+  status.textContent = message;
+}
+
 function setViewport(viewport) {
   state.viewport = {
     ...viewport,
@@ -123,10 +154,25 @@ function setViewport(viewport) {
   redraw();
 }
 
+function undo() {
+  if (!state.history.canUndo()) return;
+  state.document = state.history.undo(state.document);
+  refreshDocument("Undo applied");
+  persistDocument();
+}
+
+function redo() {
+  if (!state.history.canRedo()) return;
+  state.document = state.history.redo(state.document);
+  refreshDocument("Redo applied");
+  persistDocument();
+}
+
 canvas.addEventListener("pointerdown", event => {
   if (state.tool === "pan") {
     state.drawing = false;
     state.drawingPointerId = null;
+    state.strokeBefore = null;
     state.panning = true;
     state.panPointerId = event.pointerId;
     state.lastPanPoint = screenPointFromEvent(event);
@@ -138,6 +184,7 @@ canvas.addEventListener("pointerdown", event => {
   if (!layer || layer.locked) return;
   state.drawing = true;
   state.drawingPointerId = event.pointerId;
+  state.strokeBefore = cloneDocument(state.document);
   canvas.setPointerCapture(event.pointerId);
   layer.strokes.push(createStroke(state.tool, 5, [pointFromEvent(event)]));
 });
@@ -173,6 +220,13 @@ canvas.addEventListener("pointerup", event => {
   if (!state.drawing || event.pointerId !== state.drawingPointerId) return;
   state.drawing = false;
   state.drawingPointerId = null;
+  const before = state.strokeBefore;
+  state.strokeBefore = null;
+  if (before) {
+    state.history.record(before, state.document);
+    persistDocument();
+    refreshHistoryControls();
+  }
   markChanged();
 });
 
@@ -181,9 +235,16 @@ canvas.addEventListener("pointercancel", event => {
     state.panning = false;
     state.panPointerId = null;
     state.lastPanPoint = null;
+    return;
   }
+
+  if (event.pointerId !== state.drawingPointerId) return;
   state.drawing = false;
   state.drawingPointerId = null;
+  const before = state.strokeBefore;
+  state.strokeBefore = null;
+  if (before) state.document = before;
+  refreshDocument("Drawing cancelled");
 });
 
 canvas.addEventListener("wheel", event => {
@@ -202,27 +263,30 @@ document.querySelectorAll(".tool").forEach(button => {
   });
 });
 
+undoButton.addEventListener("click", undo);
+redoButton.addEventListener("click", redo);
+
 document.querySelector("#add-layer").addEventListener("click", () => {
+  const before = cloneDocument(state.document);
   const layer = createLayer("Layer " + (state.document.layers.length + 1));
   state.document.layers.push(layer);
   state.selectedLayerId = layer.id;
-  renderLayers();
-  redraw();
-  markChanged();
+  state.history.record(before, state.document);
+  refreshDocument();
+  persistDocument();
 });
 
 document.querySelector("#clear").addEventListener("click", () => {
   const layer = selectedLayer();
-  if (!layer || layer.locked) return;
+  if (!layer || layer.locked || layer.strokes.length === 0) return;
+  const before = cloneDocument(state.document);
   layer.strokes = [];
-  redraw();
-  markChanged();
+  state.history.record(before, state.document);
+  refreshDocument();
+  persistDocument();
 });
 
-document.querySelector("#save").addEventListener("click", () => {
-  localStorage.setItem("animeart-web-document", JSON.stringify(state.document));
-  status.textContent = "Saved locally";
-});
+document.querySelector("#save").addEventListener("click", persistDocument);
 
 function load() {
   const raw = localStorage.getItem("animeart-web-document");
@@ -230,10 +294,14 @@ function load() {
   try {
     const saved = JSON.parse(raw);
     state.document = restoreDocument(saved) || createDocument();
+    state.history.reset(state.document);
+    refreshHistoryControls();
     state.selectedLayerId = state.document.layers.at(-1)?.id || null;
     status.textContent = "Recovered local project";
   } catch {
     state.document = createDocument();
+    state.history.reset(state.document);
+    refreshHistoryControls();
     state.selectedLayerId = state.document.layers[0].id;
     status.textContent = "New local project";
   }
@@ -242,5 +310,6 @@ function load() {
 state.selectedLayerId = state.document.layers[0].id;
 load();
 renderLayers();
+refreshHistoryControls();
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
