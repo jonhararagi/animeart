@@ -955,3 +955,11 @@ CRITERIO DE ACEPTACIÓN:
 - Locked layers remain protected from drawing/transform operations; property controls explicitly opt into the same existing operation boundary so visibility, lock and opacity remain manageable.
 - Added deterministic operation tests and structural UI wiring regression tests.
 - No changes to T030 image input code or Android code.
+
+
+### T031 — Contract correction after independent review
+
+- CEREBRO detected that visibility and opacity controls were incorrectly using `allowLocked: true`, contradicting the T031 contract for locked Layers.
+- Corrected `web/app.js`: visibility and opacity now use the normal locked-layer guard; only the lock toggle may use `allowLocked: true` so a locked Layer can be unlocked.
+- Added a deterministic UI wiring regression asserting the contract: no `allowLocked` for visibility/opacity and explicit `allowLocked` only for the lock toggle.
+- T030, Android code, domain operation architecture and persistence architecture remain unchanged.
