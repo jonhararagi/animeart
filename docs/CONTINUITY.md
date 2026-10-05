@@ -465,3 +465,16 @@ Se añadieron controles mínimos `Undo` y `Redo` a la barra existente, sin redis
 - Web CI: pendiente.
 - Android CI: pendiente.
 - Merge a main: pendiente.
+
+
+## T024 — Final verification
+
+T024 Web Undo / Redo is merged in main.
+
+- PR #9: merged.
+- Functional merge commit: `315729eb7fbed720dd2cb7ab75273cdaf3dc8342`.
+- Web CI on T024 head: run #24 / ID `37259286027`: SUCCESS — Build, Test, Verify build output.
+- Android CI on T024 head: run #123 / ID `37259286008`: SUCCESS — Build, Unit Tests, Lint, Android Startup Smoke Test, Upload debug APK.
+- Android artifact: `animeart-debug-apk`, artifact ID `11323584341`, SHA-256 `a8561dce158430361f6a8289484f5825c104aa7fa6cea18ec8ba7a423cfcc10f`.
+- PR #2 remains open and was not merged; it is based on an old main commit and reports mergeable=false.
+- Final main-head CI after this documentation update is still required before T024 can be declared GREEN.
