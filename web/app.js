@@ -3,6 +3,7 @@ import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
 import { rotateLayer, scaleLayer, translateLayer, updateLayerTransform } from "./domain/document-operations.mjs";
 import { importImageFile, persistDocumentSnapshot } from "./domain/image-import.mjs";
+import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { hitTestHandle, hitTestLayer, resizeTransformFromCorner, selectionGeometry } from "./domain/selection.mjs";
 
 const canvas = document.querySelector("#canvas");
@@ -12,6 +13,8 @@ const layersEl = document.querySelector("#layers");
 const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
 const imageFileInput = document.querySelector("#image-file-input");
+const canvasWrap = document.querySelector(".canvas-wrap");
+let dragDepth = 0;
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
@@ -484,18 +487,8 @@ document.querySelector("#add-layer").addEventListener("click", () => {
   persistDocument();
 });
 
-document.querySelector("#add-image-layer").addEventListener("click", () => {
-  imageFileInput.click();
-});
-
-imageFileInput.addEventListener("change", async () => {
-  const file = imageFileInput.files?.[0];
-  imageFileInput.value = "";
-  if (!file) {
-    status.textContent = "Import cancelled";
-    return;
-  }
-
+async function importImageIntoEditor(file, message = "Image imported") {
+  if (!file) return false;
   try {
     const { layer } = await importImageFile(file);
     const before = cloneDocument(state.document);
@@ -513,10 +506,78 @@ imageFileInput.addEventListener("change", async () => {
     }
     state.document = next;
     state.selectedLayerId = layer.id;
-    refreshDocument("Image imported");
+    refreshDocument(message);
+    return true;
   } catch (error) {
     status.textContent = error?.message || "Image import failed";
+    return false;
   }
+}
+
+function setDropFeedback(active) {
+  canvasWrap.classList.toggle("drop-active", active);
+  if (active) status.textContent = "Drop image to import";
+}
+
+function clearDropFeedback(message = null) {
+  dragDepth = 0;
+  canvasWrap.classList.remove("drop-active");
+  if (message) status.textContent = message;
+}
+
+document.querySelector("#add-image-layer").addEventListener("click", () => {
+  imageFileInput.click();
+});
+
+imageFileInput.addEventListener("change", async () => {
+  const file = imageFileInput.files?.[0];
+  imageFileInput.value = "";
+  if (!file) {
+    status.textContent = "Import cancelled";
+    return;
+  }
+  await importImageIntoEditor(file);
+});
+
+canvas.addEventListener("dragenter", event => {
+  if (!event.dataTransfer?.types?.includes("Files")) return;
+  event.preventDefault();
+  dragDepth += 1;
+  setDropFeedback(true);
+});
+
+canvas.addEventListener("dragover", event => {
+  if (!event.dataTransfer?.types?.includes("Files")) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+  setDropFeedback(true);
+});
+
+canvas.addEventListener("dragleave", event => {
+  if (!event.dataTransfer?.types?.includes("Files")) return;
+  event.preventDefault();
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) clearDropFeedback();
+});
+
+canvas.addEventListener("dragend", () => clearDropFeedback());
+
+canvas.addEventListener("drop", async event => {
+  event.preventDefault();
+  const file = firstValidImageFile(event.dataTransfer?.files);
+  clearDropFeedback();
+  if (!file) {
+    status.textContent = "No supported image dropped";
+    return;
+  }
+  await importImageIntoEditor(file);
+});
+
+document.addEventListener("paste", async event => {
+  const file = clipboardImageFile(event.clipboardData?.items);
+  if (!file) return;
+  event.preventDefault();
+  await importImageIntoEditor(file);
 });
 
 document.querySelectorAll("[data-transform]").forEach(button => {
