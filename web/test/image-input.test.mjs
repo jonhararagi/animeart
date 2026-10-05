@@ -250,6 +250,12 @@ test("existing image import decoder path remains unchanged", async () => {
   assert.equal(result.layer.name, "regression");
 });
 
+test("app defines exactly one importImageIntoEditor implementation", () => {
+  const app = readFileSync(new URL("../app.js", import.meta.url), "utf8");
+  assert.equal((app.match(/async function importImageIntoEditor\\s*\\(/g) || []).length, 1);
+  assert.doesNotMatch(app, /const \\{ layer \\} = await importImageFile\\(file\\)/);
+});
+
 test("picker, drop and clipboard handlers converge on one editor import function", () => {
   const app = readFileSync(new URL("../app.js", import.meta.url), "utf8");
   assert.match(app, /imageFileInput\.addEventListener\("change"[\s\S]*?importImageIntoEditor\(file\)/);
