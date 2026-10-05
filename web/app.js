@@ -290,7 +290,12 @@ function updateTransformPreview(event) {
       interaction.handle,
       currentDocument
     );
-    if (nextTransform) interaction.previewTransform = nextTransform;
+    if (nextTransform) {
+      preview.x = nextTransform.x;
+      preview.y = nextTransform.y;
+      preview.scale = nextTransform.scale;
+      preview.rotation = nextTransform.rotation;
+    }
   } else if (interaction.type === "rotate") {
     const startAngle = Math.atan2(interaction.startDocument.y - pivot.y, interaction.startDocument.x - pivot.x);
     const currentAngle = Math.atan2(currentDocument.y - pivot.y, currentDocument.x - pivot.x);
