@@ -31,3 +31,9 @@ canvas { display: block; width: min(92%, 1100px); height: min(88%, 800px); backg
 .layers li[data-selected="true"] { outline: 1px solid #2f80ed; border-radius: 6px; }
 
 .canvas-wrap.drop-active { outline: 2px dashed #2f80ed; outline-offset: -6px; }
+
+.layers li { display: grid; gap: 6px; }
+.layer-select { width: 100%; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-controls { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 4px; }
+.layer-toggle { padding: 4px 6px; min-width: 28px; }
+.layer-opacity { width: 100%; min-width: 0; }
