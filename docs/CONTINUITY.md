@@ -397,3 +397,33 @@ SIGUIENTE TAREA:
 - Startup smoke: Status ok; Activity `com.jonhararagi.animeart/.MainActivity`; MainActivity resumed.
 - APK artifact: `animeart-debug-apk`, artifact ID `11321618030`, SHA-256 `c395bfc83a021f5cbf94c2b1a982a7ae590638e41f3a711ff38595bc42922c79`.
 - Evidence is real GitHub Actions evidence for the functional T023 commit. A fresh CI run is required after this documentation-only update so the final branch head is also verified.
+
+
+## T023 — Verificación post-merge final
+
+ESTADO: GREEN — T023 estabilizada y fusionada en `main`.
+
+BASELINE: `52efa19a7c6a7b9d0dcc5ea42d53c3a3faaf2dfb`
+PR: #8
+MERGE COMMIT: `65818d34c56dfd38273cc176f80d7e5f9346e0a1`
+
+EVIDENCIA PRE-MERGE:
+- Web CI #20 / `37253605033`: SUCCESS — Build, Test, Verify build output.
+- Android CI #119 / `37253605081`: SUCCESS — Build, Unit Tests, Lint, Startup Smoke, APK artifact.
+
+EVIDENCIA POST-MERGE:
+- Web CI #21 / `37253850888`: SUCCESS sobre main @ `65818d34c56dfd38273cc176f80d7e5f9346e0a1`.
+- Android CI #120 / `37253850885`: SUCCESS sobre main @ `65818d34c56dfd38273cc176f80d7e5f9346e0a1`.
+- Android post-merge: Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, APK artifact PASS.
+- APK artifact ID `11322257399`, nombre `animeart-debug-apk`.
+
+RESULTADO:
+- Document, Viewport y Screen permanecen separados durante la frontera de interacción.
+- Pan no usa CSS transform y no crea strokes.
+- Zoom/pan no modifican Document, StrokePoint ni Layer Transform.
+- Viewport permanece fuera de la persistencia del documento.
+- No se modificó Android durante la implementación de T023.
+
+PENDIENTES:
+- Ningún bloqueo de T023.
+- T024 queda autorizado: Undo / Redo Web.
