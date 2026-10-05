@@ -945,3 +945,13 @@ CRITERIO DE ACEPTACIÓN:
 - No existen sistemas equivalentes nuevos.
 - T030 continúa intacto.
 - Web CI y Android CI terminan SUCCESS sobre el mismo HEAD final.
+
+
+### T031 — Implementation record
+
+- Added `setLayerVisibility()`, `setLayerLocked()` and `setLayerOpacity()` to the existing `document-operations.mjs` boundary.
+- Extended the existing `renderLayers()` panel with visibility, lock and opacity controls; selection remains unchanged.
+- Property actions reuse `applyLayerOperation()`, `DocumentHistory`, `refreshDocument()` and existing localStorage persistence.
+- Locked layers remain protected from drawing/transform operations; property controls explicitly opt into the same existing operation boundary so visibility, lock and opacity remain manageable.
+- Added deterministic operation tests and structural UI wiring regression tests.
+- No changes to T030 image input code or Android code.
