@@ -546,3 +546,46 @@ VERIFICACIÓN PENDIENTE:
 - tests Web T026 + regresión completa;
 - Web CI y Android CI;
 - merge y verificación final sobre main.
+
+
+---
+
+## T026 — CIERRE Y VERIFICACIÓN FINAL
+
+ESTADO:
+GREEN — T026 implementada, fusionada y verificada sobre el HEAD real de main.
+
+EVIDENCIA FINAL:
+- main: `3df514a54494889d9d2785b95c37e4b15d573e8e`.
+- PR #11: merged.
+- Web CI #37 / `37278052574`: SUCCESS — Install, Build, Test, Verify build output.
+- Android CI #136 / `37278052563`: SUCCESS — Build, Unit Tests, Lint, Android Startup Smoke Test, Upload debug APK.
+- El Android smoke test pasó en el mismo HEAD T026; el APK debug también fue generado correctamente.
+
+IMPLEMENTACIÓN VERIFICADA:
+- selectedLayerId continúa siendo el único estado de selección.
+- `web/domain/selection.mjs` concentra geometría y hit-testing sin crear otro Document, Layer, Viewport, Renderer o History.
+- Bounding box y handles se presentan en el Canvas existente.
+- Move/Scale/Rotate usan `document-operations.mjs` y el `DocumentHistory` existente.
+- Preview de transformación es transitorio; pointercancel no crea History.
+- Drawing, Pan, Zoom, persistencia y Android permanecen dentro de sus fronteras existentes.
+
+ERRORES DURANTE T026:
+- El primer Web CI T025 había fallado por imports duplicados en tests; ya estaba reparado antes del cierre de T026.
+- No se detectó un fallo bloqueante en la ejecución final de T026.
+
+REPARACIONES:
+- T026 quedó verificada mediante CI real en el mismo commit de main.
+- No se requirieron cambios adicionales de Android para cerrar T026.
+
+PENDIENTES:
+- PR #2 (Day 4 reference/tracing Android) permanece abierta, antigua y no mergeable; no se fusiona automáticamente.
+- No iniciar funcionalidades fuera de la secuencia arquitectónica hasta definir y auditar T027.
+
+DEUDA TÉCNICA:
+- Persistencia Web continúa basada en localStorage como solución local-first inicial.
+- No hay todavía multi-selección, grouping, snapping, guides/rulers, importación de imágenes, Reference Layer Web, PWA, IA ni WebView.
+- Los contratos Web y Android siguen separados por plataforma, compartiendo conceptos y semántica sin duplicar implementaciones Kotlin/JS.
+
+SIGUIENTE TAREA AUTORIZADA:
+T027 debe comenzar con inspección de main @ `3df514a54494889d9d2785b95c37e4b15d573e8e`, auditoría de reutilización y definición del cambio mínimo siguiente. No asumir que Reference Layer es automáticamente el siguiente bloque: primero comprobar el estado real y los contratos existentes.
