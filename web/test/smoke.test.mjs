@@ -102,6 +102,9 @@ test("layer panel exposes visibility, lock and opacity through existing operatio
   assert.match(js, /className = "layer-controls"/);
   assert.match(js, /type = "range"/);
   assert.match(js, /applyLayerOperation\(\(doc, id\) => setLayerOpacity/);
+  assert.doesNotMatch(js, /setLayerVisibility\(doc, id, !layer\.visible\)[\\s\\S]{0,180}allowLocked/);
+  assert.doesNotMatch(js, /setLayerOpacity\(doc, id, nextOpacity\)[\\s\\S]{0,180}allowLocked/);
+  assert.match(js, /setLayerLocked\(doc, id, !layer\.locked\), layer\.locked \? "Layer unlocked" : "Layer locked", \{ allowLocked: true \}\)/);
   assert.match(js, /state\.history\.record\(before, next\)/);
   assert.match(js, /persistDocument\(\)/);
 });
