@@ -508,3 +508,41 @@ PR #2 permanece abierta, basada en `bef67a9f9a04e6ef9aef6e5615c7c62fc5810a45`, c
 - Android CI #128 / `37267420194`: SUCCESS — Build, Unit Tests, Lint, Android Startup Smoke Test, APK.
 - El primer Web CI T025 (#28 / `37267358947`) falló por un error introducido en el test al duplicar imports; fue corregido separando `transform.test.mjs`. No se eliminó ninguna assertion ni test existente.
 - CI final y merge todavía pendientes.
+
+
+---
+
+## T026 — Selección y manipulación visual de Layer en Canvas
+
+ESTADO:
+IMPLEMENTACIÓN T026 EN RAMA t026-web-layer-selection-transform; verificación final condicionada a CI real y revisión/merge.
+
+BASELINE:
+main @ 2035e39091134ae5dbffd7b2fecaeb08d2f0db5a.
+
+DECISIÓN:
+- Reutilizar selectedLayerId como único estado de selección.
+- Añadir solo geometría de selección/hit-testing en web/domain/selection.mjs; no crear otro Document, Layer, Renderer, Viewport o Transform.
+- Añadir un modo Web Select para que Drawing y Pan mantengan sus rutas actuales.
+- El bounding box se calcula en coordenadas de Document a partir de los strokes, se transforma con Layer.transform y se proyecta a Screen mediante el Viewport existente.
+- Durante drag se usa un preview transitorio; el Document no se modifica hasta pointerup.
+- Move, Scale y Rotate terminan usando document-operations.mjs y una única llamada a DocumentHistory.record().
+- pointercancel descarta el preview y no genera History.
+- Android no se modifica.
+
+ALCANCE:
+- selección visual de Layer;
+- bounding box transformado;
+- handles de escala en esquinas;
+- handle de rotación;
+- movimiento dentro del bounding box;
+- Zoom/Pan independientes;
+- Undo/Redo como una operación por drag.
+
+FUERA DE ALCANCE:
+- multi-selección, grouping, snapping, guides/rulers, image import, Reference Layer, PWA, IA y editor Android paralelo.
+
+VERIFICACIÓN PENDIENTE:
+- tests Web T026 + regresión completa;
+- Web CI y Android CI;
+- merge y verificación final sobre main.
