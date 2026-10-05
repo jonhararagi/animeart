@@ -2,7 +2,7 @@ import { createDocument, createImageLayer, createLayer, createStroke, createStro
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
 import { rotateLayer, scaleLayer, translateLayer, updateLayerTransform } from "./domain/document-operations.mjs";
-import { importImageFile, persistDocumentSnapshot } from "./domain/image-import.mjs";
+import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { hitTestHandle, hitTestLayer, resizeTransformFromCorner, selectionGeometry } from "./domain/selection.mjs";
 
@@ -487,6 +487,23 @@ document.querySelector("#add-layer").addEventListener("click", () => {
   persistDocument();
 });
 
+async function importImageIntoEditor(file, message = "Image imported") {
+  if (!file) return false;
+  try {
+    const result = await applyImageFileImport(file, {
+      document: state.document,
+      history: state.history,
+      persist: next => persistDocumentSnapshot(localStorage, "animeart-web-document", next)
+    });
+    state.document = result.document;
+    state.selectedLayerId = result.layer.id;
+    refreshDocument(message);
+    return true;
+  } catch (error) {
+    status.textContent = error?.message || "Image import failed";
+    return false;
+  }
+}
 async function importImageIntoEditor(file, message = "Image imported") {
   if (!file) return false;
   try {
