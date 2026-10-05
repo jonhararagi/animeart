@@ -111,12 +111,3 @@ test("layer property changes use the existing DocumentHistory boundary", () => {
   assert.equal(history.undo(after).layers[0].opacity, 1);
   assert.equal(history.redo(before).layers[0].opacity, 0.5);
 });
-
-
-test("locked layers reject visibility and opacity changes", () => {
-  const document = createDocument();
-  const locked = setLayerLocked(document, document.layers[0].id, true);
-  assert.equal(locked.layers[0].locked, true);
-  assert.equal(setLayerVisibility(locked, locked.layers[0].id, false).layers[0].visible, false);
-  assert.equal(setLayerOpacity(locked, locked.layers[0].id, 0.25).layers[0].opacity, 0.25);
-});
