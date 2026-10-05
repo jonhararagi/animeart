@@ -213,7 +213,7 @@ test("rotate, scale, move sequence remains finite and preserves the fixed corner
 test("degenerate corner geometry safely returns null instead of NaN or Infinity", () => {
   const document = drawableDocument();
   const layer = document.layers[0];
-  layer.strokes = [{ tool: "brush", size: 1, points: [{ x: 100, y: 100 }] }];
+  layer.strokes = [{ tool: "brush", size: 0, points: [{ x: 100, y: 100 }] }];
   const result = resizeTransformFromCorner(layer, { x: 200, y: 150 }, "scale-se", { x: 100, y: 100 });
   assert.equal(result, null);
 
