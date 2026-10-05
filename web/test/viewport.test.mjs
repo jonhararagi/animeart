@@ -51,3 +51,35 @@ test("viewport rejects invalid zoom and non-finite pan", () => {
   assert.equal(isValidViewport({ zoom: 0, panX: 0, panY: 0 }), false);
   assert.equal(isValidViewport({ zoom: 1, panX: Infinity, panY: 0 }), false);
 });
+
+
+test("combined zoom and pan maps the same document point under the viewport", () => {
+  const viewport = panBy(createViewport(2, 40, -25), 15, 10);
+  const point = { x: 250, y: 175 };
+  const screen = documentToScreen(point, viewport, center);
+  const document = screenToDocument(screen, viewport, center);
+  assert.equal(close(document.x, point.x), true);
+  assert.equal(close(document.y, point.y), true);
+});
+
+test("viewport navigation does not mutate document, stroke point, or layer transform data", () => {
+  const strokePoint = { x: 120, y: 80 };
+  const layer = { transform: { x: 12, y: -7, scale: 1.5, rotation: 20 } };
+  const originalPoint = { ...strokePoint };
+  const originalTransform = { ...layer.transform };
+  const originalViewport = createViewport();
+  const zoomed = zoomAt(originalViewport, 2, { x: 500, y: 350 }, center);
+  const panned = panBy(zoomed, 30, -20);
+  assert.deepEqual(strokePoint, originalPoint);
+  assert.deepEqual(layer.transform, originalTransform);
+  assert.deepEqual(originalViewport, { zoom: 1, panX: 0, panY: 0 });
+  assert.equal(isValidViewport(panned), true);
+});
+
+test("viewport navigation returns new state instead of mutating its input", () => {
+  const viewport = createViewport(1, 10, 20);
+  const before = { ...viewport };
+  panBy(viewport, 5, 6);
+  zoomAt(viewport, 2, { x: 450, y: 320 }, center);
+  assert.deepEqual(viewport, before);
+});

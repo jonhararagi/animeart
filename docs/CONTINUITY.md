@@ -347,3 +347,53 @@ PENDIENTES:
 - PR #2 permanece abierto y sin modificaciones.
 - Viewport sigue siendo estado de sesión; no se persiste con el documento.
 - Pendiente futuro: pruebas de interacción avanzada/pinch y navegación avanzada; no forman parte de T022.
+
+
+---
+
+## T023 — Web Interaction Stabilization
+
+ESTADO: EN VERIFICACIÓN — implementación preparada en branch `t023-web-interaction-stabilization` desde baseline `52efa19a7c6a7b9d0dcc5ea42d53c3a3faaf2dfb`.
+
+OBJETIVO:
+- Estabilizar la frontera Pointer Events → SCREEN → Viewport → DOCUMENT → Stroke → Layer → Canvas sin introducir otro sistema de eventos, renderer, Document, Layer o Viewport.
+
+CAMBIO REAL:
+- Se mantiene `screenPointFromEvent()` como frontera de coordenadas de entrada y `screenToDocument()` como única conversión a coordenadas de documento.
+- Se mantiene un único `state.viewport` como estado de sesión.
+- Se corrige un estado residual posible al pasar de una interacción de dibujo a Pan: Pan cancela explícitamente el estado de dibujo y la identidad del pointer activo.
+- Se registra el `pointerId` del dibujo para impedir que otro pointer finalice o extienda accidentalmente el stroke.
+- Pan continúa modificando solamente `state.viewport.panX/panY`; no usa `canvas.style.transform`.
+- DPR continúa limitado al backing store del Canvas y no entra en la matemática de Document/Viewport.
+
+TESTS AÑADIDOS:
+- zoom + pan → screen/document round-trip;
+- navegación de viewport no altera StrokePoint ni Layer Transform;
+- navegación de viewport no muta su estado de entrada;
+- smoke estructural de la frontera Pointer/Viewport/Document/persistencia.
+
+CI / REGRESIÓN:
+- Baseline Android de T022 está documentado como verde; T023 no modifica Android.
+- La verificación CI real de esta rama queda pendiente hasta completar el PR y sus ejecuciones.
+
+PENDIENTES:
+- Verificar Web CI real de T023.
+- Verificar Android CI real de T023 (Build, Unit Tests, Lint, Startup Smoke y APK artifact) sin cambios Android.
+- Registrar Run IDs y commit final cuando CI termine.
+- No iniciar T024 hasta que toda la evidencia requerida esté verde.
+
+DEUDA TÉCNICA:
+- No se introduce deuda nueva en la frontera de interacción. Pinch/inercia y navegación avanzada siguen fuera de alcance.
+
+SIGUIENTE TAREA:
+- T024 Undo / Redo Web, únicamente después de cerrar T023 con evidencia CI completa.
+
+
+### T023 — CI evidence update
+
+- PR #8, branch `t023-web-interaction-stabilization`.
+- Web CI run #19 / ID `37253397457`: SUCCESS — Build, Test, Verify build output.
+- Android CI run #118 / ID `37253397430`: SUCCESS — Build, Unit Tests, Lint, Android Startup Smoke, Upload debug APK.
+- Startup smoke: Status ok; Activity `com.jonhararagi.animeart/.MainActivity`; MainActivity resumed.
+- APK artifact: `animeart-debug-apk`, artifact ID `11321618030`, SHA-256 `c395bfc83a021f5cbf94c2b1a982a7ae590638e41f3a711ff38595bc42922c79`.
+- Evidence is real GitHub Actions evidence for the functional T023 commit. A fresh CI run is required after this documentation-only update so the final branch head is also verified.
