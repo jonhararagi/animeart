@@ -1,8 +1,8 @@
 import { createDocument, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
-import { rotateLayer, scaleLayer, translateLayer } from "./domain/document-operations.mjs";
-import { hitTestHandle, hitTestLayer, selectionGeometry } from "./domain/selection.mjs";
+import { rotateLayer, scaleLayer, translateLayer, updateLayerTransform } from "./domain/document-operations.mjs";
+import { hitTestHandle, hitTestLayer, resizeTransformFromCorner, selectionGeometry } from "./domain/selection.mjs";
 
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
@@ -234,7 +234,8 @@ function beginTransformInteraction(type, event, handle = null) {
     layerId: layer.id,
     startDocument: documentPoint,
     beforeTransform: { ...layer.transform },
-    previewTransform: { ...layer.transform }
+    previewTransform: { ...layer.transform },
+    pivot: canvasCenter()
   };
   canvas.setPointerCapture(event.pointerId);
   return true;
@@ -261,7 +262,7 @@ function finishTransformInteraction(cancelled = false) {
   const preview = interaction.previewTransform;
   let next = null;
   if (interaction.type === "move") next = translateLayer(state.document, layer.id, preview.x - start.x, preview.y - start.y);
-  if (interaction.type === "scale") next = scaleLayer(state.document, layer.id, preview.scale / start.scale);
+  if (interaction.type === "scale") next = updateLayerTransform(state.document, layer.id, preview);
   if (interaction.type === "rotate") next = rotateLayer(state.document, layer.id, preview.rotation - start.rotation);
   if (next) {
     state.document = next;
@@ -277,15 +278,24 @@ function updateTransformPreview(event) {
   if (!interaction || event.pointerId !== interaction.pointerId) return;
   const currentScreen = screenPointFromEvent(event);
   const currentDocument = screenToDocument(currentScreen, state.viewport, canvasCenter());
-  const pivot = canvasCenter();
+  const pivot = interaction.pivot;
   const preview = { ...interaction.previewTransform };
   if (interaction.type === "move") {
     preview.x = interaction.beforeTransform.x + currentDocument.x - interaction.startDocument.x;
     preview.y = interaction.beforeTransform.y + currentDocument.y - interaction.startDocument.y;
   } else if (interaction.type === "scale") {
-    const startDistance = Math.hypot(interaction.startDocument.x - pivot.x, interaction.startDocument.y - pivot.y);
-    const currentDistance = Math.hypot(currentDocument.x - pivot.x, currentDocument.y - pivot.y);
-    if (startDistance > 0.0001) preview.scale = Math.max(0.05, interaction.beforeTransform.scale * Math.max(0.05, currentDistance / startDistance));
+    const nextTransform = resizeTransformFromCorner(
+      state.document.layers.find(item => item.id === interaction.layerId),
+      interaction.pivot,
+      interaction.handle,
+      currentDocument
+    );
+    if (nextTransform) {
+      preview.x = nextTransform.x;
+      preview.y = nextTransform.y;
+      preview.scale = nextTransform.scale;
+      preview.rotation = nextTransform.rotation;
+    }
   } else if (interaction.type === "rotate") {
     const startAngle = Math.atan2(interaction.startDocument.y - pivot.y, interaction.startDocument.x - pivot.x);
     const currentAngle = Math.atan2(currentDocument.y - pivot.y, currentDocument.x - pivot.x);

@@ -46,6 +46,62 @@ export function layerCorners(layer, pivot, transformOverride = null) {
   ].map(point => transformPoint(point, transform, pivot));
 }
 
+export function resizeTransformFromCorner(layer, pivot, handle, targetDocumentPoint, minimumScale = 0.05) {
+  const bounds = layerLocalBounds(layer);
+  if (!bounds || !targetDocumentPoint) return null;
+
+  const corners = [
+    { x: bounds.minX, y: bounds.minY },
+    { x: bounds.maxX, y: bounds.minY },
+    { x: bounds.maxX, y: bounds.maxY },
+    { x: bounds.minX, y: bounds.maxY }
+  ];
+  const names = ["scale-nw", "scale-ne", "scale-se", "scale-sw"];
+  const index = names.indexOf(handle);
+  if (index < 0) return null;
+
+  const oppositeIndex = (index + 2) % 4;
+  const transform = layer.transform;
+  const fixedCorner = transformPoint(corners[oppositeIndex], transform, pivot);
+  const draggedCorner = transformPoint(corners[index], transform, pivot);
+  const diagonal = {
+    x: draggedCorner.x - fixedCorner.x,
+    y: draggedCorner.y - fixedCorner.y
+  };
+  const diagonalLengthSquared = diagonal.x * diagonal.x + diagonal.y * diagonal.y;
+  if (!Number.isFinite(diagonalLengthSquared) || diagonalLengthSquared <= 1e-12) return null;
+
+  const diagonalLength = Math.sqrt(diagonalLengthSquared);
+  const axis = { x: diagonal.x / diagonalLength, y: diagonal.y / diagonalLength };
+  const targetVector = {
+    x: Number(targetDocumentPoint.x) - fixedCorner.x,
+    y: Number(targetDocumentPoint.y) - fixedCorner.y
+  };
+  const projectedLength = targetVector.x * axis.x + targetVector.y * axis.y;
+  if (!Number.isFinite(projectedLength)) return null;
+
+  const factor = Math.max(minimumScale, projectedLength / diagonalLength);
+  const nextScale = transform.scale * factor;
+  if (!Number.isFinite(nextScale) || nextScale <= 0) return null;
+
+  const baseTransform = {
+    x: 0,
+    y: 0,
+    scale: nextScale,
+    rotation: transform.rotation
+  };
+  const baseFixedCorner = transformPoint(corners[oppositeIndex], baseTransform, pivot);
+  const next = {
+    x: fixedCorner.x - baseFixedCorner.x,
+    y: fixedCorner.y - baseFixedCorner.y,
+    scale: nextScale,
+    rotation: transform.rotation
+  };
+
+  if (![next.x, next.y, next.scale, next.rotation].every(Number.isFinite)) return null;
+  return next;
+}
+
 export function pointInPolygon(point, polygon) {
   if (!polygon || polygon.length < 3) return false;
   let inside = false;

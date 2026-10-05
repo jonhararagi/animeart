@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createDocument } from "../domain/model.mjs";
 import { DocumentHistory } from "../domain/history.mjs";
-import { rotateLayer, scaleLayer, translateLayer } from "../domain/document-operations.mjs";
-import { hitTestHandle, hitTestLayer, layerLocalBounds, layerCorners, selectionGeometry } from "../domain/selection.mjs";
-import { createViewport } from "../domain/viewport.mjs";
+import { rotateLayer, scaleLayer, translateLayer, updateLayerTransform } from "../domain/document-operations.mjs";
+import { hitTestHandle, hitTestLayer, layerLocalBounds, layerCorners, resizeTransformFromCorner, selectionGeometry, transformPoint } from "../domain/selection.mjs";
+import { createViewport, documentToScreen, screenToDocument } from "../domain/viewport.mjs";
 
 function drawableDocument() {
   const document = createDocument(400, 300);
@@ -83,4 +83,144 @@ test("new transform after Undo clears the Redo branch", () => {
   assert.equal(history.canRedo(), true);
   history.record(before, scaled);
   assert.equal(history.canRedo(), false);
+});
+
+
+function close(a, b, epsilon = 1e-8) {
+  return Math.abs(a - b) <= epsilon;
+}
+
+function assertPointClose(actual, expected, epsilon = 1e-8) {
+  assert.equal(close(actual.x, expected.x, epsilon), true);
+  assert.equal(close(actual.y, expected.y, epsilon), true);
+}
+
+function resizeTargetForHandle(layer, pivot, handle, factor = 1.5) {
+  const bounds = layerLocalBounds(layer);
+  const corners = [
+    { x: bounds.minX, y: bounds.minY },
+    { x: bounds.maxX, y: bounds.minY },
+    { x: bounds.maxX, y: bounds.maxY },
+    { x: bounds.minX, y: bounds.maxY }
+  ];
+  const names = ["scale-nw", "scale-ne", "scale-se", "scale-sw"];
+  const index = names.indexOf(handle);
+  const opposite = (index + 2) % 4;
+  const fixed = transformPoint(corners[opposite], layer.transform, pivot);
+  const dragged = transformPoint(corners[index], layer.transform, pivot);
+  return {
+    x: fixed.x + (dragged.x - fixed.x) * factor,
+    y: fixed.y + (dragged.y - fixed.y) * factor
+  };
+}
+
+test("precise corner resize keeps the opposite corner fixed for all four handles", () => {
+  const document = drawableDocument();
+  const layer = document.layers[0];
+  const pivot = { x: 200, y: 150 };
+
+  for (const handle of ["scale-nw", "scale-ne", "scale-se", "scale-sw"]) {
+    const beforeCorners = layerCorners(layer, pivot);
+    const target = resizeTargetForHandle(layer, pivot, handle, 1.5);
+    const nextTransform = resizeTransformFromCorner(layer, pivot, handle, target);
+    assert.ok(nextTransform);
+
+    const afterCorners = layerCorners(layer, pivot, nextTransform);
+    const index = ["scale-nw", "scale-ne", "scale-se", "scale-sw"].indexOf(handle);
+    const opposite = (index + 2) % 4;
+    assertPointClose(afterCorners[opposite], beforeCorners[opposite]);
+  }
+});
+
+test("precise corner resize produces scale and translation rather than center-only scaling", () => {
+  const document = drawableDocument();
+  const layer = document.layers[0];
+  const pivot = { x: 200, y: 150 };
+  const target = resizeTargetForHandle(layer, pivot, "scale-se", 1.5);
+  const nextTransform = resizeTransformFromCorner(layer, pivot, "scale-se", target);
+  assert.ok(nextTransform);
+  assert.ok(nextTransform.scale > layer.transform.scale);
+  assert.ok(Math.abs(nextTransform.x) > 1e-8 || Math.abs(nextTransform.y) > 1e-8);
+});
+
+test("precise corner resize remains stable when the layer is already rotated", () => {
+  const document = drawableDocument();
+  const layer = document.layers[0];
+  const pivot = { x: 200, y: 150 };
+  layer.transform = { x: 18, y: -12, scale: 1.4, rotation: 37 };
+  const beforeCorners = layerCorners(layer, pivot);
+  const target = resizeTargetForHandle(layer, pivot, "scale-ne", 1.25);
+  const nextTransform = resizeTransformFromCorner(layer, pivot, "scale-ne", target);
+  assert.ok(nextTransform);
+  assert.equal(nextTransform.rotation, layer.transform.rotation);
+  const afterCorners = layerCorners(layer, pivot, nextTransform);
+  assertPointClose(afterCorners[3], beforeCorners[3]);
+});
+
+test("precise corner resize accepts document targets produced by zoom and pan viewport states", () => {
+  const document = drawableDocument();
+  const layer = document.layers[0];
+  const pivot = { x: 200, y: 150 };
+  const beforeCorners = layerCorners(layer, pivot);
+  const handle = "scale-se";
+  const targetDocument = resizeTargetForHandle(layer, pivot, handle, 1.4);
+
+  for (const viewport of [
+    createViewport(1, 0, 0),
+    createViewport(2, 35, -20),
+    createViewport(0.5, -40, 25)
+  ]) {
+    const screenTarget = documentToScreen(targetDocument, viewport, pivot);
+    const reconstructed = screenToDocument(screenTarget, viewport, pivot);
+    const nextTransform = resizeTransformFromCorner(layer, pivot, handle, reconstructed);
+    assert.ok(nextTransform);
+    const afterCorners = layerCorners(layer, pivot, nextTransform);
+    assertPointClose(afterCorners[0], beforeCorners[0]);
+  }
+});
+
+test("move, rotate, scale and reverse transform sequences remain finite", () => {
+  const document = drawableDocument();
+  const id = document.layers[0].id;
+  const pivot = { x: 200, y: 150 };
+  let next = translateLayer(document, id, 20, -15);
+  next = rotateLayer(next, id, 30);
+  const layerAfterRotation = next.layers[0];
+  const target = resizeTargetForHandle(layerAfterRotation, pivot, "scale-sw", 1.3);
+  const resize = resizeTransformFromCorner(layerAfterRotation, pivot, "scale-sw", target);
+  assert.ok(resize);
+  next = updateLayerTransform(next, id, resize);
+  next = translateLayer(next, id, -8, 11);
+  for (const value of Object.values(next.layers[0].transform)) assert.equal(Number.isFinite(value), true);
+});
+
+test("rotate, scale, move sequence remains finite and preserves the fixed corner", () => {
+  const document = drawableDocument();
+  const id = document.layers[0].id;
+  const pivot = { x: 200, y: 150 };
+  let next = rotateLayer(document, id, -22);
+  const before = layerCorners(next.layers[0], pivot);
+  const target = resizeTargetForHandle(next.layers[0], pivot, "scale-nw", 1.2);
+  const resize = resizeTransformFromCorner(next.layers[0], pivot, "scale-nw", target);
+  assert.ok(resize);
+  next = updateLayerTransform(next, id, resize);
+  next = translateLayer(next, id, 13, -9);
+  const after = layerCorners(next.layers[0], pivot);
+  for (const value of Object.values(next.layers[0].transform)) assert.equal(Number.isFinite(value), true);
+  assertPointClose(after[2], { x: before[2].x + 13, y: before[2].y - 9 });
+});
+
+test("degenerate corner geometry safely returns null instead of NaN or Infinity", () => {
+  const document = drawableDocument();
+  const layer = document.layers[0];
+  layer.strokes = [{ tool: "brush", size: 0, points: [{ x: 100, y: 100 }] }];
+  const result = resizeTransformFromCorner(layer, { x: 200, y: 150 }, "scale-se", { x: 100, y: 100 });
+  assert.equal(result, null);
+
+  const normal = drawableDocument().layers[0];
+  const nearZero = resizeTransformFromCorner(normal, { x: 200, y: 150 }, "scale-se", { x: 95.000001, y: 95.000001 }, 0.05);
+  assert.ok(nearZero);
+  for (const value of Object.values(nearZero)) assert.equal(Number.isFinite(value), true);
+  assert.ok(nearZero.scale > 0);
+  assert.ok(nearZero.scale >= 0.05);
 });
