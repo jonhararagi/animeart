@@ -17,8 +17,12 @@ export function clipboardImageFile(items) {
   for (const item of Array.from(items)) {
     if (!item || typeof item.type !== "string" || !item.type.startsWith("image/")) continue;
     if (typeof item.getAsFile !== "function") continue;
-    const file = item.getAsFile();
-    if (file) return file;
+    try {
+      const file = item.getAsFile();
+      if (file) return file;
+    } catch {
+      // Ignore malformed clipboard items and continue searching for an image.
+    }
   }
   return null;
 }
