@@ -145,3 +145,17 @@ test("Image Layer state retains visibility, opacity and lock through restore", (
   assert.equal(restored.layers[1].opacity, 0.5);
   assert.equal(restored.layers[1].locked, true);
 });
+
+
+test("Image Layer state is valid for renderer-facing visibility, opacity and lock flags", () => {
+  const document = createDocument();
+  const image = createImageLayer("Render State");
+  image.visible = false;
+  image.opacity = 0.5;
+  image.locked = true;
+  document.layers.push(image);
+  assert.equal(isValidDocument(document), true);
+  assert.equal(document.layers[1].visible, false);
+  assert.equal(document.layers[1].opacity, 0.5);
+  assert.equal(document.layers[1].locked, true);
+});
