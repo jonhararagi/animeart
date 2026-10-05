@@ -143,8 +143,8 @@ test("failed import persistence keeps document and history unchanged", async () 
   previous.layers[0].strokes.push({ id: "stroke-1", tool: "brush", size: 5, points: [{ x: 1, y: 1 }, { x: 2, y: 2 }] });
   history.record(before, previous);
   const historySizeBefore = history.size();
-  const documentBefore = structuredClone(previous);
-  const historicalFuture = structuredClone(previous);
+  const documentBefore = restoreDocument(JSON.parse(JSON.stringify(previous)));
+  const historicalFuture = restoreDocument(JSON.parse(JSON.stringify(previous)));
   historicalFuture.layers[0].strokes.push({ id: "stroke-2", tool: "brush", size: 5, points: [{ x: 3, y: 3 }, { x: 4, y: 4 }] });
   history.record(previous, historicalFuture);
   const currentBeforeAttempt = history.undo(historicalFuture);
@@ -161,11 +161,11 @@ test("failed import persistence keeps document and history unchanged", async () 
   assert.throws(() => persistDocumentSnapshot(storage, "animeart-web-document", next), /could not be saved/);
   history.discardLastRecord();
   const restoredDocument = currentBeforeAttempt;
-  assert.deepEqual(restoredDocument, currentBeforeAttempt);
+  assert.deepEqual(restoredDocument, restoreDocument(JSON.parse(JSON.stringify(currentBeforeAttempt))));
   assert.equal(restoredDocument.layers.some(item => item.contentType === "image" && item.name === "failed"), false);
   assert.equal(history.size(), historySizeBeforeAttempt);
   assert.equal(history.canRedo(), true);
-  assert.deepEqual(history.redo(currentBeforeAttempt), historicalFuture);
+  assert.deepEqual(history.redo(currentBeforeAttempt), restoreDocument(JSON.parse(JSON.stringify(historicalFuture))));
   assert.deepEqual(history.undo(historicalFuture), currentBeforeAttempt);
   assert.deepEqual(history.undo(currentBeforeAttempt), before);
 });
