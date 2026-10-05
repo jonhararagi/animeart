@@ -1,5 +1,10 @@
-import { cloneDocument } from "./history.mjs";
-import { normalizeTransform } from "./model.mjs";
+import { normalizeDocument, normalizeTransform } from "./model.mjs";
+
+function cloneDocument(document) {
+  const cloned = normalizeDocument(JSON.parse(JSON.stringify(document)));
+  if (!cloned) throw new TypeError("Document operation requires a valid Document");
+  return cloned;
+}
 
 export function updateLayerTransform(document, layerId, transformPatch) {
   const next = cloneDocument(document);
