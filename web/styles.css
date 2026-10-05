@@ -29,3 +29,5 @@ canvas { display: block; width: min(92%, 1100px); height: min(88%, 800px); backg
 }
 
 .layers li[data-selected="true"] { outline: 1px solid #2f80ed; border-radius: 6px; }
+
+.canvas-wrap.drop-active { outline: 2px dashed #2f80ed; outline-offset: -6px; }
