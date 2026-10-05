@@ -250,7 +250,11 @@ test("Image Layer exposes the same selection handles for move resize and rotate"
   assert.equal(hitTestHandle(geometry.corners[2], geometry), "scale-se");
   assert.equal(hitTestHandle(geometry.corners[3], geometry), "scale-sw");
   assert.equal(hitTestHandle(geometry.rotationHandle, geometry), "rotate");
-  assert.equal(hitTestHandle({ x: geometry.center.x, y: geometry.center.y }, geometry), "move");
+  const polygonCenter = {
+    x: geometry.corners.reduce((sum, point) => sum + point.x, 0) / 4,
+    y: geometry.corners.reduce((sum, point) => sum + point.y, 0) / 4
+  };
+  assert.equal(hitTestHandle(polygonCenter, geometry), "move");
 });
 
 test("Image Layer resize keeps the opposite corner fixed", () => {
