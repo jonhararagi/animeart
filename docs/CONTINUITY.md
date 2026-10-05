@@ -887,3 +887,61 @@ NOTA DE FALLA INTERMEDIA:
 
 ESTADO:
 Pendiente de nueva revisión independiente de CEREBRO. No mergear PR #15.
+
+
+## T031 — Web Layer Controls
+
+ESTADO:
+IMPLEMENTACIÓN EN RAMA; auditoría arquitectónica completada antes de modificar código.
+
+PROBLEMA DETECTADO:
+- El modelo Web ya soporta `visible`, `locked` y `opacity` por Layer y el renderer ya los respeta.
+- La UI de capas solo permite seleccionar una capa; no expone esos controles persistentes al usuario.
+- Esto limita el control real del editor después de T029/T030, especialmente al trabajar con varias capas de dibujo e imagen.
+
+OBJETIVO:
+- Añadir controles mínimos de visibilidad, bloqueo y opacidad al panel de Layers existente.
+- Cada cambio debe pasar por el único Document existente, DocumentHistory y la persistencia local existente.
+- Mantener la selección y el renderer actuales como únicas implementaciones.
+
+ARQUITECTURA REUTILIZADA:
+- `web/domain/model.mjs`: Layer ya contiene `visible`, `locked` y `opacity`.
+- `web/domain/document-operations.mjs`: única frontera para operaciones inmutables sobre Layer/Document; se adapta con operaciones de propiedades de Layer.
+- `web/domain/history.mjs`: único DocumentHistory para Undo/Redo.
+- `web/app.js`: panel `#layers`, selección existente, `refreshDocument()`, persistencia y renderer existentes.
+- `localStorage`: única persistencia Web existente.
+
+SOLUCIÓN PROPUESTA:
+- Renderizar en cada fila de Layer los controles de visible, locked y opacity.
+- Aplicar los cambios mediante operaciones puras sobre el Document existente.
+- Registrar una sola transición por acción y persistir el snapshot resultante.
+- Las capas bloqueadas no podrán recibir cambios de propiedad desde estos controles salvo el propio toggle de bloqueo.
+- La selección existente continúa siendo la única selección activa.
+
+LÍMITES:
+- No se crea un Layer Manager, state manager, renderer, history o persistence nuevo.
+- No se modifica el contrato de Image Layer ni Stroke Layer.
+- No se modifica Picker, Drag & Drop, Clipboard ni `importImageIntoEditor()`.
+
+FUERA DE ALCANCE:
+- Reordenamiento de capas.
+- Eliminación/duplicación de capas.
+- Multi-selección o grouping.
+- Crop, filtros, máscaras, blend modes, texto, shapes, IA, IndexedDB, cloud, PWA y Android.
+
+TESTS:
+- Operaciones de visibilidad, bloqueo y opacidad con documentos inmutables.
+- Límites de opacidad y capas inexistentes/bloqueadas.
+- Wiring del panel de Layers hacia las operaciones únicas.
+- Persistencia/History mediante el flujo existente.
+- Suite Web completa y regresión Android.
+
+IMPACTO ANDROID:
+- Ninguno. No se modifica código Android; Android CI es regresión.
+
+CRITERIO DE ACEPTACIÓN:
+- El usuario puede seleccionar una Layer y controlar visibilidad, bloqueo y opacidad desde el panel existente.
+- Cada cambio es reversible mediante el único DocumentHistory y queda persistido.
+- No existen sistemas equivalentes nuevos.
+- T030 continúa intacto.
+- Web CI y Android CI terminan SUCCESS sobre el mismo HEAD final.
