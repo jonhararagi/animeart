@@ -45,3 +45,21 @@ test("history integration is document-only and viewport navigation never records
   assert.match(js, /setViewport\(zoomAt/);
   assert.doesNotMatch(js, /history\.record\([^\n]*viewport/);
 });
+
+
+test("layer transform integration uses the existing History boundary", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /applyLayerOperation/);
+  assert.match(js, /state\.history\.record\(before, next\)/);
+  assert.match(js, /translateLayer/);
+  assert.match(js, /scaleLayer/);
+  assert.match(js, /rotateLayer/);
+});
+
+test("layer transform stays separate from Viewport", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /state\.viewport = panBy/);
+  assert.match(js, /setViewport\(zoomAt/);
+  assert.match(js, /translateLayer/);
+  assert.doesNotMatch(js, /translateLayer\([^\n]*state\.viewport/);
+});
