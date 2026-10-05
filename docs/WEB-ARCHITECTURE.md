@@ -203,3 +203,16 @@ Se añadieron botones Undo/Redo a la toolbar existente. Su estado habilitado/des
 ### T024 — Evidencia de verificación
 
 Implementación y tests preparados en la rama T024. La clasificación final depende de Web CI, Android CI, regresión T023, merge y CI sobre el HEAD final de main.
+
+
+## T024 — Final verification
+
+T024 is merged in main at `315729eb7fbed720dd2cb7ab75273cdaf3dc8342`.
+
+The Web history boundary is now integrated into main with one logical Document history system. Stroke, Clear Layer and Create Layer are reversible; a new operation after Undo clears Redo; Viewport/zoom/pan remain outside History; persistence continues through the existing localStorage boundary; snapshots are mutation-safe.
+
+CI evidence on the T024 merge head:
+- Web CI run #24 / ID `37259286027`: SUCCESS — Build, Test, Verify build output.
+- Android CI run #123 / ID `37259286008`: SUCCESS — Build, Unit Tests, Lint, Android Startup Smoke Test, APK artifact.
+
+A final CI run on the post-merge documentation HEAD is required before declaring T024 GREEN.
