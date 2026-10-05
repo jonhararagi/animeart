@@ -589,3 +589,79 @@ DEUDA TÉCNICA:
 
 SIGUIENTE TAREA AUTORIZADA:
 T027 debe comenzar con inspección de main @ `3df514a54494889d9d2785b95c37e4b15d573e8e`, auditoría de reutilización y definición del cambio mínimo siguiente. No asumir que Reference Layer es automáticamente el siguiente bloque: primero comprobar el estado real y los contratos existentes.
+
+## T028 — CIERRE IMAGE LAYER WEB / FASE 1
+
+ESTADO:
+GREEN — T028 implementada, fusionada y verificada sobre el HEAD real de main.
+
+BASELINE:
+main @ 54a070a962cd531d9a41b98738ffd2791878e934.
+
+PR:
+#13 — T028: add minimal Web Image Layer.
+
+BRANCH:
+t028-web-image-layer.
+
+HEAD DE LA RAMA ANTES DEL MERGE:
+b87f87c8c854e93ff6d3d313f90394ef4ac3b4e0.
+
+MERGE:
+- PR #13 fusionado mediante merge commit.
+- Merge SHA: 49f06d3374f45192e143cab8ce5265c9723876b5.
+- main apunta al mismo SHA 49f06d3374f45192e143cab8ce5265c9723876b5.
+
+ALCANCE VERIFICADO:
+- Image Layer Web mínimo con source, width y height.
+- Fixture SVG determinista local mediante data URI.
+- Render de Image Layer mediante el Canvas 2D existente.
+- Bounds de imagen integrados en la geometría de selección existente.
+- Move / Scale / Rotate / Resize / Zoom / Pan reutilizan las fronteras existentes.
+- Visibility / Opacity / Lock se mantienen en el Layer existente.
+- Creación de Image Layer integrada con DocumentHistory.
+- Persistencia mediante la serialización localStorage existente.
+- Drawing + Image pueden coexistir en el mismo Document.
+- No se copió código del PR #2.
+- Android no fue modificado por T028.
+
+WEB CI POST-MERGE:
+- Run #46 / ID 37294567649.
+- SHA: 49f06d3374f45192e143cab8ce5265c9723876b5.
+- Build: PASS.
+- Test: PASS.
+- Verify build output: PASS.
+- Tests: 134/134 PASS; 0 FAIL, 0 cancelled, 0 skipped.
+
+ANDROID CI POST-MERGE:
+- Run #145 / ID 37294567346.
+- SHA: 49f06d3374f45192e143cab8ce5265c9723876b5.
+- Build: PASS.
+- Unit Tests: PASS.
+- Lint: PASS.
+- Android Startup Smoke Test: PASS.
+- Debug APK: PASS; artifact `animeart-debug-apk`, ID 11338366228, SHA-256 `950513c32089a10dc98919cfb4f9069f2302f474fe570d7f23af8eb1eefe25b4`.
+
+DOCUMENTACIÓN:
+- Esta entrada se añade después del merge para conservar toda la historia anterior.
+- El commit de documentación y su CI post-documentación quedan pendientes de verificación antes del cierre definitivo del registro.
+
+LIMITACIONES ACTUALES:
+- No existe E2E físico del editor Web en navegador real dentro de esta CI.
+- La importación de archivos externos queda pendiente.
+- Persistencia Web continúa basada en localStorage como solución local-first inicial.
+- No se implementaron funcionalidades posteriores como multi-selección, grouping, snapping, guides/rulers, filters/effects, AI, crop, masks, blend modes, text, shapes, PWA o IndexedDB.
+
+DEUDA TÉCNICA:
+- Importación de archivos externos y una persistencia de proyecto más completa siguen fuera de T028.
+- Las pruebas Web actuales son de dominio/integración estructural; no sustituyen una prueba E2E física.
+
+REGRESIÓN:
+- T024: permanece cerrada y sus fronteras de DocumentHistory siguen reutilizadas.
+- T025: permanece cerrada y sus operaciones de transformación siguen reutilizadas.
+- T026: permanece cerrada y su selección/transformación visual sigue reutilizada.
+- T027: permanece cerrada según la continuidad previa; T028 parte del main validado por esa secuencia.
+- T028: cerrada funcionalmente; la verificación del commit de documentación es la última comprobación pendiente de este registro.
+
+SIGUIENTE TAREA:
+T029 NO iniciada. El siguiente trabajo queda a decisión de CEREBRO después de revisar esta evidencia.
