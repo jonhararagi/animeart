@@ -210,7 +210,7 @@ function renderLayers() {
     visibilityButton.setAttribute("aria-label", visibilityButton.title);
     visibilityButton.addEventListener("click", event => {
       event.stopPropagation();
-      applyLayerOperation((doc, id) => setLayerVisibility(doc, id, !layer.visible), layer.visible ? "Layer hidden" : "Layer shown");
+      applyLayerOperation((doc, id) => setLayerVisibility(doc, id, !layer.visible), layer.visible ? "Layer hidden" : "Layer shown", { allowLocked: true });
     });
 
     const lockButton = document.createElement("button");
@@ -221,7 +221,7 @@ function renderLayers() {
     lockButton.setAttribute("aria-label", lockButton.title);
     lockButton.addEventListener("click", event => {
       event.stopPropagation();
-      applyLayerOperation((doc, id) => setLayerLocked(doc, id, !layer.locked), layer.locked ? "Layer unlocked" : "Layer locked");
+      applyLayerOperation((doc, id) => setLayerLocked(doc, id, !layer.locked), layer.locked ? "Layer unlocked" : "Layer locked", { allowLocked: true });
     });
 
     const opacity = document.createElement("input");
@@ -237,7 +237,7 @@ function renderLayers() {
     opacity.addEventListener("change", event => {
       event.stopPropagation();
       const nextOpacity = Number(event.currentTarget.value);
-      applyLayerOperation((doc, id) => setLayerOpacity(doc, id, nextOpacity), "Layer opacity changed");
+      applyLayerOperation((doc, id) => setLayerOpacity(doc, id, nextOpacity), "Layer opacity changed", { allowLocked: true });
     });
 
     const controls = document.createElement("div");
@@ -290,9 +290,9 @@ function redo() {
   persistDocument();
 }
 
-function applyLayerOperation(operation, message) {
+function applyLayerOperation(operation, message, { allowLocked = false } = {}) {
   const layer = selectedLayer();
-  if (!layer || layer.locked) return;
+  if (!layer || (layer.locked && !allowLocked)) return;
   const before = cloneDocument(state.document);
   const next = operation(state.document, layer.id);
   if (!next) return;
