@@ -278,7 +278,7 @@ test("clipboard read failure leaves document and history untouched", async () =>
       Reader: InvalidReader,
       ImageCtor: FakeImage
     }),
-    /could not read/
+    /Could not read/
   );
   assert.equal(history.size(), 0);
   assert.equal(before.layers.length, 1);
