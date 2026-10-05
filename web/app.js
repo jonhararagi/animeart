@@ -1,7 +1,7 @@
 import { createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
-import { rotateLayer, scaleLayer, translateLayer, updateLayerTransform } from "./domain/document-operations.mjs";
+import { rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerVisibility, translateLayer, updateLayerTransform } from "./domain/document-operations.mjs";
 import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { hitTestHandle, hitTestLayer, resizeTransformFromCorner, selectionGeometry } from "./domain/selection.mjs";
@@ -188,14 +188,63 @@ function renderLayers() {
   layersEl.replaceChildren();
   [...state.document.layers].reverse().forEach(layer => {
     const li = document.createElement("li");
-    li.textContent = layer.name + (layer.contentType === "image" ? " [Image]" : "");
     li.dataset.layerId = layer.id;
     if (layer.id === state.selectedLayerId) li.dataset.selected = "true";
-    li.addEventListener("click", () => {
+
+    const selectButton = document.createElement("button");
+    selectButton.type = "button";
+    selectButton.className = "layer-select";
+    selectButton.textContent = layer.name + (layer.contentType === "image" ? " [Image]" : "");
+    selectButton.setAttribute("aria-label", "Select " + layer.name);
+    selectButton.addEventListener("click", () => {
       state.selectedLayerId = layer.id;
       renderLayers();
       redraw();
     });
+
+    const visibilityButton = document.createElement("button");
+    visibilityButton.type = "button";
+    visibilityButton.className = "layer-toggle";
+    visibilityButton.textContent = layer.visible ? "◉" : "○";
+    visibilityButton.title = layer.visible ? "Hide layer" : "Show layer";
+    visibilityButton.setAttribute("aria-label", visibilityButton.title);
+    visibilityButton.addEventListener("click", event => {
+      event.stopPropagation();
+      applyLayerOperation((doc, id) => setLayerVisibility(doc, id, !layer.visible), layer.visible ? "Layer hidden" : "Layer shown");
+    });
+
+    const lockButton = document.createElement("button");
+    lockButton.type = "button";
+    lockButton.className = "layer-toggle";
+    lockButton.textContent = layer.locked ? "🔒" : "🔓";
+    lockButton.title = layer.locked ? "Unlock layer" : "Lock layer";
+    lockButton.setAttribute("aria-label", lockButton.title);
+    lockButton.addEventListener("click", event => {
+      event.stopPropagation();
+      applyLayerOperation((doc, id) => setLayerLocked(doc, id, !layer.locked), layer.locked ? "Layer unlocked" : "Layer locked");
+    });
+
+    const opacity = document.createElement("input");
+    opacity.type = "range";
+    opacity.min = "0";
+    opacity.max = "1";
+    opacity.step = "0.01";
+    opacity.value = String(layer.opacity);
+    opacity.className = "layer-opacity";
+    opacity.title = "Layer opacity";
+    opacity.setAttribute("aria-label", "Opacity for " + layer.name);
+    opacity.addEventListener("click", event => event.stopPropagation());
+    opacity.addEventListener("change", event => {
+      event.stopPropagation();
+      const nextOpacity = Number(event.currentTarget.value);
+      applyLayerOperation((doc, id) => setLayerOpacity(doc, id, nextOpacity), "Layer opacity changed");
+    });
+
+    const controls = document.createElement("div");
+    controls.className = "layer-controls";
+    controls.append(visibilityButton, lockButton, opacity);
+
+    li.append(selectButton, controls);
     layersEl.appendChild(li);
   });
 }
