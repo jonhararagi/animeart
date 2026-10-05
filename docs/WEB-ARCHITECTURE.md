@@ -251,3 +251,42 @@ Se añadió `web/test/transform.test.mjs` con happy path, inmutabilidad, preserv
 - Android CI #128 / `37267420194`: SUCCESS.
 
 El merge y la verificación sobre el HEAD final de main son la última etapa de T025.
+
+
+## T026 — Selection / Bounding Box / Visual Layer Transform
+
+T026 extiende la frontera existente:
+
+Canvas → Selection / Interaction → document-operations → DocumentHistory
+
+y mantiene separada:
+
+Viewport → Zoom / Pan
+
+### Selection
+
+selectedLayerId sigue siendo el único identificador de selección. El modo Select consulta el Layer seleccionado y, cuando corresponde, realiza hit-testing sobre los Layers visibles desde arriba hacia abajo. No se añadió otro estado persistente de selección.
+
+### Bounding Box
+
+web/domain/selection.mjs calcula bounds locales a partir de Stroke/StrokePoint existentes, incluyendo el grosor del stroke. Las esquinas se transforman con Layer.transform y luego se proyectan con el Viewport existente a coordenadas Screen. El overlay se dibuja en el mismo Canvas y después de la presentación del documento; no existe un segundo Canvas ni un CSS transform.
+
+### Handles
+
+- cuatro handles de esquina para Scale;
+- un handle superior de Rotate;
+- la región interior del polígono transformado actúa como Move target.
+
+El hit-testing de handles se hace en Screen; el hit-testing del Layer se hace en Document después de screenToDocument(). Esto conserva la frontera Screen → Viewport → Document.
+
+### Transformación y History
+
+Durante el drag, state.transformInteraction.previewTransform es transitorio y solo afecta la presentación. En pointerup, la operación final se convierte a translateLayer(), scaleLayer() o rotateLayer() sobre el Document existente. Se registra exactamente una entrada de DocumentHistory por drag efectivo. pointercancel elimina el preview sin modificar el Document ni crear una entrada.
+
+### Drawing / Pan
+
+Drawing mantiene su drawingPointerId y strokeBefore. Pan mantiene panPointerId y solo modifica state.viewport. El modo Select evita que la manipulación visual se mezcle con Drawing o Pan.
+
+### No implementado en T026
+
+Multi-selection, grouping, snapping, guides/rulers, image import, Reference Layer, PWA, IA y editor Android paralelo.
