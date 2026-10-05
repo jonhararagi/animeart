@@ -504,33 +504,6 @@ async function importImageIntoEditor(file, message = "Image imported") {
     return false;
   }
 }
-async function importImageIntoEditor(file, message = "Image imported") {
-  if (!file) return false;
-  try {
-    const { layer } = await importImageFile(file);
-    const before = cloneDocument(state.document);
-    const next = cloneDocument(state.document);
-    next.layers.push(layer);
-    if (!state.history.record(before, next)) {
-      throw new Error("Image import did not create a history operation");
-    }
-    try {
-      persistDocumentSnapshot(localStorage, "animeart-web-document", next);
-    } catch (error) {
-      state.document = before;
-      state.history.discardLastRecord();
-      throw error;
-    }
-    state.document = next;
-    state.selectedLayerId = layer.id;
-    refreshDocument(message);
-    return true;
-  } catch (error) {
-    status.textContent = error?.message || "Image import failed";
-    return false;
-  }
-}
-
 function setDropFeedback(active) {
   canvasWrap.classList.toggle("drop-active", active);
   if (active) status.textContent = "Drop image to import";
