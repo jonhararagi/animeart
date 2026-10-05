@@ -659,3 +659,77 @@ REGRESIÓN:
 
 SIGUIENTE TAREA:
 T029 NO iniciada. El siguiente trabajo queda a decisión de CEREBRO después de revisar esta evidencia.
+
+## T029 — Web Image Import / Fase 1
+
+ESTADO:
+IMPLEMENTADA Y VERIFICADA EN RAMA. PR #14 abierta; no fusionada.
+
+BASELINE:
+main @ 1459ce0d10d4588fbe1074c62dc3f8307163461f.
+
+BRANCH:
+t029-web-image-import.
+
+ALCANCE:
+- Selector nativo mediante input[type="file"] con accept="image/*".
+- File API / FileReader para obtener una data: URL persistible.
+- Decodificación mediante Image() del navegador.
+- Reutilización de createImageLayer(), contentType "image" y layer.image existente.
+- Dimensiones reales obtenidas de naturalWidth/naturalHeight.
+- Nombre de capa derivado del nombre de archivo sin extensión.
+- Render mediante el Canvas 2D existente.
+- Selection, layerLocalBounds(), Transform, Viewport, History y localStorage existentes se mantienen como única cadena.
+- Una importación registra una sola transición lógica before → after en DocumentHistory.
+- Persistencia se intenta antes de mutar Document/History para evitar capas huérfanas si falla el almacenamiento.
+- Cancelación, archivo inválido, decode failure, dimensiones inválidas y límites de almacenamiento no crean una capa parcial.
+
+LÍMITE DE ALMACENAMIENTO:
+- No se asume una capacidad universal de localStorage.
+- Límite conservador de aplicación: 1.500.000 bytes por archivo antes de lectura.
+- Límite conservador de representación de imagen: 2.000.000 caracteres.
+- Límite conservador del Document serializado para esta ruta: 2.500.000 caracteres.
+- Si localStorage rechaza setItem(), la importación se aborta sin aplicar la nueva capa.
+- Estos límites son de aplicación y no representan una garantía universal de cuota del navegador.
+
+FORMATOS:
+La UI acepta image/*. La decodificación final depende de los formatos que el navegador pueda abrir mediante Image(); no se agregó decoder ni librería externa.
+
+TESTS:
+- Web CI #49 / ID 37302522897: SUCCESS.
+- Build PASS.
+- Test PASS.
+- Verify build output PASS.
+- Suite completa: 162/162 PASS, 0 FAIL, 0 cancelled, 0 skipped.
+- Tests T029 deterministas y sin URLs externas.
+
+ANDROID REGRESSION:
+- Android CI #148 / ID 37302522852: SUCCESS.
+- Build PASS.
+- Unit Tests PASS.
+- Lint PASS.
+- Android Startup Smoke PASS.
+- APK PASS.
+- Artifact animeart-debug-apk ID 11342930318.
+- Artifact digest SHA-256: 61c22e3de2a766f829ed693de5fa1b29ae2b44f569dd497ae4d8abbf6be6edb2.
+
+LIMITACIONES:
+- No existe E2E físico del selector de archivos dentro de la CI actual.
+- La persistencia continúa basada en localStorage; IndexedDB queda fuera de T029.
+- No se implementan drag & drop, clipboard, crop, filters/effects, masks, blend modes, background removal, AI, OCR, text, shapes, multi-selection, grouping, snapping, guides/rulers, PWA, asset manager o cloud storage.
+
+DEUDA TÉCNICA:
+- Migrar proyectos de imágenes grandes a una estrategia de almacenamiento más adecuada, previsiblemente IndexedDB, queda para una fase posterior.
+- Una prueba E2E de navegador real para seleccionar un archivo permanece pendiente.
+
+REGRESIÓN:
+T024, T025, T026, T027 y T028 permanecen cubiertas por la suite completa; T029 no modifica Android.
+
+PR:
+#14 — T029: Web image import.
+Estado OPEN.
+No fusionado. La decisión de merge corresponde a CEREBRO.
+
+T030:
+NO iniciada.
+
