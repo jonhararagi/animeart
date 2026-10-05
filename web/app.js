@@ -15,6 +15,7 @@ const state = {
   panning: false,
   selectedLayerId: null,
   panPointerId: null,
+  drawingPointerId: null,
   lastPanPoint: null,
   viewport: createViewport(),
   document: createDocument()
@@ -124,6 +125,8 @@ function setViewport(viewport) {
 
 canvas.addEventListener("pointerdown", event => {
   if (state.tool === "pan") {
+    state.drawing = false;
+    state.drawingPointerId = null;
     state.panning = true;
     state.panPointerId = event.pointerId;
     state.lastPanPoint = screenPointFromEvent(event);
@@ -134,6 +137,7 @@ canvas.addEventListener("pointerdown", event => {
   const layer = selectedLayer();
   if (!layer || layer.locked) return;
   state.drawing = true;
+  state.drawingPointerId = event.pointerId;
   canvas.setPointerCapture(event.pointerId);
   layer.strokes.push(createStroke(state.tool, 5, [pointFromEvent(event)]));
 });
@@ -148,7 +152,7 @@ canvas.addEventListener("pointermove", event => {
     return;
   }
 
-  if (!state.drawing) return;
+  if (!state.drawing || event.pointerId !== state.drawingPointerId) return;
   const layer = selectedLayer();
   const stroke = layer?.strokes.at(-1);
   if (!stroke) return;
@@ -161,11 +165,14 @@ canvas.addEventListener("pointerup", event => {
     state.panning = false;
     state.panPointerId = null;
     state.lastPanPoint = null;
+    state.drawing = false;
+    state.drawingPointerId = null;
     return;
   }
 
-  if (!state.drawing) return;
+  if (!state.drawing || event.pointerId !== state.drawingPointerId) return;
   state.drawing = false;
+  state.drawingPointerId = null;
   markChanged();
 });
 
@@ -176,6 +183,7 @@ canvas.addEventListener("pointercancel", event => {
     state.lastPanPoint = null;
   }
   state.drawing = false;
+  state.drawingPointerId = null;
 });
 
 canvas.addEventListener("wheel", event => {
