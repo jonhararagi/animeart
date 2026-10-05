@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createDocument, createLayer, createStroke, createStrokePoint, restoreDocument } from "../domain/model.mjs";
+import { createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "../domain/model.mjs";
 import { DocumentHistory, cloneDocument } from "../domain/history.mjs";
 import { createViewport, panBy, zoomAt } from "../domain/viewport.mjs";
+import { rotateLayer, scaleLayer, translateLayer } from "../domain/document-operations.mjs";
 
 function documentWithStroke() {
   const document = createDocument();
@@ -139,4 +140,36 @@ test("history snapshots are mutation-safe", () => {
   assert.equal(undone.layers[0].strokes.length, 0);
   const redone = history.redo(undone);
   assert.equal(redone.layers[0].strokes[0].points[0].x, 10);
+});
+
+
+test("Image Layer creation is reversible through DocumentHistory", () => {
+  const before = createDocument();
+  const after = cloneDocument(before);
+  const image = createImageLayer("Image");
+  after.layers.push(image);
+  const history = new DocumentHistory(before);
+  history.record(before, after);
+  const undone = history.undo(after);
+  assert.equal(undone.layers.length, 1);
+  const redone = history.redo(undone);
+  assert.equal(redone.layers[1].contentType, "image");
+  assert.equal(redone.layers[1].image.width, 64);
+});
+
+test("Image Layer transform is reversible through the same DocumentHistory", () => {
+  const before = createDocument();
+  const image = createImageLayer("Image");
+  const withImage = cloneDocument(before);
+  withImage.layers.push(image);
+  const id = image.id;
+  let after = translateLayer(withImage, id, 20, -10);
+  after = scaleLayer(after, id, 1.5);
+  after = rotateLayer(after, id, 30);
+  const history = new DocumentHistory(withImage);
+  history.record(withImage, after);
+  const undone = history.undo(after);
+  assert.deepEqual(undone.layers[1].transform, { x: 0, y: 0, scale: 1, rotation: 0 });
+  const redone = history.redo(undone);
+  assert.deepEqual(redone.layers[1].transform, { x: 20, y: -10, scale: 1.5, rotation: 30 });
 });

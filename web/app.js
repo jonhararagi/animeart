@@ -1,4 +1,4 @@
-import { createDocument, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
+import { createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
 import { rotateLayer, scaleLayer, translateLayer, updateLayerTransform } from "./domain/document-operations.mjs";
@@ -14,6 +14,7 @@ const redoButton = document.querySelector("#redo");
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
 const HANDLE_RADIUS = 10;
+const imageCache = new Map();
 
 const state = {
   tool: "brush",
@@ -67,6 +68,27 @@ function layerTransformForRender(layer) {
     : layer.transform;
 }
 
+function drawImageLayer(layer) {
+  if (!layer.image) return;
+  let image = imageCache.get(layer.image.source);
+  if (!image) {
+    image = new Image();
+    image.onload = () => {
+      imageCache.set(layer.image.source, image);
+      redraw();
+    };
+    image.onerror = () => {
+      imageCache.delete(layer.image.source);
+      status.textContent = "Image failed to load";
+    };
+    image.src = layer.image.source;
+    imageCache.set(layer.image.source, image);
+  }
+  if (image.complete && image.naturalWidth > 0) {
+    ctx.drawImage(image, 0, 0, layer.image.width, layer.image.height);
+  }
+}
+
 function drawDocument() {
   for (const layer of state.document.layers) {
     if (!layer.visible) continue;
@@ -78,16 +100,21 @@ function drawDocument() {
     ctx.rotate(transform.rotation * Math.PI / 180);
     ctx.scale(transform.scale, transform.scale);
     ctx.translate(-canvasCenter().x, -canvasCenter().y);
-    for (const stroke of layer.strokes) {
-      if (stroke.points.length < 2) continue;
-      ctx.beginPath();
-      ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-      for (const point of stroke.points.slice(1)) ctx.lineTo(point.x, point.y);
-      ctx.lineWidth = stroke.size;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = stroke.tool === "eraser" ? "#ffffff" : "#111318";
-      ctx.stroke();
+
+    if (layer.contentType === "image") {
+      drawImageLayer(layer);
+    } else {
+      for (const stroke of layer.strokes) {
+        if (stroke.points.length < 2) continue;
+        ctx.beginPath();
+        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+        for (const point of stroke.points.slice(1)) ctx.lineTo(point.x, point.y);
+        ctx.lineWidth = stroke.size;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = stroke.tool === "eraser" ? "#ffffff" : "#111318";
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }
@@ -156,7 +183,7 @@ function renderLayers() {
   layersEl.replaceChildren();
   [...state.document.layers].reverse().forEach(layer => {
     const li = document.createElement("li");
-    li.textContent = layer.name;
+    li.textContent = layer.name + (layer.contentType === "image" ? " [Image]" : "");
     li.dataset.layerId = layer.id;
     if (layer.id === state.selectedLayerId) li.dataset.selected = "true";
     li.addEventListener("click", () => {
@@ -347,7 +374,7 @@ canvas.addEventListener("pointerdown", event => {
     return;
   }
   const layer = selectedLayer();
-  if (!layer || layer.locked) return;
+  if (!layer || layer.locked || layer.contentType === "image") return;
   state.drawing = true;
   state.drawingPointerId = event.pointerId;
   state.strokeBefore = cloneDocument(state.document);
@@ -455,6 +482,16 @@ document.querySelector("#add-layer").addEventListener("click", () => {
   persistDocument();
 });
 
+document.querySelector("#add-image-layer").addEventListener("click", () => {
+  const before = cloneDocument(state.document);
+  const layer = createImageLayer("Test Image " + (state.document.layers.length + 1));
+  state.document.layers.push(layer);
+  state.selectedLayerId = layer.id;
+  state.history.record(before, state.document);
+  refreshDocument("Image layer created");
+  persistDocument();
+});
+
 document.querySelectorAll("[data-transform]").forEach(button => {
   button.addEventListener("click", () => {
     const action = button.dataset.transform;
@@ -471,7 +508,7 @@ document.querySelectorAll("[data-transform]").forEach(button => {
 
 document.querySelector("#clear").addEventListener("click", () => {
   const layer = selectedLayer();
-  if (!layer || layer.locked || layer.strokes.length === 0) return;
+  if (!layer || layer.locked || layer.contentType === "image" || layer.strokes.length === 0) return;
   const before = cloneDocument(state.document);
   layer.strokes = [];
   state.history.record(before, state.document);

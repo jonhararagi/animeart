@@ -1,6 +1,14 @@
 import { documentToScreen } from "./viewport.mjs";
 
 export function layerLocalBounds(layer) {
+  if (layer?.contentType === "image" && layer.image) {
+    const width = Number(layer.image.width);
+    const height = Number(layer.image.height);
+    if (Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0) {
+      return { minX: 0, minY: 0, maxX: width, maxY: height };
+    }
+  }
+
   const points = [];
   let strokePadding = 0;
   for (const stroke of layer?.strokes || []) {
