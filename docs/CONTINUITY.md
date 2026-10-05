@@ -741,3 +741,17 @@ NO iniciada.
 - Se corrigió la frontera de persistencia/History para que el snapshot solo quede aplicado al estado del editor después de que History y persistencia hayan sido aceptados; un fallo de persistencia revierte la entrada histórica.
 - Conteo corregido: T029 tiene 14 tests en `web/test/image-import.test.mjs`.
 - Esta corrección queda pendiente de CI Web + Android antes del cierre de T029.
+
+
+### T029 — Corrección final de atomicidad History ↔ Persistence
+
+- `DocumentHistory` continúa siendo el único sistema de historial.
+- Se añadió `discardLastRecord()` para rollback transaccional: elimina únicamente la última entrada de `past` y no usa `undo()` ni `reset()`.
+- `discardLastRecord()` restaura el estado `future` que existía antes del `record()`, por lo que un fallo de persistencia no crea ni elimina Redo histórico previo.
+- La importación restaura `state.document` al snapshot anterior y descarta solamente la operación de importación fallida.
+- La prueba determinista de cuota de almacenamiento fuerza `setItem()` a fallar y verifica documento sin imagen, tamaño de History intacto, Redo previo intacto y ausencia de Redo de la importación fallida.
+- El camino exitoso sigue registrando exactamente una operación y permite Undo/Redo.
+- T029 final: 16 tests específicos dentro de una suite Web total de 166 tests.
+- Web CI #57 / ID 37313606655: SUCCESS sobre SHA `bd697d2a7b24cecbb61ab7c9c4966b7dd7419c31`.
+- Android CI #156 / ID 37313606581: SUCCESS sobre el mismo SHA; no se modificó Android.
+- Esta documentación genera un nuevo commit y requiere una última ejecución Web + Android sobre ese HEAD antes del cierre definitivo.
