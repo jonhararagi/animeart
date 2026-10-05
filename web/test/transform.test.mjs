@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createDocument, createImageLayer, createLayer } from "../domain/model.mjs";
-import { rotateLayer, scaleLayer, translateLayer, updateLayerTransform } from "../domain/document-operations.mjs";
+import { rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerVisibility, translateLayer, updateLayerTransform } from "../domain/document-operations.mjs";
 
 function twoLayerDocument() {
   const document = createDocument();
@@ -68,4 +68,46 @@ test("existing transform operations apply unchanged to Image Layer content", () 
   assert.deepEqual(next.layers[1].transform, { x: 12, y: -8, scale: 2, rotation: 45 });
   assert.deepEqual(next.layers[1].image, image.image);
   assert.equal(next.layers[1].contentType, "image");
+});
+
+
+test("layer property operations are immutable and preserve unrelated layers", () => {
+  const document = twoLayerDocument();
+  const targetId = document.layers[0].id;
+  let next = setLayerVisibility(document, targetId, false);
+  next = setLayerLocked(next, targetId, true);
+  next = setLayerOpacity(next, targetId, 0.4);
+
+  assert.equal(document.layers[0].visible, true);
+  assert.equal(document.layers[0].locked, false);
+  assert.equal(document.layers[0].opacity, 1);
+  assert.equal(next.layers[0].visible, false);
+  assert.equal(next.layers[0].locked, true);
+  assert.equal(next.layers[0].opacity, 0.4);
+  assert.deepEqual(next.layers[1], document.layers[1]);
+});
+
+test("layer opacity clamps to the existing document contract", () => {
+  const document = createDocument();
+  const low = setLayerOpacity(document, document.layers[0].id, -2);
+  const high = setLayerOpacity(document, document.layers[0].id, 2);
+  assert.equal(low.layers[0].opacity, 0);
+  assert.equal(high.layers[0].opacity, 1);
+});
+
+test("layer property operations safely reject missing layers and invalid values", () => {
+  const document = createDocument();
+  assert.equal(setLayerVisibility(document, "missing", true), null);
+  assert.equal(setLayerLocked(document, "missing", true), null);
+  assert.equal(setLayerOpacity(document, "missing", 0.5), null);
+  assert.equal(setLayerOpacity(document, document.layers[0].id, Number.NaN), null);
+});
+
+test("layer property changes use the existing DocumentHistory boundary", () => {
+  const before = createDocument();
+  const after = setLayerOpacity(before, before.layers[0].id, 0.5);
+  const history = new DocumentHistory(before);
+  history.record(before, after);
+  assert.equal(history.undo(after).layers[0].opacity, 1);
+  assert.equal(history.redo(before).layers[0].opacity, 0.5);
 });
