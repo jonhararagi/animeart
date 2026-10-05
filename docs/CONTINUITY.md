@@ -861,3 +861,29 @@ ESTADO ACTUAL T030:
 
 PENDIENTE DE VERIFICACIÓN:
 - La documentación presente genera un nuevo commit y requiere una nueva Web CI + Android CI sobre ese nuevo HEAD antes del cierre.
+
+### T030-CORRECTION — Duplicate import handler wiring
+
+CEREBRO detectó después de la validación inicial que `web/app.js` contenía dos definiciones de `importImageIntoEditor()`. La segunda definición era una implementación obsoleta basada directamente en `importImageFile()` y sobrescribía en runtime la implementación basada en `applyImageFileImport()`.
+
+CORRECCIÓN:
+- Eliminada exclusivamente la definición obsoleta.
+- Se conserva una sola `importImageIntoEditor()`.
+- La definición activa usa `applyImageFileImport()`.
+- Picker, Drag & Drop y Clipboard continúan convergiendo en la misma función.
+- No se creó una segunda ruta de importación.
+- No se modificó Android.
+- Se agregó un test que exige exactamente una definición y rechaza la implementación obsoleta.
+
+CI DE CORRECCIÓN:
+- Web CI #67 / ID `37381686906`: SUCCESS sobre SHA `942c99b7bd720101993654b68c73a058920d1f91`.
+- Android CI #166 / ID `37381687347`: SUCCESS sobre SHA `942c99b7bd720101993654b68c73a058920d1f91`.
+- Build, Unit Tests, Lint, Android Startup Smoke y APK: PASS.
+
+NOTA DE FALLA INTERMEDIA:
+- Web CI #66 / ID `37381612870` falló únicamente porque el test recién agregado contenía una expresión regular con escape duplicado y producía SyntaxError.
+- Se corrigió la expresión regular sin cambiar producción.
+- Android CI #165 sobre el SHA intermedio quedó reemplazado por la ejecución final del SHA corregido.
+
+ESTADO:
+Pendiente de nueva revisión independiente de CEREBRO. No mergear PR #15.
