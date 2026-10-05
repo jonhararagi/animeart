@@ -1,6 +1,7 @@
 import { createDocument, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
+import { rotateLayer, scaleLayer, translateLayer } from "./domain/document-operations.mjs";
 
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
@@ -168,6 +169,18 @@ function redo() {
   persistDocument();
 }
 
+function applyLayerOperation(operation, message) {
+  const layer = selectedLayer();
+  if (!layer || layer.locked) return;
+  const before = cloneDocument(state.document);
+  const next = operation(state.document, layer.id);
+  if (!next) return;
+  state.document = next;
+  state.history.record(before, next);
+  refreshDocument(message);
+  persistDocument();
+}
+
 canvas.addEventListener("pointerdown", event => {
   if (state.tool === "pan") {
     state.drawing = false;
@@ -274,6 +287,20 @@ document.querySelector("#add-layer").addEventListener("click", () => {
   state.history.record(before, state.document);
   refreshDocument();
   persistDocument();
+});
+
+document.querySelectorAll("[data-transform]").forEach(button => {
+  button.addEventListener("click", () => {
+    const action = button.dataset.transform;
+    if (action === "left") applyLayerOperation((doc, id) => translateLayer(doc, id, -10, 0), "Layer moved");
+    if (action === "right") applyLayerOperation((doc, id) => translateLayer(doc, id, 10, 0), "Layer moved");
+    if (action === "up") applyLayerOperation((doc, id) => translateLayer(doc, id, 0, -10), "Layer moved");
+    if (action === "down") applyLayerOperation((doc, id) => translateLayer(doc, id, 0, 10), "Layer moved");
+    if (action === "scale-up") applyLayerOperation((doc, id) => scaleLayer(doc, id, 1.1), "Layer scaled");
+    if (action === "scale-down") applyLayerOperation((doc, id) => scaleLayer(doc, id, 1 / 1.1), "Layer scaled");
+    if (action === "rotate-left") applyLayerOperation((doc, id) => rotateLayer(doc, id, -5), "Layer rotated");
+    if (action === "rotate-right") applyLayerOperation((doc, id) => rotateLayer(doc, id, 5), "Layer rotated");
+  });
 });
 
 document.querySelector("#clear").addEventListener("click", () => {
