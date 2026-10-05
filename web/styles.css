@@ -27,3 +27,4 @@ canvas { display: block; width: min(92%, 1100px); height: min(88%, 800px); backg
   button { font-size: .72rem; padding: 8px 2px; }
   canvas { width: 96%; height: 86%; }
 }
+\n.layers li[data-selected="true"] { outline: 1px solid #2f80ed; border-radius: 6px; }\n
