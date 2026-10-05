@@ -593,7 +593,7 @@ T027 debe comenzar con inspección de main @ `3df514a54494889d9d2785b95c37e4b15d
 ## T028 — CIERRE IMAGE LAYER WEB / FASE 1
 
 ESTADO:
-GREEN — T028 implementada, fusionada y verificada sobre el HEAD real de main.
+GREEN — T028 implementada, fusionada y verificada sobre main mediante CI real.
 
 BASELINE:
 main @ 54a070a962cd531d9a41b98738ffd2791878e934.
@@ -610,7 +610,7 @@ b87f87c8c854e93ff6d3d313f90394ef4ac3b4e0.
 MERGE:
 - PR #13 fusionado mediante merge commit.
 - Merge SHA: 49f06d3374f45192e143cab8ce5265c9723876b5.
-- main apunta al mismo SHA 49f06d3374f45192e143cab8ce5265c9723876b5.
+- El merge dejó T028 en main sin cambios Android.
 
 ALCANCE VERIFICADO:
 - Image Layer Web mínimo con source, width y height.
@@ -625,26 +625,20 @@ ALCANCE VERIFICADO:
 - No se copió código del PR #2.
 - Android no fue modificado por T028.
 
-WEB CI POST-MERGE:
-- Run #46 / ID 37294567649.
-- SHA: 49f06d3374f45192e143cab8ce5265c9723876b5.
-- Build: PASS.
-- Test: PASS.
-- Verify build output: PASS.
-- Tests: 134/134 PASS; 0 FAIL, 0 cancelled, 0 skipped.
-
-ANDROID CI POST-MERGE:
-- Run #145 / ID 37294567346.
-- SHA: 49f06d3374f45192e143cab8ce5265c9723876b5.
-- Build: PASS.
-- Unit Tests: PASS.
-- Lint: PASS.
-- Android Startup Smoke Test: PASS.
-- Debug APK: PASS; artifact `animeart-debug-apk`, ID 11338366228, SHA-256 `950513c32089a10dc98919cfb4f9069f2302f474fe570d7f23af8eb1eefe25b4`.
+CI POST-MERGE DEL CÓDIGO T028:
+- Web CI #46 / ID 37294567649 sobre SHA 49f06d3374f45192e143cab8ce5265c9723876b5: SUCCESS.
+- Android CI #145 / ID 37294567346 sobre SHA 49f06d3374f45192e143cab8ce5265c9723876b5: SUCCESS.
+- Web: Build PASS, Test PASS, Verify build output PASS.
+- Web tests: 134/134 PASS; 0 FAIL, 0 cancelled, 0 skipped.
+- Android: Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, debug APK PASS.
+- APK artifact #11338366228; SHA-256 950513c32089a10dc98919cfb4f9069f2302f474fe570d7f23af8eb1eefe25b4.
 
 DOCUMENTACIÓN:
-- Esta entrada se añade después del merge para conservar toda la historia anterior.
-- El commit de documentación y su CI post-documentación quedan pendientes de verificación antes del cierre definitivo del registro.
+- La historia previa de CONTINUITY.md se conserva.
+- Commit de la primera actualización de documentación: 279c1810317da86415b73ef370c0747e74befd27.
+- CI posterior de esa actualización: Web CI #47 / ID 37295041340 SUCCESS; Android CI #146 / ID 37295041279 SUCCESS.
+- Ambos ejecutaron sobre SHA 279c1810317da86415b73ef370c0747e74befd27.
+- La documentación no inicia T029.
 
 LIMITACIONES ACTUALES:
 - No existe E2E físico del editor Web en navegador real dentro de esta CI.
@@ -660,8 +654,8 @@ REGRESIÓN:
 - T024: permanece cerrada y sus fronteras de DocumentHistory siguen reutilizadas.
 - T025: permanece cerrada y sus operaciones de transformación siguen reutilizadas.
 - T026: permanece cerrada y su selección/transformación visual sigue reutilizada.
-- T027: permanece cerrada según la continuidad previa; T028 parte del main validado por esa secuencia.
-- T028: cerrada funcionalmente; la verificación del commit de documentación es la última comprobación pendiente de este registro.
+- T027: permanece cerrada según la continuidad previa.
+- T028: cerrada; la evidencia de código, merge, main y CI post-documentación queda registrada arriba.
 
 SIGUIENTE TAREA:
 T029 NO iniciada. El siguiente trabajo queda a decisión de CEREBRO después de revisar esta evidencia.
