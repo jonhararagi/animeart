@@ -427,3 +427,41 @@ RESULTADO:
 PENDIENTES:
 - Ningún bloqueo de T023.
 - T024 queda autorizado: Undo / Redo Web.
+
+
+## T024 — Web Undo / Redo
+
+### Estado de implementación
+
+T024 introduce una única frontera de historial para el Document Web. El historial vive en `web/domain/history.mjs` y almacena snapshots lógicos normalizados de Document; no almacena Canvas, bitmap, screenshots ni Viewport.
+
+### Integración
+
+- Un stroke completo se registra como una sola operación al terminar en `pointerup`; los `pointermove` solo modifican el stroke activo.
+- `pointercancel` descarta el stroke incompleto sin crear una entrada histórica.
+- Clear Layer y Create Layer registran una operación completa cada uno.
+- Undo/Redo reemplazan únicamente `state.document` y sincronizan la selección/render/persistencia.
+- Nueva operación después de Undo elimina la rama Redo.
+- Zoom, pan y zoomAt siguen fuera del historial.
+- Viewport continúa siendo estado de navegación independiente del Document.
+- La carga de un proyecto restaura el Document y reinicia el historial, evitando historial ficticio sobre datos recuperados.
+
+### Seguridad de snapshots
+
+Los estados históricos se clonan y normalizan al entrar/salir del historial. Las referencias mutables del Document actual no comparten objetos con las entradas históricas.
+
+### Persistencia
+
+Se reutiliza el mismo `localStorage` existente y se persiste el Document actual después de stroke, Clear, Create Layer, Undo y Redo. El Viewport no se serializa.
+
+### UI
+
+Se añadieron controles mínimos `Undo` y `Redo` a la barra existente, sin rediseñar el editor.
+
+### Verificación T024
+
+- Tests nuevos: historial vacío, stroke, múltiples strokes, limpieza de Redo, Clear Layer, Create Layer, independencia Viewport, ausencia de historial por zoom/pan, persistencia y mutation safety.
+- Regresión T023: pendiente de verificación en CI de la rama T024 hasta ejecutar el workflow real.
+- Web CI: pendiente.
+- Android CI: pendiente.
+- Merge a main: pendiente.
