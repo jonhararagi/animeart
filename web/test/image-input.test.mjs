@@ -1,4 +1,5 @@
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import {
   applyImageFileImport,
@@ -241,4 +242,20 @@ test("existing image import decoder path remains unchanged", async () => {
   assert.equal(result.layer.image.width, 17);
   assert.equal(result.layer.image.height, 11);
   assert.equal(result.layer.name, "regression");
+});
+
+test("picker, drop and clipboard handlers converge on one editor import function", () => {
+  const app = readFileSync(new URL("../app.js", import.meta.url), "utf8");
+  assert.match(app, /imageFileInput\.addEventListener\("change"[\s\S]*?importImageIntoEditor\(file\)/);
+  assert.match(app, /canvas\.addEventListener\("drop"[\s\S]*?firstValidImageFile[\s\S]*?importImageIntoEditor\(file\)/);
+  assert.match(app, /document\.addEventListener\("paste"[\s\S]*?clipboardImageFile[\s\S]*?importImageIntoEditor\(file\)/);
+});
+
+test("drag lifecycle has explicit browser navigation protection and feedback cleanup", () => {
+  const app = readFileSync(new URL("../app.js", import.meta.url), "utf8");
+  assert.match(app, /canvas\.addEventListener\("dragenter"/);
+  assert.match(app, /canvas\.addEventListener\("dragover"[\s\S]*?event\.preventDefault\(\)/);
+  assert.match(app, /canvas\.addEventListener\("dragleave"/);
+  assert.match(app, /canvas\.addEventListener\("dragend"[\s\S]*?clearDropFeedback/);
+  assert.match(app, /canvas\.addEventListener\("drop"[\s\S]*?event\.preventDefault\(\)[\s\S]*?clearDropFeedback/);
 });
