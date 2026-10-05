@@ -210,7 +210,7 @@ function renderLayers() {
     visibilityButton.setAttribute("aria-label", visibilityButton.title);
     visibilityButton.addEventListener("click", event => {
       event.stopPropagation();
-      applyLayerOperation((doc, id) => setLayerVisibility(doc, id, !layer.visible), layer.visible ? "Layer hidden" : "Layer shown", { allowLocked: true });
+      applyLayerOperation((doc, id) => setLayerVisibility(doc, id, !layer.visible), layer.visible ? "Layer hidden" : "Layer shown");
     });
 
     const lockButton = document.createElement("button");
@@ -237,7 +237,7 @@ function renderLayers() {
     opacity.addEventListener("change", event => {
       event.stopPropagation();
       const nextOpacity = Number(event.currentTarget.value);
-      applyLayerOperation((doc, id) => setLayerOpacity(doc, id, nextOpacity), "Layer opacity changed", { allowLocked: true });
+      applyLayerOperation((doc, id) => setLayerOpacity(doc, id, nextOpacity), "Layer opacity changed");
     });
 
     const controls = document.createElement("div");
