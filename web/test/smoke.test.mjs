@@ -92,3 +92,16 @@ test("selection remains on existing Screen/Document/Viewport boundaries", async 
   assert.match(js, /selectionGeometry\(layer, state\.viewport/);
   assert.doesNotMatch(js, /canvas\.style\.transform/);
 });
+
+
+test("layer panel exposes visibility, lock and opacity through existing operation/history boundaries", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /setLayerVisibility/);
+  assert.match(js, /setLayerLocked/);
+  assert.match(js, /setLayerOpacity/);
+  assert.match(js, /className = "layer-controls"/);
+  assert.match(js, /type = "range"/);
+  assert.match(js, /applyLayerOperation\(\(doc, id\) => setLayerOpacity/);
+  assert.match(js, /state\.history\.record\(before, next\)/);
+  assert.match(js, /persistDocument\(\)/);
+});
