@@ -63,3 +63,32 @@ test("layer transform stays separate from Viewport", async () => {
   assert.match(js, /translateLayer/);
   assert.doesNotMatch(js, /translateLayer\([^\n]*state\.viewport/);
 });
+
+test("visual layer selection reuses selectedLayerId and existing transform/history boundaries", async () => {
+  const js = await readFile("app.js", "utf8");
+  const html = await readFile("index.html", "utf8");
+  assert.match(html, /data-tool="select"/);
+  assert.match(js, /selectedLayerId/);
+  assert.match(js, /selectionGeometry/);
+  assert.match(js, /hitTestHandle/);
+  assert.match(js, /hitTestLayer/);
+  assert.match(js, /document-operations/);
+  assert.match(js, /state\.history\.record\(before, next\)/);
+});
+
+test("visual transform drag previews until pointerup and pointercancel clears it", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /transformInteraction/);
+  assert.match(js, /finishTransformInteraction/);
+  assert.match(js, /pointercancel/);
+  assert.match(js, /finishTransformInteraction\(true\)/);
+  assert.match(js, /finishTransformInteraction\(false\)/);
+  assert.match(js, /event\.pointerId !== interaction\.pointerId/);
+});
+
+test("selection remains on existing Screen/Document/Viewport boundaries", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /screenToDocument\(screenPoint, state\.viewport/);
+  assert.match(js, /selectionGeometry\(layer, state\.viewport/);
+  assert.doesNotMatch(js, /canvas\.style\.transform/);
+});
