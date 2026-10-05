@@ -387,3 +387,13 @@ DEUDA TÉCNICA:
 
 SIGUIENTE TAREA:
 - T024 Undo / Redo Web, únicamente después de cerrar T023 con evidencia CI completa.
+
+
+### T023 — CI evidence update
+
+- PR #8, branch `t023-web-interaction-stabilization`.
+- Web CI run #19 / ID `37253397457`: SUCCESS — Build, Test, Verify build output.
+- Android CI run #118 / ID `37253397430`: SUCCESS — Build, Unit Tests, Lint, Android Startup Smoke, Upload debug APK.
+- Startup smoke: Status ok; Activity `com.jonhararagi.animeart/.MainActivity`; MainActivity resumed.
+- APK artifact: `animeart-debug-apk`, artifact ID `11321618030`, SHA-256 `c395bfc83a021f5cbf94c2b1a982a7ae590638e41f3a711ff38595bc42922c79`.
+- Evidence is real GitHub Actions evidence for the functional T023 commit. A fresh CI run is required after this documentation-only update so the final branch head is also verified.
