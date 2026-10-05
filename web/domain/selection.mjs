@@ -1,3 +1,5 @@
+import { documentToScreen } from "./viewport.mjs";
+
 export function layerLocalBounds(layer) {
   const points = [];
   let strokePadding = 0;
@@ -63,16 +65,12 @@ export function hitTestLayer(layer, documentPoint, pivot) {
   return local.x >= bounds.minX && local.x <= bounds.maxX && local.y >= bounds.minY && local.y <= bounds.maxY;
 }
 
-function documentToScreenPoint(point, viewport, center) {
-  return { x: (point.x - center.x) * viewport.zoom + center.x + viewport.panX, y: (point.y - center.y) * viewport.zoom + center.y + viewport.panY };
-}
-
 export function selectionGeometry(layer, viewport, center, transformOverride = null) {
   const corners = layerCorners(layer, center, transformOverride);
   if (!corners) return null;
-  const screenCorners = corners.map(point => documentToScreenPoint(point, viewport, center));
+  const screenCorners = corners.map(point => documentToScreen(point, viewport, center));
   const transform = transformOverride || layer.transform;
-  const centerScreen = documentToScreenPoint(transformPoint(center, transform, center), viewport, center);
+  const centerScreen = documentToScreen(transformPoint(center, transform, center), viewport, center);
   const topMid = { x: (screenCorners[0].x + screenCorners[1].x) / 2, y: (screenCorners[0].y + screenCorners[1].y) / 2 };
   const outward = { x: topMid.x - centerScreen.x, y: topMid.y - centerScreen.y };
   const length = Math.hypot(outward.x, outward.y) || 1;
