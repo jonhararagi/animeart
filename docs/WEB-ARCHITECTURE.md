@@ -114,3 +114,32 @@ CI evidence:
 - Both Android smoke runs reported Status: ok, MainActivity resumed, zero FATAL EXCEPTION, zero skipped-frame matches and zero Davey matches.
 
 PR #2 remains open and untouched. Advanced pinch/gesture navigation remains deferred.
+
+
+## T023 — Web Interaction Stabilization
+
+### Stable interaction boundary
+
+The existing Pointer Events pipeline remains the only Web input system: pointerdown / pointermove / pointerup / pointercancel / wheel.
+
+Pointer/screen coordinates are read from the canvas client rectangle. Drawing converts them exactly once through `screenToDocument(screenPoint, state.viewport, canvasCenter())`; stored `StrokePoint` values remain document coordinates.
+
+Pan uses the same Pointer Events and `setPointerCapture`. It updates only `state.viewport` through `panBy()`. It does not create strokes, mutate StrokePoint values, mutate Layer Transform, or apply `canvas.style.transform`.
+
+A drawing interaction tracks its `pointerId`. Starting Pan explicitly cancels any drawing state, and drawing move/up handlers only accept the active drawing pointer. This prevents a tool transition or unrelated pointer from extending or finalizing the previous stroke accidentally.
+
+### Transform separation
+
+Rendering preserves the order:
+
+StrokePoint → Layer Transform → Document presentation → Viewport Transform → Screen.
+
+Layer transform remains layer metadata. Viewport remains session state. Neither transform layer writes into the other, and zoom/pan do not modify the persisted document.
+
+### DPR / resize
+
+`devicePixelRatio` is used only to size the Canvas backing store and to establish the initial drawing context scale. Resize does not rewrite document coordinates, layer transforms, or viewport state.
+
+### T023 verification contract
+
+The regression suite covers zoom, pan, zoom+pan, screen/document round-trip, viewport non-mutation, StrokePoint/Layer Transform independence and the Web persistence boundary. Advanced pinch/inertia remains deferred.
