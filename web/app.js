@@ -485,13 +485,7 @@ document.querySelector("#add-layer").addEventListener("click", () => {
 });
 
 document.querySelector("#add-image-layer").addEventListener("click", () => {
-  const before = cloneDocument(state.document);
-  const layer = createImageLayer("Test Image " + (state.document.layers.length + 1));
-  state.document.layers.push(layer);
-  state.selectedLayerId = layer.id;
-  state.history.record(before, state.document);
-  refreshDocument("Image layer created");
-  persistDocument();
+  imageFileInput.click();
 });
 
 imageFileInput.addEventListener("change", async () => {
@@ -507,9 +501,14 @@ imageFileInput.addEventListener("change", async () => {
     const before = cloneDocument(state.document);
     const next = cloneDocument(state.document);
     next.layers.push(layer);
-    persistDocumentSnapshot(localStorage, "animeart-web-document", next);
     if (!state.history.record(before, next)) {
       throw new Error("Image import did not create a history operation");
+    }
+    try {
+      persistDocumentSnapshot(localStorage, "animeart-web-document", next);
+    } catch (error) {
+      state.history.undo(next);
+      throw error;
     }
     state.document = next;
     state.selectedLayerId = layer.id;
