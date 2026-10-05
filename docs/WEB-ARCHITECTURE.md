@@ -165,3 +165,41 @@ T023 is GREEN and merged in main at `65818d34c56dfd38273cc176f80d7e5f9346e0a1`.
 - The final interaction boundary remains Pointer Events → SCREEN → Viewport → DOCUMENT → Stroke → Layer → Canvas.
 - No Android implementation changes were required by T023.
 - T024 Web Undo / Redo is now the next authorized task.
+
+
+## T024 — Web Undo / Redo
+
+### Frontera de historial
+
+El Web Editor mantiene una única frontera `Document → History`. La implementación está en `web/domain/history.mjs` y utiliza snapshots lógicos del modelo existente mediante `normalizeDocument`. No existe un segundo Document, Layer, Stroke, Renderer, Viewport o sistema de persistencia.
+
+La entrada histórica representa una transición completa `before → after`. Para dibujo, el snapshot inicial se toma en `pointerdown` y se registra una única vez en `pointerup`, por lo que un stroke completo es una sola operación aunque tenga múltiples `pointermove`.
+
+### Operaciones cubiertas
+
+- Crear stroke: Undo elimina el stroke; Redo lo restaura.
+- Múltiples strokes: Undo/Redo conserva el orden.
+- Nueva operación después de Undo: limpia la rama Redo.
+- Clear Layer: reversible.
+- Create Layer: reversible y conserva el ID de la capa restaurada.
+- Undo/Redo vacío: no-op seguro.
+
+### Separación Viewport / Document
+
+History solo recibe snapshots de Document. `zoomAt`, `panBy` y `setViewport` no llaman al historial. Undo/Redo reemplazan `state.document` sin modificar `state.viewport`.
+
+### Persistencia
+
+Se conserva el `localStorage` existente. Después de una mutación histórica o edición reversible se serializa el Document actual; el Viewport queda fuera del JSON persistido.
+
+### Mutation safety
+
+Los snapshots se clonan con serialización lógica y se normalizan mediante el modelo existente antes de almacenarse/restaurarse. Esto evita que mutaciones posteriores del Document actual alteren estados históricos.
+
+### UI mínima
+
+Se añadieron botones Undo/Redo a la toolbar existente. Su estado habilitado/deshabilitado deriva directamente de History.
+
+### T024 — Evidencia de verificación
+
+Implementación y tests preparados en la rama T024. La clasificación final depende de Web CI, Android CI, regresión T023, merge y CI sobre el HEAD final de main.
