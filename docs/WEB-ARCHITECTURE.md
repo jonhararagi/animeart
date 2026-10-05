@@ -153,3 +153,15 @@ The regression suite covers zoom, pan, zoom+pan, screen/document round-trip, vie
 - Startup smoke: Status ok; Activity `com.jonhararagi.animeart/.MainActivity`; MainActivity resumed.
 - APK artifact: `animeart-debug-apk`, artifact ID `11321618030`, SHA-256 `c395bfc83a021f5cbf94c2b1a982a7ae590638e41f3a711ff38595bc42922c79`.
 - Evidence is real GitHub Actions evidence for the functional T023 commit. A fresh CI run is required after this documentation-only update so the final branch head is also verified.
+
+
+## T023 — Final post-merge verification
+
+T023 is GREEN and merged in main at `65818d34c56dfd38273cc176f80d7e5f9346e0a1`.
+
+- PR #8: merged.
+- Web CI #21 / `37253850888`: SUCCESS on the merge commit.
+- Android CI #120 / `37253850885`: SUCCESS on the merge commit, including Build, Unit Tests, Lint, Startup Smoke and APK artifact.
+- The final interaction boundary remains Pointer Events → SCREEN → Viewport → DOCUMENT → Stroke → Layer → Canvas.
+- No Android implementation changes were required by T023.
+- T024 Web Undo / Redo is now the next authorized task.
