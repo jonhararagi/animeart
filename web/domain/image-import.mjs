@@ -1,4 +1,5 @@
 import { createImageLayer } from "./model.mjs";
+import { cloneDocument } from "./history.mjs";
 
 export const MAX_IMPORT_FILE_BYTES = 1_500_000;
 export const MAX_IMAGE_SOURCE_CHARS = 2_000_000;
@@ -102,4 +103,24 @@ export async function importImageFile(file, options = {}) {
     layer: createImportedImageLayer(validated.name, source, decoded.width, decoded.height),
     source
   };
+}
+
+export async function applyImageFileImport(file, { document, history, persist, Reader, ImageCtor } = {}) {
+  if (!document || !history || typeof persist !== "function") {
+    throw imageImportError("Image import transaction is not configured");
+  }
+  const { layer } = await importImageFile(file, { Reader, ImageCtor });
+  const before = cloneDocument(document);
+  const next = cloneDocument(document);
+  next.layers.push(layer);
+  if (!history.record(before, next)) {
+    throw imageImportError("Image import did not create a history operation");
+  }
+  try {
+    persist(next);
+  } catch (error) {
+    history.discardLastRecord();
+    throw error;
+  }
+  return { document: next, layer };
 }
