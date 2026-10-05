@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createDocument } from "../domain/model.mjs";
 import { DocumentHistory } from "../domain/history.mjs";
-import { rotateLayer, scaleLayer, translateLayer } from "../domain/document-operations.mjs";
+import { rotateLayer, scaleLayer, translateLayer, updateLayerTransform } from "../domain/document-operations.mjs";
 import { hitTestHandle, hitTestLayer, layerLocalBounds, layerCorners, resizeTransformFromCorner, selectionGeometry, transformPoint } from "../domain/selection.mjs";
-import { createViewport } from "../domain/viewport.mjs";
+import { createViewport, documentToScreen, screenToDocument } from "../domain/viewport.mjs";
 
 function drawableDocument() {
   const document = createDocument(400, 300);
@@ -170,14 +170,8 @@ test("precise corner resize accepts document targets produced by zoom and pan vi
     createViewport(2, 35, -20),
     createViewport(0.5, -40, 25)
   ]) {
-    const screenTarget = {
-      x: (targetDocument.x - pivot.x) * viewport.zoom + pivot.x + viewport.panX,
-      y: (targetDocument.y - pivot.y) * viewport.zoom + pivot.y + viewport.panY
-    };
-    const reconstructed = {
-      x: (screenTarget.x - pivot.x - viewport.panX) / viewport.zoom + pivot.x,
-      y: (screenTarget.y - pivot.y - viewport.panY) / viewport.zoom + pivot.y
-    };
+    const screenTarget = documentToScreen(targetDocument, viewport, pivot);
+    const reconstructed = screenToDocument(screenTarget, viewport, pivot);
     const nextTransform = resizeTransformFromCorner(layer, pivot, handle, reconstructed);
     assert.ok(nextTransform);
     const afterCorners = layerCorners(layer, pivot, nextTransform);
