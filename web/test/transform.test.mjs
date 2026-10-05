@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createDocument, createLayer } from "../domain/model.mjs";
+import { createDocument, createImageLayer, createLayer } from "../domain/model.mjs";
 import { rotateLayer, scaleLayer, translateLayer, updateLayerTransform } from "../domain/document-operations.mjs";
 
 function twoLayerDocument() {
@@ -55,4 +55,17 @@ test("layer transform operation integrates with the existing DocumentHistory", (
   assert.deepEqual(undone.layers[0].transform, { x: 0, y: 0, scale: 1, rotation: 0 });
   const redone = history.redo(undone);
   assert.deepEqual(redone.layers[0].transform, { x: 25, y: 5, scale: 1, rotation: 0 });
+});
+
+
+test("existing transform operations apply unchanged to Image Layer content", () => {
+  const document = createDocument();
+  const image = createImageLayer("Image", 120, 80);
+  document.layers.push(image);
+  let next = translateLayer(document, image.id, 12, -8);
+  next = scaleLayer(next, image.id, 2);
+  next = rotateLayer(next, image.id, 45);
+  assert.deepEqual(next.layers[1].transform, { x: 12, y: -8, scale: 2, rotation: 45 });
+  assert.deepEqual(next.layers[1].image, image.image);
+  assert.equal(next.layers[1].contentType, "image");
 });
