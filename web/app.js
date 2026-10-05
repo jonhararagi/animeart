@@ -2,6 +2,7 @@ import { createDocument, createImageLayer, createLayer, createStroke, createStro
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
 import { rotateLayer, scaleLayer, translateLayer, updateLayerTransform } from "./domain/document-operations.mjs";
+import { importImageFile, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { hitTestHandle, hitTestLayer, resizeTransformFromCorner, selectionGeometry } from "./domain/selection.mjs";
 
 const canvas = document.querySelector("#canvas");
@@ -10,6 +11,7 @@ const status = document.querySelector("#status");
 const layersEl = document.querySelector("#layers");
 const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
+const imageFileInput = document.querySelector("#image-file-input");
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
@@ -490,6 +492,31 @@ document.querySelector("#add-image-layer").addEventListener("click", () => {
   state.history.record(before, state.document);
   refreshDocument("Image layer created");
   persistDocument();
+});
+
+imageFileInput.addEventListener("change", async () => {
+  const file = imageFileInput.files?.[0];
+  imageFileInput.value = "";
+  if (!file) {
+    status.textContent = "Import cancelled";
+    return;
+  }
+
+  try {
+    const { layer } = await importImageFile(file);
+    const before = cloneDocument(state.document);
+    const next = cloneDocument(state.document);
+    next.layers.push(layer);
+    persistDocumentSnapshot(localStorage, "animeart-web-document", next);
+    if (!state.history.record(before, next)) {
+      throw new Error("Image import did not create a history operation");
+    }
+    state.document = next;
+    state.selectedLayerId = layer.id;
+    refreshDocument("Image imported");
+  } catch (error) {
+    status.textContent = error?.message || "Image import failed";
+  }
 });
 
 document.querySelectorAll("[data-transform]").forEach(button => {
