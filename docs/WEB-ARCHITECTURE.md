@@ -216,3 +216,38 @@ CI evidence on the T024 merge head:
 - Android CI run #123 / ID `37259286008`: SUCCESS — Build, Unit Tests, Lint, Android Startup Smoke Test, APK artifact.
 
 A final CI run on the post-merge documentation HEAD is required before declaring T024 GREEN.
+
+
+## T025 — Web Layer Transform Boundary
+
+### Auditoría y decisión
+
+T025 auditó Document/Layer/Stroke/StrokePoint, Viewport, History, Renderer, persistence, selection, transforms, image/reference layer, PWA y Android container. La siguiente dependencia arquitectónica identificada fue estabilizar las mutaciones de `Layer.transform`: el modelo ya tenía el contrato, el renderer ya lo presentaba y History ya podía registrar cambios de Document.
+
+Por eso T025 no introduce un segundo transform system ni adelanta Reference Layer. Se crea una única frontera de operaciones de Document para transformación de Layer y se adapta la UI existente para consumirla.
+
+### Transform boundary
+
+`web/domain/document-operations.mjs` proporciona:
+
+- `updateLayerTransform(document, layerId, patch)`
+- `translateLayer(document, layerId, deltaX, deltaY)`
+- `scaleLayer(document, layerId, factor)`
+- `rotateLayer(document, layerId, degrees)`
+
+Estas funciones trabajan sobre copias normalizadas del Document. Viewport permanece separado: Layer Transform ocurre en Document/Layer space y Viewport se aplica después en presentación.
+
+### History
+
+Cada operación de transformación se registra como una única entrada en el `DocumentHistory` existente. Undo/Redo no modifica `state.viewport`.
+
+### Tests
+
+Se añadió `web/test/transform.test.mjs` con happy path, inmutabilidad, preservación de ejes existentes, invalid state y Undo/Redo. La suite existente de T021–T024 continúa ejecutándose.
+
+### CI
+
+- Web CI #29 / `37267420167`: SUCCESS.
+- Android CI #128 / `37267420194`: SUCCESS.
+
+El merge y la verificación sobre el HEAD final de main son la última etapa de T025.
