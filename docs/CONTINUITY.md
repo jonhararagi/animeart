@@ -755,3 +755,71 @@ NO iniciada.
 - Web CI #57 / ID 37313606655: SUCCESS sobre SHA `bd697d2a7b24cecbb61ab7c9c4966b7dd7419c31`.
 - Android CI #156 / ID 37313606581: SUCCESS sobre el mismo SHA; no se modificó Android.
 - Esta documentación genera un nuevo commit y requiere una última ejecución Web + Android sobre ese HEAD antes del cierre definitivo.
+
+## T030 — Web Image Input UX
+
+ESTADO:
+IMPLEMENTADA EN RAMA; PR #15 abierta y no fusionada. Decisión GREEN queda exclusivamente para CEREBRO.
+
+BASELINE FUNCIONAL:
+T029 HEAD `395ec1fe741b72de90299e93c6c7c5dad9dac909`. T029 PR #14 permanece OPEN y `main` todavía conserva el baseline anterior; T030 se construyó desde el HEAD T029 para reutilizar su pipeline sin fusionar T029 automáticamente.
+
+BRANCH:
+`t030-web-image-input-ux`.
+
+OBJETIVO:
+- Drag & Drop de archivos de imagen sobre el Canvas existente.
+- Paste desde Clipboard cuando existe un item `image/*`.
+- Picker T029 permanece operativo.
+- Los tres caminos convergen en una única función de UI `importImageIntoEditor()` y en la única transacción `applyImageFileImport()`.
+
+IMPLEMENTACIÓN:
+- `web/domain/image-input.mjs` reutiliza `validateImageFile()` para seleccionar el primer archivo válido del drop.
+- Un drop múltiple selecciona únicamente el primer archivo de imagen válido; no existe importación múltiple.
+- Clipboard busca exclusivamente items `image/*`; texto normal no se intercepta.
+- `getAsFile()` nulo, ausente o con excepción se ignora sin mutar el Document.
+- `applyImageFileImport()` reutiliza Image Layer, FileReader, Image(), DocumentHistory y persistencia localStorage.
+- Ante fallo de persistencia, `discardLastRecord()` elimina únicamente la operación fallida y preserva el Redo histórico previo.
+- Feedback visual mínimo mediante clase temporal `drop-active`.
+- No se creó segundo renderer, history, persistence, decoder, selector o Image Layer.
+
+TESTS:
+- Drop válido, inválido, sin archivos y múltiples archivos.
+- Clipboard imagen, texto, múltiples items, `getAsFile()` nulo/ausente/excepción.
+- Validación, lectura y decode fallidos.
+- Persistencia fallida para picker/drop/clipboard.
+- Undo/Redo del import.
+- Test estructural que verifica convergencia de picker/drop/paste en la misma ruta.
+- Suite completa Web y regresión Android pendientes de evidencia final sobre el HEAD documentado.
+
+ARCHIVOS MODIFICADOS T030:
+- `web/app.js`
+- `web/domain/image-import.mjs`
+- `web/domain/image-input.mjs`
+- `web/test/image-input.test.mjs`
+- `web/styles.css`
+- `docs/CONTINUITY.md`
+
+ANDROID:
+No modificado. Android CI es únicamente regresión.
+
+FUERA DE ALCANCE:
+- IndexedDB.
+- Asset Manager.
+- Importación múltiple completa.
+- Clipboard de texto.
+- Crop, filtros, efectos, máscaras, blend modes, background removal, IA, OCR.
+- Text/Shape Layer, multi-selection, grouping, snapping, guides, rulers.
+- PWA, cloud/backend, WebView y cambios Android.
+
+LIMITACIONES:
+- La CI actual no contiene E2E físico de navegador para arrastrar un archivo real ni leer el portapapeles del sistema.
+- localStorage continúa siendo la persistencia existente; IndexedDB queda fuera de T030.
+
+PR:
+#15 — T030: Web image input UX.
+OPEN; no fusionada. Target `main`.
+PR #14/T029 continúa OPEN y no fusionada.
+
+SIGUIENTE TAREA:
+NO INICIADA.
