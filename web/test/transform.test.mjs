@@ -43,3 +43,16 @@ test("invalid or missing layer operations are safe no-ops", () => {
   assert.equal(scaleLayer(document, document.layers[0].id, 0), null);
   assert.equal(rotateLayer(document, "missing", 10), null);
 });
+
+import { DocumentHistory } from "../domain/history.mjs";
+
+test("layer transform operation integrates with the existing DocumentHistory", () => {
+  const before = createDocument();
+  const after = translateLayer(before, before.layers[0].id, 25, 5);
+  const history = new DocumentHistory(before);
+  history.record(before, after);
+  const undone = history.undo(after);
+  assert.deepEqual(undone.layers[0].transform, { x: 0, y: 0, scale: 1, rotation: 0 });
+  const redone = history.redo(undone);
+  assert.deepEqual(redone.layers[0].transform, { x: 25, y: 5, scale: 1, rotation: 0 });
+});
