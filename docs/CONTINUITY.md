@@ -696,15 +696,15 @@ FORMATOS:
 La UI acepta image/*. La decodificación final depende de los formatos que el navegador pueda abrir mediante Image(); no se agregó decoder ni librería externa.
 
 TESTS:
-- Web CI #49 / ID 37302522897: SUCCESS.
+- Web CI #49 / ID 37302522897 (implementación previa): SUCCESS.
 - Build PASS.
 - Test PASS.
 - Verify build output PASS.
 - Suite completa: 162/162 PASS, 0 FAIL, 0 cancelled, 0 skipped.
-- Tests T029 deterministas y sin URLs externas.
+- Tests T029: 14 tests deterministas, sin URLs externas.
 
 ANDROID REGRESSION:
-- Android CI #148 / ID 37302522852: SUCCESS.
+- Android CI #148 / ID 37302522852 (implementación previa): SUCCESS.
 - Build PASS.
 - Unit Tests PASS.
 - Lint PASS.
@@ -733,3 +733,11 @@ No fusionado. La decisión de merge corresponde a CEREBRO.
 T030:
 NO iniciada.
 
+
+
+### T029 — Corrección posterior a auditoría CEREBRO
+
+- La auditoría detectó que el botón `+ Image` aún creaba el fixture `Test Image` y no abría el selector. Corregido: `+ Image` ahora ejecuta `imageFileInput.click()`; la ruta de importación real queda como única acción del botón.
+- Se corrigió la frontera de persistencia/History para que el snapshot solo quede aplicado al estado del editor después de que History y persistencia hayan sido aceptados; un fallo de persistencia revierte la entrada histórica.
+- Conteo corregido: T029 tiene 14 tests en `web/test/image-import.test.mjs`.
+- Esta corrección queda pendiente de CI Web + Android antes del cierre de T029.
