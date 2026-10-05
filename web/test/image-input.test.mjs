@@ -252,7 +252,7 @@ test("existing image import decoder path remains unchanged", async () => {
 
 test("app defines exactly one importImageIntoEditor implementation", () => {
   const app = readFileSync(new URL("../app.js", import.meta.url), "utf8");
-  assert.equal((app.match(/async function importImageIntoEditor\\s*\\(/g) || []).length, 1);
+  assert.equal((app.match(/async function importImageIntoEditor\s*\(/g) || []).length, 1);
   assert.doesNotMatch(app, /const \\{ layer \\} = await importImageFile\\(file\\)/);
 });
 
