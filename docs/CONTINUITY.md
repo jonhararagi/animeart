@@ -963,3 +963,70 @@ CRITERIO DE ACEPTACIÓN:
 - Corrected `web/app.js`: visibility and opacity now use the normal locked-layer guard; only the lock toggle may use `allowLocked: true` so a locked Layer can be unlocked.
 - Added a deterministic UI wiring regression asserting the contract: no `allowLocked` for visibility/opacity and explicit `allowLocked` only for the lock toggle.
 - T030, Android code, domain operation architecture and persistence architecture remain unchanged.
+
+## T032 — Web Layer Lifecycle / Management
+
+ESTADO:
+GREEN EN RAMA / PR ABIERTA. Implementación y regresión verificadas por CI real. No fusionada todavía.
+
+BASELINE:
+main @ f887df791ff42b4c03d6cbbd981bc18da1ddd977.
+
+BRANCH:
+t032-web-layer-lifecycle.
+
+IMPLEMENTACIÓN:
+- Se reutilizó la frontera existente de web/domain/document-operations.mjs para rename, duplicate, delete y reorder.
+- Rename modifica únicamente el nombre.
+- Duplicate crea un ID nuevo y una copia profunda independiente, conservando contenido, transform y propiedades.
+- Delete impide dejar el Document sin Layers.
+- Reorder intercambia determinísticamente Layers adyacentes sin alterar contenido ni propiedades.
+- La UI existente de Layers fue ampliada con controles mínimos para las cuatro operaciones.
+- Las operaciones usan la única selección existente, DocumentHistory, persistencia localStorage y renderer existente.
+- No se creó LayerManager, LayerStore, LayerHistory, LayerRenderer, SelectionManager ni PersistenceManager.
+- No se creó segundo Document, History, Renderer, Persistence o Selection.
+- Android no fue modificado.
+
+TESTS:
+- Web CI ejecutó npm run build: PASS.
+- Web CI ejecutó npm test: 234/234 PASS, 0 FAIL, 0 cancelled, 0 skipped.
+- Web CI verificó dist/index.html: PASS.
+- Tests T032 cubren rename, duplicate, delete, reorder, nuevo ID, copia profunda, conservación de propiedades, documento no vacío, Undo/Redo y wiring/guardas de UI.
+- La suite existente de T029/T030/T031 permanece PASS dentro de las 234 pruebas.
+
+CI WEB:
+- Run #76 / ID 37397032549.
+- SHA: e0165fb10c97f354939dc88f54aa10e7a5ba93a0.
+- SUCCESS.
+
+CI ANDROID:
+- Run #175 / ID 37397032519.
+- SHA: e0165fb10c97f354939dc88f54aa10e7a5ba93a0.
+- SUCCESS.
+- Build PASS.
+- Unit Tests PASS.
+- Lint PASS.
+- Android Startup Smoke PASS.
+- Debug APK upload PASS.
+- No hubo cambios Android.
+
+ERRORES ENCONTRADOS:
+- La ejecución local desde este entorno no pudo clonar GitHub porque la resolución DNS de github.com no estaba disponible.
+- No hubo fallos funcionales en la ejecución CI final de T032.
+
+REPARACIONES:
+- No fueron necesarias reparaciones posteriores a la ejecución CI final.
+- La imposibilidad de ejecutar localmente se compensó con la ejecución real de Web CI y Android CI sobre el SHA final de implementación.
+
+PENDIENTES:
+- PR #17 sigue OPEN y aún no se ha fusionado.
+- La decisión de merge queda para la gobernanza de CEREBRO.
+- No quedan verificaciones técnicas obligatorias pendientes para declarar T032 GREEN en rama.
+
+DEUDA TÉCNICA:
+- La CI no incluye E2E físico de navegador.
+- localStorage continúa siendo la persistencia Web existente; IndexedDB queda fuera de T032.
+- window.prompt es una UI mínima para Rename; edición inline puede considerarse UX futura, fuera de T032.
+
+SIGUIENTE TAREA:
+Realizar una nueva auditoría de continuidad después de decidir el merge de T032; no ampliar T032 retrospectivamente.

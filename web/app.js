@@ -1,7 +1,7 @@
 import { createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
-import { rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerVisibility, translateLayer, updateLayerTransform } from "./domain/document-operations.mjs";
+import { deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerVisibility, translateLayer, updateLayerTransform } from "./domain/document-operations.mjs";
 import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { hitTestHandle, hitTestLayer, resizeTransformFromCorner, selectionGeometry } from "./domain/selection.mjs";
@@ -225,26 +225,64 @@ function renderLayers() {
     });
 
     const opacity = document.createElement("input");
-    opacity.type = "range";
-    opacity.min = "0";
-    opacity.max = "1";
-    opacity.step = "0.01";
-    opacity.value = String(layer.opacity);
-    opacity.className = "layer-opacity";
-    opacity.title = "Layer opacity";
+    opacity.type = "range"; opacity.min = "0"; opacity.max = "1"; opacity.step = "0.01";
+    opacity.value = String(layer.opacity); opacity.className = "layer-opacity"; opacity.title = "Layer opacity";
     opacity.setAttribute("aria-label", "Opacity for " + layer.name);
     opacity.addEventListener("click", event => event.stopPropagation());
     opacity.addEventListener("change", event => {
       event.stopPropagation();
-      const nextOpacity = Number(event.currentTarget.value);
-      applyLayerOperation((doc, id) => setLayerOpacity(doc, id, nextOpacity), "Layer opacity changed");
+      applyLayerOperation((doc, id) => setLayerOpacity(doc, id, Number(event.currentTarget.value)), "Layer opacity changed");
     });
 
-    const controls = document.createElement("div");
-    controls.className = "layer-controls";
-    controls.append(visibilityButton, lockButton, opacity);
+    const renameButton = document.createElement("button");
+    renameButton.type = "button"; renameButton.className = "layer-action"; renameButton.textContent = "Rename"; renameButton.title = "Rename layer";
+    renameButton.addEventListener("click", event => {
+      event.stopPropagation();
+      if (layer.locked) return;
+      const requested = window.prompt("Layer name", layer.name);
+      if (requested === null) return;
+      applyLayerOperation((doc, id) => renameLayer(doc, id, requested), "Layer renamed");
+    });
 
-    li.append(selectButton, controls);
+    const duplicateButton = document.createElement("button");
+    duplicateButton.type = "button"; duplicateButton.className = "layer-action"; duplicateButton.textContent = "Duplicate"; duplicateButton.title = "Duplicate layer";
+    duplicateButton.addEventListener("click", event => {
+      event.stopPropagation();
+      if (layer.locked) return;
+      const before = cloneDocument(state.document);
+      const next = duplicateLayer(state.document, layer.id);
+      if (!next) return;
+      const originalIndex = state.document.layers.findIndex(item => item.id === layer.id);
+      const duplicate = next.layers[originalIndex + 1];
+      state.document = next; state.selectedLayerId = duplicate.id;
+      state.history.record(before, next); refreshDocument("Layer duplicated"); persistDocument();
+    });
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button"; deleteButton.className = "layer-action"; deleteButton.textContent = "Delete"; deleteButton.title = "Delete layer";
+    deleteButton.addEventListener("click", event => {
+      event.stopPropagation();
+      if (layer.locked || state.document.layers.length <= 1) return;
+      applyLayerOperation(deleteLayer, "Layer deleted");
+    });
+
+    const reorderUpButton = document.createElement("button");
+    reorderUpButton.type = "button"; reorderUpButton.className = "layer-action"; reorderUpButton.textContent = "↑"; reorderUpButton.title = "Move layer up";
+    reorderUpButton.addEventListener("click", event => {
+      event.stopPropagation(); if (layer.locked) return;
+      applyLayerOperation((doc, id) => reorderLayer(doc, id, "up"), "Layer moved up");
+    });
+
+    const reorderDownButton = document.createElement("button");
+    reorderDownButton.type = "button"; reorderDownButton.className = "layer-action"; reorderDownButton.textContent = "↓"; reorderDownButton.title = "Move layer down";
+    reorderDownButton.addEventListener("click", event => {
+      event.stopPropagation(); if (layer.locked) return;
+      applyLayerOperation((doc, id) => reorderLayer(doc, id, "down"), "Layer moved down");
+    });
+
+    const controls = document.createElement("div"); controls.className = "layer-controls"; controls.append(visibilityButton, lockButton, opacity);
+    const lifecycle = document.createElement("div"); lifecycle.className = "layer-lifecycle"; lifecycle.append(renameButton, duplicateButton, deleteButton, reorderUpButton, reorderDownButton);
+    li.append(selectButton, controls, lifecycle);
     layersEl.appendChild(li);
   });
 }

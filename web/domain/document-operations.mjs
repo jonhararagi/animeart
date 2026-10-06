@@ -65,3 +65,43 @@ export function setLayerOpacity(document, layerId, opacity) {
   layer.opacity = Math.min(1, Math.max(0, value));
   return next;
 }
+
+
+export function renameLayer(document, layerId, name) {
+  const next = cloneDocument(document);
+  const layer = next.layers.find(item => item.id === layerId);
+  const normalizedName = typeof name === "string" ? name.trim() : "";
+  if (!layer || !normalizedName) return null;
+  layer.name = normalizedName;
+  return next;
+}
+
+export function duplicateLayer(document, layerId) {
+  const next = cloneDocument(document);
+  const index = next.layers.findIndex(item => item.id === layerId);
+  if (index < 0) return null;
+  const duplicate = cloneDocument({ ...next, layers: [next.layers[index]] }).layers[0];
+  duplicate.id = crypto.randomUUID();
+  duplicate.name = next.layers[index].name + " Copy";
+  next.layers.splice(index + 1, 0, duplicate);
+  return next;
+}
+
+export function deleteLayer(document, layerId) {
+  if (!document || !Array.isArray(document.layers) || document.layers.length <= 1) return null;
+  const next = cloneDocument(document);
+  const index = next.layers.findIndex(item => item.id === layerId);
+  if (index < 0) return null;
+  next.layers.splice(index, 1);
+  return next;
+}
+
+export function reorderLayer(document, layerId, direction) {
+  const next = cloneDocument(document);
+  const index = next.layers.findIndex(item => item.id === layerId);
+  if (index < 0 || !["up", "down"].includes(direction)) return null;
+  const targetIndex = direction === "up" ? index + 1 : index - 1;
+  if (targetIndex < 0 || targetIndex >= next.layers.length) return null;
+  [next.layers[index], next.layers[targetIndex]] = [next.layers[targetIndex], next.layers[index]];
+  return next;
+}
