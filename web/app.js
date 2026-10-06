@@ -528,7 +528,8 @@ function beginSelectionInteraction(event) {
     }
   }
   if (selectedHit === "move" && state.selectedLayerIds.length === 1) {
-  if (selectedHit === "move") return beginTransformInteraction("move", event);
+    return beginTransformInteraction("move", event);
+  }
   if (selectedHit?.startsWith("scale-")) return beginTransformInteraction("scale", event, selectedHit);
   if (selectedHit === "rotate") return beginTransformInteraction("rotate", event);
   const documentPoint = screenToDocument(screenPoint, state.viewport, canvasCenter());
@@ -728,8 +729,8 @@ document.querySelectorAll(".tool").forEach(button => {
   button.addEventListener("click", () => {
     state.tool = button.dataset.tool;
     if (state.tool !== "select" && state.multiTransformInteraction) {
-    state.multiTransformInteraction = null;
-  }
+      state.multiTransformInteraction = null;
+    }
     if (state.tool !== "select" && state.transformInteraction) finishTransformInteraction(true);
     document.querySelectorAll(".tool").forEach(b => b.classList.toggle("active", b === button));
     redraw();
