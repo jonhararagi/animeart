@@ -239,3 +239,55 @@ test("PNG export is non-destructive and existing undo/redo remain intact", async
   assert.match(js, /state\.history\.undo/);
   assert.match(js, /state\.history\.redo/);
 });
+
+
+test("T040 drawing commits one history operation and preserves persistence failure feedback", async () => {
+  const js = await readFile("app.js", "utf8");
+  const pointerUp = js.match(/canvas\.addEventListener\("pointerup",[\s\S]*?canvas\.addEventListener\("pointercancel"/)?.[0] || "";
+  assert.match(pointerUp, /state\.history\.record\(before, state\.document\)/);
+  assert.match(pointerUp, /persistDocument\(\)/);
+  assert.doesNotMatch(pointerUp, /status\.textContent = "Unsaved local changes"/);
+  assert.doesNotMatch(pointerUp, /history\.record\([^\n]*state\.viewport/);
+});
+
+test("T040 transforms commit before refresh and keep storage failure visible", async () => {
+  const js = await readFile("app.js", "utf8");
+  const transform = js.match(/function finishTransformInteraction[\s\S]*?\n}\n\nfunction updateTransformPreview/)?.[0] || "";
+  assert.match(transform, /state\.history\.record\(before, next\)/);
+  assert.match(transform, /refreshDocument\("Layer transformed"\);\n  if \(next\) persistDocument\(\)/);
+  assert.doesNotMatch(transform, /persistDocument\(\);\n  refreshDocument\("Layer transformed"/);
+});
+
+test("T040 dirty state means changes since the last explicit save", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /state\.dirty = !markSaved/);
+  assert.match(js, /state\.dirty = true/);
+  assert.match(js, /state\.dirty = false/);
+  assert.match(js, /persistDocument\(\{ markSaved: true \}\)/);
+  assert.match(js, /state\.history\.reset\(restored\)/);
+  assert.match(js, /state\.history\.reset\(next\)/);
+  assert.match(js, /Discard changes since the last explicit save/);
+});
+
+test("T040 persistence failure keeps the current Document and History intact", async () => {
+  const js = await readFile("app.js", "utf8");
+  const persist = js.match(/function persistDocument[\s\S]*?\n}\n\nfunction refreshHistoryControls/)?.[0] || "";
+  assert.match(persist, /persistDocumentSnapshot\(localStorage, "animeart-web-document", state\.document\)/);
+  assert.match(persist, /catch \(error\)/);
+  assert.match(persist, /state\.dirty = true/);
+  assert.match(persist, /return false/);
+  assert.doesNotMatch(persist, /state\.document\s*=/);
+  assert.doesNotMatch(persist, /state\.history\./);
+  assert.doesNotMatch(persist, /Saved locally/);
+});
+
+test("T040 all persistible lifecycle mutations use the existing History then persistence boundary", async () => {
+  const js = await readFile("app.js", "utf8");
+  const requiredSequences = [
+    /state\.history\.record\(before, state\.document\)[\s\S]{0,180}persistDocument\(\)/,
+    /state\.history\.record\(before, next\)[\s\S]{0,180}refreshDocument\([^)]+\)[\s\S]{0,80}persistDocument\(\)/,
+    /state\.history\.record\(before, state\.document\)[\s\S]{0,220}persistDocument\(\)/
+  ];
+  for (const pattern of requiredSequences) assert.match(js, pattern);
+  assert.doesNotMatch(js, /MutationManager|DocumentTransactionManager|DocumentStore|EditorStateManager|PersistenceManager|HistoryManager/);
+});
