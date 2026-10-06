@@ -1436,3 +1436,60 @@ INCIDENCIAS:
 
 RESULTADO:
 T038 queda integrado y verificado en main. El editor Web conserva una única arquitectura de selección, transform, viewport, history, persistence y renderer; T038 añade únicamente la capacidad de selección múltiple y movimiento grupal dentro de esas fronteras existentes.
+
+## T039 — Web Persistence Hardening
+
+ESTADO:
+GREEN — persistence contract hardened and integrated.
+
+BASELINE:
+`83ff9f319effa28b0b8286a1f4ab815ff45db018`
+
+BRANCH:
+`t039-web-persistence-hardening`
+
+CANDIDATE FINAL:
+`1669da48e60698f836f06d6288407b78182779ad`
+
+PR:
+#24 — T039: Web persistence hardening.
+
+IMPLEMENTADO:
+- Normal save/backup now routes through the existing `persistDocumentSnapshot()` contract.
+- Existing `serializeDocumentForStorage()` remains the single serialization/size boundary.
+- Existing `restoreDocument()` remains the sole recovery boundary, including legacy migration.
+- Storage and size failures are controlled; the current Document remains intact and explicit save is not marked successful.
+- Image documents continue through the same serializer and restore path.
+- History remains separate from persistence success; no second History or persistence system was introduced.
+- No IndexedDB, cloud, backend, autosave framework or alternate storage format.
+
+TESTS:
+- Serialization size guard.
+- Storage failure handling.
+- Normal save persistence contract wiring.
+- Image + drawing + transform serialize/restore round-trip.
+- Existing legacy document restoration.
+- Existing image import persistence rollback tests.
+- Full Web regression suite.
+
+PRE-MERGE:
+- Web CI #116 / ID 37501776142: SUCCESS on `1669da48e60698f836f06d6288407b78182779ad`.
+- Android CI #215 / ID 37501776357: SUCCESS on `1669da48e60698f836f06d6288407b78182779ad`.
+
+MERGE:
+- PR #24 MERGED.
+- Merge SHA: `80c480effc9426a0ecbce0a0f124ad0fcd40e966`.
+
+POST-MERGE:
+- Web CI #117 / ID 37502347802: SUCCESS on merge SHA.
+- Android CI #216 / ID 37502347805: SUCCESS on merge SHA.
+
+INCIDENCIAS:
+- Web CI #113 / ID 37500847907 failed because the new smoke assertion was inserted into the wrong existing test and referenced an undefined variable.
+- Web CI #114 / ID 37500966176 then exposed an existing brittle assertion expecting the old direct JSON.stringify persistence shape.
+- Repairs moved the new contract assertion to the document lifecycle test and adapted the old assertion to the real persistence boundary.
+- Final branch CI #116/#215 passed; post-merge #117/#216 passed.
+- No cancelled, skipped or queued run was counted as positive evidence.
+
+RESULTADO:
+T039 is integrated. The Web editor now has one coherent persistence contract from serialization through localStorage and one recovery boundary through restoreDocument().
