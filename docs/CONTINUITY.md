@@ -963,3 +963,56 @@ CRITERIO DE ACEPTACIÓN:
 - Corrected `web/app.js`: visibility and opacity now use the normal locked-layer guard; only the lock toggle may use `allowLocked: true` so a locked Layer can be unlocked.
 - Added a deterministic UI wiring regression asserting the contract: no `allowLocked` for visibility/opacity and explicit `allowLocked` only for the lock toggle.
 - T030, Android code, domain operation architecture and persistence architecture remain unchanged.
+
+## T032 — Web Layer Lifecycle / Management
+
+ESTADO:
+IMPLEMENTADA EN RAMA; pendiente de CI final y merge. No declarar GREEN hasta verificar Web CI y Android CI SUCCESS sobre el mismo SHA final.
+
+BASELINE:
+main @ f887df791ff42b4c03d6cbbd981bc18da1ddd977.
+
+BRANCH:
+t032-web-layer-lifecycle.
+
+IMPLEMENTACIÓN:
+- Se reutilizó la frontera existente de web/domain/document-operations.mjs para rename, duplicate, delete y reorder.
+- Rename modifica únicamente el nombre.
+- Duplicate crea un ID nuevo mediante el frontera de dominio y una copia profunda independiente, conservando contenido, transform y propiedades.
+- Delete impide dejar el Document sin Layers.
+- Reorder intercambia determinísticamente Layers adyacentes sin alterar su contenido.
+- La UI existente de Layers fue ampliada con controles mínimos para las cuatro operaciones.
+- Las operaciones usan la única selección existente, DocumentHistory, persistencia localStorage y renderer existente.
+- No se creó arquitectura paralela ni segundo Document, History, Renderer, Persistence o Selection.
+- No se modificó Android.
+
+TESTS:
+- Añadidos tests de rename, duplicate, delete, reorder, independencia de referencias, conservación de propiedades, protección de Document no vacío y reversibilidad mediante DocumentHistory.
+- Añadidos tests estructurales de wiring UI y guardas de Layer bloqueada.
+- La regresión T029/T030/T031 permanece cubierta por la suite existente; la verificación final depende de CI.
+
+CI WEB:
+Pendiente sobre el SHA final de T032.
+
+CI ANDROID:
+Pendiente sobre el SHA final de T032; solo regresión, sin cambios Android.
+
+ERRORES ENCONTRADOS:
+Pendiente de evidencia de CI.
+
+REPARACIONES:
+Pendiente de evidencia de CI.
+
+PENDIENTES:
+- Ejecutar/esperar Web CI real.
+- Ejecutar/esperar Android CI real.
+- Reparar cualquier fallo real.
+- Crear/actualizar PR y obtener revisión/merge según gobernanza.
+
+DEUDA TÉCNICA:
+- La CI no incluye E2E físico de navegador.
+- localStorage continúa siendo la persistencia Web existente; IndexedDB queda fuera de T032.
+- window.prompt es una UI mínima para Rename; una edición inline puede considerarse UX futura, fuera de T032.
+
+SIGUIENTE TAREA:
+Decidir después del cierre de T032 mediante nueva auditoría de continuidad.
