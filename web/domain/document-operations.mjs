@@ -23,6 +23,25 @@ export function translateLayer(document, layerId, deltaX, deltaY) {
   });
 }
 
+export function translateLayers(document, layerIds, deltaX, deltaY) {
+  const ids = new Set(Array.isArray(layerIds) ? layerIds : []);
+  if (!ids.size) return null;
+  const next = cloneDocument(document);
+  const dx = Number(deltaX);
+  const dy = Number(deltaY);
+  if (!Number.isFinite(dx) || !Number.isFinite(dy)) return null;
+  for (const layer of next.layers) {
+    if (!ids.has(layer.id)) continue;
+    if (layer.locked) return null;
+    layer.transform = normalizeTransform({
+      ...layer.transform,
+      x: layer.transform.x + dx,
+      y: layer.transform.y + dy
+    });
+  }
+  return next;
+}
+
 export function scaleLayer(document, layerId, factor) {
   const layer = document.layers.find(item => item.id === layerId);
   const multiplier = Number(factor);
