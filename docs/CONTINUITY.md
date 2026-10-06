@@ -1020,3 +1020,73 @@ NO HACER:
 - No ampliar T032 retrospectivamente.
 - No iniciar T033 dentro del cierre de T032.
 
+
+
+## T034 — Web Document / Project Lifecycle
+
+ESTADO:
+INTEGRADA EN MAIN. PR #18 fusionada correctamente y CI pre-merge/post-merge verificado sobre los SHAs correspondientes.
+
+BASELINE:
+main @ 86d1f6c59e58d1c0730edab2bf9b16b961f19926.
+
+BRANCH:
+t034-web-document-project-lifecycle.
+
+CANDIDATE:
+39466d3cae46beeb4b6f552ffbfff68d0979ab6e.
+
+IMPLEMENTACIÓN:
+- Flujo explícito New Document con ancho/alto configurables y validación de enteros positivos.
+- Protección de reemplazo mediante confirmación cuando existen cambios desde el último Save explícito.
+- Save explícito reutilizando la persistencia localStorage existente.
+- Open / Recover explícito reutilizando la misma clave de proyecto y restoreDocument().
+- Reset de DocumentHistory al crear o recuperar un documento.
+- Estado dirty mínimo para distinguir cambios pendientes del último Save explícito.
+- Se mantienen el Document, Layer, Document Operations, DocumentHistory, localStorage y renderer existentes.
+- No se creó DocumentManager, ProjectManager, PersistenceManager, HistoryManager ni arquitectura paralela.
+- Android no fue modificado.
+
+ARCHIVOS MODIFICADOS:
+- web/app.js
+- web/index.html
+- web/styles.css
+- web/test/domain.test.mjs
+- web/test/smoke.test.mjs
+
+PRE-MERGE:
+- PR #18 — T034: Web document and project lifecycle.
+- Web CI #80 / ID 37412753014: SUCCESS sobre SHA 39466d3cae46beeb4b6f552ffbfff68d0979ab6e.
+- Web: Build PASS, Test PASS, Verify build output PASS.
+- Android CI #179 / ID 37412752935: SUCCESS sobre SHA 39466d3cae46beeb4b6f552ffbfff68d0979ab6e.
+- Android: Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, Debug APK PASS.
+
+MERGE:
+- PR #18: MERGED.
+- Merge SHA: 55f54a33922d02475cc6ca64130fece43f14b60e.
+- main HEAD inmediatamente después del merge: 55f54a33922d02475cc6ca64130fece43f14b60e.
+
+POST-MERGE:
+- Web CI #81 / ID 37465374753: SUCCESS sobre SHA 55f54a33922d02475cc6ca64130fece43f14b60e.
+- Web: Build PASS, Test PASS, Verify build output PASS.
+- Android CI #180 / ID 37465374763: SUCCESS sobre SHA 55f54a33922d02475cc6ca64130fece43f14b60e.
+- Android: Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, Debug APK PASS.
+
+CONTINUIDAD:
+- T032 → T033 → T034.
+- T033 fue una auditoría/definición de MVP y no implementó código.
+- T034 completa el ciclo de vida Web de documento/proyecto dentro del alcance MVP definido.
+- T035 queda NO iniciada.
+
+FUERA DE ALCANCE:
+- T035 Brush Controls.
+- T036 PNG Export.
+- T037 E2E final.
+- Multi-project management, IndexedDB, cloud, AI, OCR, background removal, smart shading, PWA y cambios Android.
+
+ARQUITECTURA:
+REUTILIZAR > ADAPTAR > CREAR.
+La cadena continúa siendo: Layer → Document → Document Operations → DocumentHistory → Persistence → Renderer.
+
+VERIFICACIÓN:
+T034 cumple el gate de implementación, pre-merge CI, merge, post-merge CI y presencia en main. No se conocen regresiones nuevas derivadas de T034.
