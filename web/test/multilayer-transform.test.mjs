@@ -13,6 +13,29 @@ function imagePair() {
   return { a, b };
 }
 
+test("T042 reference uses the existing transform pipeline for move scale and rotation", () => {
+  const { a } = imagePair();
+  a.isReference = true;
+  const document = { ...createDocument(), layers: [a] };
+  let next = transformLayers(document, [{
+    id: a.id,
+    transform: { x: 30, y: 15, scale: 2, rotation: 45 }
+  }]);
+  assert.deepEqual(next.layers[0].transform, { x: 30, y: 15, scale: 2, rotation: 45 });
+  assert.equal(next.layers[0].isReference, true);
+});
+
+test("T042 reference visibility and opacity remain ordinary layer state", () => {
+  const { a } = imagePair();
+  a.isReference = true;
+  a.visible = false;
+  a.opacity = 0.25;
+  const restored = JSON.parse(JSON.stringify({ ...createDocument(), layers: [a] }));
+  assert.equal(restored.layers[0].isReference, true);
+  assert.equal(restored.layers[0].visible, false);
+  assert.equal(restored.layers[0].opacity, 0.25);
+});
+
 test("T041 group scale preserves relative centers and scales every selected layer", () => {
   const { a, b } = imagePair();
   const pivot = { x: 0, y: 0 };

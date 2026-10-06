@@ -4,6 +4,7 @@ import { createDocument, createLayer, createStroke, createStrokePoint, restoreDo
 import {
   deleteLayer,
   duplicateLayer,
+  setLayerReference,
   renameLayer,
   reorderLayer,
   setLayerLocked,
@@ -21,7 +22,7 @@ import { join } from "node:path";
 
 const ROOT = join(import.meta.dirname, "..");
 
-test("MVP E2E contract: create → draw → layers → lock → undo/redo → save/recover → PNG", async () => {
+test("T042 E2E contract: import image → reference → opacity/lock → drawing → save/recover → PNG", async () => {
   const app = await readFile(join(ROOT, "app.js"), "utf8");
   const html = await readFile(join(ROOT, "index.html"), "utf8");
 
@@ -31,6 +32,8 @@ test("MVP E2E contract: create → draw → layers → lock → undo/redo → sa
   assert.match(html, /id="export-png"/);
   assert.match(app, /createNewDocumentFromForm/);
   assert.match(app, /persistDocument\(\{ markSaved: true \}\)/);
+  assert.match(app, /setLayerReference/);
+  assert.match(app, /isReference/);
   assert.match(app, /restoreStoredProject/);
   assert.match(app, /async function exportPng/);
 
@@ -77,6 +80,28 @@ test("MVP E2E contract: create → draw → layers → lock → undo/redo → sa
   next = setLayerVisibility(next, duplicateId, true);
   next = setLayerLocked(next, duplicateId, true);
   assert.equal(next.layers.find(layer => layer.id === duplicateId).locked, true);
+
+  const referenceImage = (await import("../domain/model.mjs")).createImageLayer(
+    "Reference", 320, 240, "data:image/png;base64,reference"
+  );
+  next = { ...next, layers: [...next.layers, referenceImage] };
+  next = setLayerReference(next, referenceImage.id, true);
+  assert.equal(next.layers.at(-1).isReference, true);
+  next = setLayerOpacity(next, referenceImage.id, 0.5);
+  next = setLayerLocked(next, referenceImage.id, true);
+  assert.equal(next.layers.at(-1).opacity, 0.5);
+  assert.equal(next.layers.at(-1).locked, true);
+
+  const drawingAbove = createLayer("Tracing");
+  drawingAbove.strokes.push(createStroke("brush", 5, [
+    createStrokePoint(20, 30), createStrokePoint(60, 70)
+  ]));
+  next = { ...next, layers: [...next.layers, drawingAbove] };
+  documentModel = next;
+  assert.equal(documentModel.layers.at(-2).isReference, true);
+  assert.equal(documentModel.layers.at(-1).contentType, "drawing");
+  assert.equal(documentModel.layers.at(-1).strokes.length, 1);
+  assert.equal(documentModel.layers.at(-2).strokes.length, 0);
 
   history.record(base, next);
   documentModel = next;

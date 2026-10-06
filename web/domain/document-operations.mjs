@@ -94,6 +94,14 @@ export function setLayerLocked(document, layerId, locked) {
   return next;
 }
 
+export function setLayerReference(document, layerId, isReference) {
+  const next = cloneDocument(document);
+  const layer = next.layers.find(item => item.id === layerId);
+  if (!layer || layer.contentType !== "image" || typeof isReference !== "boolean") return null;
+  layer.isReference = isReference;
+  return next;
+}
+
 export function setLayerOpacity(document, layerId, opacity) {
   const next = cloneDocument(document);
   const layer = next.layers.find(item => item.id === layerId);

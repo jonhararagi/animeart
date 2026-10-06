@@ -1,7 +1,7 @@
 import { createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
-import { deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerVisibility, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerReference, setLayerVisibility, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
@@ -301,7 +301,7 @@ function renderLayers() {
     const selectButton = document.createElement("button");
     selectButton.type = "button";
     selectButton.className = "layer-select";
-    selectButton.textContent = layer.name + (layer.contentType === "image" ? " [Image]" : "");
+    selectButton.textContent = layer.name + (layer.contentType === "image" ? (layer.isReference ? " [Reference]" : " [Image]") : "");
     selectButton.setAttribute("aria-label", "Select " + layer.name);
     selectButton.addEventListener("click", event => {
       if (event.shiftKey) {
@@ -355,6 +355,22 @@ function renderLayers() {
       applyLayerOperation((doc, id) => renameLayer(doc, id, requested), "Layer renamed");
     });
 
+    const referenceButton = document.createElement("button");
+    referenceButton.type = "button";
+    referenceButton.className = "layer-action";
+    referenceButton.textContent = layer.isReference ? "Image" : "Reference";
+    referenceButton.title = layer.isReference ? "Convert reference to image" : "Use image as reference";
+    referenceButton.setAttribute("aria-label", referenceButton.title);
+    referenceButton.disabled = layer.contentType !== "image" || layer.locked;
+    referenceButton.addEventListener("click", event => {
+      event.stopPropagation();
+      if (layer.contentType !== "image" || layer.locked) return;
+      applyLayerOperation(
+        (doc, id) => setLayerReference(doc, id, !layer.isReference),
+        layer.isReference ? "Reference converted to image" : "Image converted to reference"
+      );
+    });
+
     const duplicateButton = document.createElement("button");
     duplicateButton.type = "button"; duplicateButton.className = "layer-action"; duplicateButton.textContent = "Duplicate"; duplicateButton.title = "Duplicate layer";
     duplicateButton.addEventListener("click", event => {
@@ -392,7 +408,7 @@ function renderLayers() {
     });
 
     const controls = document.createElement("div"); controls.className = "layer-controls"; controls.append(visibilityButton, lockButton, opacity);
-    const lifecycle = document.createElement("div"); lifecycle.className = "layer-lifecycle"; lifecycle.append(renameButton, duplicateButton, deleteButton, reorderUpButton, reorderDownButton);
+    const lifecycle = document.createElement("div"); lifecycle.className = "layer-lifecycle"; lifecycle.append(renameButton, referenceButton, duplicateButton, deleteButton, reorderUpButton, reorderDownButton);
     li.append(selectButton, controls, lifecycle);
     layersEl.appendChild(li);
   });
