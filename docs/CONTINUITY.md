@@ -967,7 +967,7 @@ CRITERIO DE ACEPTACIÓN:
 ## T032 — Web Layer Lifecycle / Management
 
 ESTADO:
-IMPLEMENTADA EN RAMA; pendiente de CI final y merge. No declarar GREEN hasta verificar Web CI y Android CI SUCCESS sobre el mismo SHA final.
+GREEN EN RAMA / PR ABIERTA. Implementación y regresión verificadas por CI real. No fusionada todavía.
 
 BASELINE:
 main @ f887df791ff42b4c03d6cbbd981bc18da1ddd977.
@@ -978,41 +978,55 @@ t032-web-layer-lifecycle.
 IMPLEMENTACIÓN:
 - Se reutilizó la frontera existente de web/domain/document-operations.mjs para rename, duplicate, delete y reorder.
 - Rename modifica únicamente el nombre.
-- Duplicate crea un ID nuevo mediante el frontera de dominio y una copia profunda independiente, conservando contenido, transform y propiedades.
+- Duplicate crea un ID nuevo y una copia profunda independiente, conservando contenido, transform y propiedades.
 - Delete impide dejar el Document sin Layers.
-- Reorder intercambia determinísticamente Layers adyacentes sin alterar su contenido.
+- Reorder intercambia determinísticamente Layers adyacentes sin alterar contenido ni propiedades.
 - La UI existente de Layers fue ampliada con controles mínimos para las cuatro operaciones.
 - Las operaciones usan la única selección existente, DocumentHistory, persistencia localStorage y renderer existente.
-- No se creó arquitectura paralela ni segundo Document, History, Renderer, Persistence o Selection.
-- No se modificó Android.
+- No se creó LayerManager, LayerStore, LayerHistory, LayerRenderer, SelectionManager ni PersistenceManager.
+- No se creó segundo Document, History, Renderer, Persistence o Selection.
+- Android no fue modificado.
 
 TESTS:
-- Añadidos tests de rename, duplicate, delete, reorder, independencia de referencias, conservación de propiedades, protección de Document no vacío y reversibilidad mediante DocumentHistory.
-- Añadidos tests estructurales de wiring UI y guardas de Layer bloqueada.
-- La regresión T029/T030/T031 permanece cubierta por la suite existente; la verificación final depende de CI.
+- Web CI ejecutó npm run build: PASS.
+- Web CI ejecutó npm test: 234/234 PASS, 0 FAIL, 0 cancelled, 0 skipped.
+- Web CI verificó dist/index.html: PASS.
+- Tests T032 cubren rename, duplicate, delete, reorder, nuevo ID, copia profunda, conservación de propiedades, documento no vacío, Undo/Redo y wiring/guardas de UI.
+- La suite existente de T029/T030/T031 permanece PASS dentro de las 234 pruebas.
 
 CI WEB:
-Pendiente sobre el SHA final de T032.
+- Run #76 / ID 37397032549.
+- SHA: e0165fb10c97f354939dc88f54aa10e7a5ba93a0.
+- SUCCESS.
 
 CI ANDROID:
-Pendiente sobre el SHA final de T032; solo regresión, sin cambios Android.
+- Run #175 / ID 37397032519.
+- SHA: e0165fb10c97f354939dc88f54aa10e7a5ba93a0.
+- SUCCESS.
+- Build PASS.
+- Unit Tests PASS.
+- Lint PASS.
+- Android Startup Smoke PASS.
+- Debug APK upload PASS.
+- No hubo cambios Android.
 
 ERRORES ENCONTRADOS:
-Pendiente de evidencia de CI.
+- La ejecución local desde este entorno no pudo clonar GitHub porque la resolución DNS de github.com no estaba disponible.
+- No hubo fallos funcionales en la ejecución CI final de T032.
 
 REPARACIONES:
-Pendiente de evidencia de CI.
+- No fueron necesarias reparaciones posteriores a la ejecución CI final.
+- La imposibilidad de ejecutar localmente se compensó con la ejecución real de Web CI y Android CI sobre el SHA final de implementación.
 
 PENDIENTES:
-- Ejecutar/esperar Web CI real.
-- Ejecutar/esperar Android CI real.
-- Reparar cualquier fallo real.
-- Crear/actualizar PR y obtener revisión/merge según gobernanza.
+- PR #17 sigue OPEN y aún no se ha fusionado.
+- La decisión de merge queda para la gobernanza de CEREBRO.
+- No quedan verificaciones técnicas obligatorias pendientes para declarar T032 GREEN en rama.
 
 DEUDA TÉCNICA:
 - La CI no incluye E2E físico de navegador.
 - localStorage continúa siendo la persistencia Web existente; IndexedDB queda fuera de T032.
-- window.prompt es una UI mínima para Rename; una edición inline puede considerarse UX futura, fuera de T032.
+- window.prompt es una UI mínima para Rename; edición inline puede considerarse UX futura, fuera de T032.
 
 SIGUIENTE TAREA:
-Decidir después del cierre de T032 mediante nueva auditoría de continuidad.
+Realizar una nueva auditoría de continuidad después de decidir el merge de T032; no ampliar T032 retrospectivamente.
