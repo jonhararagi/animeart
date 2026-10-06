@@ -1493,3 +1493,57 @@ INCIDENCIAS:
 
 RESULTADO:
 T039 is integrated. The Web editor now has one coherent persistence contract from serialization through localStorage and one recovery boundary through restoreDocument().
+
+
+---
+
+## T040 — Web Document Mutation Transaction Integrity
+
+BASELINE:
+- `main` verified at `efe176efe78f027eace9c8a46befb7b9495e0e6e` before modification.
+- Branch: `t040-web-document-mutation-transaction-integrity`.
+
+PROBLEMA AUDITADO:
+- The Web editor already reused the T039 persistence contract and a single `DocumentHistory`, but completion handlers for drawing and layer transform could overwrite the persistence error message after `persistDocument()` failed.
+- Direct in-memory mutations found in drawing, add-layer and clear are committed as one logical History operation after the interactive mutation; they do not create a second state or persistence system.
+- `state.dirty` already represented changes since the last explicit SAVE/RECOVER/NEW DOCUMENT baseline and needed explicit regression coverage.
+
+RESULTADO DE AUDITORÍA:
+- Drawing: `pointerdown` captures BEFORE; `pointermove` extends one active stroke; `pointerup` records one History entry and persists once; `pointercancel` restores BEFORE.
+- Layers: rename, duplicate, delete, reorder, visibility, lock and opacity reuse `applyLayerOperation`, History and persistence.
+- Transforms: translate, scale, rotate and multi-layer movement reuse existing document operations and one History entry per committed interaction.
+- Clear: one History operation followed by persistence.
+- Undo/Redo: replace Document through existing History and then persist; Viewport remains outside History.
+- Import: `applyImageFileImport()` remains the existing transactional/rollback boundary.
+- Persistence failure: `persistDocument()` keeps the in-memory Document and History intact, sets `dirty=true`, returns false and exposes the existing error.
+
+CAMBIOS REALES:
+- Removed post-save status overwrite from drawing completion.
+- Reordered transform completion so UI refresh occurs before the persistence attempt, preserving storage failure feedback.
+- Added Web regression tests for transaction ordering, dirty semantics, persistence failure, drawing and transform completion.
+- Updated `docs/WEB-ARCHITECTURE.md` with the T040 transaction and dirty-state decisions.
+- No Android changes.
+- No new manager, Document, History, serializer or persistence layer.
+
+TESTS:
+- Web regression suite extended in `web/test/smoke.test.mjs`.
+- Existing `web/test/image-import.test.mjs` transaction/rollback and storage-failure coverage retained.
+- Local execution is not claimed from this GitHub-only session; CI is the authoritative build/test evidence.
+
+CI:
+- Pending until branch validation.
+
+ERRORES ENCONTRADOS:
+- Drawing completion overwrote persistence failure status.
+- Transform completion refreshed the UI after the persistence attempt and could overwrite persistence failure status.
+
+REPARACIONES:
+- Both completion paths now preserve the existing persistence error.
+- No behavior change to successful persistence contract.
+
+DECISIÓN:
+- T040 must not introduce a generic transaction manager because the existing `before → history → persistence → UI` boundaries are sufficient.
+- Proceed only after real Web and Android CI verification.
+
+SIGUIENTE TAREA:
+- Validate the T040 branch with real CI, repair any failures, then merge only after all required gates are green and verify final main HEAD.
