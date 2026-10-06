@@ -1703,3 +1703,131 @@ T041 completa la transformación multi-layer con Scale + Rotation reutilizando e
 RESULTADO:
 T041 queda integrada y GREEN sobre main.
 No se inicia T042.
+
+
+## T042 — WEB REFERENCE LAYER + TRACING — GREEN
+
+FECHA:
+2026-10-06
+
+BASELINE:
+- main @ 605b07f257bec99c91231112ef301c5cfb346dbb
+
+BRANCH:
+- t042-web-reference-tracing
+
+PR:
+- #27 — T042: add web reference layer and tracing workflow
+- Merge commit: e4acea7f43985624586ecabac4c896ba470176c1
+
+IMPLEMENTADO:
+- Reference semantics sobre la Image Layer existente mediante `isReference`.
+- Conversión Image → Reference y Reference → Image.
+- Reference conserva image data, transform, opacity, visibility, lock y layer order.
+- UI identifica Reference y permite conversión únicamente para Image Layers desbloqueadas.
+- Reference reutiliza el renderer Canvas existente.
+- Drawing permanece independiente en Drawing Layers.
+- Reference reutiliza move, scale, rotation y multi-layer transforms existentes.
+- Locked Reference conserva la política atómica existente de layers locked.
+- History utiliza DocumentHistory existente.
+- Persistence y recovery utilizan el serializer/restore y localStorage existentes.
+- PNG export conserva el comportamiento natural de visibility y renderer; no se creó exportador especial.
+
+ARQUITECTURA:
+- No se creó ReferenceDocument.
+- No se creó ReferenceLayerManager.
+- No se creó ReferenceImageStore.
+- No se creó ReferenceRenderer.
+- No se creó ReferenceHistory.
+- No se creó ReferencePersistence.
+- No se creó un segundo renderer, persistence, history, selection o transform system.
+- PR #2 histórico no fue mergeado, cherry-picked ni portado; solo se respetó como evidencia histórica.
+
+TESTS:
+- Reference state/conversion.
+- Reversibilidad.
+- Persistencia round-trip.
+- Locked reference transform protection.
+- Existing transform pipeline.
+- Visibility/opacity.
+- Drawing independence.
+- Contractual reference workflow.
+- Architecture guard.
+- Normal Image Layer regression.
+- Existing multi-layer transform regression.
+- PNG export regression.
+- Final Web CI: run #132 SUCCESS, 322 tests PASS.
+
+INCIDENCIAS REALES:
+- Web CI #128 falló por sintaxis introducida accidentalmente en el test contractual.
+- Web CI #129 falló porque el escape literal persistió en el mismo test.
+- Web CI #130 falló porque el E2E utilizaba una referencia de documento antigua al añadir la nueva Image Layer.
+- Las tres incidencias fueron aisladas y reparadas sin debilitar cobertura.
+- Web CI #132 confirmó la reparación.
+- Android runs intermedios asociados a commits fallidos fueron cancelados/no utilizados como evidencia GREEN.
+- Android CI #231 sobre el commit final de la rama terminó SUCCESS.
+
+CI PRE-MERGE:
+- Web CI #132: SUCCESS.
+- Android CI #231: SUCCESS.
+- Android Build: PASS.
+- Android Unit Tests: PASS.
+- Android Lint: PASS.
+- Android Startup Smoke: PASS.
+- Debug APK: PASS.
+
+POST-MERGE:
+- main @ e4acea7f43985624586ecabac4c896ba470176c1
+- Web CI #133: SUCCESS.
+- Android CI #232: SUCCESS.
+- Android Build: PASS.
+- Android Unit Tests: PASS.
+- Android Lint: PASS.
+- Android Startup Smoke: PASS.
+- Debug APK: PASS.
+
+SCOPE:
+IN:
+- Reference semantics.
+- Image → Reference.
+- Reference rendering.
+- Opacity.
+- Visibility.
+- Lock.
+- Transform.
+- Drawing above reference.
+- History.
+- Persistence.
+- Recovery.
+- Existing multi-layer transform compatibility.
+- Tests.
+- CI.
+
+OUT:
+- IndexedDB.
+- Cloud/backend.
+- AI.
+- Background removal.
+- Smart shading.
+- Masks.
+- Filters.
+- Text.
+- Shapes.
+- Persistent grouping.
+- Nesting.
+- JPG/WEBP/SVG/PDF.
+- PWA.
+- Collaboration.
+- Android reference system/redesign.
+- New renderer/history/persistence/selection/transform systems.
+
+RESULTADO:
+T042 GREEN candidate validated through pre-merge CI, merged to main, post-merge Web/Android CI green, and continuity recorded after evidence.
+
+NO MODIFICAR:
+- T040 remains GREEN.
+- T041 remains GREEN.
+
+SIGUIENTE DECISIÓN:
+- No se autoriza ninguna nueva implementación por esta entrada.
+- CEREBRO debe definir el siguiente alcance.
