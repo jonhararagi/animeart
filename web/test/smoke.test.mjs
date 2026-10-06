@@ -117,11 +117,11 @@ test("layer lifecycle UI reuses the existing selection, operation and history bo
   assert.doesNotMatch(js, /LayerManager|LayerStore|LayerHistory|LayerRenderer|SelectionManager|PersistenceManager/);
 });
 
-test("layer lifecycle UI guards locked layers and preserves the single selection", async () => {
+test("layer lifecycle UI guards locked layers and preserves the selection anchor", async () => {
   const js = await readFile("app.js", "utf8");
   assert.match(js, /if \(layer\.locked\) return;/);
   assert.match(js, /if \(layer\.locked \|\| state\.document\.layers\.length <= 1\) return;/);
-  assert.match(js, /state\.selectedLayerId = duplicate\.id/);
+  assert.match(js, /setSelection\(\[duplicate\.id\], duplicate\.id\)/);
 });
 
 
