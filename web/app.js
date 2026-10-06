@@ -5,6 +5,7 @@ import { deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, sc
 import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { hitTestHandle, hitTestLayer, resizeTransformFromCorner, selectionGeometry } from "./domain/selection.mjs";
+import { canvasToPngBlob, createPngExportCanvas, downloadPngBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
@@ -16,6 +17,7 @@ const imageFileInput = document.querySelector("#image-file-input");
 const newDocumentButton = document.querySelector("#new-document");
 const recoverButton = document.querySelector("#recover-project");
 const saveButton = document.querySelector("#save");
+const exportPngButton = document.querySelector("#export-png");
 const projectDialog = document.querySelector("#project-dialog");
 const projectForm = document.querySelector("#project-form");
 const widthInput = document.querySelector("#document-width");
@@ -86,7 +88,7 @@ function layerTransformForRender(layer) {
     : layer.transform;
 }
 
-function drawImageLayer(layer) {
+function drawImageLayer(layer, context = ctx) {
   if (!layer.image) return;
   let image = imageCache.get(layer.image.source);
   if (!image) {
@@ -103,39 +105,39 @@ function drawImageLayer(layer) {
     imageCache.set(layer.image.source, image);
   }
   if (image.complete && image.naturalWidth > 0) {
-    ctx.drawImage(image, 0, 0, layer.image.width, layer.image.height);
+    context.drawImage(image, 0, 0, layer.image.width, layer.image.height);
   }
 }
 
-function drawDocument() {
-  for (const layer of state.document.layers) {
+function drawDocument({ context = ctx, document = state.document, center = canvasCenter(), transformForLayer = layerTransformForRender } = {}) {
+  for (const layer of document.layers) {
     if (!layer.visible) continue;
-    const transform = layerTransformForRender(layer);
-    ctx.save();
-    ctx.globalAlpha = layer.opacity;
-    ctx.translate(transform.x, transform.y);
-    ctx.translate(canvasCenter().x, canvasCenter().y);
-    ctx.rotate(transform.rotation * Math.PI / 180);
-    ctx.scale(transform.scale, transform.scale);
-    ctx.translate(-canvasCenter().x, -canvasCenter().y);
+    const transform = transformForLayer(layer);
+    context.save();
+    context.globalAlpha = layer.opacity;
+    context.translate(transform.x, transform.y);
+    context.translate(center.x, center.y);
+    context.rotate(transform.rotation * Math.PI / 180);
+    context.scale(transform.scale, transform.scale);
+    context.translate(-center.x, -center.y);
 
     if (layer.contentType === "image") {
-      drawImageLayer(layer);
+      drawImageLayer(layer, context);
     } else {
       for (const stroke of layer.strokes) {
         if (stroke.points.length < 2) continue;
-        ctx.beginPath();
-        ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
-        for (const point of stroke.points.slice(1)) ctx.lineTo(point.x, point.y);
-        ctx.lineWidth = stroke.size;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-        ctx.globalAlpha = stroke.tool === "eraser" ? 1 : stroke.opacity;
-        ctx.strokeStyle = stroke.tool === "eraser" ? "#ffffff" : stroke.color;
-        ctx.stroke();
+        context.beginPath();
+        context.moveTo(stroke.points[0].x, stroke.points[0].y);
+        for (const point of stroke.points.slice(1)) context.lineTo(point.x, point.y);
+        context.lineWidth = stroke.size;
+        context.lineCap = "round";
+        context.lineJoin = "round";
+        context.globalAlpha = layer.opacity * (stroke.tool === "eraser" ? 1 : stroke.opacity);
+        context.strokeStyle = stroke.tool === "eraser" ? "#ffffff" : stroke.color;
+        context.stroke();
       }
     }
-    ctx.restore();
+    context.restore();
   }
 }
 
@@ -182,7 +184,7 @@ function redraw() {
   ctx.fillRect(0, 0, rect.width, rect.height);
   ctx.save();
   applyViewport();
-  drawDocument();
+  drawDocument({ context: ctx, document: state.document, center: canvasCenter() });
   ctx.restore();
   drawSelectionOverlay();
 }
@@ -819,6 +821,62 @@ saveButton.addEventListener("click", () => {
     status.textContent = "Could not save project locally";
   }
 });
+
+async function exportPng() {
+  const documentBefore = JSON.stringify(state.document);
+  const historyBeforeUndo = state.history.canUndo();
+  const historyBeforeRedo = state.history.canRedo();
+  exportPngButton.disabled = true;
+  status.textContent = "Exporting PNG…";
+  try {
+    await ensureExportImages(state.document);
+    const exportCanvas = createPngExportCanvas(state.document);
+    renderDocumentToCanvas(state.document, exportCanvas, ({ context, document, center }) => {
+      drawDocument({
+        context,
+        document,
+        center,
+        transformForLayer: layer => layer.transform
+      });
+    });
+    const blob = await canvasToPngBlob(exportCanvas);
+    downloadPngBlob(blob, "animeart.png");
+    if (JSON.stringify(state.document) !== documentBefore ||
+        state.history.canUndo() !== historyBeforeUndo ||
+        state.history.canRedo() !== historyBeforeRedo) {
+      throw new Error("PNG export modified editor state");
+    }
+    status.textContent = "PNG exported";
+  } catch (error) {
+    status.textContent = error?.message || "PNG export failed";
+  } finally {
+    exportPngButton.disabled = false;
+  }
+}
+
+exportPngButton.addEventListener("click", exportPng);
+
+function ensureExportImages(document) {
+  const pending = document.layers
+    .filter(layer => layer.visible && layer.contentType === "image" && layer.image?.source)
+    .map(layer => new Promise((resolve, reject) => {
+      let image = imageCache.get(layer.image.source);
+      if (image?.complete && image.naturalWidth > 0) {
+        resolve(image);
+        return;
+      }
+      if (!image) {
+        image = new Image();
+        imageCache.set(layer.image.source, image);
+      }
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error("Image could not be prepared for PNG export"));
+      image.src = layer.image.source;
+    }));
+  return Promise.all(pending);
+}
+
+
 
 function load() {
   const raw = localStorage.getItem("animeart-web-document");

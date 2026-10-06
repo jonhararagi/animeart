@@ -187,3 +187,53 @@ test("brush control ranges are bounded and eraser remains a distinct existing to
   assert.match(js, /MAX_BRUSH_SIZE = 100/);
   assert.match(js, /Math\.min\(1, Math\.max\(0, opacity\)/);
 });
+
+
+
+test("PNG export UI uses the existing document renderer and local download pipeline", async () => {
+  const html = await readFile("index.html", "utf8");
+  const js = await readFile("app.js", "utf8");
+  const exporter = await readFile("domain/png-export.mjs", "utf8");
+  assert.match(html, /id="export-png"/);
+  assert.match(html, /Exportar PNG/);
+  assert.match(js, /createPngExportCanvas/);
+  assert.match(js, /renderDocumentToCanvas/);
+  assert.match(js, /drawDocument\(\{ context = ctx, document = state\.document, center = canvasCenter\(\)/);
+  assert.match(js, /canvasToPngBlob/);
+  assert.match(js, /downloadPngBlob\(blob, "animeart\.png"\)/);
+  assert.match(js, /await ensureExportImages\(state\.document\)/);
+  assert.match(exporter, /getContext\("2d", \{ alpha: true \}\)/);
+  assert.match(exporter, /type: "image\/png"/);
+  assert.match(exporter, /anchor\.download/);
+  assert.doesNotMatch(js, /ExportManager|PNGManager|ImageExportManager|RenderManager|CanvasManager|DocumentManager|ProjectManager|LayerManager/);
+});
+
+test("PNG export composes visible layers with opacity and transforms while ignoring lock state", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /for \(const layer of document\.layers\)/);
+  assert.match(js, /if \(!layer\.visible\) continue/);
+  assert.match(js, /context\.globalAlpha = layer\.opacity/);
+  assert.match(js, /transformForLayer: layer => layer\.transform/);
+  assert.doesNotMatch(js, /layer\.locked.*continue/);
+});
+
+test("PNG export uses Document dimensions, not viewport or UI capture", async () => {
+  const js = await readFile("app.js", "utf8");
+  const exporter = await readFile("domain/png-export.mjs", "utf8");
+  assert.match(js, /createPngExportCanvas\(state\.document\)/);
+  assert.match(exporter, /canvas\.width = width/);
+  assert.match(exporter, /canvas\.height = height/);
+  assert.doesNotMatch(js, /html2canvas|toDataURL\(\)/);
+  assert.doesNotMatch(js, /window\.devicePixelRatio[^\n]*export/);
+  assert.doesNotMatch(js, /drawSelectionOverlay\([^)]*export/);
+});
+
+test("PNG export is non-destructive and existing undo/redo remain intact", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /async function exportPng/);
+  assert.doesNotMatch(js, /async function exportPng[\s\S]{0,2200}history\.record/);
+  assert.match(js, /undoButton\.addEventListener\("click", undo\)/);
+  assert.match(js, /redoButton\.addEventListener\("click", redo\)/);
+  assert.match(js, /state\.history\.undo/);
+  assert.match(js, /state\.history\.redo/);
+});
