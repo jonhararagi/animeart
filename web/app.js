@@ -28,8 +28,13 @@ const MAX_ZOOM = 4;
 const HANDLE_RADIUS = 10;
 const imageCache = new Map();
 
+const BRUSH_DEFAULTS = Object.freeze({ color: "#111318", size: 5, opacity: 1 });
+const MIN_BRUSH_SIZE = 1;
+const MAX_BRUSH_SIZE = 100;
+
 const state = {
   tool: "brush",
+  brush: { ...BRUSH_DEFAULTS },
   drawing: false,
   panning: false,
   selectedLayerId: null,
@@ -125,7 +130,8 @@ function drawDocument() {
         ctx.lineWidth = stroke.size;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
-        ctx.strokeStyle = stroke.tool === "eraser" ? "#ffffff" : "#111318";
+        ctx.globalAlpha = stroke.tool === "eraser" ? 1 : stroke.opacity;
+        ctx.strokeStyle = stroke.tool === "eraser" ? "#ffffff" : stroke.color;
         ctx.stroke();
       }
     }
@@ -480,7 +486,7 @@ canvas.addEventListener("pointerdown", event => {
   state.drawingPointerId = event.pointerId;
   state.strokeBefore = cloneDocument(state.document);
   canvas.setPointerCapture(event.pointerId);
-  layer.strokes.push(createStroke(state.tool, 5, [pointFromEvent(event)]));
+  layer.strokes.push(createStroke(state.tool, state.brush.size, [pointFromEvent(event)], state.brush.color, state.brush.opacity));
 });
 
 canvas.addEventListener("pointermove", event => {
@@ -560,6 +566,55 @@ canvas.addEventListener("wheel", event => {
   if (nextZoom === currentZoom) return;
   setViewport(zoomAt(state.viewport, nextZoom, screenPointFromEvent(event), canvasCenter()));
 }, { passive: false });
+
+function setBrushColor(value) {
+  if (!/^#[0-9a-fA-F]{6}$/.test(value)) return false;
+  state.brush.color = value;
+  return true;
+}
+
+function setBrushSize(value) {
+  const size = Number(value);
+  if (!Number.isFinite(size)) return false;
+  const clamped = Math.min(MAX_BRUSH_SIZE, Math.max(MIN_BRUSH_SIZE, size));
+  state.brush.size = clamped;
+  return true;
+}
+
+function setBrushOpacity(value) {
+  const opacity = Number(value);
+  if (!Number.isFinite(opacity)) return false;
+  state.brush.opacity = Math.min(1, Math.max(0, opacity));
+  return true;
+}
+
+const brushColorInput = document.querySelector("#brush-color");
+const brushSizeInput = document.querySelector("#brush-size");
+const brushSizeValue = document.querySelector("#brush-size-value");
+const brushOpacityInput = document.querySelector("#brush-opacity");
+const brushOpacityValue = document.querySelector("#brush-opacity-value");
+
+brushColorInput.addEventListener("input", event => {
+  if (setBrushColor(event.currentTarget.value)) redraw();
+});
+
+brushSizeInput.addEventListener("input", event => {
+  if (!setBrushSize(event.currentTarget.value)) return;
+  brushSizeValue.textContent = String(state.brush.size);
+});
+
+brushOpacityInput.addEventListener("input", event => {
+  if (!setBrushOpacity(Number(event.currentTarget.value) / 100)) return;
+  brushOpacityValue.textContent = Math.round(state.brush.opacity * 100) + "%";
+});
+
+function syncBrushControls() {
+  brushColorInput.value = state.brush.color;
+  brushSizeInput.value = String(state.brush.size);
+  brushSizeValue.textContent = String(state.brush.size);
+  brushOpacityInput.value = String(Math.round(state.brush.opacity * 100));
+  brushOpacityValue.textContent = Math.round(state.brush.opacity * 100) + "%";
+}
 
 document.querySelectorAll(".tool").forEach(button => {
   button.addEventListener("click", () => {
@@ -790,5 +845,6 @@ state.selectedLayerId = state.document.layers[0].id;
 load();
 renderLayers();
 refreshHistoryControls();
+syncBrushControls();
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
