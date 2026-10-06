@@ -108,3 +108,18 @@ test("layer panel exposes visibility, lock and opacity through existing operatio
   assert.match(js, /state\.history\.record\(before, next\)/);
   assert.match(js, /persistDocument\(\)/);
 });
+
+test("layer lifecycle UI reuses the existing selection, operation and history boundaries", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /renameLayer/); assert.match(js, /duplicateLayer/); assert.match(js, /deleteLayer/); assert.match(js, /reorderLayer/);
+  assert.match(js, /applyLayerOperation/); assert.match(js, /state\.history\.record/); assert.match(js, /persistDocument\(\)/);
+  assert.match(js, /window\.prompt\("Layer name"/);
+  assert.doesNotMatch(js, /LayerManager|LayerStore|LayerHistory|LayerRenderer|SelectionManager|PersistenceManager/);
+});
+
+test("layer lifecycle UI guards locked layers and preserves the single selection", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /if \(layer\.locked\) return;/);
+  assert.match(js, /if \(layer\.locked \|\| state\.document\.layers\.length <= 1\) return;/);
+  assert.match(js, /state\.selectedLayerId = duplicate\.id/);
+});
