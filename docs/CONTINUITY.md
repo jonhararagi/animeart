@@ -1499,51 +1499,74 @@ T039 is integrated. The Web editor now has one coherent persistence contract fro
 
 ## T040 — Web Document Mutation Transaction Integrity
 
+ESTADO:
+GREEN — integrado, validado y cerrado sobre main.
+
 BASELINE:
-- `main` verified at `efe176efe78f027eace9c8a46befb7b9495e0e6e` before modification.
-- Branch: `t040-web-document-mutation-transaction-integrity`.
+`efe176efe78f027eace9c8a46befb7b9495e0e6e`
 
-PROBLEMA AUDITADO:
-- The Web editor already reused the T039 persistence contract and a single `DocumentHistory`, but completion handlers for drawing and layer transform could overwrite the persistence error message after `persistDocument()` failed.
-- Direct in-memory mutations found in drawing, add-layer and clear are committed as one logical History operation after the interactive mutation; they do not create a second state or persistence system.
-- `state.dirty` already represented changes since the last explicit SAVE/RECOVER/NEW DOCUMENT baseline and needed explicit regression coverage.
+BRANCH:
+`t040-web-document-mutation-transaction-integrity`
 
-RESULTADO DE AUDITORÍA:
-- Drawing: `pointerdown` captures BEFORE; `pointermove` extends one active stroke; `pointerup` records one History entry and persists once; `pointercancel` restores BEFORE.
-- Layers: rename, duplicate, delete, reorder, visibility, lock and opacity reuse `applyLayerOperation`, History and persistence.
-- Transforms: translate, scale, rotate and multi-layer movement reuse existing document operations and one History entry per committed interaction.
-- Clear: one History operation followed by persistence.
-- Undo/Redo: replace Document through existing History and then persist; Viewport remains outside History.
-- Import: `applyImageFileImport()` remains the existing transactional/rollback boundary.
-- Persistence failure: `persistDocument()` keeps the in-memory Document and History intact, sets `dirty=true`, returns false and exposes the existing error.
+CANDIDATE FINAL:
+`b6fa6b1ddb2136c22640872d4f097afb3e99d414`
 
-CAMBIOS REALES:
-- Removed post-save status overwrite from drawing completion.
-- Reordered transform completion so UI refresh occurs before the persistence attempt, preserving storage failure feedback.
-- Added Web regression tests for transaction ordering, dirty semantics, persistence failure, drawing and transform completion.
-- Updated `docs/WEB-ARCHITECTURE.md` with the T040 transaction and dirty-state decisions.
-- No Android changes.
-- No new manager, Document, History, serializer or persistence layer.
+PR:
+#25 — T040: Web document mutation transaction integrity.
 
-TESTS:
-- Web regression suite extended in `web/test/smoke.test.mjs`.
-- Existing `web/test/image-import.test.mjs` transaction/rollback and storage-failure coverage retained.
-- Local execution is not claimed from this GitHub-only session; CI is the authoritative build/test evidence.
+MERGE:
+- PR #25 MERGED.
+- Merge SHA: `188c5ae3d065a51bef3caa12bc8108da13a4f042`.
+- main HEAD verificado en `188c5ae3d065a51bef3caa12bc8108da13a4f042` antes de esta actualización de Continuity.
 
-CI:
-- Pending until branch validation.
-
-ERRORES ENCONTRADOS:
-- Drawing completion overwrote persistence failure status.
-- Transform completion refreshed the UI after the persistence attempt and could overwrite persistence failure status.
+PROBLEMAS ENCONTRADOS:
+- Drawing completion podía sobrescribir el error de persistencia.
+- Transform completion podía refrescar la UI después de intentar persistir y ocultar el error de persistencia.
+- La primera assertion de persistencia del test T040 inspeccionaba demasiado ámbito y detectaba el mensaje de éxito fuera del catch.
 
 REPARACIONES:
-- Both completion paths now preserve the existing persistence error.
-- No behavior change to successful persistence contract.
+- Drawing ahora conserva el error de persistencia.
+- Transform actualiza la UI antes del intento de persistencia para conservar el error de almacenamiento.
+- La assertion se restringió al bloque catch.
+- Se añadieron regresiones para orden transaccional, dirty semantics, persistencia, drawing y transform.
+- No se introdujo ningún manager, Document, History, serializer o persistence layer nuevo.
 
-DECISIÓN:
-- T040 must not introduce a generic transaction manager because the existing `before → history → persistence → UI` boundaries are sufficient.
-- Proceed only after real Web and Android CI verification.
+PRE-MERGE:
+- Web CI #120 / ID 37511350395: SUCCESS sobre `b6fa6b1ddb2136c22640872d4f097afb3e99d414`.
+- Web: Build PASS, Test PASS, Verify build output PASS.
+- Android CI #219 / ID 37511350412: SUCCESS sobre `b6fa6b1ddb2136c22640872d4f097afb3e99d414`.
+- Android: Build PASS, Unit tests PASS, Lint PASS, Startup Smoke PASS, Upload debug APK PASS.
 
-SIGUIENTE TAREA:
-- Validate the T040 branch with real CI, repair any failures, then merge only after all required gates are green and verify final main HEAD.
+POST-MERGE:
+- Web CI #121 / ID 37513973950: SUCCESS sobre `188c5ae3d065a51bef3caa12bc8108da13a4f042`.
+- Web: Build PASS, Test PASS, Verify build output PASS.
+- Android CI #220 / ID 37513973837: SUCCESS sobre `188c5ae3d065a51bef3caa12bc8108da13a4f042`.
+- Android: Build PASS, Unit tests PASS, Lint PASS, Startup Smoke PASS, Upload debug APK PASS.
+- Workflow completo: SUCCESS.
+
+INCIDENCIAS:
+- Web CI #119 / ID 37511245811 falló por la assertion demasiado amplia; se corrigió en el candidato final.
+- Android CI #218 / ID 37511247118 fue CANCELLED y no se utilizó como evidencia GREEN.
+- No se utilizó ninguna ejecución CANCELLED, IN PROGRESS, SKIPPED o FAILED como evidencia positiva.
+
+ARQUITECTURA:
+REUTILIZAR > ADAPTAR > CREAR.
+La frontera validada permanece:
+Document → DocumentHistory → persistDocumentSnapshot() → localStorage → UI.
+No se creó un sistema paralelo de transacciones, history, serialización, persistencia o renderer.
+Android no fue modificado funcionalmente.
+
+VERIFICACIÓN:
+- PR #25 MERGED.
+- main verificado en el merge SHA `188c5ae3d065a51bef3caa12bc8108da13a4f042`.
+- Web pre-merge PASS.
+- Android pre-merge PASS.
+- Web post-merge PASS.
+- Android post-merge PASS.
+- Android Startup Smoke PASS.
+- Todos los jobs obligatorios de Android #220 terminaron SUCCESS.
+- Continuity actualizado con evidencia final real.
+
+RESULTADO:
+T040 queda completamente integrado, validado y GREEN sobre main. T041 queda habilitada pero no iniciada.
+
