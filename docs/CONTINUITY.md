@@ -1429,7 +1429,7 @@ POST-MERGE:
 
 INCIDENCIAS:
 - Web CI #106 / ID 37496644654 falló sobre un commit intermedio del branch; se corrigió antes del candidato final.
-- Android CI #205 / ID 37496644628 fue cancelado por concurrencia sobre ese commit intermedio; no se contó como evidencia.
+- Android CI #205 / ID 37496644828 fue cancelado por concurrencia sobre ese commit intermedio; no se contó como evidencia.
 - Android CI #206 / ID 37496673851 fue cancelado por concurrencia sobre otro commit intermedio; no se contó como evidencia.
 - La primera ejecución Android #204 / ID 37496416548 del branch fue cancelada durante Startup Smoke por concurrencia; se reintentó la ejecución y la validación final del branch quedó en Android #207 SUCCESS.
 - Ninguna ejecución cancelada/skipped/queued se usó como PASS.
