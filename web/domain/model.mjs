@@ -59,6 +59,7 @@ export function createLayer(name = "Layer 1") {
     opacity: 1,
     transform: { ...DEFAULT_TRANSFORM },
     contentType: "drawing",
+    isReference: false,
     strokes: []
   };
 }
@@ -103,6 +104,7 @@ function normalizeLayer(layer, index) {
       : 1,
     transform: normalizeTransform(layer?.transform),
     contentType,
+    isReference: contentType === "image" && layer?.isReference === true,
     strokes,
     ...(image ? { image } : {})
   };
