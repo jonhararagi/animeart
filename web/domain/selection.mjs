@@ -156,3 +156,21 @@ export function hitTestHandle(screenPoint, geometry, radius = 10) {
   if (pointInPolygon(screenPoint, geometry.corners)) return "move";
   return null;
 }
+
+
+export function normalizeLayerSelection(layerIds, document) {
+  const validIds = new Set((document?.layers || []).map(layer => layer.id));
+  return [...new Set(Array.isArray(layerIds) ? layerIds : [])].filter(id => validIds.has(id));
+}
+
+export function toggleLayerSelection(layerIds, layerId, document) {
+  const current = normalizeLayerSelection(layerIds, document);
+  if (!validLayerId(layerId, document)) return current;
+  return current.includes(layerId)
+    ? current.filter(id => id !== layerId)
+    : [...current, layerId];
+}
+
+function validLayerId(layerId, document) {
+  return Boolean(layerId && document?.layers?.some(layer => layer.id === layerId));
+}
