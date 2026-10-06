@@ -84,7 +84,7 @@ test("T042 E2E contract: import image → reference → opacity/lock → drawing
   const referenceImage = (await import("../domain/model.mjs")).createImageLayer(
     "Reference", 320, 240, "data:image/png;base64,reference"
   );
-  next = documentModel = { ...documentModel, layers: [...documentModel.layers, referenceImage] };
+  next = { ...next, layers: [...next.layers, referenceImage] };
   next = setLayerReference(documentModel, referenceImage.id, true);
   assert.equal(next.layers.at(-1).isReference, true);
   next = setLayerOpacity(next, referenceImage.id, 0.5);
