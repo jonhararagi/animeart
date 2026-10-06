@@ -199,7 +199,7 @@ test("PNG export UI uses the existing document renderer and does not add a paral
   assert.match(js, /createPngExportCanvas/);
   assert.match(js, /downloadPngBlob/);
   assert.match(js, /renderDocumentToCanvas/);
-  assert.match(js, /drawDocument\(\{ context, document, center/);
+  assert.match(js, /drawDocument\(\{\s*context,\s*document,\s*center/);
   assert.match(js, /transformForLayer: layer => layer\.transform/);
   assert.match(js, /await ensureExportImages\(state\.document\)/);
   assert.match(js, /status\.textContent = "PNG exported"/);
@@ -216,7 +216,7 @@ test("PNG export composes only visible layers, keeps layer opacity and ignores l
   const js = await readFile("app.js", "utf8");
   assert.match(js, /for \(const layer of document\.layers\)/);
   assert.match(js, /if \(!layer\.visible\) continue/);
-  assert.match(js, /context\\.globalAlpha = layer\\.opacity/);
+  assert.match(js, /context\.globalAlpha = layer\.opacity/);
   assert.match(js, /transformForLayer: layer => layer\.transform/);
   assert.doesNotMatch(js, /if \(layer\.locked\).*export/);
 });
