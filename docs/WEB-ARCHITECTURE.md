@@ -290,3 +290,30 @@ Drawing mantiene su drawingPointerId y strokeBefore. Pan mantiene panPointerId y
 ### No implementado en T026
 
 Multi-selection, grouping, snapping, guides/rulers, image import, Reference Layer, PWA, IA y editor Android paralelo.
+
+
+## T038 — Multi-selection / Group Move Foundation
+
+T038 adapts the existing Web selection boundary instead of introducing a second selection manager.
+
+### Selection contract
+
+- `selectedLayerIds` is the ordered set of selected Layer IDs.
+- `selectedLayerId` remains the anchor/primary layer for compatibility with existing single-layer transforms and UI.
+- `normalizeLayerSelection()` filters unknown IDs and removes duplicates.
+- `toggleLayerSelection()` implements additive selection.
+- Shift+click is the only new selection gesture; ordinary click preserves single-selection behavior.
+
+### Group movement
+
+The existing coordinate boundary remains:
+
+Pointer Screen → `screenToDocument()` → Layer Transform → Viewport presentation.
+
+`translateLayers()` is an immutable Document operation. A multi-layer drag uses a transient preview delta and commits exactly once through the existing `DocumentHistory` and local persistence on pointerup. A locked member blocks the entire group move atomically.
+
+Scale/rotation of multiple layers and persistent grouping are intentionally deferred. The current layer bounding boxes and anchor handles remain the existing selection geometry, so T038 does not create a parallel group-transform renderer.
+
+### Regression boundary
+
+Android remains untouched. The Web renderer, viewport, history and persistence implementations remain the same systems used by T037.
