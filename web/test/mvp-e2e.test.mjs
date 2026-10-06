@@ -31,7 +31,9 @@ test("T042 E2E contract: import image → reference → opacity/lock → drawing
   assert.match(html, /id="recover-project"/);
   assert.match(html, /id="export-png"/);
   assert.match(app, /createNewDocumentFromForm/);
-  assert.match(app, /persistDocument\(\{ markSaved: true \}\)/);\n  assert.match(app, /setLayerReference/);\n  assert.match(app, /isReference/);
+  assert.match(app, /persistDocument\(\{ markSaved: true \}\)/);
+  assert.match(app, /setLayerReference/);
+  assert.match(app, /isReference/);
   assert.match(app, /restoreStoredProject/);
   assert.match(app, /async function exportPng/);
 
