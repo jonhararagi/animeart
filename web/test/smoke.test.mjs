@@ -2,6 +2,20 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
+test("T042 architecture uses existing Image Layer and forbids parallel reference systems", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const root = join(import.meta.dirname, "..");
+  const app = await readFile(join(root, "app.js"), "utf8");
+  const model = await readFile(join(root, "domain/model.mjs"), "utf8");
+  const operations = await readFile(join(root, "domain/document-operations.mjs"), "utf8");
+  assert.match(app, /setLayerReference/);
+  assert.match(app, /isReference/);
+  assert.match(model, /isReference/);
+  assert.match(operations, /export function setLayerReference/);
+  assert.doesNotMatch(app + model + operations, /ReferenceImageStore|ReferenceRenderer|ReferenceHistory|ReferencePersistence|ReferenceDocument|ReferenceLayerManager/);
+});
+
 test("web entrypoint exists and references the editor", async () => {
   const html = await readFile("index.html", "utf8");
   assert.match(html, /AnimeArt Web/);
