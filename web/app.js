@@ -473,9 +473,9 @@ function finishTransformInteraction(cancelled = false) {
   if (next) {
     state.document = next;
     state.history.record(before, next);
-    persistDocument();
   }
   refreshDocument("Layer transformed");
+  if (next) persistDocument();
   if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
 }
 
@@ -644,7 +644,6 @@ canvas.addEventListener("pointerup", event => {
     persistDocument();
     refreshHistoryControls();
   }
-  status.textContent = "Unsaved local changes";
 });
 
 canvas.addEventListener("pointercancel", event => {
