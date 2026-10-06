@@ -21,7 +21,6 @@ export function renderDocumentToCanvas(documentModel, canvas, renderDocument) {
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.save();
   const center = { x: canvas.width / 2, y: canvas.height / 2 };
-  context.translate(center.x, center.y);
   renderDocument({ context, document: documentModel, center });
   context.restore();
   return canvas;
