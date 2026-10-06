@@ -1377,51 +1377,62 @@ No se iniciaron funcionalidades futuras ni T038.
 ## T038 — Web Multi-Selection / Group Move Foundation
 
 ESTADO:
-IMPLEMENTACIÓN EN RAMA `t038-web-multi-selection`; pendiente de CI real, revisión, merge y verificación post-merge.
+GREEN — integrado en main y verificado con CI pre-merge y post-merge reales.
 
 BASELINE:
-`d14e43439ac64830841ac829126c04b85889b42b` — T037 GREEN definitivo.
+`d14e43439ac64830841ac829126c04b85889b42b`
 
-DECISIÓN DE ARQUITECTURA:
-La auditoría de main mostró que selección, bounding box, transform, imagen, viewport e history ya existen y están estabilizados en T026–T037. Por tanto T038 no vuelve a implementar transforms ni crea un segundo selection manager. Se ADAPTA `web/domain/selection.mjs` para mantener un conjunto de IDs y se extiende `document-operations.mjs` con una operación atómica de movimiento para varias capas.
+BRANCH:
+`t038-web-multi-selection`
+
+CANDIDATE:
+`45f90dd409d62199e30deb6648a9594196d8dfb0`
+
+PR:
+#23 — T038: Web Multi-Selection / Group Move Foundation.
 
 IMPLEMENTADO:
-- `selectedLayerId` se conserva como capa ancla/compatibilidad.
-- `selectedLayerIds` añade selección múltiple sobre el mismo estado de selección existente.
-- Shift+click en el panel Layers agrega/quita capas.
-- Shift+click sobre el Canvas agrega/quita selección sin crear otro sistema de selección.
-- Varias capas seleccionadas se pueden mover juntas mediante el mismo pipeline Screen → Viewport → Document.
-- El preview de movimiento múltiple permanece transitorio y pointerup registra una sola operación en `DocumentHistory`.
-- Una selección múltiple que contenga una capa bloqueada no puede iniciar el movimiento grupal.
-- pointercancel descarta el preview grupal sin modificar Document ni History.
-- Cada capa seleccionada mantiene su bounding box existente; la capa ancla conserva handles de escala/rotación.
-- Se eliminó un duplicado real del botón Export PNG en `web/index.html`, detectado durante la revisión del HEAD T037.
-- Android no se modifica.
+- Se reutilizó la frontera de selección existente de T026 y se adaptó con `selectedLayerIds`, manteniendo `selectedLayerId` como ancla.
+- Shift+click en Layers y Canvas agrega/quita selección.
+- `translateLayers()` mueve varias capas de forma inmutable y bloquea atómicamente la operación si alguna capa está locked.
+- El movimiento grupal usa el mismo pipeline Screen → Viewport → Document.
+- El preview es transitorio; pointerup registra una sola operación en DocumentHistory y persistence.
+- pointercancel descarta el preview sin mutar Document ni History.
+- Escala/rotación multi-layer y grouping persistente quedan fuera de alcance.
+- Se eliminó el duplicado real del control Exportar PNG.
+- Android no fue modificado.
 
-NUEVO DOMINIO REUTILIZADO:
-- `normalizeLayerSelection()`
-- `toggleLayerSelection()`
-- `translateLayers()`
+TESTS:
+- Normalización/deduplicación de selección.
+- Toggle de selección.
+- Traducción multi-layer inmutable.
+- Bloqueo atómico con capa locked.
+- Wiring Shift/multi-selection.
+- Una sola entrada de History/persistencia.
+- Unicidad del control Export PNG.
 
-TESTS AÑADIDOS:
-- normalización y deduplicación de IDs;
-- toggle de selección;
-- movimiento multi-layer inmutable;
-- bloqueo atómico ante capa bloqueada;
-- wiring Shift/multi-selection;
-- una sola entrada de history/persistencia;
-- unicidad del control Export PNG.
+PRE-MERGE:
+- Web CI #108 / ID 37496742259: SUCCESS sobre SHA `45f90dd409d62199e30deb6648a9594196d8dfb0`.
+- Android CI #207 / ID 37496742269: SUCCESS sobre SHA `45f90dd409d62199e30deb6648a9594196d8dfb0`.
+- Android: Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, Debug APK PASS.
+- Web: Build PASS, Test PASS, Verify build output PASS.
 
-FUERA DE ALCANCE:
-- grouping/nesting persistente;
-- escala/rotación simultánea de varias capas;
-- snapping/guides/rulers;
-- máscaras/blend modes/filtros;
-- PWA/IndexedDB/cloud/AI;
-- cambios Android.
+MERGE:
+- PR #23 MERGED con expected_head_sha=`45f90dd409d62199e30deb6648a9594196d8dfb0`.
+- Merge SHA: `58038619c3e1b6b45866a59f341a1ef1d0b00427`.
 
-CRITERIO DE CIERRE:
-No declarar GREEN hasta obtener Web CI y Android CI reales sobre el HEAD final, revisar cualquier fallo, fusionar el PR y volver a verificar ambos workflows sobre main.
+POST-MERGE:
+- Web CI #109 / ID 37497664570: SUCCESS sobre merge SHA `58038619c3e1b6b45866a59f341a1ef1d0b00427`.
+- Android CI #208 / ID 37497664519: SUCCESS sobre merge SHA `58038619c3e1b6b45866a59f341a1ef1d0b00427`.
+- Android: Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, Debug APK PASS.
+- Web: Build PASS, Test PASS, Verify build output PASS.
 
-SIGUIENTE AUDITORÍA:
-Revisar si el siguiente bloque debe completar transformaciones multi-layer o evolucionar la persistencia Web, sin asumirlo antes de inspeccionar la evidencia de T038.
+INCIDENCIAS:
+- Web CI #106 / ID 37496644654 falló sobre un commit intermedio del branch; se corrigió antes del candidato final.
+- Android CI #205 / ID 37496644628 fue cancelado por concurrencia sobre ese commit intermedio; no se contó como evidencia.
+- Android CI #206 / ID 37496673851 fue cancelado por concurrencia sobre otro commit intermedio; no se contó como evidencia.
+- La primera ejecución Android #204 / ID 37496416548 del branch fue cancelada durante Startup Smoke por concurrencia; se reintentó la ejecución y la validación final del branch quedó en Android #207 SUCCESS.
+- Ninguna ejecución cancelada/skipped/queued se usó como PASS.
+
+RESULTADO:
+T038 queda integrado y verificado en main. El editor Web conserva una única arquitectura de selección, transform, viewport, history, persistence y renderer; T038 añade únicamente la capacidad de selección múltiple y movimiento grupal dentro de esas fronteras existentes.
