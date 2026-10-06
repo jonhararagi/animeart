@@ -198,7 +198,7 @@ test("PNG export UI uses the existing document renderer and local download pipel
   assert.match(html, /Exportar PNG/);
   assert.match(js, /createPngExportCanvas/);
   assert.match(js, /renderDocumentToCanvas/);
-  assert.match(js, /drawDocument\(\{\s*context,\s*document,\s*center/);
+  assert.match(js, /drawDocument\(\{ context = ctx, document = state\.document, center = canvasCenter\(\)/);
   assert.match(js, /canvasToPngBlob/);
   assert.match(js, /downloadPngBlob\(blob, "animeart\.png"\)/);
   assert.match(js, /await ensureExportImages\(state\.document\)/);
