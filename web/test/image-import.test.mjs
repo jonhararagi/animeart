@@ -170,6 +170,48 @@ test("failed import persistence keeps document and history unchanged", async () 
   assert.deepEqual(history.undo(currentBeforeAttempt), before);
 });
 
+test("normal document persistence round-trips image, drawing and transforms", () => {
+  const document = createDocument(800, 600);
+  const image = createImportedImageLayer("fixture.png", "data:image/png;base64,AA==", 32, 24);
+  image.transform = { x: 12, y: -7, scale: 1.5, rotation: 18 };
+  image.opacity = 0.65;
+  image.visible = true;
+  image.locked = true;
+  document.layers.push(image);
+  document.layers[0].strokes.push({
+    tool: "brush",
+    size: 9,
+    color: "#123456",
+    opacity: 0.4,
+    points: [{ x: 2, y: 3 }, { x: 8, y: 11 }]
+  });
+  const storage = { values: new Map(), setItem(key, value) { this.values.set(key, value); }, getItem(key) { return this.values.get(key) ?? null; } };
+  persistDocumentSnapshot(storage, "doc", document);
+  const restored = restoreDocument(JSON.parse(storage.getItem("doc")));
+  assert.deepEqual(restored, restoreDocument(JSON.parse(JSON.stringify(document))));
+});
+
+test("legacy document restoration remains the single recovery boundary", () => {
+  const legacy = {
+    width: 320,
+    height: 240,
+    layers: [{ id: "legacy-layer", name: "Sketch" }],
+    strokes: [{
+      layerIndex: 0,
+      tool: "brush",
+      size: 5,
+      color: "#abcdef",
+      opacity: 1,
+      points: [{ x: 1, y: 2 }, { x: 3, y: 4 }]
+    }]
+  };
+  const restored = restoreDocument(legacy);
+  assert.equal(restored.version, 2);
+  assert.equal(restored.layers[0].id, "legacy-layer");
+  assert.equal(restored.layers[0].strokes.length, 1);
+  assert.deepEqual(restored.layers[0].strokes[0].points, [{ x: 1, y: 2 }, { x: 3, y: 4 }]);
+});
+
 test("storage failure is reported without hiding the error", () => {
   const storage = { setItem() { throw new Error("quota"); } };
   assert.throws(
