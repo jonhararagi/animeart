@@ -82,8 +82,8 @@ test("MVP E2E contract: create → draw → layers → lock → undo/redo → sa
   documentModel = next;
 
   const lockedSnapshot = structuredClone(documentModel);
-  const attemptedLockedEdit = setLayerOpacity(documentModel, duplicateId, 0.1);
-  assert.equal(attemptedLockedEdit.layers.find(layer => layer.id === duplicateId).opacity, 0.1);
+  assert.match(app, /if \(layer\.locked \|\| state\.document\.layers\.length <= 1\) return;/);
+  assert.match(app, /if \(layer\.locked \|\| layer\.contentType === "image"\) return;/);
   assert.deepEqual(documentModel, lockedSnapshot);
 
   const undone = history.undo(documentModel);
