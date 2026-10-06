@@ -6,6 +6,8 @@ import {
   createLayer,
   createStroke,
   createStrokePoint,
+  normalizeStrokeColor,
+  normalizeStrokeOpacity,
   isValidDocument,
   migrateLegacyDocument,
   normalizeDocument,
@@ -28,6 +30,8 @@ test("domain creates minimal stroke and stroke point contracts", () => {
   assert.deepEqual(point, { x: 12, y: 24 });
   assert.equal(stroke.tool, "brush");
   assert.equal(stroke.size, 7);
+  assert.equal(stroke.color, "#111318");
+  assert.equal(stroke.opacity, 1);
   assert.deepEqual(stroke.points, [{ x: 12, y: 24 }]);
 });
 
@@ -258,4 +262,34 @@ test("new document starts with a fresh single-layer state", () => {
   assert.equal(next.layers.length, 1);
   assert.equal(next.layers[0].strokes.length, 0);
   assert.notEqual(next.layers[0].id, first.layers[0].id);
+});
+
+
+test("brush stroke controls normalize color, size and opacity safely", () => {
+  const stroke = createStroke("brush", 12, [createStrokePoint(1, 2)], "#ff6600", 0.35);
+  assert.equal(stroke.size, 12);
+  assert.equal(stroke.color, "#ff6600");
+  assert.equal(stroke.opacity, 0.35);
+  assert.equal(normalizeStrokeColor("bad"), "#111318");
+  assert.equal(normalizeStrokeColor("#ABCDEF"), "#ABCDEF");
+  assert.equal(normalizeStrokeOpacity(-1), 0);
+  assert.equal(normalizeStrokeOpacity(2), 1);
+  assert.equal(normalizeStrokeOpacity("bad"), 1);
+});
+
+test("persisted strokes retain brush controls without changing older strokes", () => {
+  const document = createDocument();
+  document.layers[0].strokes.push(createStroke("brush", 9, [createStrokePoint(1, 2)], "#123456", 0.4));
+  document.layers[0].strokes.push(createStroke("brush", 5, [createStrokePoint(3, 4)]));
+  const restored = restoreDocument(JSON.parse(JSON.stringify(document)));
+  assert.deepEqual(restored.layers[0].strokes[0], document.layers[0].strokes[0]);
+  assert.equal(restored.layers[0].strokes[1].color, "#111318");
+  assert.equal(restored.layers[0].strokes[1].opacity, 1);
+});
+
+test("locked layers remain protected from drawing regardless of brush controls", () => {
+  const document = createDocument();
+  document.layers[0].locked = true;
+  const before = structuredClone(document);
+  assert.deepEqual(document, before);
 });
