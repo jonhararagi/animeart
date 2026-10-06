@@ -83,7 +83,7 @@ test("MVP E2E contract: create → draw → layers → lock → undo/redo → sa
 
   const lockedSnapshot = structuredClone(documentModel);
   assert.match(app, /if \(layer\.locked \|\| state\.document\.layers\.length <= 1\) return;/);
-  assert.match(app, /if \(layer\.locked \|\| layer\.contentType === "image"\) return;/);
+  assert.match(app, /if \(!layer \|\| layer\.locked \|\| layer\.contentType === "image"\) return;/);
   assert.deepEqual(documentModel, lockedSnapshot);
 
   const undone = history.undo(documentModel);
