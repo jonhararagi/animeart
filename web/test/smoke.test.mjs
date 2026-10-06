@@ -238,3 +238,51 @@ test("PNG export is non-destructive and existing history controls remain wired",
   assert.match(js, /state\.history\.undo/);
   assert.match(js, /state\.history\.redo/);
 });
+
+
+test("PNG export is wired to the real document renderer and download path", async () => {
+  const html = await readFile("index.html", "utf8");
+  const js = await readFile("app.js", "utf8");
+  const exporter = await readFile("domain/png-export.mjs", "utf8");
+  assert.match(html, /id="export-png"/);
+  assert.match(js, /createPngExportCanvas/);
+  assert.match(js, /renderDocumentToCanvas/);
+  assert.match(js, /drawDocument\(context, state\.document, center, \{ preview: false \}\)/);
+  assert.match(js, /canvasToPngBlob/);
+  assert.match(js, /downloadPngBlob\(blob, "animeart\.png"\)/);
+  assert.match(js, /Promise\.all\(state\.document\.layers/);
+  assert.match(js, /filter\(layer => layer\.visible && layer\.contentType === "image"\)/);
+  assert.match(js, /JSON\.stringify\(state\.document\)/);
+  assert.match(exporter, /canvas\.width = width/);
+  assert.match(exporter, /canvas\.height = height/);
+  assert.match(exporter, /getContext\("2d", \{ alpha: true \}\)/);
+  assert.match(exporter, /type: "image\/png"/);
+  assert.match(exporter, /anchor\.download/);
+  assert.doesNotMatch(js, /ExportManager|PNGManager|ImageExportManager|RenderManager|CanvasManager/);
+});
+
+test("PNG export never includes the selection UI overlay", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /drawDocument\(context, state\.document, center, \{ preview: false \}\)/);
+  assert.doesNotMatch(js, /drawSelectionOverlay\(context/);
+});
+
+test("PNG export uses layer visibility, opacity and transforms while locked layers remain exportable", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /if \(!layer\.visible\) continue;/);
+  assert.match(js, /targetCtx\.globalAlpha = layer\.opacity/);
+  assert.match(js, /layer\.opacity \* \(stroke\.tool === "eraser" \? 1 : stroke\.opacity\)/);
+  assert.match(js, /layerTransformForRender\(layer, \{ preview \}\)/);
+  assert.doesNotMatch(js, /layer\.locked.*continue/);
+});
+
+test("PNG export is document-sized and non-destructive to history", async () => {
+  const js = await readFile("app.js", "utf8");
+  const exporter = await readFile("domain/png-export.mjs", "utf8");
+  assert.match(exporter, /Number\(documentModel\?\.width\)/);
+  assert.match(exporter, /Number\(documentModel\?\.height\)/);
+  assert.match(js, /const documentBefore = JSON\.stringify\(state\.document\)/);
+  assert.match(js, /const historyBeforeUndo = state\.history\.canUndo\(\)/);
+  assert.match(js, /const historyBeforeRedo = state\.history\.canRedo\(\)/);
+  assert.doesNotMatch(js, /exportPng[\s\S]{0,2000}history\.record/);
+});
