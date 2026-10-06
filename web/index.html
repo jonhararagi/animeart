@@ -23,6 +23,8 @@
       <button id="add-layer">+ Layer</button>
       <button id="add-image-layer">+ Image</button>
       <input id="image-file-input" type="file" accept="image/*" hidden>
+      <button id="new-document">New</button>
+      <button id="recover-project">Open / Recover</button>
       <button id="save">Save</button>
       <button id="clear">Clear</button>
       <span class="tool-group-label">Layer</span>
@@ -43,6 +45,23 @@
       <ol id="layers"></ol>
     </aside>
   </main>
+  <dialog id="project-dialog" aria-labelledby="project-dialog-title">
+    <form id="project-form" method="dialog">
+      <h2 id="project-dialog-title">New document</h2>
+      <label>
+        Width
+        <input id="document-width" name="width" type="number" min="1" step="1" required>
+      </label>
+      <label>
+        Height
+        <input id="document-height" name="height" type="number" min="1" step="1" required>
+      </label>
+      <div class="dialog-actions">
+        <button type="button" id="cancel-document">Cancel</button>
+        <button type="submit">Create</button>
+      </div>
+    </form>
+  </dialog>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
