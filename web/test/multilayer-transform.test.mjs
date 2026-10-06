@@ -19,7 +19,7 @@ test("T041 group scale preserves relative centers and scales every selected laye
   const geometry = multiSelectionGeometry([a, b], pivot);
   assert.deepEqual(geometry.center, { x: 50, y: 5 });
 
-  const transforms = groupScaleTransforms([a, b], pivot, "scale-se", { x: 140, y: 40 });
+  const transforms = groupScaleTransforms([a, b], pivot, "scale-se", { x: 140, y: 20 });
   assert.equal(transforms.length, 2);
   assert.equal(transforms[0].transform.scale, 2);
   assert.equal(transforms[1].transform.scale, 2);
@@ -36,7 +36,7 @@ test("T041 group scale preserves relative centers and scales every selected laye
 test("T041 group rotation rotates positions and layer rotations around group center", () => {
   const { a, b } = imagePair();
   const pivot = { x: 0, y: 0 };
-  const transforms = groupRotationTransforms([a, b], pivot, { x: 50, y: 35 }, { x: 50, y: -25 });
+  const transforms = groupRotationTransforms([a, b], pivot, { x: 80, y: 5 }, { x: 50, y: -25 });
   assert.equal(transforms.length, 2);
   assert.equal(transforms[0].transform.rotation, 90);
   assert.equal(transforms[1].transform.rotation, 90);
@@ -47,7 +47,7 @@ test("T041 group rotation rotates positions and layer rotations around group cen
   assert.ok(Math.abs(aCenter.x - 50) < 1e-9);
   assert.ok(Math.abs(aCenter.y + 15) < 1e-9);
   assert.ok(Math.abs(bCenter.x - 50) < 1e-9);
-  assert.ok(Math.abs(bCenter.y - 55) < 1e-9);
+  assert.ok(Math.abs(bCenter.y - 25) < 1e-9);
 });
 
 test("T041 locked layers make a group transform atomic", () => {
