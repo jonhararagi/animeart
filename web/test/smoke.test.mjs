@@ -137,6 +137,8 @@ test("document lifecycle exposes new, recover, save and configured dimensions wi
   assert.match(js, /createDocument\(width, height\)/);
   assert.match(js, /localStorage\.getItem\("animeart-web-document"\)/);
   assert.match(js, /persistDocument\(\{ markSaved: true \}\)/);
+  assert.match(js, /persistDocumentSnapshot\(localStorage, "animeart-web-document", state\.document\)/);
+  assert.doesNotMatch(js, /localStorage\.setItem\("animeart-web-document", JSON\.stringify\(state\.document\)\)/);
   assert.match(js, /state\.history\.reset\(next\)/);
   assert.match(js, /state\.history\.reset\(restored\)/);
   assert.match(js, /state\.dirty/);
@@ -194,8 +196,6 @@ test("PNG export UI uses the existing document renderer and local download pipel
   const html = await readFile("index.html", "utf8");
   const js = await readFile("app.js", "utf8");
   const exporter = await readFile("domain/png-export.mjs", "utf8");
-  assert.match(app, /persistDocumentSnapshot\(localStorage, "animeart-web-document", state\.document\)/);
-  assert.doesNotMatch(app, /localStorage\.setItem\("animeart-web-document", JSON\.stringify\(state\.document\)\)/);
   assert.match(html, /id="export-png"/);
   assert.match(html, /Exportar PNG/);
   assert.match(js, /createPngExportCanvas/);
