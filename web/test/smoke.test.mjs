@@ -195,6 +195,7 @@ test("PNG export UI uses the existing document renderer and local download pipel
   const js = await readFile("app.js", "utf8");
   const exporter = await readFile("domain/png-export.mjs", "utf8");
   assert.match(html, /id="export-png"/);
+  assert.equal((html.match(/id="export-png"/g) || []).length, 1, "PNG export control must have a unique id");
   assert.match(html, /Exportar PNG/);
   assert.match(js, /createPngExportCanvas/);
   assert.match(js, /renderDocumentToCanvas/);
