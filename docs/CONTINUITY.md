@@ -1161,3 +1161,80 @@ No se introdujeron BrushManager, BrushController, ColorManager, OpacityManager, 
 
 VERIFICACIÓN:
 T035 cumple implementación, tests, smoke wiring, CI pre-merge, merge, CI post-merge y presencia en main. El primer CI Web falló por una escritura incompleta de index.html y fue corregido antes del merge. No se declara GREEN definitivo hasta verificar el CI final sobre el nuevo HEAD de main.
+
+## T036 — Web PNG Export
+
+ESTADO:
+INTEGRADA EN MAIN. T036 completada con PR #20, merge y CI pre/post-merge GREEN sobre los SHAs reales.
+
+BASELINE:
+main @ a9e1e1cb6c32fb0917fd8289bcb2a133a190971b.
+
+BRANCH:
+t036-web-png-export.
+
+CANDIDATE:
+60c3129e4cd38b5ef7f9546df4dfcf063030a8e1.
+
+IMPLEMENTACIÓN:
+- Control mínimo `Exportar PNG` en la UI Web.
+- Exportación local mediante Canvas 2D, Blob y object URL; sin API externa, cloud ni dependencia adicional.
+- Canvas de exportación dimensionado exactamente con `Document.width` × `Document.height`.
+- Se reutiliza el renderer documental existente (`drawDocument`) en lugar de crear un segundo renderer.
+- Solo se componen layers visibles, respetando su orden.
+- Layers ocultas quedan excluidas.
+- Layers bloqueadas visibles siguen siendo exportables.
+- Opacidad de layer y opacidad de stroke se componen conjuntamente.
+- Transformaciones persistidas de layer se respetan en la exportación.
+- Canvas de exportación con alpha para preservar transparencia; no se exporta la UI ni el overlay de selección.
+- Images visibles se esperan antes de renderizar el PNG.
+- Nombre de descarga por defecto: `animeart.png`.
+- Exportación no registra operaciones en DocumentHistory y mantiene Undo/Redo.
+- No se crearon ExportManager/PNGManager/ImageExportManager ni otro manager paralelo.
+- Android no fue modificado.
+
+TESTS / SMOKE:
+- Tests Web cubren dimensiones, transparencia, pipeline de Blob/descarga, composición visible, opacity, transforms, locked layers, exclusión de UI y no-destructividad de history/Undo/Redo.
+- La infraestructura Web CI valida build + tests + dist.
+- No existe un navegador E2E físico que inspeccione el archivo descargado; esa limitación queda explícita. La generación/encodificación/descarga se cubre mediante tests del pipeline y el smoke de CI.
+- Android Startup Smoke continúa verificando la regresión Android.
+
+PRE-MERGE:
+- PR #20 — T036: Web PNG export.
+- Web CI #96 / ID 37475965636: SUCCESS sobre SHA 60c3129e4cd38b5ef7f9546df4dfcf063030a8e1.
+- Android CI #195 / ID 37475965679: SUCCESS sobre SHA 60c3129e4cd38b5ef7f9546df4dfcf063030a8e1.
+- Android: Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS.
+- Web: Build PASS, Test PASS, Verify build output PASS.
+
+MERGE:
+- PR #20: MERGED.
+- Merge SHA: df14a13ce4f372da6db7c4c7882b1a77451f6bf6.
+- main HEAD inmediatamente después del merge: df14a13ce4f372da6db7c4c7882b1a77451f6bf6.
+
+POST-MERGE:
+- Web CI #97 / ID 37476642772: SUCCESS sobre SHA df14a13ce4f372da6db7c4c7882b1a77451f6bf6.
+- Android CI #196 / ID 37476642746: SUCCESS sobre SHA df14a13ce4f372da6db7c4c7882b1a77451f6bf6.
+- Android post-merge: Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, Debug APK PASS.
+- Web post-merge: Build PASS, Test PASS, Verify build output PASS.
+
+CONTINUIDAD:
+- T032 → T033 → T034 → T035 → T036.
+- T036 completa la primera exportación PNG funcional del editor Web.
+- T037 NO INICIADA.
+
+INCIDENCIAS / REPARACIONES:
+- Web CI #88 / ID 37475521095: FAILURE por tests T036; se aislaron mocks/regExes y se consolidaron los tests.
+- Web CI #92 / ID 37475672160: FAILURE por assertions T036 concurrentes; se reconciliaron.
+- CI #93 / ID 37475776576 y Android #192 / ID 37475776517: CANCELLED por concurrencia mientras la rama recibía ajustes de tests; no se usaron como evidencia GREEN.
+- Web CI #95 / ID 37475871721: SUCCESS.
+- Android #194 / ID 37475871582: CANCELLED por otro commit concurrente de ajuste de smoke; no se usó como evidencia GREEN.
+- Web CI #96 / ID 37475965636 y Android #195 / ID 37475965679: SUCCESS sobre el candidato final.
+- No hubo fallo funcional de Android durante T036; los cambios fueron exclusivamente Web.
+
+ARQUITECTURA:
+REUTILIZAR > ADAPTAR > CREAR.
+La cadena permanece: Layer → Document → Document Operations → DocumentHistory → Persistence → Renderer → PNG export adapter.
+
+VERIFICACIÓN:
+T036 cumple implementación, tests, CI pre-merge, merge protegido por expected head SHA, CI post-merge y presencia en main. T037 permanece sin iniciar.
+
