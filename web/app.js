@@ -1,7 +1,9 @@
 import { createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
-import { rotateLayer, scaleLayer, translateLayer, updateLayerTransform } from "./domain/document-operations.mjs";
+import { rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerVisibility, translateLayer, updateLayerTransform } from "./domain/document-operations.mjs";
+import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
+import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { hitTestHandle, hitTestLayer, resizeTransformFromCorner, selectionGeometry } from "./domain/selection.mjs";
 
 const canvas = document.querySelector("#canvas");
@@ -10,6 +12,9 @@ const status = document.querySelector("#status");
 const layersEl = document.querySelector("#layers");
 const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
+const imageFileInput = document.querySelector("#image-file-input");
+const canvasWrap = document.querySelector(".canvas-wrap");
+let dragDepth = 0;
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
@@ -183,14 +188,63 @@ function renderLayers() {
   layersEl.replaceChildren();
   [...state.document.layers].reverse().forEach(layer => {
     const li = document.createElement("li");
-    li.textContent = layer.name + (layer.contentType === "image" ? " [Image]" : "");
     li.dataset.layerId = layer.id;
     if (layer.id === state.selectedLayerId) li.dataset.selected = "true";
-    li.addEventListener("click", () => {
+
+    const selectButton = document.createElement("button");
+    selectButton.type = "button";
+    selectButton.className = "layer-select";
+    selectButton.textContent = layer.name + (layer.contentType === "image" ? " [Image]" : "");
+    selectButton.setAttribute("aria-label", "Select " + layer.name);
+    selectButton.addEventListener("click", () => {
       state.selectedLayerId = layer.id;
       renderLayers();
       redraw();
     });
+
+    const visibilityButton = document.createElement("button");
+    visibilityButton.type = "button";
+    visibilityButton.className = "layer-toggle";
+    visibilityButton.textContent = layer.visible ? "◉" : "○";
+    visibilityButton.title = layer.visible ? "Hide layer" : "Show layer";
+    visibilityButton.setAttribute("aria-label", visibilityButton.title);
+    visibilityButton.addEventListener("click", event => {
+      event.stopPropagation();
+      applyLayerOperation((doc, id) => setLayerVisibility(doc, id, !layer.visible), layer.visible ? "Layer hidden" : "Layer shown");
+    });
+
+    const lockButton = document.createElement("button");
+    lockButton.type = "button";
+    lockButton.className = "layer-toggle";
+    lockButton.textContent = layer.locked ? "🔒" : "🔓";
+    lockButton.title = layer.locked ? "Unlock layer" : "Lock layer";
+    lockButton.setAttribute("aria-label", lockButton.title);
+    lockButton.addEventListener("click", event => {
+      event.stopPropagation();
+      applyLayerOperation((doc, id) => setLayerLocked(doc, id, !layer.locked), layer.locked ? "Layer unlocked" : "Layer locked", { allowLocked: true });
+    });
+
+    const opacity = document.createElement("input");
+    opacity.type = "range";
+    opacity.min = "0";
+    opacity.max = "1";
+    opacity.step = "0.01";
+    opacity.value = String(layer.opacity);
+    opacity.className = "layer-opacity";
+    opacity.title = "Layer opacity";
+    opacity.setAttribute("aria-label", "Opacity for " + layer.name);
+    opacity.addEventListener("click", event => event.stopPropagation());
+    opacity.addEventListener("change", event => {
+      event.stopPropagation();
+      const nextOpacity = Number(event.currentTarget.value);
+      applyLayerOperation((doc, id) => setLayerOpacity(doc, id, nextOpacity), "Layer opacity changed");
+    });
+
+    const controls = document.createElement("div");
+    controls.className = "layer-controls";
+    controls.append(visibilityButton, lockButton, opacity);
+
+    li.append(selectButton, controls);
     layersEl.appendChild(li);
   });
 }
@@ -236,9 +290,9 @@ function redo() {
   persistDocument();
 }
 
-function applyLayerOperation(operation, message) {
+function applyLayerOperation(operation, message, { allowLocked = false } = {}) {
   const layer = selectedLayer();
-  if (!layer || layer.locked) return;
+  if (!layer || (layer.locked && !allowLocked)) return;
   const before = cloneDocument(state.document);
   const next = operation(state.document, layer.id);
   if (!next) return;
@@ -482,14 +536,87 @@ document.querySelector("#add-layer").addEventListener("click", () => {
   persistDocument();
 });
 
+async function importImageIntoEditor(file, message = "Image imported") {
+  if (!file) return false;
+  try {
+    const result = await applyImageFileImport(file, {
+      document: state.document,
+      history: state.history,
+      persist: next => persistDocumentSnapshot(localStorage, "animeart-web-document", next)
+    });
+    state.document = result.document;
+    state.selectedLayerId = result.layer.id;
+    refreshDocument(message);
+    return true;
+  } catch (error) {
+    status.textContent = error?.message || "Image import failed";
+    return false;
+  }
+}
+function setDropFeedback(active) {
+  canvasWrap.classList.toggle("drop-active", active);
+  if (active) status.textContent = "Drop image to import";
+}
+
+function clearDropFeedback(message = null) {
+  dragDepth = 0;
+  canvasWrap.classList.remove("drop-active");
+  if (message) status.textContent = message;
+}
+
 document.querySelector("#add-image-layer").addEventListener("click", () => {
-  const before = cloneDocument(state.document);
-  const layer = createImageLayer("Test Image " + (state.document.layers.length + 1));
-  state.document.layers.push(layer);
-  state.selectedLayerId = layer.id;
-  state.history.record(before, state.document);
-  refreshDocument("Image layer created");
-  persistDocument();
+  imageFileInput.click();
+});
+
+imageFileInput.addEventListener("change", async () => {
+  const file = imageFileInput.files?.[0];
+  imageFileInput.value = "";
+  if (!file) {
+    status.textContent = "Import cancelled";
+    return;
+  }
+  await importImageIntoEditor(file);
+});
+
+canvas.addEventListener("dragenter", event => {
+  if (!event.dataTransfer?.types?.includes("Files")) return;
+  event.preventDefault();
+  dragDepth += 1;
+  setDropFeedback(true);
+});
+
+canvas.addEventListener("dragover", event => {
+  if (!event.dataTransfer?.types?.includes("Files")) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+  setDropFeedback(true);
+});
+
+canvas.addEventListener("dragleave", event => {
+  if (!event.dataTransfer?.types?.includes("Files")) return;
+  event.preventDefault();
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) clearDropFeedback();
+});
+
+canvas.addEventListener("dragend", () => clearDropFeedback());
+
+canvas.addEventListener("drop", async event => {
+  event.preventDefault();
+  const file = firstValidImageFile(event.dataTransfer?.files);
+  clearDropFeedback();
+  if (!file) {
+    status.textContent = "No supported image dropped";
+    return;
+  }
+  await importImageIntoEditor(file);
+});
+
+document.addEventListener("paste", async event => {
+  const file = clipboardImageFile(event.clipboardData?.items);
+  if (!file) return;
+  event.preventDefault();
+  await importImageIntoEditor(file);
 });
 
 document.querySelectorAll("[data-transform]").forEach(button => {

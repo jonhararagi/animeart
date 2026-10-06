@@ -17,6 +17,7 @@ export class DocumentHistory {
     cloneDocument(document);
     this.past = [];
     this.future = [];
+    this.lastRecordFuture = null;
   }
 
   record(before, after) {
@@ -24,6 +25,10 @@ export class DocumentHistory {
     const afterSnapshot = cloneDocument(after);
     if (JSON.stringify(beforeSnapshot) === JSON.stringify(afterSnapshot)) return false;
     this.past.push({ before: beforeSnapshot, after: afterSnapshot });
+    this.lastRecordFuture = this.future.map(entry => ({
+      before: cloneDocument(entry.before),
+      after: cloneDocument(entry.after)
+    }));
     this.future = [];
     return true;
   }
@@ -54,6 +59,17 @@ export class DocumentHistory {
       after: cloneDocument(entry.after)
     });
     return cloneDocument(entry.after);
+  }
+
+  discardLastRecord() {
+    if (this.past.length === 0) return false;
+    this.past.pop();
+    this.future = (this.lastRecordFuture || []).map(entry => ({
+      before: cloneDocument(entry.before),
+      after: cloneDocument(entry.after)
+    }));
+    this.lastRecordFuture = null;
+    return true;
   }
 
   size() {

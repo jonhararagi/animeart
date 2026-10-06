@@ -659,3 +659,307 @@ REGRESIÓN:
 
 SIGUIENTE TAREA:
 T029 NO iniciada. El siguiente trabajo queda a decisión de CEREBRO después de revisar esta evidencia.
+
+## T029 — Web Image Import / Fase 1
+
+ESTADO:
+IMPLEMENTADA Y VERIFICADA EN RAMA. PR #14 abierta; no fusionada.
+
+BASELINE:
+main @ 1459ce0d10d4588fbe1074c62dc3f8307163461f.
+
+BRANCH:
+t029-web-image-import.
+
+ALCANCE:
+- Selector nativo mediante input[type="file"] con accept="image/*".
+- File API / FileReader para obtener una data: URL persistible.
+- Decodificación mediante Image() del navegador.
+- Reutilización de createImageLayer(), contentType "image" y layer.image existente.
+- Dimensiones reales obtenidas de naturalWidth/naturalHeight.
+- Nombre de capa derivado del nombre de archivo sin extensión.
+- Render mediante el Canvas 2D existente.
+- Selection, layerLocalBounds(), Transform, Viewport, History y localStorage existentes se mantienen como única cadena.
+- Una importación registra una sola transición lógica before → after en DocumentHistory.
+- Persistencia se intenta antes de mutar Document/History para evitar capas huérfanas si falla el almacenamiento.
+- Cancelación, archivo inválido, decode failure, dimensiones inválidas y límites de almacenamiento no crean una capa parcial.
+
+LÍMITE DE ALMACENAMIENTO:
+- No se asume una capacidad universal de localStorage.
+- Límite conservador de aplicación: 1.500.000 bytes por archivo antes de lectura.
+- Límite conservador de representación de imagen: 2.000.000 caracteres.
+- Límite conservador del Document serializado para esta ruta: 2.500.000 caracteres.
+- Si localStorage rechaza setItem(), la importación se aborta sin aplicar la nueva capa.
+- Estos límites son de aplicación y no representan una garantía universal de cuota del navegador.
+
+FORMATOS:
+La UI acepta image/*. La decodificación final depende de los formatos que el navegador pueda abrir mediante Image(); no se agregó decoder ni librería externa.
+
+TESTS:
+- Web CI #49 / ID 37302522897 (implementación previa): SUCCESS.
+- Build PASS.
+- Test PASS.
+- Verify build output PASS.
+- Suite completa: 162/162 PASS, 0 FAIL, 0 cancelled, 0 skipped.
+- Tests T029: 14 tests deterministas, sin URLs externas.
+
+ANDROID REGRESSION:
+- Android CI #148 / ID 37302522852 (implementación previa): SUCCESS.
+- Build PASS.
+- Unit Tests PASS.
+- Lint PASS.
+- Android Startup Smoke PASS.
+- APK PASS.
+- Artifact animeart-debug-apk ID 11342930318.
+- Artifact digest SHA-256: 61c22e3de2a766f829ed693de5fa1b29ae2b44f569dd497ae4d8abbf6be6edb2.
+
+LIMITACIONES:
+- No existe E2E físico del selector de archivos dentro de la CI actual.
+- La persistencia continúa basada en localStorage; IndexedDB queda fuera de T029.
+- No se implementan drag & drop, clipboard, crop, filters/effects, masks, blend modes, background removal, AI, OCR, text, shapes, multi-selection, grouping, snapping, guides/rulers, PWA, asset manager o cloud storage.
+
+DEUDA TÉCNICA:
+- Migrar proyectos de imágenes grandes a una estrategia de almacenamiento más adecuada, previsiblemente IndexedDB, queda para una fase posterior.
+- Una prueba E2E de navegador real para seleccionar un archivo permanece pendiente.
+
+REGRESIÓN:
+T024, T025, T026, T027 y T028 permanecen cubiertas por la suite completa; T029 no modifica Android.
+
+PR:
+#14 — T029: Web image import.
+Estado OPEN.
+No fusionado. La decisión de merge corresponde a CEREBRO.
+
+T030:
+NO iniciada.
+
+
+
+### T029 — Corrección posterior a auditoría CEREBRO
+
+- La auditoría detectó que el botón `+ Image` aún creaba el fixture `Test Image` y no abría el selector. Corregido: `+ Image` ahora ejecuta `imageFileInput.click()`; la ruta de importación real queda como única acción del botón.
+- Se corrigió la frontera de persistencia/History para que el snapshot solo quede aplicado al estado del editor después de que History y persistencia hayan sido aceptados; un fallo de persistencia revierte la entrada histórica.
+- Conteo corregido: T029 tiene 14 tests en `web/test/image-import.test.mjs`.
+- Esta corrección queda pendiente de CI Web + Android antes del cierre de T029.
+
+
+### T029 — Corrección final de atomicidad History ↔ Persistence
+
+- `DocumentHistory` continúa siendo el único sistema de historial.
+- Se añadió `discardLastRecord()` para rollback transaccional: elimina únicamente la última entrada de `past` y no usa `undo()` ni `reset()`.
+- `discardLastRecord()` restaura el estado `future` que existía antes del `record()`, por lo que un fallo de persistencia no crea ni elimina Redo histórico previo.
+- La importación restaura `state.document` al snapshot anterior y descarta solamente la operación de importación fallida.
+- La prueba determinista de cuota de almacenamiento fuerza `setItem()` a fallar y verifica documento sin imagen, tamaño de History intacto, Redo previo intacto y ausencia de Redo de la importación fallida.
+- El camino exitoso sigue registrando exactamente una operación y permite Undo/Redo.
+- T029 final: 16 tests específicos dentro de una suite Web total de 166 tests.
+- Web CI #57 / ID 37313606655: SUCCESS sobre SHA `bd697d2a7b24cecbb61ab7c9c4966b7dd7419c31`.
+- Android CI #156 / ID 37313606581: SUCCESS sobre el mismo SHA; no se modificó Android.
+- Esta documentación genera un nuevo commit y requiere una última ejecución Web + Android sobre ese HEAD antes del cierre definitivo.
+
+## T030 — Web Image Input UX
+
+ESTADO:
+IMPLEMENTADA EN RAMA; PR #15 abierta y no fusionada. Decisión GREEN queda exclusivamente para CEREBRO.
+
+BASELINE FUNCIONAL:
+T029 HEAD `395ec1fe741b72de90299e93c6c7c5dad9dac909`. T029 PR #14 permanece OPEN y `main` todavía conserva el baseline anterior; T030 se construyó desde el HEAD T029 para reutilizar su pipeline sin fusionar T029 automáticamente.
+
+BRANCH:
+`t030-web-image-input-ux`.
+
+OBJETIVO:
+- Drag & Drop de archivos de imagen sobre el Canvas existente.
+- Paste desde Clipboard cuando existe un item `image/*`.
+- Picker T029 permanece operativo.
+- Los tres caminos convergen en una única función de UI `importImageIntoEditor()` y en la única transacción `applyImageFileImport()`.
+
+IMPLEMENTACIÓN:
+- `web/domain/image-input.mjs` reutiliza `validateImageFile()` para seleccionar el primer archivo válido del drop.
+- Un drop múltiple selecciona únicamente el primer archivo de imagen válido; no existe importación múltiple.
+- Clipboard busca exclusivamente items `image/*`; texto normal no se intercepta.
+- `getAsFile()` nulo, ausente o con excepción se ignora sin mutar el Document.
+- `applyImageFileImport()` reutiliza Image Layer, FileReader, Image(), DocumentHistory y persistencia localStorage.
+- Ante fallo de persistencia, `discardLastRecord()` elimina únicamente la operación fallida y preserva el Redo histórico previo.
+- Feedback visual mínimo mediante clase temporal `drop-active`.
+- No se creó segundo renderer, history, persistence, decoder, selector o Image Layer.
+
+TESTS:
+- Drop válido, inválido, sin archivos y múltiples archivos.
+- Clipboard imagen, texto, múltiples items, `getAsFile()` nulo/ausente/excepción.
+- Validación, lectura y decode fallidos.
+- Persistencia fallida para picker/drop/clipboard.
+- Undo/Redo del import.
+- Test estructural que verifica convergencia de picker/drop/paste en la misma ruta.
+- Suite completa Web y regresión Android pendientes de evidencia final sobre el HEAD documentado.
+
+ARCHIVOS MODIFICADOS T030:
+- `web/app.js`
+- `web/domain/image-import.mjs`
+- `web/domain/image-input.mjs`
+- `web/test/image-input.test.mjs`
+- `web/styles.css`
+- `docs/CONTINUITY.md`
+
+ANDROID:
+No modificado. Android CI es únicamente regresión.
+
+FUERA DE ALCANCE:
+- IndexedDB.
+- Asset Manager.
+- Importación múltiple completa.
+- Clipboard de texto.
+- Crop, filtros, efectos, máscaras, blend modes, background removal, IA, OCR.
+- Text/Shape Layer, multi-selection, grouping, snapping, guides, rulers.
+- PWA, cloud/backend, WebView y cambios Android.
+
+LIMITACIONES:
+- La CI actual no contiene E2E físico de navegador para arrastrar un archivo real ni leer el portapapeles del sistema.
+- localStorage continúa siendo la persistencia existente; IndexedDB queda fuera de T030.
+
+PR:
+#15 — T030: Web image input UX.
+OPEN; no fusionada. Target `main`.
+PR #14/T029 continúa OPEN y no fusionada.
+
+SIGUIENTE TAREA:
+NO INICIADA.
+
+### T030 — Verificación CI y reparación
+
+FALLO REAL:
+- Web CI #62 / ID `37376420183` sobre SHA `540e0efb248617dc1e8c09c605699c6c4c6a15cc`: FAILURE.
+- Build PASS.
+- Test FAIL: 204 tests, 202 PASS, 2 FAIL.
+- La misma prueba apareció en la salida de build y en `dist`: `clipboard read failure leaves document and history untouched`.
+- Causa: assertion esperaba `/could not read/` en minúsculas, mientras el error contractual existente es `Could not read image file`.
+- No fue un fallo funcional de importación; fue una expectativa de test con casing incorrecto.
+
+REPARACIÓN:
+- Se corrigió únicamente la expectativa a `/Could not read/`.
+- Nuevo HEAD de código: `75ecc0d55975234d21f7a3b38a302e896a4881f8`.
+
+WEB CI FINAL DE CÓDIGO:
+- Web CI #63 / ID `37376509829`.
+- SHA `75ecc0d55975234d21f7a3b38a302e896a4881f8`.
+- SUCCESS.
+- Build PASS.
+- Test PASS.
+- Verify build output PASS.
+
+ANDROID CI:
+- Android CI #162 / ID `37376509835`.
+- SHA `75ecc0d55975234d21f7a3b38a302e896a4881f8`.
+- Estado observado: `queued`.
+- No se declara PASS mientras no finalice Build, Unit Tests, Lint, Startup Smoke y APK.
+- Android CI #160 / ID `37376406231` sobre un SHA intermedio quedó CANCELLED durante cleanup; no se usa como evidencia final.
+- No hubo cambios Android.
+
+ESTADO ACTUAL T030:
+- Web: verificado GREEN a nivel de CI sobre el código final.
+- Android: pendiente de ejecución real.
+- T030 global: YELLOW hasta disponer de Android CI final sobre el HEAD definitivo de documentación.
+
+PENDIENTE DE VERIFICACIÓN:
+- La documentación presente genera un nuevo commit y requiere una nueva Web CI + Android CI sobre ese nuevo HEAD antes del cierre.
+
+### T030-CORRECTION — Duplicate import handler wiring
+
+CEREBRO detectó después de la validación inicial que `web/app.js` contenía dos definiciones de `importImageIntoEditor()`. La segunda definición era una implementación obsoleta basada directamente en `importImageFile()` y sobrescribía en runtime la implementación basada en `applyImageFileImport()`.
+
+CORRECCIÓN:
+- Eliminada exclusivamente la definición obsoleta.
+- Se conserva una sola `importImageIntoEditor()`.
+- La definición activa usa `applyImageFileImport()`.
+- Picker, Drag & Drop y Clipboard continúan convergiendo en la misma función.
+- No se creó una segunda ruta de importación.
+- No se modificó Android.
+- Se agregó un test que exige exactamente una definición y rechaza la implementación obsoleta.
+
+CI DE CORRECCIÓN:
+- Web CI #67 / ID `37381686906`: SUCCESS sobre SHA `942c99b7bd720101993654b68c73a058920d1f91`.
+- Android CI #166 / ID `37381687347`: SUCCESS sobre SHA `942c99b7bd720101993654b68c73a058920d1f91`.
+- Build, Unit Tests, Lint, Android Startup Smoke y APK: PASS.
+
+NOTA DE FALLA INTERMEDIA:
+- Web CI #66 / ID `37381612870` falló únicamente porque el test recién agregado contenía una expresión regular con escape duplicado y producía SyntaxError.
+- Se corrigió la expresión regular sin cambiar producción.
+- Android CI #165 sobre el SHA intermedio quedó reemplazado por la ejecución final del SHA corregido.
+
+ESTADO:
+Pendiente de nueva revisión independiente de CEREBRO. No mergear PR #15.
+
+
+## T031 — Web Layer Controls
+
+ESTADO:
+IMPLEMENTACIÓN EN RAMA; auditoría arquitectónica completada antes de modificar código.
+
+PROBLEMA DETECTADO:
+- El modelo Web ya soporta `visible`, `locked` y `opacity` por Layer y el renderer ya los respeta.
+- La UI de capas solo permite seleccionar una capa; no expone esos controles persistentes al usuario.
+- Esto limita el control real del editor después de T029/T030, especialmente al trabajar con varias capas de dibujo e imagen.
+
+OBJETIVO:
+- Añadir controles mínimos de visibilidad, bloqueo y opacidad al panel de Layers existente.
+- Cada cambio debe pasar por el único Document existente, DocumentHistory y la persistencia local existente.
+- Mantener la selección y el renderer actuales como únicas implementaciones.
+
+ARQUITECTURA REUTILIZADA:
+- `web/domain/model.mjs`: Layer ya contiene `visible`, `locked` y `opacity`.
+- `web/domain/document-operations.mjs`: única frontera para operaciones inmutables sobre Layer/Document; se adapta con operaciones de propiedades de Layer.
+- `web/domain/history.mjs`: único DocumentHistory para Undo/Redo.
+- `web/app.js`: panel `#layers`, selección existente, `refreshDocument()`, persistencia y renderer existentes.
+- `localStorage`: única persistencia Web existente.
+
+SOLUCIÓN PROPUESTA:
+- Renderizar en cada fila de Layer los controles de visible, locked y opacity.
+- Aplicar los cambios mediante operaciones puras sobre el Document existente.
+- Registrar una sola transición por acción y persistir el snapshot resultante.
+- Las capas bloqueadas no podrán recibir cambios de propiedad desde estos controles salvo el propio toggle de bloqueo.
+- La selección existente continúa siendo la única selección activa.
+
+LÍMITES:
+- No se crea un Layer Manager, state manager, renderer, history o persistence nuevo.
+- No se modifica el contrato de Image Layer ni Stroke Layer.
+- No se modifica Picker, Drag & Drop, Clipboard ni `importImageIntoEditor()`.
+
+FUERA DE ALCANCE:
+- Reordenamiento de capas.
+- Eliminación/duplicación de capas.
+- Multi-selección o grouping.
+- Crop, filtros, máscaras, blend modes, texto, shapes, IA, IndexedDB, cloud, PWA y Android.
+
+TESTS:
+- Operaciones de visibilidad, bloqueo y opacidad con documentos inmutables.
+- Límites de opacidad y capas inexistentes/bloqueadas.
+- Wiring del panel de Layers hacia las operaciones únicas.
+- Persistencia/History mediante el flujo existente.
+- Suite Web completa y regresión Android.
+
+IMPACTO ANDROID:
+- Ninguno. No se modifica código Android; Android CI es regresión.
+
+CRITERIO DE ACEPTACIÓN:
+- El usuario puede seleccionar una Layer y controlar visibilidad, bloqueo y opacidad desde el panel existente.
+- Cada cambio es reversible mediante el único DocumentHistory y queda persistido.
+- No existen sistemas equivalentes nuevos.
+- T030 continúa intacto.
+- Web CI y Android CI terminan SUCCESS sobre el mismo HEAD final.
+
+
+### T031 — Implementation record
+
+- Added `setLayerVisibility()`, `setLayerLocked()` and `setLayerOpacity()` to the existing `document-operations.mjs` boundary.
+- Extended the existing `renderLayers()` panel with visibility, lock and opacity controls; selection remains unchanged.
+- Property actions reuse `applyLayerOperation()`, `DocumentHistory`, `refreshDocument()` and existing localStorage persistence.
+- Locked layers remain protected from drawing/transform operations; property controls explicitly opt into the same existing operation boundary so visibility, lock and opacity remain manageable.
+- Added deterministic operation tests and structural UI wiring regression tests.
+- No changes to T030 image input code or Android code.
+
+
+### T031 — Contract correction after independent review
+
+- CEREBRO detected that visibility and opacity controls were incorrectly using `allowLocked: true`, contradicting the T031 contract for locked Layers.
+- Corrected `web/app.js`: visibility and opacity now use the normal locked-layer guard; only the lock toggle may use `allowLocked: true` so a locked Layer can be unlocked.
+- Added a deterministic UI wiring regression asserting the contract: no `allowLocked` for visibility/opacity and explicit `allowLocked` only for the lock toggle.
+- T030, Android code, domain operation architecture and persistence architecture remain unchanged.
