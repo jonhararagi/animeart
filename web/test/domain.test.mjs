@@ -87,6 +87,59 @@ test("restoreDocument preserves legacy strokes instead of normalizing them away"
 });
 
 
+test("T042 Image Layer can become a reference without losing image state", async () => {
+  const { createImageLayer, createDocument, restoreDocument } = await import("../domain/model.mjs");
+  const { setLayerReference } = await import("../domain/document-operations.mjs");
+  const image = createImageLayer("Reference", 120, 80, "data:image/png;base64,reference");
+  image.transform = { x: 12, y: -4, scale: 1.5, rotation: 25 };
+  image.opacity = 0.5;
+  image.visible = true;
+  image.locked = false;
+  const document = createDocument(400, 300);
+  document.layers.push(image);
+  const next = setLayerReference(document, image.id, true);
+  assert.equal(next.layers[1].isReference, true);
+  assert.deepEqual(next.layers[1].image, image.image);
+  assert.deepEqual(next.layers[1].transform, image.transform);
+  assert.equal(next.layers[1].opacity, 0.5);
+  assert.equal(next.layers[1].visible, true);
+  assert.equal(next.layers[1].locked, false);
+  assert.equal(document.layers[1].isReference, false);
+  const restored = restoreDocument(JSON.parse(JSON.stringify(next)));
+  assert.equal(restored.layers[1].isReference, true);
+});
+
+test("T042 reference conversion is reversible and rejects drawing layers", async () => {
+  const { createDocument, createImageLayer } = await import("../domain/model.mjs");
+  const { setLayerReference } = await import("../domain/document-operations.mjs");
+  const document = createDocument();
+  const image = createImageLayer("Image");
+  document.layers.push(image);
+  const reference = setLayerReference(document, image.id, true);
+  const normal = setLayerReference(reference, image.id, false);
+  assert.equal(reference.layers[1].isReference, true);
+  assert.equal(normal.layers[1].isReference, false);
+  assert.equal(setLayerReference(document, document.layers[0].id, true), null);
+});
+
+test("T042 locked reference retains lock semantics and cannot be transformed", async () => {
+  const { createDocument, createImageLayer } = await import("../domain/model.mjs");
+  const { setLayerReference, transformLayers } = await import("../domain/document-operations.mjs");
+  const document = createDocument();
+  const image = createImageLayer("Reference");
+  image.locked = true;
+  image.isReference = true;
+  document.layers.push(image);
+  const result = transformLayers(document, [{
+    id: image.id,
+    transform: { x: 50, y: 20, scale: 2, rotation: 30 }
+  }]);
+  assert.equal(result, null);
+  assert.deepEqual(document.layers[1].transform, { x: 0, y: 0, scale: 1, rotation: 0 });
+  const unchanged = setLayerReference(document, image.id, false);
+  assert.equal(unchanged.layers[1].locked, true);
+});
+
 test("domain creates a deterministic Image Layer with minimal image content", () => {
   const layer = createImageLayer("Reference", 120, 80, TEST_IMAGE_SOURCE);
   assert.equal(layer.contentType, "image");
