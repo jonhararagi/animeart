@@ -16,17 +16,28 @@ export function normalizeStrokePoint(point) {
   return createStrokePoint(point.x, point.y);
 }
 
-export function createStroke(tool = "brush", size = 5, points = []) {
+export function normalizeStrokeColor(color) {
+  return typeof color === "string" && /^#[0-9a-fA-F]{6}$/.test(color) ? color : "#111318";
+}
+
+export function normalizeStrokeOpacity(opacity) {
+  const value = Number(opacity);
+  return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1;
+}
+
+export function createStroke(tool = "brush", size = 5, points = [], color = "#111318", opacity = 1) {
   return {
     tool,
     size: Number.isFinite(Number(size)) && Number(size) > 0 ? Number(size) : 5,
+    color: normalizeStrokeColor(color),
+    opacity: normalizeStrokeOpacity(opacity),
     points: points.map(normalizeStrokePoint).filter(Boolean)
   };
 }
 
 export function normalizeStroke(stroke) {
   if (!stroke || !Array.isArray(stroke.points)) return null;
-  return createStroke(stroke.tool || "brush", stroke.size, stroke.points);
+  return createStroke(stroke.tool || "brush", stroke.size, stroke.points, stroke.color, stroke.opacity);
 }
 
 export function normalizeTransform(transform) {

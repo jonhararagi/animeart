@@ -18,6 +18,10 @@
       <button class="tool active" data-tool="brush">Brush</button>
       <button class="tool" data-tool="eraser">Eraser</button>
       <button class="tool" data-tool="pan">Pan</button>
+      <span class="tool-group-label">Brush</span>
+      <label class="brush-control" for="brush-color">Color<input id="brush-color" type="color" value="#111318" aria-label="Brush color"></label>
+      <label class="brush-control" for="brush-size">Size<input id="brush-size" type="range" min="1" max="100" step="1" value="5" aria-label="Brush size"><output id="brush-size-value">5</output></label>
+      <label class="brush-control" for="brush-opacity">Opacity<input id="brush-opacity" type="range" min="0" max="100" step="1" value="100" aria-label="Brush opacity"><output id="brush-opacity-value">100%</output></label>
       <button id="undo" disabled>Undo</button>
       <button id="redo" disabled>Redo</button>
       <button id="add-layer">+ Layer</button>

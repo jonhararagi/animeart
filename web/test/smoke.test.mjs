@@ -158,3 +158,32 @@ test("document lifecycle keeps image compatibility and existing persistence key"
   assert.match(js, /persistDocumentSnapshot\(localStorage, "animeart-web-document"/);
   assert.match(js, /restoreDocument/);
 });
+
+
+test("brush controls are wired to current stroke creation without a parallel manager", async () => {
+  const html = await readFile("index.html", "utf8");
+  const js = await readFile("app.js", "utf8");
+  assert.match(html, /id="brush-color"/);
+  assert.match(html, /id="brush-size"/);
+  assert.match(html, /id="brush-opacity"/);
+  assert.match(js, /state\.brush/);
+  assert.match(js, /setBrushColor/);
+  assert.match(js, /setBrushSize/);
+  assert.match(js, /setBrushOpacity/);
+  assert.match(js, /createStroke\(state\.tool, state\.brush\.size/);
+  assert.match(js, /state\.brush\.color, state\.brush\.opacity/);
+  assert.match(js, /stroke\.color/);
+  assert.match(js, /stroke\.opacity/);
+  assert.doesNotMatch(js, /BrushManager|BrushController|ColorManager|OpacityManager|ToolManager|DrawingManager|StrokeManager|CanvasManager|HistoryManager/);
+});
+
+test("brush control ranges are bounded and eraser remains a distinct existing tool", async () => {
+  const html = await readFile("index.html", "utf8");
+  const js = await readFile("app.js", "utf8");
+  assert.match(html, /id="brush-size" type="range" min="1" max="100"/);
+  assert.match(html, /id="brush-opacity" type="range" min="0" max="100"/);
+  assert.match(html, /data-tool="eraser"/);
+  assert.match(js, /stroke\.tool === "eraser"/);
+  assert.match(js, /MAX_BRUSH_SIZE = 100/);
+  assert.match(js, /Math\.min\(1, Math\.max\(0, opacity\)/);
+});

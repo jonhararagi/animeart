@@ -54,3 +54,8 @@ canvas { display: block; width: min(92%, 1100px); height: min(88%, 800px); backg
 #project-form label { display: grid; gap: 6px; font-size: .85rem; }
 #project-form input { width: 100%; border: 1px solid #353944; border-radius: 7px; background: #20232b; color: inherit; padding: 8px; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.brush-control { display: grid; gap: 4px; font-size: .7rem; }
+.brush-control input[type="color"] { width: 100%; height: 30px; padding: 2px; }
+.brush-control input[type="range"] { width: 100%; }
+.brush-control output { text-align: center; opacity: .8; }
