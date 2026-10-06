@@ -292,3 +292,41 @@ test("T040 all persistible lifecycle mutations use the existing History then per
   for (const pattern of requiredSequences) assert.match(js, pattern);
   assert.doesNotMatch(js, /MutationManager|DocumentTransactionManager|DocumentStore|EditorStateManager|PersistenceManager|HistoryManager/);
 });
+
+
+test("T041 multi-layer transform reuses selection, document operations and existing history/persistence", async () => {
+  const js = await readFile("app.js", "utf8");
+  const selection = await readFile("domain/selection.mjs", "utf8");
+  const operations = await readFile("domain/document-operations.mjs", "utf8");
+  assert.match(js, /multiSelectionGeometry/);
+  assert.match(js, /groupScaleTransforms/);
+  assert.match(js, /groupRotationTransforms/);
+  assert.match(js, /transformLayers/);
+  assert.match(js, /state\.history\.record\(before, next\)/);
+  assert.match(js, /persistDocument\(\)/);
+  assert.match(selection, /groupScaleTransforms/);
+  assert.match(selection, /groupRotationTransforms/);
+  assert.match(selection, /multiSelectionGeometry/);
+  assert.match(operations, /export function transformLayers/);
+  assert.doesNotMatch(js, /MultiLayerTransformManager|GroupTransformManager|TransformManager|SelectionManager|PersistenceManager|HistoryManager|RenderManager/);
+});
+
+test("T041 group transform supports scale and rotation while preserving locked-layer atomicity", async () => {
+  const operations = await readFile("domain/document-operations.mjs", "utf8");
+  const selection = await readFile("domain/selection.mjs", "utf8");
+  assert.match(operations, /if \(layer\.locked\) return null;/);
+  assert.match(operations, /layer\.transform = normalized/);
+  assert.match(selection, /minimumScale = 0\.05/);
+  assert.match(selection, /layer\.transform\.scale \* factor/);
+  assert.match(selection, /layer\.transform\.rotation \+ delta/);
+});
+
+test("T041 group move, pointercancel and single-layer transform boundaries remain intact", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /applyMultiLayerMove/);
+  assert.match(js, /state\.multiTransformInteraction/);
+  assert.match(js, /finishTransformInteraction\(true\)/);
+  assert.match(js, /resizeTransformFromCorner/);
+  assert.match(js, /beginTransformInteraction\("scale"/);
+  assert.match(js, /beginTransformInteraction\("rotate"/);
+});

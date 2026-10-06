@@ -145,6 +145,124 @@ export function selectionGeometry(layer, viewport, center, transformOverride = n
   };
 }
 
+export function layerWorldCenter(layer, pivot) {
+  const bounds = layerLocalBounds(layer);
+  if (!bounds) return null;
+  const center = {
+    x: (bounds.minX + bounds.maxX) / 2,
+    y: (bounds.minY + bounds.maxY) / 2
+  };
+  return transformPoint(center, layer.transform, pivot);
+}
+
+export function multiSelectionGeometry(layers, pivot) {
+  const visibleLayers = (Array.isArray(layers) ? layers : []).filter(Boolean);
+  const corners = visibleLayers.flatMap(layer => layerCorners(layer, pivot) || []);
+  if (corners.length < 4) return null;
+  const minX = Math.min(...corners.map(point => point.x));
+  const minY = Math.min(...corners.map(point => point.y));
+  const maxX = Math.max(...corners.map(point => point.x));
+  const maxY = Math.max(...corners.map(point => point.y));
+  return {
+    corners: [
+      { x: minX, y: minY },
+      { x: maxX, y: minY },
+      { x: maxX, y: maxY },
+      { x: minX, y: maxY }
+    ],
+    center: { x: (minX + maxX) / 2, y: (minY + maxY) / 2 }
+  };
+}
+
+function rotateAround(point, pivot, degrees) {
+  const angle = Number(degrees) * Math.PI / 180;
+  const dx = point.x - pivot.x;
+  const dy = point.y - pivot.y;
+  return {
+    x: pivot.x + dx * Math.cos(angle) - dy * Math.sin(angle),
+    y: pivot.y + dx * Math.sin(angle) + dy * Math.cos(angle)
+  };
+}
+
+function transformForWorldCenter(layer, pivot, worldCenter, scale, rotation) {
+  const bounds = layerLocalBounds(layer);
+  if (!bounds) return null;
+  const localCenter = {
+    x: (bounds.minX + bounds.maxX) / 2,
+    y: (bounds.minY + bounds.maxY) / 2
+  };
+  const base = transformPoint(localCenter, { x: 0, y: 0, scale, rotation }, pivot);
+  return {
+    ...layer.transform,
+    x: worldCenter.x - (base.x - pivot.x),
+    y: worldCenter.y - (base.y - pivot.y),
+    scale,
+    rotation
+  };
+}
+
+export function groupScaleTransforms(layers, pivot, handle, targetDocumentPoint, minimumScale = 0.05) {
+  const geometry = multiSelectionGeometry(layers, pivot);
+  if (!geometry || !targetDocumentPoint) return null;
+  const names = ["scale-nw", "scale-ne", "scale-se", "scale-sw"];
+  const index = names.indexOf(handle);
+  if (index < 0) return null;
+
+  const corners = geometry.corners;
+  const opposite = corners[(index + 2) % 4];
+  const start = corners[index];
+  const diagonal = { x: start.x - opposite.x, y: start.y - opposite.y };
+  const lengthSquared = diagonal.x * diagonal.x + diagonal.y * diagonal.y;
+  if (!Number.isFinite(lengthSquared) || lengthSquared <= 1e-12) return null;
+
+  const target = {
+    x: Number(targetDocumentPoint.x) - opposite.x,
+    y: Number(targetDocumentPoint.y) - opposite.y
+  };
+  const factor = Math.max(minimumScale, (target.x * diagonal.x + target.y * diagonal.y) / lengthSquared);
+  if (!Number.isFinite(factor) || factor <= 0) return null;
+
+  const transforms = [];
+  for (const layer of layers) {
+    const center = layerWorldCenter(layer, pivot);
+    if (!center) return null;
+    const nextCenter = {
+      x: opposite.x + (center.x - opposite.x) * factor,
+      y: opposite.y + (center.y - opposite.y) * factor
+    };
+    const nextScale = layer.transform.scale * factor;
+    const next = transformForWorldCenter(layer, pivot, nextCenter, nextScale, layer.transform.rotation);
+    if (!next) return null;
+    transforms.push({ id: layer.id, transform: next });
+  }
+  return transforms;
+}
+
+export function groupRotationTransforms(layers, pivot, targetDocumentPoint, startDocumentPoint) {
+  const geometry = multiSelectionGeometry(layers, pivot);
+  if (!geometry || !targetDocumentPoint || !startDocumentPoint) return null;
+  const startAngle = Math.atan2(startDocumentPoint.y - geometry.center.y, startDocumentPoint.x - geometry.center.x);
+  const currentAngle = Math.atan2(targetDocumentPoint.y - geometry.center.y, targetDocumentPoint.x - geometry.center.x);
+  if (![startAngle, currentAngle].every(Number.isFinite)) return null;
+  const delta = (currentAngle - startAngle) * 180 / Math.PI;
+
+  return layers.map(layer => {
+    const center = layerWorldCenter(layer, pivot);
+    if (!center) return null;
+    const nextCenter = rotateAround(center, geometry.center, delta);
+    return {
+      id: layer.id,
+      transform: transformForWorldCenter(
+        layer,
+        pivot,
+        nextCenter,
+        layer.transform.scale,
+        layer.transform.rotation + delta
+      )
+    };
+  });
+}
+
 export function hitTestHandle(screenPoint, geometry, radius = 10) {
   if (!geometry) return null;
   const names = ["scale-nw", "scale-ne", "scale-se", "scale-sw"];

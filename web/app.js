@@ -1,10 +1,10 @@
 import { createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
-import { deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerVisibility, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerVisibility, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
-import { hitTestHandle, hitTestLayer, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
+import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
 import { canvasToPngBlob, createPngExportCanvas, downloadPngBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
@@ -103,6 +103,8 @@ function applyViewport() {
 }
 
 function layerTransformForRender(layer) {
+  const previewTransforms = state.multiTransformInteraction?.previewTransforms;
+  if (previewTransforms?.has(layer.id)) return previewTransforms.get(layer.id);
   if (state.multiTransformInteraction?.previewDelta && state.selectedLayerIds.includes(layer.id)) {
     return {
       ...layer.transform,
@@ -169,6 +171,55 @@ function drawDocument({ context = ctx, document = state.document, center = canva
 }
 
 function drawSelectionOverlay() {
+  const selectedLayers = selectedLayersExact();
+  if (selectedLayers.length > 1) {
+    const geometry = multiSelectionGeometry(selectedLayers.map(layer => ({
+      ...layer,
+      transform: layerTransformForRender(layer)
+    })), canvasCenter());
+    if (geometry) {
+      const corners = geometry.corners.map(point => {
+        return { x: (point.x - canvasCenter().x) * state.viewport.zoom + canvasCenter().x + state.viewport.panX,
+          y: (point.y - canvasCenter().y) * state.viewport.zoom + canvasCenter().y + state.viewport.panY };
+      });
+      const groupGeometry = {
+        corners,
+        center: { x: (geometry.center.x - canvasCenter().x) * state.viewport.zoom + canvasCenter().x + state.viewport.panX,
+          y: (geometry.center.y - canvasCenter().y) * state.viewport.zoom + canvasCenter().y + state.viewport.panY }
+      };
+      ctx.save();
+      ctx.setLineDash([6, 4]);
+      ctx.strokeStyle = "#2f80ed";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      corners.forEach((corner, index) => index === 0 ? ctx.moveTo(corner.x, corner.y) : ctx.lineTo(corner.x, corner.y));
+      ctx.closePath();
+      ctx.stroke();
+      const topMid = { x: (corners[0].x + corners[1].x) / 2, y: (corners[0].y + corners[1].y) / 2 };
+      const outward = { x: topMid.x - groupGeometry.center.x, y: topMid.y - groupGeometry.center.y };
+      const length = Math.hypot(outward.x, outward.y) || 1;
+      groupGeometry.rotationHandle = { x: topMid.x + outward.x / length * 32, y: topMid.y + outward.y / length * 32 };
+      ctx.setLineDash([]);
+      for (const corner of corners) {
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = "#2f80ed";
+        ctx.beginPath();
+        ctx.rect(corner.x - 5, corner.y - 5, 10, 10);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(topMid.x, topMid.y);
+      ctx.lineTo(groupGeometry.rotationHandle.x, groupGeometry.rotationHandle.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(groupGeometry.rotationHandle.x, groupGeometry.rotationHandle.y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
   for (const layer of selectedLayersExact()) {
     if (!layer.visible) continue;
     const previewTransform = state.transformInteraction?.layerId === layer.id
@@ -190,7 +241,7 @@ function drawSelectionOverlay() {
     geometry.corners.forEach((corner, index) => index === 0 ? ctx.moveTo(corner.x, corner.y) : ctx.lineTo(corner.x, corner.y));
     ctx.closePath();
     ctx.stroke();
-    if (layer.id !== state.selectedLayerId) {
+    if (selectedLayers.length > 1 || layer.id !== state.selectedLayerId) {
       ctx.restore();
       continue;
     }
@@ -517,16 +568,49 @@ function beginSelectionInteraction(event) {
   const selectedGeometry = selected ? selectionGeometry(selected, state.viewport, canvasCenter()) : null;
   const selectedHit = hitTestHandle(screenPoint, selectedGeometry, HANDLE_RADIUS);
   if (state.selectedLayerIds.length > 1) {
+    const layers = selectedLayersExact();
     const documentPoint = screenToDocument(screenPoint, state.viewport, canvasCenter());
+    const groupDocumentGeometry = multiSelectionGeometry(layers, canvasCenter());
+    const groupScreenGeometry = groupDocumentGeometry ? {
+      ...groupDocumentGeometry,
+      corners: groupDocumentGeometry.corners.map(point => ({
+        x: (point.x - canvasCenter().x) * state.viewport.zoom + canvasCenter().x + state.viewport.panX,
+        y: (point.y - canvasCenter().y) * state.viewport.zoom + canvasCenter().y + state.viewport.panY
+      })),
+      center: {
+        x: (groupDocumentGeometry.center.x - canvasCenter().x) * state.viewport.zoom + canvasCenter().x + state.viewport.panX,
+        y: (groupDocumentGeometry.center.y - canvasCenter().y) * state.viewport.zoom + canvasCenter().y + state.viewport.panY
+      }
+    } : null;
+    if (groupScreenGeometry) {
+      const topMid = { x: (groupScreenGeometry.corners[0].x + groupScreenGeometry.corners[1].x) / 2, y: (groupScreenGeometry.corners[0].y + groupScreenGeometry.corners[1].y) / 2 };
+      const outward = { x: topMid.x - groupScreenGeometry.center.x, y: topMid.y - groupScreenGeometry.center.y };
+      const length = Math.hypot(outward.x, outward.y) || 1;
+      groupScreenGeometry.rotationHandle = { x: topMid.x + outward.x / length * 32, y: topMid.y + outward.y / length * 32 };
+      const groupHit = hitTestHandle(screenPoint, groupScreenGeometry, HANDLE_RADIUS);
+      if (groupHit === "scale-nw" || groupHit === "scale-ne" || groupHit === "scale-se" || groupHit === "scale-sw") {
+        if (layers.some(layer => layer.locked)) return;
+        state.multiTransformInteraction = { pointerId: event.pointerId, type: "scale", handle: groupHit, startDocument: documentPoint, previewTransforms: new Map(layers.map(layer => [layer.id, { ...layer.transform }])) };
+        canvas.setPointerCapture(event.pointerId);
+        return;
+      }
+      if (groupHit === "rotate") {
+        if (layers.some(layer => layer.locked)) return;
+        state.multiTransformInteraction = { pointerId: event.pointerId, type: "rotate", startDocument: documentPoint, previewTransforms: new Map(layers.map(layer => [layer.id, { ...layer.transform }])) };
+        canvas.setPointerCapture(event.pointerId);
+        return;
+      }
+    }
     const hitSelectedLayer = [...state.document.layers].reverse().find(layer =>
       layer.visible &&
       state.selectedLayerIds.includes(layer.id) &&
       hitTestLayer(layer, documentPoint, canvasCenter())
     );
-    if (hitSelectedLayer && selectedLayersExact().every(layer => !layer.locked)) {
+    if (hitSelectedLayer && layers.every(layer => !layer.locked)) {
       state.selectedLayerId = hitSelectedLayer.id;
       state.multiTransformInteraction = {
         pointerId: event.pointerId,
+        type: "move",
         startDocument: documentPoint,
         previewDelta: { x: 0, y: 0 }
       };
@@ -593,9 +677,19 @@ canvas.addEventListener("pointermove", event => {
     return;
   }
   if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
+    const interaction = state.multiTransformInteraction;
     const current = screenToDocument(screenPointFromEvent(event), state.viewport, canvasCenter());
-    const start = state.multiTransformInteraction.startDocument;
-    state.multiTransformInteraction.previewDelta = { x: current.x - start.x, y: current.y - start.y };
+    const layers = selectedLayersExact();
+    if (interaction.type === "move") {
+      const start = interaction.startDocument;
+      interaction.previewDelta = { x: current.x - start.x, y: current.y - start.y };
+    } else if (interaction.type === "scale") {
+      const transforms = groupScaleTransforms(layers, canvasCenter(), interaction.handle, current);
+      if (transforms) interaction.previewTransforms = new Map(transforms.map(item => [item.id, item.transform]));
+    } else if (interaction.type === "rotate") {
+      const transforms = groupRotationTransforms(layers, canvasCenter(), current, interaction.startDocument);
+      if (transforms) interaction.previewTransforms = new Map(transforms.map(item => [item.id, item.transform]));
+    }
     redraw();
     return;
   }
@@ -625,9 +719,29 @@ canvas.addEventListener("pointerup", event => {
     const interaction = state.multiTransformInteraction;
     state.multiTransformInteraction = null;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
-    const delta = interaction.previewDelta || { x: 0, y: 0 };
-    if (delta.x !== 0 || delta.y !== 0) applyMultiLayerMove(delta.x, delta.y);
-    else redraw();
+    if (interaction.type === "move") {
+      const delta = interaction.previewDelta || { x: 0, y: 0 };
+      if (delta.x !== 0 || delta.y !== 0) applyMultiLayerMove(delta.x, delta.y);
+      else redraw();
+    } else {
+      const transforms = [...(interaction.previewTransforms?.entries() || [])].map(([id, transform]) => ({ id, transform }));
+      const changed = transforms.some(({ id, transform }) => {
+        const layer = state.document.layers.find(item => item.id === id);
+        return layer && JSON.stringify(layer.transform) !== JSON.stringify(transform);
+      });
+      if (changed) {
+        const before = cloneDocument(state.document);
+        const next = transformLayers(state.document, transforms);
+        if (next) {
+          state.document = next;
+          state.history.record(before, next);
+          refreshDocument(interaction.type === "scale" ? "Layers scaled" : "Layers rotated");
+          persistDocument();
+        }
+      } else {
+        redraw();
+      }
+    }
     return;
   }
   if (state.transformInteraction && event.pointerId === state.transformPointerId) {

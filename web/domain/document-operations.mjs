@@ -42,6 +42,24 @@ export function translateLayers(document, layerIds, deltaX, deltaY) {
   return next;
 }
 
+export function transformLayers(document, layerTransforms) {
+  if (!Array.isArray(layerTransforms) || !layerTransforms.length) return null;
+  const patches = new Map(layerTransforms.map(item => [item?.id, item?.transform]));
+  if ([...patches.keys()].some(id => typeof id !== "string") || patches.size !== layerTransforms.length) return null;
+
+  const next = cloneDocument(document);
+  for (const layer of next.layers) {
+    if (!patches.has(layer.id)) continue;
+    if (layer.locked) return null;
+    const transform = patches.get(layer.id);
+    if (!transform) return null;
+    const normalized = normalizeTransform(transform);
+    if (![normalized.x, normalized.y, normalized.scale, normalized.rotation].every(Number.isFinite)) return null;
+    layer.transform = normalized;
+  }
+  return next;
+}
+
 export function scaleLayer(document, layerId, factor) {
   const layer = document.layers.find(item => item.id === layerId);
   const multiplier = Number(factor);
