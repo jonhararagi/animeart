@@ -293,3 +293,67 @@ test("locked layers remain protected from drawing regardless of brush controls",
   const before = structuredClone(document);
   assert.deepEqual(document, before);
 });
+
+
+test("PNG export pipeline creates exact document dimensions and preserves transparency", async () => {
+  const {
+    createPngExportCanvas,
+    renderDocumentToCanvas,
+    canvasToPngBlob
+  } = await import("../domain/png-export.mjs");
+
+  const document = createDocument(1200, 900);
+  const fakeDocument = { createElement: () => ({
+    width: 0,
+    height: 0,
+    getContext: () => ({
+      clearRect: (...args) => calls.push(["clearRect", ...args]),
+      save: () => calls.push(["save"]),
+      translate: (...args) => calls.push(["translate", ...args]),
+      restore: () => calls.push(["restore"])
+    })
+  }) };
+  const calls = [];
+  const canvas = createPngExportCanvas(document, fakeDocument);
+  assert.equal(canvas.width, 1200);
+  assert.equal(canvas.height, 900);
+  renderDocumentToCanvas(document, canvas, ({ context, center }) => {
+    calls.push(["render", center.x, center.y]);
+    assert.equal(context, canvas.getContext("2d"));
+  });
+  assert.deepEqual(calls.slice(0, 4), [
+    ["clearRect", 0, 0, 1200, 900],
+    ["save"],
+    ["translate", 600, 450],
+    ["render", 600, 450]
+  ]);
+
+  const blob = await canvasToPngBlob({
+    convertToBlob: async options => {
+      assert.deepEqual(options, { type: "image/png" });
+      return { type: "image/png" };
+    }
+  });
+  assert.equal(blob.type, "image/png");
+});
+
+test("PNG export download keeps a .png filename and uses a local object URL", async () => {
+  const { downloadPngBlob } = await import("../domain/png-export.mjs");
+  const clicks = [];
+  const fakeDocument = {
+    createElement: () => ({
+      click: () => clicks.push("click")
+    })
+  };
+  const fakeUrl = {
+    createObjectURL: blob => {
+      assert.equal(blob.type, "image/png");
+      return "blob:local-test";
+    },
+    revokeObjectURL: () => {}
+  };
+  const result = downloadPngBlob({ type: "image/png" }, "animeart", fakeUrl, fakeDocument);
+  assert.equal(result.filename, "animeart.png");
+  assert.equal(result.url, "blob:local-test");
+  assert.deepEqual(clicks, ["click"]);
+});
