@@ -6,7 +6,6 @@ import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-im
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { hitTestHandle, hitTestLayer, resizeTransformFromCorner, selectionGeometry } from "./domain/selection.mjs";
 import { canvasToPngBlob, createPngExportCanvas, downloadPngBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
-import { canvasToPngBlob, createPngExportCanvas, downloadPngBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
@@ -18,7 +17,6 @@ const imageFileInput = document.querySelector("#image-file-input");
 const newDocumentButton = document.querySelector("#new-document");
 const recoverButton = document.querySelector("#recover-project");
 const saveButton = document.querySelector("#save");
-const exportPngButton = document.querySelector("#export-png");
 const exportPngButton = document.querySelector("#export-png");
 const projectDialog = document.querySelector("#project-dialog");
 const projectForm = document.querySelector("#project-form");
@@ -134,7 +132,7 @@ function drawDocument({ context = ctx, document = state.document, center = canva
         context.lineWidth = stroke.size;
         context.lineCap = "round";
         context.lineJoin = "round";
-        context.globalAlpha = stroke.tool === "eraser" ? 1 : stroke.opacity;
+        context.globalAlpha = layer.opacity * (stroke.tool === "eraser" ? 1 : stroke.opacity);
         context.strokeStyle = stroke.tool === "eraser" ? "#ffffff" : stroke.color;
         context.stroke();
       }
@@ -831,17 +829,18 @@ async function exportPng() {
   exportPngButton.disabled = true;
   status.textContent = "Exporting PNG…";
   try {
-    await Promise.all(state.document.layers
-      .filter(layer => layer.visible && layer.contentType === "image")
-      .map(ensureImageLayerLoaded));
-
+    await ensureExportImages(state.document);
     const exportCanvas = createPngExportCanvas(state.document);
-    renderDocumentToCanvas(state.document, exportCanvas, ({ context, center }) => {
-      drawDocument(context, state.document, center, { preview: false });
+    renderDocumentToCanvas(state.document, exportCanvas, ({ context, document, center }) => {
+      drawDocument({
+        context,
+        document,
+        center,
+        transformForLayer: layer => layer.transform
+      });
     });
     const blob = await canvasToPngBlob(exportCanvas);
     downloadPngBlob(blob, "animeart.png");
-
     if (JSON.stringify(state.document) !== documentBefore ||
         state.history.canUndo() !== historyBeforeUndo ||
         state.history.canRedo() !== historyBeforeRedo) {
@@ -877,27 +876,7 @@ function ensureExportImages(document) {
   return Promise.all(pending);
 }
 
-async function exportPng() {
-  try {
-    await ensureExportImages(state.document);
-    const exportCanvas = createPngExportCanvas(state.document);
-    renderDocumentToCanvas(state.document, exportCanvas, ({ context, document, center }) => {
-      drawDocument({
-        context,
-        document,
-        center,
-        transformForLayer: layer => layer.transform
-      });
-    });
-    const blob = await canvasToPngBlob(exportCanvas);
-    downloadPngBlob(blob, "animeart.png");
-    status.textContent = "PNG exported";
-  } catch (error) {
-    status.textContent = error?.message || "PNG export failed";
-  }
-}
 
-exportPngButton.addEventListener("click", exportPng);
 
 function load() {
   const raw = localStorage.getItem("animeart-web-document");
