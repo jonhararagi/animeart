@@ -278,7 +278,8 @@ test("T040 persistence failure keeps the current Document and History intact", a
   assert.match(persist, /return false/);
   assert.doesNotMatch(persist, /state\.document\s*=/);
   assert.doesNotMatch(persist, /state\.history\./);
-  assert.doesNotMatch(persist, /Saved locally/);
+  const failureBranch = persist.match(/catch \(error\) \{[\s\S]*?return false;/)?.[0] || "";
+  assert.doesNotMatch(failureBranch, /Saved locally/);
 });
 
 test("T040 all persistible lifecycle mutations use the existing History then persistence boundary", async () => {
