@@ -13,6 +13,13 @@ const layersEl = document.querySelector("#layers");
 const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
 const imageFileInput = document.querySelector("#image-file-input");
+const newDocumentButton = document.querySelector("#new-document");
+const recoverButton = document.querySelector("#recover-project");
+const saveButton = document.querySelector("#save");
+const projectDialog = document.querySelector("#project-dialog");
+const projectForm = document.querySelector("#project-form");
+const widthInput = document.querySelector("#document-width");
+const heightInput = document.querySelector("#document-height");
 const canvasWrap = document.querySelector(".canvas-wrap");
 let dragDepth = 0;
 
@@ -34,7 +41,8 @@ const state = {
   transformInteraction: null,
   viewport: createViewport(),
   document: createDocument(),
-  history: null
+  history: null,
+  dirty: false
 };
 
 state.history = new DocumentHistory(state.document);
@@ -287,9 +295,10 @@ function renderLayers() {
   });
 }
 
-function persistDocument() {
+function persistDocument({ markSaved = false } = {}) {
   localStorage.setItem("animeart-web-document", JSON.stringify(state.document));
-  status.textContent = "Saved locally";
+  state.dirty = !markSaved;
+  status.textContent = markSaved ? "Saved locally" : "Local backup updated";
 }
 
 function refreshHistoryControls() {
@@ -584,6 +593,7 @@ async function importImageIntoEditor(file, message = "Image imported") {
     });
     state.document = result.document;
     state.selectedLayerId = result.layer.id;
+    state.dirty = true;
     refreshDocument(message);
     return true;
   } catch (error) {
@@ -681,7 +691,77 @@ document.querySelector("#clear").addEventListener("click", () => {
   persistDocument();
 });
 
-document.querySelector("#save").addEventListener("click", persistDocument);
+function restoreStoredProject({ confirmDiscard = true } = {}) {
+  const raw = localStorage.getItem("animeart-web-document");
+  if (!raw) {
+    status.textContent = "No local project to recover";
+    return false;
+  }
+  if (confirmDiscard && state.dirty && !window.confirm("Discard changes since the last explicit save?")) return false;
+  try {
+    const saved = JSON.parse(raw);
+    const restored = restoreDocument(saved);
+    if (!restored) throw new Error("Stored project is invalid");
+    state.document = restored;
+    state.history.reset(restored);
+    state.selectedLayerId = restored.layers.at(-1)?.id || null;
+    state.viewport = createViewport();
+    state.transformInteraction = null;
+    state.drawing = false;
+    state.strokeBefore = null;
+    state.dirty = false;
+    refreshDocument("Recovered local project");
+    return true;
+  } catch {
+    status.textContent = "Stored project could not be recovered";
+    return false;
+  }
+}
+
+function createNewDocumentFromForm() {
+  const width = Number(widthInput.value);
+  const height = Number(heightInput.value);
+  if (!Number.isInteger(width) || width < 1 || !Number.isInteger(height) || height < 1) {
+    status.textContent = "Width and height must be positive whole numbers";
+    return false;
+  }
+  if (state.dirty && !window.confirm("Discard changes since the last explicit save?")) return false;
+  const next = createDocument(width, height);
+  state.document = next;
+  state.history.reset(next);
+  state.selectedLayerId = next.layers[0].id;
+  state.viewport = createViewport();
+  state.transformInteraction = null;
+  state.drawing = false;
+  state.strokeBefore = null;
+  state.dirty = false;
+  refreshDocument("New document created");
+  return true;
+}
+
+newDocumentButton.addEventListener("click", () => {
+  widthInput.value = String(state.document.width > 0 ? state.document.width : 800);
+  heightInput.value = String(state.document.height > 0 ? state.document.height : 600);
+  projectDialog.showModal();
+  widthInput.focus();
+});
+
+projectForm.addEventListener("submit", event => {
+  event.preventDefault();
+  if (createNewDocumentFromForm()) projectDialog.close();
+});
+
+recoverButton.addEventListener("click", () => {
+  restoreStoredProject();
+});
+
+saveButton.addEventListener("click", () => {
+  try {
+    persistDocument({ markSaved: true });
+  } catch {
+    status.textContent = "Could not save project locally";
+  }
+});
 
 function load() {
   const raw = localStorage.getItem("animeart-web-document");
@@ -692,12 +772,14 @@ function load() {
     state.history.reset(state.document);
     refreshHistoryControls();
     state.selectedLayerId = state.document.layers.at(-1)?.id || null;
+    state.dirty = false;
     status.textContent = "Recovered local project";
   } catch {
     state.document = createDocument();
     state.history.reset(state.document);
     refreshHistoryControls();
     state.selectedLayerId = state.document.layers[0].id;
+    state.dirty = false;
     status.textContent = "New local project";
   }
 }
