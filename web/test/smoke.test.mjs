@@ -123,3 +123,38 @@ test("layer lifecycle UI guards locked layers and preserves the single selection
   assert.match(js, /if \(layer\.locked \|\| state\.document\.layers\.length <= 1\) return;/);
   assert.match(js, /state\.selectedLayerId = duplicate\.id/);
 });
+
+
+test("document lifecycle exposes new, recover, save and configured dimensions without parallel managers", async () => {
+  const html = await readFile("index.html", "utf8");
+  const js = await readFile("app.js", "utf8");
+  assert.match(html, /id="new-document"/);
+  assert.match(html, /id="recover-project"/);
+  assert.match(html, /id="save"/);
+  assert.match(html, /id="project-dialog"/);
+  assert.match(html, /id="document-width"/);
+  assert.match(html, /id="document-height"/);
+  assert.match(js, /createDocument\(width, height\)/);
+  assert.match(js, /localStorage\.getItem\("animeart-web-document"\)/);
+  assert.match(js, /persistDocument\(\{ markSaved: true \}\)/);
+  assert.match(js, /state\.history\.reset\(next\)/);
+  assert.match(js, /state\.history\.reset\(restored\)/);
+  assert.match(js, /state\.dirty/);
+  assert.doesNotMatch(js, /ProjectManager|DocumentManager|PersistenceManager/);
+});
+
+test("new document validates positive integer dimensions before replacing the current document", async () => {
+  const html = await readFile("index.html", "utf8");
+  const js = await readFile("app.js", "utf8");
+  assert.match(html, /min="1" step="1"/);
+  assert.match(js, /!Number\.isInteger\(width\) \|\| width < 1/);
+  assert.match(js, /!Number\.isInteger\(height\) \|\| height < 1/);
+  assert.match(js, /Discard changes since the last explicit save/);
+});
+
+test("document lifecycle keeps image compatibility and existing persistence key", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /applyImageFileImport/);
+  assert.match(js, /persistDocumentSnapshot\(localStorage, "animeart-web-document"/);
+  assert.match(js, /restoreDocument/);
+});
