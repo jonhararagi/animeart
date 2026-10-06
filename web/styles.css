@@ -40,3 +40,17 @@ canvas { display: block; width: min(92%, 1100px); height: min(88%, 800px); backg
 
 .layer-lifecycle { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
 .layer-action { min-width: 0; padding: 4px 2px; font-size: .72rem; }
+
+
+#project-dialog {
+  border: 1px solid #353944;
+  border-radius: 10px;
+  padding: 18px;
+  background: #17191f;
+  color: inherit;
+}
+#project-dialog::backdrop { background: rgba(0,0,0,.55); }
+#project-form { display: grid; gap: 12px; min-width: 260px; }
+#project-form label { display: grid; gap: 6px; font-size: .85rem; }
+#project-form input { width: 100%; border: 1px solid #353944; border-radius: 7px; background: #20232b; color: inherit; padding: 8px; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
