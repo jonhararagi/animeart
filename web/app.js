@@ -212,36 +212,6 @@ function drawSelectionOverlay() {
     ctx.restore();
   }
 }
-  ctx.save();
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([6, 4]);
-  ctx.strokeStyle = "#2f80ed";
-  ctx.beginPath();
-  geometry.corners.forEach((corner, index) => index === 0 ? ctx.moveTo(corner.x, corner.y) : ctx.lineTo(corner.x, corner.y));
-  ctx.closePath();
-  ctx.stroke();
-  ctx.setLineDash([]);
-  const topMid = { x: (geometry.corners[0].x + geometry.corners[1].x) / 2, y: (geometry.corners[0].y + geometry.corners[1].y) / 2 };
-  ctx.beginPath();
-  ctx.moveTo(topMid.x, topMid.y);
-  ctx.lineTo(geometry.rotationHandle.x, geometry.rotationHandle.y);
-  ctx.stroke();
-  for (const corner of geometry.corners) {
-    ctx.fillStyle = "#ffffff";
-    ctx.strokeStyle = "#2f80ed";
-    ctx.beginPath();
-    ctx.rect(corner.x - 5, corner.y - 5, 10, 10);
-    ctx.fill();
-    ctx.stroke();
-  }
-  ctx.beginPath();
-  ctx.arc(geometry.rotationHandle.x, geometry.rotationHandle.y, 5, 0, Math.PI * 2);
-  ctx.fillStyle = "#ffffff";
-  ctx.fill();
-  ctx.stroke();
-  ctx.restore();
-}
-
 function redraw() {
   const rect = canvas.getBoundingClientRect();
   const dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -571,6 +541,7 @@ canvas.addEventListener("pointerdown", event => {
   if (state.tool === "pan") {
     state.transformInteraction = null;
     state.transformPointerId = null;
+    state.multiTransformInteraction = null;
     state.drawing = false;
     state.drawingPointerId = null;
     state.strokeBefore = null;
