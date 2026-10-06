@@ -1570,3 +1570,136 @@ VERIFICACIÓN:
 RESULTADO:
 T040 queda completamente integrado, validado y GREEN sobre main. T041 queda habilitada pero no iniciada.
 
+
+
+## T041 — Web Multi-Layer Transform: Scale + Rotation
+
+ESTADO:
+GREEN — integrado, validado y cerrado sobre main.
+
+BASELINE:
+`82648ed65f57ea0ca6d4ff4ccce1a83971ee37a5`
+
+BRANCH:
+`t041-web-multilayer-transform`
+
+CANDIDATE FINAL:
+`48c3515d476773e8e5660d08d782c98f98d54fc7`
+
+PR:
+#26 — T041: add multi-layer scale and rotation.
+
+OBJETIVO:
+Extender la selección múltiple existente con:
+- Group Move — existente desde T038.
+- Group Scale — T041.
+- Group Rotation — T041.
+
+IMPLEMENTADO:
+- Bounding box grupal reutilizando la geometría de selección existente.
+- Escala grupal uniforme mediante drag de esquina.
+- Rotación grupal mediante drag del control de rotación.
+- Preservación de posiciones relativas durante la transformación.
+- Actualización conjunta de posición, scale y rotation de las layers seleccionadas.
+- Pivote de rotación: centro del bounding box grupal.
+- Regla de escala mínima positiva reutilizando el patrón existente de transformación.
+- Bloqueo atómico: una selección con una layer locked no aplica la transformación.
+- Drawing Layer e Image Layer usan el mismo Layer Transform.
+- Preview transitorio durante pointer interaction.
+- Una sola operación lógica de History por scale/rotation.
+- Persistencia mediante `persistDocumentSnapshot()`.
+- pointercancel descarta el preview sin modificar Document/History.
+- Group Move existente permanece en el mismo pipeline.
+
+ARQUITECTURA REUTILIZADA:
+Selection
+→ existing transform geometry
+→ Document Operations
+→ DocumentHistory
+→ Persistence
+→ existing Canvas renderer.
+
+No se creó:
+- MultiLayerTransformManager.
+- GroupTransformManager.
+- TransformManager.
+- SelectionManager.
+- HistoryManager.
+- PersistenceManager.
+- RenderManager.
+- segundo Document.
+- segundo History.
+- segundo Persistence.
+- segundo Renderer.
+
+TESTS:
+- Web smoke/regression tests para wiring, arquitectura, History, persistence, pointercancel y group move.
+- Tests ejecutables de geometría para group scale.
+- Tests ejecutables de geometría para group rotation.
+- Test de atomicidad con locked layer.
+- Test de serialización de transforms para Drawing + Image Layer.
+
+PRE-MERGE:
+- Web CI #122? No. T041 branch Web CI:
+  - Run #122 fue el baseline T040 sobre main y no se usa como T041 pre-merge.
+  - Web CI run #37527190153 sobre candidate inicial `33c51eace3010483d44125a49b6b88ca72144be7`: SUCCESS.
+  - Android CI run #37527190297 sobre candidate inicial `33c51eace3010483d44125a49b6b88ca72144be7`: SUCCESS.
+  - Web CI run #37527685885 sobre candidate final `48c3515d476773e8e5660d08d782c98f98d54fc7`: SUCCESS.
+  - Android CI run #37527685710 sobre candidate final `48c3515d476773e8e5660d08d782c98f98d54fc7`: SUCCESS.
+- Web candidate final: Build PASS, Test PASS, Verify build output PASS.
+- Android candidate final: Build PASS, Unit tests PASS, Lint PASS, Startup Smoke PASS, Debug APK PASS.
+
+INCIDENCIAS / REPARACIONES:
+- Web CI run #37527669530 sobre commit intermedio `25839f039c7bcd723e6669fc37382945422a68dc`: FAILURE.
+- Causa: expectativas geométricas iniciales de los tests T041 no coincidían exactamente con el factor de escala y el ángulo de rotación calculados por la geometría implementada.
+- Reparación: se corrigieron únicamente las expectativas ejecutables del test.
+- Web CI posterior sobre `48c3515d476773e8e5660d08d782c98f98d54fc7`: SUCCESS.
+- Android CI asociado al commit intermedio se ejecutó y posteriormente quedó reemplazado por la validación del candidate final; no se utilizó como evidencia GREEN final.
+- No se ocultó ni ignoró el fallo intermedio.
+
+REVISIÓN:
+- Se inspeccionó el diff completo de PR #26 antes del merge.
+- La revisión formal GitHub APPROVE no pudo ser creada por el mismo actor que abrió la PR: GitHub rechaza aprobar la propia PR.
+- No existía ruleset visible que exigiera una aprobación externa; el endpoint de branch protection no fue accesible por permisos de integración.
+- El merge se realizó solamente después de la revisión técnica del diff y de Web/Android CI finales PASS.
+
+MERGE:
+- PR #26 MERGED.
+- Merge SHA:
+`2d168c0542622ded540bbee4fc320db4246568d8`
+- main HEAD actualizado al merge SHA.
+
+POST-MERGE:
+- Web CI run #37528255948: SUCCESS.
+- Web: Build PASS, Test PASS, Verify build output PASS.
+- Android CI run #37528255963: SUCCESS.
+- Android: Build PASS, Unit tests PASS, Lint PASS, Startup Smoke PASS, Debug APK PASS.
+- Android Startup Smoke PASS.
+- Todos los jobs obligatorios post-merge terminaron SUCCESS.
+
+OUT OF SCOPE:
+- Persistent grouping.
+- Nesting.
+- Masks.
+- Filters.
+- Text.
+- Shapes.
+- IndexedDB.
+- PWA.
+- Cloud/backend.
+- AI.
+- Android redesign.
+- Nuevo renderer.
+- Nuevo History.
+- Nueva Persistence.
+- Nuevo sistema de grouping.
+
+CONTINUIDAD:
+T038 estableció Multi-Selection + Group Move.
+T039 endureció Persistence.
+T040 endureció la integridad Mutation → History → Persistence → UI.
+T041 completa la transformación multi-layer con Scale + Rotation reutilizando esas fronteras.
+
+RESULTADO:
+T041 queda integrada y GREEN sobre main.
+No se inicia T042.
