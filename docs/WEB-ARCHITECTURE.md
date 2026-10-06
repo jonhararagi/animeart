@@ -328,3 +328,29 @@ The existing Web persistence contract remains the single storage boundary.
 - A failed `localStorage.setItem()` or size validation does not replace or mutate the current Document and does not mark an explicit save as successful.
 - History remains a separate Document transition mechanism; persistence success is not inferred from `DocumentHistory.record()`.
 - No PersistenceManager, DocumentStore, Serializer2, IndexedDB or alternate storage format was introduced.
+
+## T040 — Web Document Mutation Transaction Integrity
+
+The Web editor keeps one mutation-to-persistence boundary; T040 does not introduce a transaction manager or second state/persistence layer.
+
+For persistible mutations, the existing flow is:
+
+`Document before → Document next → DocumentHistory.record(before, next) → persistDocument()/persistDocumentSnapshot() → UI refresh`
+
+Drawing keeps pointer movement outside History: `pointerdown` captures the Document snapshot, `pointermove` only extends the active stroke, and `pointerup` records one history entry before persistence. Pointer cancellation restores the captured Document without recording a partial operation.
+
+Layer lifecycle operations, transforms, multi-layer movement and clear reuse the existing `document-operations.mjs`, `DocumentHistory`, and `persistDocumentSnapshot()` boundaries. Viewport changes remain presentation state and are never persisted or recorded in DocumentHistory.
+
+Undo and redo replace the current Document from the existing History and then use the same local persistence path. Image import continues to use `applyImageFileImport()` as its existing transactional boundary, including rollback when persistence fails.
+
+### Dirty semantics
+
+`state.dirty` means **changes since the last explicit SAVE/RECOVER/NEW DOCUMENT baseline**, not merely whether a localStorage write succeeded. A successful backup can therefore leave `dirty=true`; explicit SAVE sets it to false. Recovery and NEW DOCUMENT also reset it to false. Persistence failure forces/keeps `dirty=true`.
+
+### Persistence failure
+
+`persistDocument()` catches storage/serialization failures without replacing the in-memory Document or mutating History. It sets `dirty=true`, returns false, and leaves the existing error message visible. The editor remains usable and SAVE can be retried.
+
+T040 specifically prevents drawing and transform completion handlers from overwriting that persistence error after the save attempt.
+
+No Viewport snapshot, second History, second Document, or parallel persistence architecture is introduced.
