@@ -317,3 +317,14 @@ Scale/rotation of multiple layers and persistent grouping are intentionally defe
 ### Regression boundary
 
 Android remains untouched. The Web renderer, viewport, history and persistence implementations remain the same systems used by T037.
+
+## T039 — Web Persistence Hardening
+
+The existing Web persistence contract remains the single storage boundary.
+
+- `serializeDocumentForStorage()` enforces the existing `MAX_DOCUMENT_STORAGE_CHARS` limit before storage mutation.
+- `persistDocumentSnapshot()` is now used by normal editor save/backup as well as image import.
+- `restoreDocument()` remains the only document recovery boundary, including legacy migration.
+- A failed `localStorage.setItem()` or size validation does not replace or mutate the current Document and does not mark an explicit save as successful.
+- History remains a separate Document transition mechanism; persistence success is not inferred from `DocumentHistory.record()`.
+- No PersistenceManager, DocumentStore, Serializer2, IndexedDB or alternate storage format was introduced.

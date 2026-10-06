@@ -32,7 +32,7 @@ test("web interaction keeps viewport, document coordinates and persistence bound
   assert.match(js, /screenToDocument\(screenPoint, state\.viewport/);
   assert.match(js, /ctx\.translate\(center\.x \+ state\.viewport\.panX/);
   assert.doesNotMatch(js, /canvas\.style\.transform/);
-  assert.match(js, /state\.document\)\);/);
+  assert.match(js, /persistDocumentSnapshot\(localStorage, "animeart-web-document", state\.document\)/);
   assert.doesNotMatch(js, /JSON\.stringify\(\{[^}]*viewport/);
   assert.match(js, /event\.pointerId !== state\.drawingPointerId/);
   assert.match(js, /state\.strokeBefore/);
@@ -137,6 +137,8 @@ test("document lifecycle exposes new, recover, save and configured dimensions wi
   assert.match(js, /createDocument\(width, height\)/);
   assert.match(js, /localStorage\.getItem\("animeart-web-document"\)/);
   assert.match(js, /persistDocument\(\{ markSaved: true \}\)/);
+  assert.match(js, /persistDocumentSnapshot\(localStorage, "animeart-web-document", state\.document\)/);
+  assert.doesNotMatch(js, /localStorage\.setItem\("animeart-web-document", JSON\.stringify\(state\.document\)\)/);
   assert.match(js, /state\.history\.reset\(next\)/);
   assert.match(js, /state\.history\.reset\(restored\)/);
   assert.match(js, /state\.dirty/);

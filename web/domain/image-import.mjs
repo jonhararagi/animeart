@@ -90,7 +90,7 @@ export function persistDocumentSnapshot(storage, key, document) {
   try {
     storage.setItem(key, serialized);
   } catch {
-    throw imageImportError("Image could not be saved in localStorage; the project was not changed");
+    throw imageImportError("Project could not be saved in localStorage; the current document was not changed");
   }
   return serialized;
 }

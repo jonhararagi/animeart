@@ -14,7 +14,8 @@ The Web editor currently provides:
 - single-layer selection with bounding box, move, scale and rotation;
 - multi-selection with Shift+click and grouped layer movement;
 - undo/redo through the single DocumentHistory boundary;
-- local persistence and project recovery;
+- local persistence and project recovery through the single serializer/storage contract;
+- controlled localStorage quota/size failure handling without replacing the current document;
 - local PNG export using the existing document renderer.
 
 The project remains dependency-light and local-first. Core editor data stays in the browser; no cloud or external AI service is required for the current editor flow.

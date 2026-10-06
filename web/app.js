@@ -348,9 +348,16 @@ function renderLayers() {
 }
 
 function persistDocument({ markSaved = false } = {}) {
-  localStorage.setItem("animeart-web-document", JSON.stringify(state.document));
+  try {
+    persistDocumentSnapshot(localStorage, "animeart-web-document", state.document);
+  } catch (error) {
+    state.dirty = true;
+    status.textContent = error?.message || "Could not save project locally";
+    return false;
+  }
   state.dirty = !markSaved;
   status.textContent = markSaved ? "Saved locally" : "Local backup updated";
+  return true;
 }
 
 function refreshHistoryControls() {
@@ -927,11 +934,7 @@ recoverButton.addEventListener("click", () => {
 });
 
 saveButton.addEventListener("click", () => {
-  try {
-    persistDocument({ markSaved: true });
-  } catch {
-    status.textContent = "Could not save project locally";
-  }
+  persistDocument({ markSaved: true });
 });
 
 async function exportPng() {
