@@ -303,17 +303,18 @@ test("PNG export pipeline creates exact document dimensions and preserves transp
   } = await import("../domain/png-export.mjs");
 
   const document = createDocument(1200, 900);
+  const calls = [];
+  const context = {
+    clearRect: (...args) => calls.push(["clearRect", ...args]),
+    save: () => calls.push(["save"]),
+    translate: (...args) => calls.push(["translate", ...args]),
+    restore: () => calls.push(["restore"])
+  };
   const fakeDocument = { createElement: () => ({
     width: 0,
     height: 0,
-    getContext: () => ({
-      clearRect: (...args) => calls.push(["clearRect", ...args]),
-      save: () => calls.push(["save"]),
-      translate: (...args) => calls.push(["translate", ...args]),
-      restore: () => calls.push(["restore"])
-    })
+    getContext: () => context
   }) };
-  const calls = [];
   const canvas = createPngExportCanvas(document, fakeDocument);
   assert.equal(canvas.width, 1200);
   assert.equal(canvas.height, 900);
