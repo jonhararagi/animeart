@@ -1,10 +1,10 @@
 import { createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
-import { deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerVisibility, translateLayer, updateLayerTransform } from "./domain/document-operations.mjs";
+import { deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerVisibility, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
-import { hitTestHandle, hitTestLayer, resizeTransformFromCorner, selectionGeometry } from "./domain/selection.mjs";
+import { hitTestHandle, hitTestLayer, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
 import { canvasToPngBlob, createPngExportCanvas, downloadPngBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
@@ -40,12 +40,14 @@ const state = {
   drawing: false,
   panning: false,
   selectedLayerId: null,
+  selectedLayerIds: [],
   panPointerId: null,
   drawingPointerId: null,
   transformPointerId: null,
   lastPanPoint: null,
   strokeBefore: null,
   transformInteraction: null,
+  multiTransformInteraction: null,
   viewport: createViewport(),
   document: createDocument(),
   history: null,
@@ -60,6 +62,24 @@ function selectedLayer() {
 
 function selectedLayerExact() {
   return state.document.layers.find(layer => layer.id === state.selectedLayerId) || null;
+}
+
+function selectedLayersExact() {
+  const ids = new Set(state.selectedLayerIds);
+  return state.document.layers.filter(layer => ids.has(layer.id));
+}
+
+function setSelection(layerIds, anchorId = null) {
+  const normalized = normalizeLayerSelection(layerIds, state.document);
+  state.selectedLayerIds = normalized;
+  state.selectedLayerId = anchorId && normalized.includes(anchorId)
+    ? anchorId
+    : normalized.at(-1) || null;
+}
+
+function toggleSelection(layerId) {
+  const next = toggleLayerSelection(state.selectedLayerIds, layerId, state.document);
+  setSelection(next, layerId);
 }
 
 function canvasCenter() {
@@ -83,6 +103,13 @@ function applyViewport() {
 }
 
 function layerTransformForRender(layer) {
+  if (state.multiTransformInteraction?.previewDelta && state.selectedLayerIds.includes(layer.id)) {
+    return {
+      ...layer.transform,
+      x: layer.transform.x + state.multiTransformInteraction.previewDelta.x,
+      y: layer.transform.y + state.multiTransformInteraction.previewDelta.y
+    };
+  }
   return state.transformInteraction?.layerId === layer.id
     ? state.transformInteraction.previewTransform
     : layer.transform;
@@ -142,40 +169,53 @@ function drawDocument({ context = ctx, document = state.document, center = canva
 }
 
 function drawSelectionOverlay() {
-  const layer = selectedLayerExact();
-  if (!layer || !layer.visible) return;
-  const geometry = selectionGeometry(layer, state.viewport, canvasCenter(), state.transformInteraction?.layerId === layer.id ? state.transformInteraction.previewTransform : null);
-  if (!geometry) return;
-  ctx.save();
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([6, 4]);
-  ctx.strokeStyle = "#2f80ed";
-  ctx.beginPath();
-  geometry.corners.forEach((corner, index) => index === 0 ? ctx.moveTo(corner.x, corner.y) : ctx.lineTo(corner.x, corner.y));
-  ctx.closePath();
-  ctx.stroke();
-  ctx.setLineDash([]);
-  const topMid = { x: (geometry.corners[0].x + geometry.corners[1].x) / 2, y: (geometry.corners[0].y + geometry.corners[1].y) / 2 };
-  ctx.beginPath();
-  ctx.moveTo(topMid.x, topMid.y);
-  ctx.lineTo(geometry.rotationHandle.x, geometry.rotationHandle.y);
-  ctx.stroke();
-  for (const corner of geometry.corners) {
-    ctx.fillStyle = "#ffffff";
-    ctx.strokeStyle = "#2f80ed";
+  for (const layer of selectedLayersExact()) {
+    if (!layer.visible) continue;
+    const previewTransform = state.transformInteraction?.layerId === layer.id
+      ? state.transformInteraction.previewTransform
+      : state.multiTransformInteraction?.previewDelta && state.selectedLayerIds.includes(layer.id)
+        ? {
+            ...layer.transform,
+            x: layer.transform.x + state.multiTransformInteraction.previewDelta.x,
+            y: layer.transform.y + state.multiTransformInteraction.previewDelta.y
+          }
+        : null;
+    const geometry = selectionGeometry(layer, state.viewport, canvasCenter(), previewTransform);
+    if (!geometry) continue;
+    ctx.save();
+    ctx.lineWidth = layer.id === state.selectedLayerId ? 1.5 : 1;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = layer.id === state.selectedLayerId ? "#2f80ed" : "#7aa7e8";
     ctx.beginPath();
-    ctx.rect(corner.x - 5, corner.y - 5, 10, 10);
+    geometry.corners.forEach((corner, index) => index === 0 ? ctx.moveTo(corner.x, corner.y) : ctx.lineTo(corner.x, corner.y));
+    ctx.closePath();
+    ctx.stroke();
+    if (layer.id !== state.selectedLayerId) {
+      ctx.restore();
+      continue;
+    }
+    ctx.setLineDash([]);
+    const topMid = { x: (geometry.corners[0].x + geometry.corners[1].x) / 2, y: (geometry.corners[0].y + geometry.corners[1].y) / 2 };
+    ctx.beginPath();
+    ctx.moveTo(topMid.x, topMid.y);
+    ctx.lineTo(geometry.rotationHandle.x, geometry.rotationHandle.y);
+    ctx.stroke();
+    for (const corner of geometry.corners) {
+      ctx.fillStyle = "#ffffff";
+      ctx.strokeStyle = "#2f80ed";
+      ctx.beginPath();
+      ctx.rect(corner.x - 5, corner.y - 5, 10, 10);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(geometry.rotationHandle.x, geometry.rotationHandle.y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
     ctx.fill();
     ctx.stroke();
+    ctx.restore();
   }
-  ctx.beginPath();
-  ctx.arc(geometry.rotationHandle.x, geometry.rotationHandle.y, 5, 0, Math.PI * 2);
-  ctx.fillStyle = "#ffffff";
-  ctx.fill();
-  ctx.stroke();
-  ctx.restore();
 }
-
 function redraw() {
   const rect = canvas.getBoundingClientRect();
   const dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -205,15 +245,19 @@ function renderLayers() {
   [...state.document.layers].reverse().forEach(layer => {
     const li = document.createElement("li");
     li.dataset.layerId = layer.id;
-    if (layer.id === state.selectedLayerId) li.dataset.selected = "true";
+    if (state.selectedLayerIds.includes(layer.id)) li.dataset.selected = "true";
 
     const selectButton = document.createElement("button");
     selectButton.type = "button";
     selectButton.className = "layer-select";
     selectButton.textContent = layer.name + (layer.contentType === "image" ? " [Image]" : "");
     selectButton.setAttribute("aria-label", "Select " + layer.name);
-    selectButton.addEventListener("click", () => {
-      state.selectedLayerId = layer.id;
+    selectButton.addEventListener("click", event => {
+      if (event.shiftKey) {
+        toggleSelection(layer.id);
+      } else {
+        setSelection([layer.id], layer.id);
+      }
       renderLayers();
       redraw();
     });
@@ -270,7 +314,7 @@ function renderLayers() {
       if (!next) return;
       const originalIndex = state.document.layers.findIndex(item => item.id === layer.id);
       const duplicate = next.layers[originalIndex + 1];
-      state.document = next; state.selectedLayerId = duplicate.id;
+      state.document = next; setSelection([duplicate.id], duplicate.id);
       state.history.record(before, next); refreshDocument("Layer duplicated"); persistDocument();
     });
 
@@ -315,7 +359,13 @@ function refreshHistoryControls() {
 }
 
 function syncSelection() {
-  if (!state.document.layers.some(layer => layer.id === state.selectedLayerId)) state.selectedLayerId = state.document.layers.at(-1)?.id || null;
+  const normalized = normalizeLayerSelection(state.selectedLayerIds, state.document);
+  if (!normalized.length) {
+    const fallback = state.document.layers.at(-1)?.id || null;
+    setSelection(fallback ? [fallback] : [], fallback);
+    return;
+  }
+  setSelection(normalized, state.selectedLayerId);
 }
 
 function refreshDocument(message = "Unsaved local changes") {
@@ -355,6 +405,19 @@ function applyLayerOperation(operation, message, { allowLocked = false } = {}) {
   state.history.record(before, next);
   refreshDocument(message);
   persistDocument();
+}
+
+function applyMultiLayerMove(deltaX, deltaY, message = "Layers moved") {
+  const layers = selectedLayersExact();
+  if (layers.length < 2 || layers.some(layer => layer.locked)) return false;
+  const before = cloneDocument(state.document);
+  const next = translateLayers(state.document, layers.map(layer => layer.id), deltaX, deltaY);
+  if (!next) return false;
+  state.document = next;
+  state.history.record(before, next);
+  refreshDocument(message);
+  persistDocument();
+  return true;
 }
 
 function beginTransformInteraction(type, event, handle = null) {
@@ -446,21 +509,42 @@ function beginSelectionInteraction(event) {
   const selected = selectedLayerExact();
   const selectedGeometry = selected ? selectionGeometry(selected, state.viewport, canvasCenter()) : null;
   const selectedHit = hitTestHandle(screenPoint, selectedGeometry, HANDLE_RADIUS);
-  if (selectedHit === "move") return beginTransformInteraction("move", event);
+  if (state.selectedLayerIds.length > 1) {
+    const documentPoint = screenToDocument(screenPoint, state.viewport, canvasCenter());
+    const hitSelectedLayer = [...state.document.layers].reverse().find(layer =>
+      layer.visible &&
+      state.selectedLayerIds.includes(layer.id) &&
+      hitTestLayer(layer, documentPoint, canvasCenter())
+    );
+    if (hitSelectedLayer && selectedLayersExact().every(layer => !layer.locked)) {
+      state.selectedLayerId = hitSelectedLayer.id;
+      state.multiTransformInteraction = {
+        pointerId: event.pointerId,
+        startDocument: documentPoint,
+        previewDelta: { x: 0, y: 0 }
+      };
+      canvas.setPointerCapture(event.pointerId);
+      return;
+    }
+  }
+  if (selectedHit === "move" && state.selectedLayerIds.length === 1) {
+    return beginTransformInteraction("move", event);
+  }
   if (selectedHit?.startsWith("scale-")) return beginTransformInteraction("scale", event, selectedHit);
   if (selectedHit === "rotate") return beginTransformInteraction("rotate", event);
   const documentPoint = screenToDocument(screenPoint, state.viewport, canvasCenter());
   for (const layer of [...state.document.layers].reverse()) {
     if (!layer.visible) continue;
     if (hitTestLayer(layer, documentPoint, canvasCenter())) {
-      state.selectedLayerId = layer.id;
+      if (event.shiftKey) toggleSelection(layer.id);
+      else setSelection([layer.id], layer.id);
       renderLayers();
       redraw();
-      if (!layer.locked) beginTransformInteraction("move", event);
+      if (!event.shiftKey && !layer.locked) beginTransformInteraction("move", event);
       return;
     }
   }
-  state.selectedLayerId = null;
+  if (!event.shiftKey) setSelection([], null);
   renderLayers();
   redraw();
 }
@@ -469,6 +553,7 @@ canvas.addEventListener("pointerdown", event => {
   if (state.tool === "pan") {
     state.transformInteraction = null;
     state.transformPointerId = null;
+    state.multiTransformInteraction = null;
     state.drawing = false;
     state.drawingPointerId = null;
     state.strokeBefore = null;
@@ -500,6 +585,13 @@ canvas.addEventListener("pointermove", event => {
     redraw();
     return;
   }
+  if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
+    const current = screenToDocument(screenPointFromEvent(event), state.viewport, canvasCenter());
+    const start = state.multiTransformInteraction.startDocument;
+    state.multiTransformInteraction.previewDelta = { x: current.x - start.x, y: current.y - start.y };
+    redraw();
+    return;
+  }
   if (state.transformInteraction && event.pointerId === state.transformPointerId) {
     updateTransformPreview(event);
     return;
@@ -520,6 +612,15 @@ canvas.addEventListener("pointerup", event => {
     state.drawing = false;
     state.drawingPointerId = null;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    return;
+  }
+  if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
+    const interaction = state.multiTransformInteraction;
+    state.multiTransformInteraction = null;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    const delta = interaction.previewDelta || { x: 0, y: 0 };
+    if (delta.x !== 0 || delta.y !== 0) applyMultiLayerMove(delta.x, delta.y);
+    else redraw();
     return;
   }
   if (state.transformInteraction && event.pointerId === state.transformPointerId) {
@@ -545,6 +646,12 @@ canvas.addEventListener("pointercancel", event => {
     state.panPointerId = null;
     state.lastPanPoint = null;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    return;
+  }
+  if (state.multiTransformInteraction?.pointerId === event.pointerId) {
+    state.multiTransformInteraction = null;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    redraw();
     return;
   }
   if (event.pointerId === state.transformPointerId) {
@@ -621,6 +728,9 @@ function syncBrushControls() {
 document.querySelectorAll(".tool").forEach(button => {
   button.addEventListener("click", () => {
     state.tool = button.dataset.tool;
+    if (state.tool !== "select" && state.multiTransformInteraction) {
+      state.multiTransformInteraction = null;
+    }
     if (state.tool !== "select" && state.transformInteraction) finishTransformInteraction(true);
     document.querySelectorAll(".tool").forEach(b => b.classList.toggle("active", b === button));
     redraw();
@@ -634,7 +744,7 @@ document.querySelector("#add-layer").addEventListener("click", () => {
   const before = cloneDocument(state.document);
   const layer = createLayer("Layer " + (state.document.layers.length + 1));
   state.document.layers.push(layer);
-  state.selectedLayerId = layer.id;
+  setSelection([layer.id], layer.id);
   state.history.record(before, state.document);
   refreshDocument();
   persistDocument();
@@ -649,7 +759,7 @@ async function importImageIntoEditor(file, message = "Image imported") {
       persist: next => persistDocumentSnapshot(localStorage, "animeart-web-document", next)
     });
     state.document = result.document;
-    state.selectedLayerId = result.layer.id;
+    setSelection([result.layer.id], result.layer.id);
     state.dirty = true;
     refreshDocument(message);
     return true;
@@ -761,9 +871,10 @@ function restoreStoredProject({ confirmDiscard = true } = {}) {
     if (!restored) throw new Error("Stored project is invalid");
     state.document = restored;
     state.history.reset(restored);
-    state.selectedLayerId = restored.layers.at(-1)?.id || null;
+    setSelection(restored.layers.at(-1)?.id ? [restored.layers.at(-1).id] : [], restored.layers.at(-1)?.id || null);
     state.viewport = createViewport();
     state.transformInteraction = null;
+    state.multiTransformInteraction = null;
     state.drawing = false;
     state.strokeBefore = null;
     state.dirty = false;
@@ -786,9 +897,10 @@ function createNewDocumentFromForm() {
   const next = createDocument(width, height);
   state.document = next;
   state.history.reset(next);
-  state.selectedLayerId = next.layers[0].id;
+  setSelection([next.layers[0].id], next.layers[0].id);
   state.viewport = createViewport();
   state.transformInteraction = null;
+  state.multiTransformInteraction = null;
   state.drawing = false;
   state.strokeBefore = null;
   state.dirty = false;
@@ -886,20 +998,20 @@ function load() {
     state.document = restoreDocument(saved) || createDocument();
     state.history.reset(state.document);
     refreshHistoryControls();
-    state.selectedLayerId = state.document.layers.at(-1)?.id || null;
+    setSelection(state.document.layers.at(-1)?.id ? [state.document.layers.at(-1).id] : [], state.document.layers.at(-1)?.id || null);
     state.dirty = false;
     status.textContent = "Recovered local project";
   } catch {
     state.document = createDocument();
     state.history.reset(state.document);
     refreshHistoryControls();
-    state.selectedLayerId = state.document.layers[0].id;
+    setSelection([state.document.layers[0].id], state.document.layers[0].id);
     state.dirty = false;
     status.textContent = "New local project";
   }
 }
 
-state.selectedLayerId = state.document.layers[0].id;
+setSelection([state.document.layers[0].id], state.document.layers[0].id);
 load();
 renderLayers();
 refreshHistoryControls();

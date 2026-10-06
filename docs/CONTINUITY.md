@@ -1372,3 +1372,56 @@ HEAD verificado en 3094bbf26a95b71b8ab619dd8e97d4894291de70.
 RESULTADO:
 MVP E2E final validado para el alcance actual: Document → Drawing → Layers → Brush → History → Persistence → PNG Export.
 No se iniciaron funcionalidades futuras ni T038.
+
+
+## T038 — Web Multi-Selection / Group Move Foundation
+
+ESTADO:
+IMPLEMENTACIÓN EN RAMA `t038-web-multi-selection`; pendiente de CI real, revisión, merge y verificación post-merge.
+
+BASELINE:
+`d14e43439ac64830841ac829126c04b85889b42b` — T037 GREEN definitivo.
+
+DECISIÓN DE ARQUITECTURA:
+La auditoría de main mostró que selección, bounding box, transform, imagen, viewport e history ya existen y están estabilizados en T026–T037. Por tanto T038 no vuelve a implementar transforms ni crea un segundo selection manager. Se ADAPTA `web/domain/selection.mjs` para mantener un conjunto de IDs y se extiende `document-operations.mjs` con una operación atómica de movimiento para varias capas.
+
+IMPLEMENTADO:
+- `selectedLayerId` se conserva como capa ancla/compatibilidad.
+- `selectedLayerIds` añade selección múltiple sobre el mismo estado de selección existente.
+- Shift+click en el panel Layers agrega/quita capas.
+- Shift+click sobre el Canvas agrega/quita selección sin crear otro sistema de selección.
+- Varias capas seleccionadas se pueden mover juntas mediante el mismo pipeline Screen → Viewport → Document.
+- El preview de movimiento múltiple permanece transitorio y pointerup registra una sola operación en `DocumentHistory`.
+- Una selección múltiple que contenga una capa bloqueada no puede iniciar el movimiento grupal.
+- pointercancel descarta el preview grupal sin modificar Document ni History.
+- Cada capa seleccionada mantiene su bounding box existente; la capa ancla conserva handles de escala/rotación.
+- Se eliminó un duplicado real del botón Export PNG en `web/index.html`, detectado durante la revisión del HEAD T037.
+- Android no se modifica.
+
+NUEVO DOMINIO REUTILIZADO:
+- `normalizeLayerSelection()`
+- `toggleLayerSelection()`
+- `translateLayers()`
+
+TESTS AÑADIDOS:
+- normalización y deduplicación de IDs;
+- toggle de selección;
+- movimiento multi-layer inmutable;
+- bloqueo atómico ante capa bloqueada;
+- wiring Shift/multi-selection;
+- una sola entrada de history/persistencia;
+- unicidad del control Export PNG.
+
+FUERA DE ALCANCE:
+- grouping/nesting persistente;
+- escala/rotación simultánea de varias capas;
+- snapping/guides/rulers;
+- máscaras/blend modes/filtros;
+- PWA/IndexedDB/cloud/AI;
+- cambios Android.
+
+CRITERIO DE CIERRE:
+No declarar GREEN hasta obtener Web CI y Android CI reales sobre el HEAD final, revisar cualquier fallo, fusionar el PR y volver a verificar ambos workflows sobre main.
+
+SIGUIENTE AUDITORÍA:
+Revisar si el siguiente bloque debe completar transformaciones multi-layer o evolucionar la persistencia Web, sin asumirlo antes de inspeccionar la evidencia de T038.
