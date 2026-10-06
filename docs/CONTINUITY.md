@@ -1090,3 +1090,74 @@ La cadena continúa siendo: Layer → Document → Document Operations → Docum
 
 VERIFICACIÓN:
 T034 cumple el gate de implementación, pre-merge CI, merge, post-merge CI y presencia en main. No se conocen regresiones nuevas derivadas de T034.
+
+
+## T035 — Web Brush Controls
+
+ESTADO:
+INTEGRADA EN MAIN. PR #19 fusionada correctamente y CI pre-merge/post-merge verificado sobre los SHAs correspondientes.
+
+BASELINE:
+main @ a7d54c0959bbef42e0d3aef4c7fcb912b4a3d2ae.
+
+BRANCH:
+t035-web-brush-controls.
+
+CANDIDATE:
+5bd5f71dceb821a10b98b62fb44bd783101fedb0.
+
+IMPLEMENTACIÓN:
+- Controles Web mínimos de color, tamaño y opacidad del pincel.
+- Color y opacidad pasan a formar parte de cada nuevo Stroke; los strokes históricos no se reescriben al cambiar los controles.
+- Tamaño validado y limitado al rango UI 1–100, evitando valores no finitos o no positivos.
+- Opacidad representada de forma coherente como 0–1 en Stroke y controlada en UI como 0–100%.
+- Renderer reutiliza los metadatos existentes del Stroke para aplicar color/opacidad.
+- Eraser existente se conserva como herramienta separada y no utiliza el color del pincel.
+- Dibujo continúa respetando layers bloqueadas.
+- Undo/Redo continúa usando DocumentHistory existente.
+- Persistencia/restore conserva compatibilidad con strokes anteriores mediante normalización.
+- No se creó ningún manager paralelo.
+
+ARCHIVOS MODIFICADOS:
+- web/app.js
+- web/domain/model.mjs
+- web/index.html
+- web/styles.css
+- web/test/domain.test.mjs
+- web/test/smoke.test.mjs
+
+PRE-MERGE:
+- PR #19 — T035: Web Brush Controls.
+- Primer intento Web CI #83 / ID 37471192589: FAILURE sobre SHA d0834a44dd5466fa323308cadd5bb67c63e09ac4. Build PASS; Test FAIL por UI de controles no presente en web/index.html.
+- Reparación: se identificó que la primera escritura de web/index.html no había modificado el contenido; se corrigió mediante un commit específico.
+- Web CI #84 / ID 37471353567: SUCCESS sobre SHA 5bd5f71dceb821a10b98b62fb44bd783101fedb0.
+- Android CI #183 / ID 37471353600: SUCCESS sobre SHA 5bd5f71dceb821a10b98b62fb44bd783101fedb0. Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, Debug APK PASS.
+
+MERGE:
+- PR #19: MERGED.
+- Merge SHA: f1fa29eb69b0a505c56cc55de3659c951765ae7a.
+
+POST-MERGE:
+- Web CI #85 / ID 37471862431: SUCCESS sobre SHA f1fa29eb69b0a505c56cc55de3659c951765ae7a.
+- Android CI #184 / ID 37471862552: SUCCESS sobre SHA f1fa29eb69b0a505c56cc55de3659c951765ae7a. Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, Debug APK PASS.
+
+CONTINUIDAD:
+- T032 → T033 → T034 → T035.
+- T034 cerró el ciclo de documento/proyecto.
+- T035 completa los controles básicos del pincel sobre la arquitectura existente.
+- T036 queda NO iniciada.
+- T037 queda NO iniciada.
+
+FUERA DE ALCANCE:
+- T036 PNG Export.
+- T037 E2E/MVP final.
+- Brush presets, gradient, eyedropper, blend modes, filters, pressure sensitivity, advanced brush engine, stabilizer, texture/custom brushes, AI.
+- IndexedDB, cloud, PWA, OCR, background removal, smart shading, text/shape layers, masks, multi-select, grouping, nested layers.
+- Cambios Android.
+
+ARQUITECTURA:
+REUTILIZAR > ADAPTAR > CREAR.
+No se introdujeron BrushManager, BrushController, ColorManager, OpacityManager, ToolManager, DrawingManager, StrokeManager, CanvasManager ni HistoryManager.
+
+VERIFICACIÓN:
+T035 cumple implementación, tests, smoke wiring, CI pre-merge, merge, CI post-merge y presencia en main. El primer CI Web falló por una escritura incompleta de index.html y fue corregido antes del merge. No se declara GREEN definitivo hasta verificar el CI final sobre el nuevo HEAD de main.
