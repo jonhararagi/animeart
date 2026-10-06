@@ -37,3 +37,6 @@ canvas { display: block; width: min(92%, 1100px); height: min(88%, 800px); backg
 .layer-controls { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 4px; }
 .layer-toggle { padding: 4px 6px; min-width: 28px; }
 .layer-opacity { width: 100%; min-width: 0; }
+
+.layer-lifecycle { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.layer-action { min-width: 0; padding: 4px 2px; font-size: .72rem; }
