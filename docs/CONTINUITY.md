@@ -967,10 +967,10 @@ CRITERIO DE ACEPTACIÓN:
 ## T032 — Web Layer Lifecycle / Management
 
 ESTADO:
-GREEN EN RAMA / PR ABIERTA. Implementación y regresión verificadas por CI real. No fusionada todavía.
+INTEGRADA EN MAIN. PR #17 fusionada correctamente y CI post-merge verificado sobre el merge SHA.
 
 BASELINE:
-main @ f887df791ff42b4c03d6cbbd981bc18da1ddd977.
+main @ f887df791ff42c03d6cbbd981bc18da1ddd977.
 
 BRANCH:
 t032-web-layer-lifecycle.
@@ -987,46 +987,36 @@ IMPLEMENTACIÓN:
 - No se creó segundo Document, History, Renderer, Persistence o Selection.
 - Android no fue modificado.
 
-TESTS:
-- Web CI ejecutó npm run build: PASS.
-- Web CI ejecutó npm test: 234/234 PASS, 0 FAIL, 0 cancelled, 0 skipped.
-- Web CI verificó dist/index.html: PASS.
-- Tests T032 cubren rename, duplicate, delete, reorder, nuevo ID, copia profunda, conservación de propiedades, documento no vacío, Undo/Redo y wiring/guardas de UI.
-- La suite existente de T029/T030/T031 permanece PASS dentro de las 234 pruebas.
+PRE-MERGE:
+- PR #17 — T032: Web layer lifecycle management.
+- Head de implementación: bfe35405991230e00e83fb168975cc8e4b96bf18.
+- Web CI #77 / ID 37397317973: SUCCESS sobre el head de implementación.
+- Android CI #176 / ID 37397317041: SUCCESS sobre el head de implementación.
+- PR sin conflictos, sin revisiones pendientes y con mergeable=true antes del merge.
 
-CI WEB:
-- Run #76 / ID 37397032549.
-- SHA: e0165fb10c97f354939dc88f54aa10e7a5ba93a0.
-- SUCCESS.
+MERGE:
+- PR #17: MERGED.
+- Merge SHA: b07cfc96f2788bf63a27bff1b26110532f2b94db.
+- main recibió el merge sin cambios funcionales adicionales de T032.
 
-CI ANDROID:
-- Run #175 / ID 37397032519.
-- SHA: e0165fb10c97f354939dc88f54aa10e7a5ba93a0.
-- SUCCESS.
-- Build PASS.
-- Unit Tests PASS.
-- Lint PASS.
-- Android Startup Smoke PASS.
-- Debug APK upload PASS.
-- No hubo cambios Android.
+POST-MERGE:
+- main HEAD inmediatamente después del merge: b07cfc96f2788bf63a27bff1b26110532f2b94db.
+- Web CI #78 / ID 37410543081: SUCCESS sobre el merge SHA.
+- Android CI #177 / ID 37410543116: SUCCESS sobre el merge SHA.
+- Android post-merge: Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, Debug APK PASS.
+- Web post-merge: Build PASS, npm test PASS, dist verification PASS.
 
-ERRORES ENCONTRADOS:
-- La ejecución local desde este entorno no pudo clonar GitHub porque la resolución DNS de github.com no estaba disponible.
-- No hubo fallos funcionales en la ejecución CI final de T032.
+CONTINUIDAD:
+- T029 → T030 → T031 → T032.
+- T033 queda como siguiente tarea de continuidad, sin iniciar en T032.
+- No se inventa alcance ni contenido de T033.
 
-REPARACIONES:
-- No fueron necesarias reparaciones posteriores a la ejecución CI final.
-- La imposibilidad de ejecutar localmente se compensó con la ejecución real de Web CI y Android CI sobre el SHA final de implementación.
-
-PENDIENTES:
-- PR #17 sigue OPEN y aún no se ha fusionado.
-- La decisión de merge queda para la gobernanza de CEREBRO.
-- No quedan verificaciones técnicas obligatorias pendientes para declarar T032 GREEN en rama.
-
-DEUDA TÉCNICA:
+DEUDA:
 - La CI no incluye E2E físico de navegador.
 - localStorage continúa siendo la persistencia Web existente; IndexedDB queda fuera de T032.
 - window.prompt es una UI mínima para Rename; edición inline puede considerarse UX futura, fuera de T032.
 
-SIGUIENTE TAREA:
-Realizar una nueva auditoría de continuidad después de decidir el merge de T032; no ampliar T032 retrospectivamente.
+NO HACER:
+- No ampliar T032 retrospectivamente.
+- No iniciar T033 dentro del cierre de T032.
+
