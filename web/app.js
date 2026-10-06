@@ -171,12 +171,16 @@ function drawDocument({ context = ctx, document = state.document, center = canva
 function drawSelectionOverlay() {
   for (const layer of selectedLayersExact()) {
     if (!layer.visible) continue;
-    const geometry = selectionGeometry(
-      layer,
-      state.viewport,
-      canvasCenter(),
-      state.transformInteraction?.layerId === layer.id ? state.transformInteraction.previewTransform : null
-    );
+    const previewTransform = state.transformInteraction?.layerId === layer.id
+      ? state.transformInteraction.previewTransform
+      : state.multiTransformInteraction?.previewDelta && state.selectedLayerIds.includes(layer.id)
+        ? {
+            ...layer.transform,
+            x: layer.transform.x + state.multiTransformInteraction.previewDelta.x,
+            y: layer.transform.y + state.multiTransformInteraction.previewDelta.y
+          }
+        : null;
+    const geometry = selectionGeometry(layer, state.viewport, canvasCenter(), previewTransform);
     if (!geometry) continue;
     ctx.save();
     ctx.lineWidth = layer.id === state.selectedLayerId ? 1.5 : 1;
@@ -505,18 +509,25 @@ function beginSelectionInteraction(event) {
   const selected = selectedLayerExact();
   const selectedGeometry = selected ? selectionGeometry(selected, state.viewport, canvasCenter()) : null;
   const selectedHit = hitTestHandle(screenPoint, selectedGeometry, HANDLE_RADIUS);
-  if (selectedHit === "move" && state.selectedLayerIds.length > 1) {
-    const layers = selectedLayersExact();
-    if (layers.every(layer => !layer.locked)) {
+  if (state.selectedLayerIds.length > 1) {
+    const documentPoint = screenToDocument(screenPoint, state.viewport, canvasCenter());
+    const hitSelectedLayer = [...state.document.layers].reverse().find(layer =>
+      layer.visible &&
+      state.selectedLayerIds.includes(layer.id) &&
+      hitTestLayer(layer, documentPoint, canvasCenter())
+    );
+    if (hitSelectedLayer && selectedLayersExact().every(layer => !layer.locked)) {
+      state.selectedLayerId = hitSelectedLayer.id;
       state.multiTransformInteraction = {
         pointerId: event.pointerId,
-        startDocument: screenToDocument(screenPoint, state.viewport, canvasCenter()),
-        beforeDocument: cloneDocument(state.document)
+        startDocument: documentPoint,
+        previewDelta: { x: 0, y: 0 }
       };
       canvas.setPointerCapture(event.pointerId);
       return;
     }
   }
+  if (selectedHit === "move" && state.selectedLayerIds.length === 1) {
   if (selectedHit === "move") return beginTransformInteraction("move", event);
   if (selectedHit?.startsWith("scale-")) return beginTransformInteraction("scale", event, selectedHit);
   if (selectedHit === "rotate") return beginTransformInteraction("rotate", event);
@@ -716,6 +727,9 @@ function syncBrushControls() {
 document.querySelectorAll(".tool").forEach(button => {
   button.addEventListener("click", () => {
     state.tool = button.dataset.tool;
+    if (state.tool !== "select" && state.multiTransformInteraction) {
+    state.multiTransformInteraction = null;
+  }
     if (state.tool !== "select" && state.transformInteraction) finishTransformInteraction(true);
     document.querySelectorAll(".tool").forEach(b => b.classList.toggle("active", b === button));
     redraw();
@@ -729,7 +743,7 @@ document.querySelector("#add-layer").addEventListener("click", () => {
   const before = cloneDocument(state.document);
   const layer = createLayer("Layer " + (state.document.layers.length + 1));
   state.document.layers.push(layer);
-  state.selectedLayerId = layer.id;
+  setSelection([layer.id], layer.id);
   state.history.record(before, state.document);
   refreshDocument();
   persistDocument();
@@ -744,7 +758,7 @@ async function importImageIntoEditor(file, message = "Image imported") {
       persist: next => persistDocumentSnapshot(localStorage, "animeart-web-document", next)
     });
     state.document = result.document;
-    state.selectedLayerId = result.layer.id;
+    setSelection([result.layer.id], result.layer.id);
     state.dirty = true;
     refreshDocument(message);
     return true;
@@ -996,7 +1010,7 @@ function load() {
   }
 }
 
-state.selectedLayerId = state.document.layers[0].id;
+setSelection([state.document.layers[0].id], state.document.layers[0].id);
 load();
 renderLayers();
 refreshHistoryControls();
