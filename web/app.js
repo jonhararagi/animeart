@@ -746,6 +746,8 @@ newDocumentButton.addEventListener("click", () => {
   widthInput.focus();
 });
 
+document.querySelector("#cancel-document").addEventListener("click", () => projectDialog.close());
+
 projectForm.addEventListener("submit", event => {
   event.preventDefault();
   if (createNewDocumentFromForm()) projectDialog.close();
