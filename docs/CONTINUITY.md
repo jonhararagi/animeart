@@ -1321,3 +1321,54 @@ La cadena continúa usando Document → Layers → renderer Canvas 2D → PNG, s
 
 VERIFICACIÓN:
 T036 cumple implementación, tests, smoke verificable, CI pre-merge, merge, CI post-merge y presencia en main. T037 no fue iniciada.
+
+
+## T037 — MVP FINAL E2E / READINESS GATE
+
+ESTADO: INTEGRADA EN MAIN. PR #21 fusionada. E2E contractual y regresión Web/Android verificadas.
+
+BASELINE:
+e4e95894b97f236ee0d69dda356a3487a53db8d3
+
+BRANCH:
+t037-web-mvp-final-gate
+
+CANDIDATE:
+0aba3788b914577cb5244619146869bee8c25af9
+
+PR:
+#21 — T037: MVP final E2E readiness gate.
+
+IMPLEMENTACIÓN / E2E:
+- Se añadió únicamente la cobertura E2E contractual mínima faltante, reutilizando Document, Layer, DocumentHistory, persistence y PNG export existentes.
+- El contrato valida 800×600, stroke con color/tamaño/opacidad, rename/duplicate/reorder/visibility/lock, history undo/redo, round-trip de persistencia, dimensiones/alpha/PNG y contrato de layer visible/oculta/locked.
+- Se verificó wiring UI de New, Save, Recover y Export PNG.
+- No se creó framework browser E2E nuevo ni arquitectura paralela.
+
+PRE-MERGE:
+- Web CI #102 / ID 37485782285: SUCCESS sobre SHA 0aba3788b914577cb5244619146869bee8c25af9.
+- Android CI #201 / ID 37485782398: SUCCESS sobre SHA 0aba3788b914577cb5244619146869bee8c25af9.
+- Android: Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, Debug APK PASS.
+- Web: Build PASS, Test PASS, Verify build output PASS.
+
+REPARACIÓN:
+- Primer candidato f1a1e0dc908eab24920089f47254151f470794c9 tuvo Web Test FAILURE por un matcher del nuevo contrato locked-layer que no reflejaba la guarda real del renderer/app; se corrigió sin debilitar la assertion.
+- Web CI #101 / ID 37485612110 pasó sobre el SHA corregido; Android #199 / ID 37485532373 fue CANCELLED por concurrencia y no se contó como evidencia.
+- Android #200 / ID 37485612112 fue CANCELLED por concurrencia; Android #201 proporcionó la evidencia final PASS.
+
+MERGE:
+- PR #21 MERGED con expected_head_sha=0aba3788b914577cb5244619146869bee8c25af9.
+- Merge SHA: 3094bbf26a95b71b8ab619dd8e97d4894291de70.
+
+POST-MERGE:
+- Web CI #103 / ID 37491021919: SUCCESS sobre merge SHA 3094bbf26a95b71b8ab619dd8e97d4894291de70.
+- Android CI #202 / ID 37491021627: SUCCESS sobre merge SHA 3094bbf26a95b71b8ab619dd8e97d4894291de70.
+- Android: Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, Debug APK PASS.
+- Web: Build PASS, Test PASS, Verify build output PASS.
+
+MAIN:
+HEAD verificado en 3094bbf26a95b71b8ab619dd8e97d4894291de70.
+
+RESULTADO:
+MVP E2E final validado para el alcance actual: Document → Drawing → Layers → Brush → History → Persistence → PNG Export.
+No se iniciaron funcionalidades futuras ni T038.
