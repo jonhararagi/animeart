@@ -85,7 +85,7 @@ test("T042 E2E contract: import image → reference → opacity/lock → drawing
     "Reference", 320, 240, "data:image/png;base64,reference"
   );
   next = { ...next, layers: [...next.layers, referenceImage] };
-  next = setLayerReference(documentModel, referenceImage.id, true);
+  next = setLayerReference(next, referenceImage.id, true);
   assert.equal(next.layers.at(-1).isReference, true);
   next = setLayerOpacity(next, referenceImage.id, 0.5);
   next = setLayerLocked(next, referenceImage.id, true);
