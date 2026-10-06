@@ -187,3 +187,54 @@ test("brush control ranges are bounded and eraser remains a distinct existing to
   assert.match(js, /MAX_BRUSH_SIZE = 100/);
   assert.match(js, /Math\.min\(1, Math\.max\(0, opacity\)/);
 });
+
+
+test("PNG export UI uses the existing document renderer and does not add a parallel renderer", async () => {
+  const html = await readFile("index.html", "utf8");
+  const js = await readFile("app.js", "utf8");
+  const exportPipeline = await readFile("domain/png-export.mjs", "utf8");
+  assert.match(html, /id="export-png"/);
+  assert.match(html, /Exportar PNG/);
+  assert.match(js, /canvasToPngBlob/);
+  assert.match(js, /createPngExportCanvas/);
+  assert.match(js, /downloadPngBlob/);
+  assert.match(js, /renderDocumentToCanvas/);
+  assert.match(js, /drawDocument\(\{ context, document, center/);
+  assert.match(js, /transformForLayer: layer => layer\.transform/);
+  assert.match(js, /await ensureExportImages\(state\.document\)/);
+  assert.match(js, /status\.textContent = "PNG exported"/);
+  assert.match(js, /state\.history\.record/);
+  assert.doesNotMatch(js, /ExportManager|PNGManager|ImageExportManager|RenderManager|CanvasManager|DocumentManager|ProjectManager|LayerManager/);
+  assert.match(exportPipeline, /type: "image\/png"/);
+  assert.match(exportPipeline, /canvas\.width = width/);
+  assert.match(exportPipeline, /canvas\.height = height/);
+  assert.match(exportPipeline, /context\.clearRect/);
+  assert.match(exportPipeline, /context\.translate\(center\.x, center\.y\)/);
+});
+
+test("PNG export composes only visible layers, keeps layer opacity and ignores lock for rendering", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /for \(const layer of document\.layers\)/);
+  assert.match(js, /if \(!layer\.visible\) continue/);
+  assert.match(js, /context\.globalAlpha = layer\.opacity/);
+  assert.match(js, /transformForLayer: layer => layer\.transform/);
+  assert.doesNotMatch(js, /if \(layer\.locked\).*export/);
+});
+
+test("PNG export is document-sized, not viewport-sized, and does not touch browser UI", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /createPngExportCanvas\(state\.document\)/);
+  assert.doesNotMatch(js, /html2canvas|toDataURL\(\)/);
+  assert.doesNotMatch(js, /window\.devicePixelRatio[^\\n]*export/);
+  assert.match(js, /downloadPngBlob\(blob, "animeart\.png"\)/);
+});
+
+test("PNG export is non-destructive and existing history controls remain wired", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /async function exportPng/);
+  assert.doesNotMatch(js, /exportPng[\\s\\S]{0,2000}history\.record/);
+  assert.match(js, /undoButton\.addEventListener\("click", undo\)/);
+  assert.match(js, /redoButton\.addEventListener\("click", redo\)/);
+  assert.match(js, /state\.history\.undo/);
+  assert.match(js, /state\.history\.redo/);
+});
