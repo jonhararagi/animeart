@@ -236,3 +236,26 @@ test("lifecycle operations are reversible through the existing DocumentHistory",
   const history = new DocumentHistory(before); history.record(before, after);
   assert.deepEqual(history.undo(after), before); assert.deepEqual(history.redo(before), after);
 });
+
+
+test("domain creates a document with configured dimensions that survives restore", () => {
+  const document = createDocument(1200, 900);
+  assert.equal(document.width, 1200);
+  assert.equal(document.height, 900);
+  const restored = restoreDocument(JSON.parse(JSON.stringify(document)));
+  assert.equal(restored.width, 1200);
+  assert.equal(restored.height, 900);
+  assert.equal(restored.layers.length, 1);
+  assert.equal(isValidDocument(restored), true);
+});
+
+test("new document starts with a fresh single-layer state", () => {
+  const first = createDocument(800, 600);
+  first.layers[0].strokes.push(createStroke("brush", 5, [createStrokePoint(1, 2), createStrokePoint(3, 4)]));
+  const next = createDocument(400, 300);
+  assert.equal(next.width, 400);
+  assert.equal(next.height, 300);
+  assert.equal(next.layers.length, 1);
+  assert.equal(next.layers[0].strokes.length, 0);
+  assert.notEqual(next.layers[0].id, first.layers[0].id);
+});
