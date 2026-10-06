@@ -1238,3 +1238,86 @@ La cadena permanece: Layer → Document → Document Operations → DocumentHist
 VERIFICACIÓN:
 T036 cumple implementación, tests, CI pre-merge, merge protegido por expected head SHA, CI post-merge y presencia en main. T037 permanece sin iniciar.
 
+
+
+## T036 — Web PNG Export
+
+ESTADO:
+INTEGRADA EN MAIN. PR #20 fusionada correctamente. CI pre-merge y post-merge verificados sobre los SHAs reales.
+
+BASELINE:
+main @ a9e1e1cb6c32fb0917fd8289bcb2a133a190971b.
+
+BRANCH:
+t036-web-png-export.
+
+CANDIDATE:
+60c3129e4cd38b5ef7f9546df4dfcf063030a8e1.
+
+IMPLEMENTACIÓN:
+- Control UI mínimo "Exportar PNG".
+- Exportación local del Document actual a PNG mediante Canvas 2D.
+- Se reutiliza el renderer existente de Document; no se creó un segundo renderer.
+- El canvas de exportación usa exactamente Document.width y Document.height.
+- La composición recorre las Layers en el orden existente y excluye únicamente Layers ocultas.
+- Se conserva layer opacity y transform.
+- Las Layers locked visibles se exportan; lock continúa siendo una protección de edición, no de render/export.
+- El canvas de exportación usa alpha=true y se limpia sin introducir fondo blanco.
+- Los strokes reutilizan color, tamaño y opacity existentes; eraser conserva su comportamiento actual.
+- Las Image Layers visibles se esperan/cargan antes de codificar el PNG.
+- La descarga utiliza Blob + Object URL local y nombre animeart.png.
+- No se envían imágenes a APIs, cloud o servicios externos.
+- Exportar no registra operaciones en DocumentHistory ni modifica Document, Undo o Redo.
+- No se creó ExportManager, PNGManager, ImageExportManager, RenderManager, CanvasManager, DocumentManager, ProjectManager ni LayerManager.
+
+ARCHIVOS MODIFICADOS:
+- web/app.js
+- web/domain/png-export.mjs
+- web/index.html
+- web/test/domain.test.mjs
+- web/test/smoke.test.mjs
+
+PRE-MERGE:
+- PR #20 — T036: Web PNG export.
+- Primer Web CI #87 / ID 37475487430: FAILURE sobre SHA 8e5d79ff1ec87938983a40518613e5aa0789ad90. Build PASS; Test FAIL por assertions de smoke durante la integración de la nueva ruta.
+- Reparación: se aisló la duplicación de wiring/test de exportación y se reconciliaron los checks con el renderer real.
+- Web CI #94 / ID 37475800643: FAILURE sobre SHA 3191cfe1eb523a4fab28d0f68a99190e09eee652. Build PASS; 264/266 tests PASS. Los 2 fallos eran el mismo matcher de smoke ejecutado dos veces por la infraestructura existente porque build copia web/ a dist/ y node --test descubre ambas ubicaciones.
+- Reparación: se corrigió el matcher para la firma real del renderer.
+- Web CI #96 / ID 37475965636: SUCCESS sobre SHA 60c3129e4cd38b5ef7f9546df4dfcf063030a8e1.
+- Android CI #195 / ID 37475965679: SUCCESS sobre SHA 60c3129e4cd38b5ef7f9546df4dfcf063030a8e1. Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, Debug APK PASS.
+- Android CI #194 / ID 37475871582 fue CANCELLED por concurrencia antes de resultado; no se usa como evidencia de GREEN.
+
+MERGE:
+- PR #20: MERGED.
+- Merge SHA: df14a13ce4f372da6db7c4c7882b1a77451f6bf6.
+- main HEAD inmediatamente después del merge: df14a13ce4f372da6db7c4c7882b1a77451f6bf6.
+
+POST-MERGE:
+- Web CI #97 / ID 37476642772: SUCCESS sobre SHA df14a13ce4f372da6db7c4c7882b1a77451f6bf6.
+- Web: Build PASS, Test PASS, Verify build output PASS.
+- Android CI #196 / ID 37476642746: SUCCESS sobre SHA df14a13ce4f372da6db7c4c7882b1a77451f6bf6.
+- Android: Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, Debug APK PASS.
+
+TESTS / SMOKE:
+- Pipeline unit tests verifican dimensiones de Document, canvas transparente, centrado documento→export, codificación image/png y descarga local .png.
+- Smoke tests verifican wiring del control, renderer existente, visibilidad, opacity, transforms, exclusión de UI y no impacto de history.
+- El CI actual no dispone de browser E2E físico para inspeccionar una descarga real del navegador; por ello la generación/codificación/descarga se valida mediante el pipeline verificable y smoke tests, y esta limitación queda documentada.
+
+CONTINUIDAD:
+- T032 → T033 → T034 → T035 → T036.
+- T036 completa la primera salida de imagen del MVP: PNG.
+- T037 queda NO INICIADA.
+
+FUERA DE ALCANCE:
+- T037 E2E/MVP final.
+- JPG, WEBP, SVG, PDF, GIF, video.
+- Cloud/backend export, AI export, batch export, calidad/compresión avanzada.
+- IndexedDB, PWA, OCR, background removal, smart shading.
+- Cambios Android funcionales.
+
+ARQUITECTURA:
+REUTILIZAR > ADAPTAR > CREAR.
+La cadena continúa usando Document → Layers → renderer Canvas 2D → PNG, sin sistema paralelo de exportación/renderer.
+
+VERIFICACIÓN:
+T036 cumple implementación, tests, smoke verificable, CI pre-merge, merge, CI post-merge y presencia en main. T037 no fue iniciada.
