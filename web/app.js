@@ -6,6 +6,7 @@ import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-im
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { hitTestHandle, hitTestLayer, resizeTransformFromCorner, selectionGeometry } from "./domain/selection.mjs";
 import { canvasToPngBlob, createPngExportCanvas, downloadPngBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
+import { canvasToPngBlob, createPngExportCanvas, downloadPngBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
@@ -17,6 +18,7 @@ const imageFileInput = document.querySelector("#image-file-input");
 const newDocumentButton = document.querySelector("#new-document");
 const recoverButton = document.querySelector("#recover-project");
 const saveButton = document.querySelector("#save");
+const exportPngButton = document.querySelector("#export-png");
 const exportPngButton = document.querySelector("#export-png");
 const projectDialog = document.querySelector("#project-dialog");
 const projectForm = document.querySelector("#project-form");
@@ -821,6 +823,39 @@ saveButton.addEventListener("click", () => {
     status.textContent = "Could not save project locally";
   }
 });
+
+async function exportPng() {
+  const documentBefore = JSON.stringify(state.document);
+  const historyBeforeUndo = state.history.canUndo();
+  const historyBeforeRedo = state.history.canRedo();
+  exportPngButton.disabled = true;
+  status.textContent = "Exporting PNG…";
+  try {
+    await Promise.all(state.document.layers
+      .filter(layer => layer.visible && layer.contentType === "image")
+      .map(ensureImageLayerLoaded));
+
+    const exportCanvas = createPngExportCanvas(state.document);
+    renderDocumentToCanvas(state.document, exportCanvas, ({ context, center }) => {
+      drawDocument(context, state.document, center, { preview: false });
+    });
+    const blob = await canvasToPngBlob(exportCanvas);
+    downloadPngBlob(blob, "animeart.png");
+
+    if (JSON.stringify(state.document) !== documentBefore ||
+        state.history.canUndo() !== historyBeforeUndo ||
+        state.history.canRedo() !== historyBeforeRedo) {
+      throw new Error("PNG export modified editor state");
+    }
+    status.textContent = "PNG exported";
+  } catch (error) {
+    status.textContent = error?.message || "PNG export failed";
+  } finally {
+    exportPngButton.disabled = false;
+  }
+}
+
+exportPngButton.addEventListener("click", exportPng);
 
 function ensureExportImages(document) {
   const pending = document.layers
