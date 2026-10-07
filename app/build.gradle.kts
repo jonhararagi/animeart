@@ -29,11 +29,10 @@ android {
     buildFeatures {
         compose = true
     }
-}
-
-sourceSets {
-    getByName("main") {
-        assets.srcDir(layout.buildDirectory.dir("generated/webAssets"))
+    sourceSets {
+        getByName("main") {
+            assets.srcDir(layout.buildDirectory.dir("generated/webAssets"))
+        }
     }
 }
 
