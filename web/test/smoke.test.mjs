@@ -5,13 +5,13 @@ import { readFile } from "node:fs/promises";
 test("T043 document mutations use existing domain operations for completed layer lifecycle changes", async () => {
   const js = await readFile("app.js", "utf8");
   const operations = await readFile("domain/document-operations.mjs", "utf8");
-  assert.match(js, /import \\{[^}]*addLayer[^}]*clearLayer[^}]*\\} from "\\.\\/domain\\/document-operations.mjs"/);
-  assert.match(js, /const next = addLayer\\(state\\.document, layer\\)/);
-  assert.match(js, /const next = clearLayer\\(state\\.document, layer\\.id\\)/);
-  assert.match(operations, /export function addLayer\\(/);
-  assert.match(operations, /export function clearLayer\\(/);
-  assert.doesNotMatch(js, /state\\.document\\.layers\\.push\\(layer\\)/);
-  assert.doesNotMatch(js, /layer\\.strokes = \\[\\]/);
+  assert.match(js, /import \{[^}]*addLayer[^}]*clearLayer[^}]*\} from "\.\/domain\/document-operations.mjs"/);
+  assert.match(js, /const next = addLayer\(state\.document, layer\)/);
+  assert.match(js, /const next = clearLayer\(state\.document, layer\.id\)/);
+  assert.match(operations, /export function addLayer\(/);
+  assert.match(operations, /export function clearLayer\(/);
+  assert.doesNotMatch(js, /state\.document\.layers\.push\(layer\)/);
+  assert.doesNotMatch(js, /layer\.strokes = \[\]/);
   assert.doesNotMatch(js, /AddLayerManager|LayerMutationManager|DocumentMutationManager/);
 });
 
@@ -129,8 +129,8 @@ test("layer panel exposes visibility, lock and opacity through existing operatio
   assert.match(js, /className = "layer-controls"/);
   assert.match(js, /type = "range"/);
   assert.match(js, /applyLayerOperation\(\(doc, id\) => setLayerOpacity/);
-  assert.doesNotMatch(js, /setLayerVisibility\(doc, id, !layer\.visible\)[\\s\\S]{0,180}allowLocked/);
-  assert.doesNotMatch(js, /setLayerOpacity\(doc, id, nextOpacity\)[\\s\\S]{0,180}allowLocked/);
+  assert.doesNotMatch(js, /setLayerVisibility\(doc, id, !layer\.visible\)[\s\S]{0,180}allowLocked/);
+  assert.doesNotMatch(js, /setLayerOpacity\(doc, id, nextOpacity\)[\s\S]{0,180}allowLocked/);
   assert.match(js, /setLayerLocked\(doc, id, !layer\.locked\), layer\.locked \? "Layer unlocked" : "Layer locked", \{ allowLocked: true \}\)/);
   assert.match(js, /state\.history\.record\(before, next\)/);
   assert.match(js, /persistDocument\(\)/);
