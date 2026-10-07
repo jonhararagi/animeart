@@ -1,17 +1,69 @@
 package com.jonhararagi.animeart
 
+import android.graphics.Color
 import android.os.Bundle
+import android.view.ViewGroup
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.webkit.WebViewAssetLoader
 import com.jonhararagi.animeart.document.CanvasDocument
 import com.jonhararagi.animeart.persistence.ProjectPersistence
 import com.jonhararagi.animeart.ui.EditorScreen
 
 class MainActivity : ComponentActivity() {
+    private var webView: WebView? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        showWebEditor()
+    }
+
+    private fun showWebEditor() {
+        val loader = WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
+
+        val view = WebView(this).apply {
+            setBackgroundColor(Color.TRANSPARENT)
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            settings.allowFileAccess = false
+            settings.allowContentAccess = false
+            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            webViewClient = object : WebViewClient() {
+                override fun shouldInterceptRequest(
+                    view: WebView,
+                    request: WebResourceRequest
+                ) = loader.shouldInterceptRequest(request.url)
+
+                override fun onReceivedError(
+                    view: WebView,
+                    request: WebResourceRequest,
+                    error: WebResourceError
+                ) {
+                    if (request.isForMainFrame) showLegacyEditor()
+                }
+            }
+            loadUrl(START_URL)
+        }
+
+        webView = view
+        setContentView(view)
+    }
+
+    private fun showLegacyEditor() {
+        webView?.apply {
+            stopLoading()
+            (parent as? ViewGroup)?.removeView(this)
+            destroy()
+        }
+        webView = null
 
         val initialDocument = runCatching {
             ProjectPersistence(this).loadDocument() ?: CanvasDocument()
@@ -24,5 +76,19 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        webView?.apply {
+            stopLoading()
+            (parent as? ViewGroup)?.removeView(this)
+            destroy()
+        }
+        webView = null
+        super.onDestroy()
+    }
+
+    private companion object {
+        const val START_URL = "https://appassets.androidplatform.net/assets/web/index.html"
     }
 }

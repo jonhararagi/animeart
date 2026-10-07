@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111318">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <title>AnimeArt Web</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">ANIMEART</div>
+    <div class="status" id="status">Local-first editor</div>
+  </header>
+  <main class="workspace">
+    <aside class="toolbar" aria-label="Tools">
+      <button class="tool" data-tool="select">Select</button>
+      <button class="tool active" data-tool="brush">Brush</button>
+      <button class="tool" data-tool="eraser">Eraser</button>
+      <button class="tool" data-tool="pan">Pan</button>
+      <span class="tool-group-label">Brush</span>
+      <label class="brush-control" for="brush-color">Color<input id="brush-color" type="color" value="#111318" aria-label="Brush color"></label>
+      <label class="brush-control" for="brush-size">Size<input id="brush-size" type="range" min="1" max="100" step="1" value="5" aria-label="Brush size"><output id="brush-size-value">5</output></label>
+      <label class="brush-control" for="brush-opacity">Opacity<input id="brush-opacity" type="range" min="0" max="100" step="1" value="100" aria-label="Brush opacity"><output id="brush-opacity-value">100%</output></label>
+      <button id="undo" disabled>Undo</button>
+      <button id="redo" disabled>Redo</button>
+      <button id="add-layer">+ Layer</button>
+      <button id="add-image-layer">+ Image / Reference</button>
+      <input id="image-file-input" type="file" accept="image/*" hidden>
+      <button id="new-document">New</button>
+      <button id="recover-project">Open / Recover</button>
+      <button id="save">Save</button>
+      <button id="export-png">Exportar PNG</button>
+      <button id="clear">Clear</button>
+      <span class="tool-group-label">Layer</span>
+      <button data-transform="left" title="Move layer left">←</button>
+      <button data-transform="right" title="Move layer right">→</button>
+      <button data-transform="up" title="Move layer up">↑</button>
+      <button data-transform="down" title="Move layer down">↓</button>
+      <button data-transform="scale-down" title="Scale layer down">−</button>
+      <button data-transform="scale-up" title="Scale layer up">+</button>
+      <button data-transform="rotate-left" title="Rotate layer left">↺</button>
+      <button data-transform="rotate-right" title="Rotate layer right">↻</button>
+    </aside>
+    <section class="canvas-wrap">
+      <canvas id="canvas" aria-label="AnimeArt canvas"></canvas>
+    </section>
+    <aside class="layers" aria-label="Layers">
+      <h2>Layers</h2>
+      <ol id="layers"></ol>
+    </aside>
+  </main>
+  <dialog id="project-dialog" aria-labelledby="project-dialog-title">
+    <form id="project-form" method="dialog">
+      <h2 id="project-dialog-title">New document</h2>
+      <label>
+        Width
+        <input id="document-width" name="width" type="number" min="1" step="1" required>
+      </label>
+      <label>
+        Height
+        <input id="document-height" name="height" type="number" min="1" step="1" required>
+      </label>
+      <div class="dialog-actions">
+        <button type="button" id="cancel-document">Cancel</button>
+        <button type="submit">Create</button>
+      </div>
+    </form>
+  </dialog>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

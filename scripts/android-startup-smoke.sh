@@ -35,13 +35,7 @@ if [ "$pid_status" -ne 0 ] || ! printf '%s' "$pid" | grep -q '[0-9]'; then
   exit 1
 fi
 
-if [ "$start_status" -ne 0 ]; then
-  echo "am start -W terminó con exit=$start_status aunque el proceso sigue vivo. Logcat:"
-  adb logcat -d -t 500 || true
-  exit 1
-fi
-
-if ! printf '%s' "$start_output" | grep -q 'Status: ok'; then
+if [ "$start_status" -ne 0 ] || ! printf '%s' "$start_output" | grep -q 'Status: ok'; then
   echo "am start -W no confirmó Status: ok. Proceso=$pid. Activity resumida='$top_activity'. Logcat:"
   adb logcat -d -t 500 || true
   exit 1
@@ -53,5 +47,21 @@ if [ -z "$top_activity" ]; then
   exit 1
 fi
 
-echo "Startup confirmado: pid=$pid; MainActivity resumida=$top_activity"
+adb shell uiautomator dump /sdcard/animeart-window.xml >/dev/null
+ui_xml="$(adb shell cat /sdcard/animeart-window.xml 2>/dev/null | tr -d '\r')"
+for marker in "ANIMEART" "Local-first editor" "AnimeArt canvas"; do
+  if ! printf '%s' "$ui_xml" | grep -Fq "$marker"; then
+    echo "Startup smoke no encontró el marcador Web '$marker' en la jerarquía UI. Proceso=$pid. Logcat:"
+    adb logcat -d -t 500 || true
+    exit 1
+  fi
+done
+
+if adb logcat -d -t 500 | grep -Eq 'FATAL EXCEPTION|chromium.*ERROR|WebView.*error'; then
+  echo "Startup smoke detectó errores WebView/Java en logcat. Proceso=$pid. Logcat:"
+  adb logcat -d -t 500 || true
+  exit 1
+fi
+
+echo "Startup WebView confirmado: pid=$pid; MainActivity=$top_activity; Web=ANIMEART; status=Local-first editor; canvas=AnimeArt canvas"
 adb shell am force-stop com.jonhararagi.animeart
