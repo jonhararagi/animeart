@@ -20,6 +20,12 @@ class WebViewContainerSmokeTest {
         require(WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BASIC_USAGE)) {
             "WebView Service Worker support is required for T047"
         }
+        require(WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_SHOULD_INTERCEPT_REQUEST)) {
+            "WebView Service Worker request interception is required for T047 offline verification"
+        }
+        require(WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BLOCK_NETWORK_LOADS)) {
+            "WebView Service Worker network blocking is required for T047 offline verification"
+        }
 
         val serviceWorkerSettings = ServiceWorkerControllerCompat.getInstance().serviceWorkerWebSettings
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
