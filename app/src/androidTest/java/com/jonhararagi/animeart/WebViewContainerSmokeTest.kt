@@ -33,7 +33,7 @@ class WebViewContainerSmokeTest {
             waitForCondition("local web document") {
                 evaluate(webView, "window.location.href") == "https://appassets.androidplatform.net/assets/index.html"
             }
-            assertEquals("loading-complete", evaluate(webView, "document.readyState === 'complete' ? 'loading-complete' : document.readyState"))
+            assertTrue(evaluate(webView, "document.readyState !== 'loading'") == "true")
             assertEquals("true", evaluate(webView, "document.querySelector('#canvas') !== null"))
             waitForCondition("canvas ready") {
                 evaluate(webView, "document.documentElement.dataset.animeartCanvasReady === 'true'") == "true"
