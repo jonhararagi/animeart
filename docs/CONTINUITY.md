@@ -2024,3 +2024,15 @@ T045 queda GREEN por implementación real, tests, pre-merge Web/Android CI y mer
 NO MODIFICAR:
 - T044 remains GREEN.
 - T045 debe considerarse parte de la Web Foundation existente; no crear un segundo offline/cache/runtime system.
+
+POST-MERGE / POST-CONTINUITY CI:
+- Web CI #143 / run 37561744834 — SUCCESS sobre 4c22df9a6adbe0d3c4dc8e8396f0cfd3fb8dd287.
+- Android CI #242 / run 37561744872 — SUCCESS sobre 4c22df9a6adbe0d3c4dc8e8396f0cfd3fb8dd287.
+- Android Build — PASS.
+- Android Unit Tests — PASS.
+- Android Lint — PASS.
+- Android Startup Smoke — PASS.
+- Debug APK artifact — PASS.
+
+CI POST-CONTINUIDAD CERRADA:
+La continuidad T045 y el estado resultante de main quedaron verificados con CI real después del merge y después de actualizar docs/CONTINUITY.md.
