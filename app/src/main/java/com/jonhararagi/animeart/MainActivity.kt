@@ -7,8 +7,11 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import androidx.activity.ComponentActivity
+import androidx.webkit.ServiceWorkerClientCompat
+import androidx.webkit.ServiceWorkerControllerCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewClientCompat
+import androidx.webkit.WebViewFeature
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,6 +30,15 @@ class MainActivity : ComponentActivity() {
             .addPathHandler("/assets/", WebAssetPathHandler(this))
             .build()
 
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_SHOULD_INTERCEPT_REQUEST)) {
+            ServiceWorkerControllerCompat.getInstance().setServiceWorkerClient(
+                object : ServiceWorkerClientCompat() {
+                    override fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse? =
+                        assetLoader.shouldInterceptRequest(request.url)
+                }
+            )
+        }
+
         webView.webViewClient = LocalContentWebViewClient(assetLoader)
         setContentView(webView)
         webView.loadUrl(WEB_APP_URL)
@@ -37,7 +49,7 @@ class MainActivity : ComponentActivity() {
 
         override fun handle(path: String): WebResourceResponse? {
             val response = delegate.handle(path) ?: return null
-            if (path.endsWith(".mjs", ignoreCase = true)) {
+            if (path.endsWith(".js", ignoreCase = true) || path.endsWith(".mjs", ignoreCase = true)) {
                 response.mimeType = "text/javascript"
             }
             return response
