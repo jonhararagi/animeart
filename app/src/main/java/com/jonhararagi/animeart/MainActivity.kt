@@ -37,7 +37,9 @@ class MainActivity : ComponentActivity() {
                     override fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse? {
                         val path = request.url.path ?: return null
                         if (!path.startsWith("/assets/")) return null
-                        return serviceWorkerAssets.handle(path.removePrefix("/assets/"))
+                        return serviceWorkerAssets.handleServiceWorker(
+                            path.removePrefix("/assets/")
+                        )
                     }
                 }
             )
@@ -48,16 +50,37 @@ class MainActivity : ComponentActivity() {
         webView.loadUrl(WEB_APP_URL)
     }
 
-    private class WebAssetPathHandler(context: ComponentActivity) : WebViewAssetLoader.PathHandler {
-        private val delegate = WebViewAssetLoader.AssetsPathHandler(context)
+    private class WebAssetPathHandler(private val activity: ComponentActivity) : WebViewAssetLoader.PathHandler {
+        private val delegate = WebViewAssetLoader.AssetsPathHandler(activity)
 
         override fun handle(path: String): WebResourceResponse? {
             val response = delegate.handle(path) ?: return null
-            if (path.endsWith(".js", ignoreCase = true) || path.endsWith(".mjs", ignoreCase = true)) {
-                response.mimeType = "text/javascript"
-            }
+            configureJavascriptMimeType(path, response)
             return response
         }
+
+        fun handleServiceWorker(path: String): WebResourceResponse? {
+            if (path.contains("..") || path.isBlank()) return null
+            val input = runCatching { activity.assets.open(path) }.getOrNull() ?: return null
+            return WebResourceResponse(
+                javascriptMimeType(path),
+                "UTF-8",
+                input
+            )
+        }
+
+        private fun configureJavascriptMimeType(path: String, response: WebResourceResponse) {
+            if (path.endsWith(".js", ignoreCase = true) || path.endsWith(".mjs", ignoreCase = true)) {
+                response.mimeType = javascriptMimeType(path)
+            }
+        }
+
+        private fun javascriptMimeType(path: String): String =
+            if (path.endsWith(".mjs", ignoreCase = true) || path.endsWith(".js", ignoreCase = true)) {
+                "text/javascript"
+            } else {
+                "application/octet-stream"
+            }
     }
 
     private class LocalContentWebViewClient(
