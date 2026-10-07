@@ -2,6 +2,19 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
+test("T043 document mutations use existing domain operations for completed layer lifecycle changes", async () => {
+  const js = await readFile("app.js", "utf8");
+  const operations = await readFile("domain/document-operations.mjs", "utf8");
+  assert.match(js, /import \\{[^}]*addLayer[^}]*clearLayer[^}]*\\} from "\\.\\/domain\\/document-operations.mjs"/);
+  assert.match(js, /const next = addLayer\\(state\\.document, layer\\)/);
+  assert.match(js, /const next = clearLayer\\(state\\.document, layer\\.id\\)/);
+  assert.match(operations, /export function addLayer\\(/);
+  assert.match(operations, /export function clearLayer\\(/);
+  assert.doesNotMatch(js, /state\\.document\\.layers\\.push\\(layer\\)/);
+  assert.doesNotMatch(js, /layer\\.strokes = \\[\\]/);
+  assert.doesNotMatch(js, /AddLayerManager|LayerMutationManager|DocumentMutationManager/);
+});
+
 test("T042 architecture uses existing Image Layer and forbids parallel reference systems", async () => {
   const { readFile } = await import("node:fs/promises");
   const { join } = await import("node:path");
