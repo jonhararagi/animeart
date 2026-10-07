@@ -2145,7 +2145,7 @@ FECHA:
 2026-10-07
 
 ESTADO:
-IMPLEMENTACIÓN EN RAMA. El container mínimo Android → WebView → WebViewAssetLoader → AnimeArt Web se implementó sin modificar el runtime Web ni eliminar el editor Android legacy.
+GREEN EN PR #32. El container mínimo Android → WebView → WebViewAssetLoader → AnimeArt Web quedó implementado y verificado con Web CI y Android CI reales. No se fusionó a main en T047.2.
 
 BASELINE:
 0e4641ce9a8c464fd7ddac318b100daa832532f8
@@ -2173,7 +2173,10 @@ CANVAS:
 
 STARTUP SMOKE:
 - scripts/android-startup-smoke.sh reutiliza el smoke existente.
-- Además de instalación/MainActivity/proceso/resume, comprueba la jerarquía UI de la WebView para ANIMEART, el estado de la página y el canvas accesible.
+- Comprueba instalación, MainActivity, proceso/resume, marcadores Web accesibles (ANIMEART, estado de página y canvas) y presencia del renderer sandboxed de WebView.
+- Android CI #276 / run 37651748078 falló porque el detector trató el warning benigno de Crashpad de Chromium como error.
+- Reparación: commit 275d39ebe54bcdcb302b879e1225fdc757861a62 eliminó ese falso positivo y mantuvo FATAL EXCEPTION + renderer WebView como checks.
+- Android CI #277 / run 37652255928 terminó SUCCESS.
 - No valida offline ni Service Worker.
 
 SERVICE WORKER / OFFLINE:
@@ -2182,8 +2185,11 @@ SERVICE WORKER / OFFLINE:
 - Offline Android: reservado para T047.3.
 
 VALIDACIÓN:
-- La evidencia de Web Build, Web Tests, Android Build, Unit Tests, Lint y Startup Smoke debe tomarse de las ejecuciones reales de CI de esta rama/PR.
-- No declarar GREEN antes de que todas las ejecuciones requeridas terminen PASS.
+- Web CI #178 / run 37652255954 — SUCCESS: Build PASS, Test PASS, Verify build output PASS.
+- Android CI #277 / run 37652255928 — SUCCESS: Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, Debug APK artifact PASS.
+- PR #32 permanece OPEN sobre main @ 0e4641ce9a8c464fd7ddac318b100daa832532f8.
+- Canvas 2D quedó demostrado por la carga del shell Web, el canvas accesible y el renderer WebView observado en smoke.
+- Interacción de puntero no fue medida específicamente en T047.2.
 
 DEUDA:
 - Los assets Web quedan versionados dentro del APK y deben sincronizarse cuando cambie el Web runtime.
