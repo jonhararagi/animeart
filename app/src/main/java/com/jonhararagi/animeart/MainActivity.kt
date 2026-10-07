@@ -24,12 +24,24 @@ class MainActivity : ComponentActivity() {
         }
 
         val assetLoader = WebViewAssetLoader.Builder()
-            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .addPathHandler("/assets/", WebAssetPathHandler(this))
             .build()
 
         webView.webViewClient = LocalContentWebViewClient(assetLoader)
         setContentView(webView)
         webView.loadUrl(WEB_APP_URL)
+    }
+
+    private class WebAssetPathHandler(context: ComponentActivity) : WebViewAssetLoader.PathHandler {
+        private val delegate = WebViewAssetLoader.AssetsPathHandler(context)
+
+        override fun handle(path: String): WebResourceResponse? {
+            val response = delegate.handle(path) ?: return null
+            if (path.endsWith(".mjs", ignoreCase = true)) {
+                response.mimeType = "text/javascript"
+            }
+            return response
+        }
     }
 
     private class LocalContentWebViewClient(
