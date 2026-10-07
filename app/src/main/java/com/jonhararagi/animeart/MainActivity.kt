@@ -104,14 +104,6 @@ class MainActivity : ComponentActivity() {
             request: WebResourceRequest
         ): WebResourceResponse? = assetLoader.shouldInterceptRequest(request.url)
 
-        override fun onReceivedError(
-            view: WebView,
-            request: WebResourceRequest,
-            error: android.webkit.WebResourceError
-        ) {
-            Log.e(TAG, "Web resource error " + request.url + ": " + error.errorCode + " " + error.description)
-        }
-
         @Suppress("DEPRECATION")
         override fun shouldInterceptRequest(
             view: WebView,
