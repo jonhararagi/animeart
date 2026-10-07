@@ -53,7 +53,13 @@ class WebViewContainerSmokeTest {
             waitForCondition("service worker controller") {
                 evaluate(webView, "navigator.serviceWorker.controller !== null") == "true"
             }
-            assertEquals("true", evaluate(webView, "caches.has('animeart-web-shell-v1')"))
+            waitForCondition("service worker cache") {
+                evaluate(
+                    webView,
+                    "caches.has('animeart-web-shell-v2').then(value => document.documentElement.dataset.animeartCacheReady = String(value)); true"
+                ) == "true" &&
+                    evaluate(webView, "document.documentElement.dataset.animeartCacheReady === 'true'") == "true"
+            }
 
             dispatchTouchSequence(webView)
             waitForCondition("pointer event delivered") {
