@@ -36,6 +36,9 @@ class WebViewContainerSmokeTest {
             waitForCondition("service worker registered") {
                 evaluate(webView, "document.documentElement.dataset.animeartServiceWorker === 'registered'") == "true"
             }
+            waitForCondition("service worker ready") {
+                evaluate(webView, "navigator.serviceWorker.ready.then(() => 'ready')") == "ready"
+            }
             reload(webView)
             waitForCondition("service worker controller") {
                 evaluate(webView, "navigator.serviceWorker.controller !== null") == "true"
