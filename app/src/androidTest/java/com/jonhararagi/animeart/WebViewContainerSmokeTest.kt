@@ -65,7 +65,7 @@ class WebViewContainerSmokeTest {
         var result: WebView? = null
         waitForCondition("WebView instance") {
             scenario.onActivity { activity ->
-                result = activity.findViewWithTag(WEBVIEW_TAG)
+                result = activity.window.decorView.findViewWithTag(WEBVIEW_TAG)
             }
             result != null
         }
