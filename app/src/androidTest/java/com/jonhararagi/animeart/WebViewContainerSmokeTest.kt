@@ -37,7 +37,11 @@ class WebViewContainerSmokeTest {
                 evaluate(webView, "document.documentElement.dataset.animeartServiceWorker === 'registered'") == "true"
             }
             waitForCondition("service worker ready") {
-                evaluate(webView, "navigator.serviceWorker.ready.then(() => 'ready')") == "ready"
+                evaluate(
+                    webView,
+                    "navigator.serviceWorker.ready.then(() => document.documentElement.dataset.animeartServiceWorkerReady = 'true'); true"
+                ) == "true" &&
+                    evaluate(webView, "document.documentElement.dataset.animeartServiceWorkerReady === 'true'") == "true"
             }
             reload(webView)
             waitForCondition("service worker controller") {
