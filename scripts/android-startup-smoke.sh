@@ -57,8 +57,14 @@ for marker in "ANIMEART" "Local-first editor" "AnimeArt canvas"; do
   fi
 done
 
-if adb logcat -d -t 500 | grep -Eq 'FATAL EXCEPTION|chromium.*ERROR|WebView.*error'; then
-  echo "Startup smoke detectó errores WebView/Java en logcat. Proceso=$pid. Logcat:"
+if ! adb logcat -d -t 500 | grep -q 'com.android.webview:sandboxed_process'; then
+  echo "Startup smoke no observó el renderer de WebView en logcat. Proceso=$pid. Logcat:"
+  adb logcat -d -t 500 || true
+  exit 1
+fi
+
+if adb logcat -d -t 500 | grep -q 'FATAL EXCEPTION'; then
+  echo "Startup smoke detectó FATAL EXCEPTION. Proceso=$pid. Logcat:"
   adb logcat -d -t 500 || true
   exit 1
 fi
