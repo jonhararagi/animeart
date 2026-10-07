@@ -64,8 +64,10 @@ fi
 adb install -r "$android_test_apk"
 
 # T047 container smoke: query the real WebView DOM and verify the existing Web editor is alive.
+# The instrumentation test contains multiple bounded readiness waits, so this wrapper
+# must cover the complete test budget rather than terminate it prematurely.
 set +e
-webview_probe="$(timeout 20s adb shell 'am instrument -w -e class com.jonhararagi.animeart.WebViewContainerSmokeTest com.jonhararagi.animeart.test/androidx.test.runner.AndroidJUnitRunner' 2>&1)"
+webview_probe="$(timeout 120s adb shell 'am instrument -w -e class com.jonhararagi.animeart.WebViewContainerSmokeTest com.jonhararagi.animeart.test/androidx.test.runner.AndroidJUnitRunner' 2>&1)"
 probe_status=$?
 set -e
 printf '%s\n' "$webview_probe"
