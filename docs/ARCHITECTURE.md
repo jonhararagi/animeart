@@ -49,3 +49,64 @@ Web transforms remain non-destructive: layer transforms are stored as metadata a
 REUTILIZAR > ADAPTAR > CREAR
 
 T043 does not introduce DocumentManager, LayerManager, HistoryManager, PersistenceManager, SelectionManager, TransformManager, ReferenceManager, RendererManager or equivalent parallel systems.
+
+
+## T046 — Android Container Boundary Audit
+
+T046 is an architecture audit, not an Android migration.
+
+### Evidence
+
+- Android currently owns a native Kotlin/Compose editor runtime:
+  - `MainActivity` loads `ProjectPersistence` and supplies a `CanvasDocument` to `EditorScreen`.
+  - `EditorScreen` renders through Compose Canvas and handles native pointer/gesture interaction.
+  - `DrawingEditor` owns Android editor state, native command history, stroke interaction and document mutations through `DocumentReducer`.
+  - `Models.kt` contains Android `CanvasDocument`, `Layer`, `Stroke`, `StrokePoint`, `Transform`, `Viewport` and `EditorState`.
+  - `ProjectPersistence` stores Android documents through SharedPreferences/JSON.
+  - `ViewportTransform` provides Android screen/document conversion.
+- Web currently owns the Web editor runtime:
+  - `web/domain/model.mjs` is the Web Document/Layer/Stroke boundary.
+  - `document-operations.mjs` owns persistent Web layer/document mutations.
+  - `history.mjs` owns the single Web `DocumentHistory`.
+  - `viewport.mjs` owns Web session viewport and screen/document conversion.
+  - `selection.mjs` owns Web selection/hit-test/transform geometry.
+  - `image-import.mjs` owns the current Web localStorage persistence boundary.
+  - `app.js` owns the existing Canvas 2D renderer and UI interaction wiring.
+  - T045 adds the Web manifest and Service Worker offline shell.
+- Repository-wide search found no existing `WebView`, `android.webkit`, `loadUrl`, `loadData`, `WebViewClient` or `JavascriptInterface` integration.
+
+### Decision
+
+**T046 selects Option B as the target architecture:**
+
+`Web = primary editor/runtime; Android = container/WebView host.`
+
+This is a target boundary, not a destructive migration. Android's existing editor remains intact until a future reversible container spike proves that the Web application can be packaged, loaded and interacted with reliably inside Android.
+
+The eventual responsibility boundary is:
+
+- **Web:** Document, Layer, Stroke, History, Viewport, Selection, Transform, Persistence and primary Renderer/UI.
+- **Android:** application/container lifecycle, WebView hosting, local asset delivery, platform integration and future native bridges only where demonstrably necessary.
+- **Domain:** remains defined by the Web editor contracts during the migration; no artificial cross-platform runtime is introduced in T046.
+- **Renderer:** Web Canvas 2D becomes the primary editor renderer; the Android Compose renderer is transitional until container validation.
+- **Persistence:** Web local persistence remains the Web editor boundary; Android ProjectPersistence remains untouched as a transitional legacy path.
+
+### Why not Option C now?
+
+The repository contains separate Kotlin and JavaScript implementations, and no existing shared runtime/serialization bridge exists. Creating a new cross-platform domain runtime during T046 would violate REUTILIZAR > ADAPTAR > CREAR and expand the scope unnecessarily.
+
+### Migration guard
+
+Do not remove `EditorScreen`, `DrawingEditor`, Compose Canvas, `ProjectPersistence` or other Android editor code until a separate container spike demonstrates:
+
+1. APK installation;
+2. MainActivity startup;
+3. WebView creation;
+4. Web app asset loading;
+5. Web editor rendering;
+6. basic pointer interaction;
+7. offline shell behavior;
+8. Android startup smoke;
+9. Web CI and Android CI.
+
+A later cleanup task may remove obsolete native editor code only after those conditions are green.
