@@ -1,7 +1,7 @@
 import { createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
-import { deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerReference, setLayerVisibility, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerReference, setLayerVisibility, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
@@ -877,11 +877,13 @@ undoButton.addEventListener("click", undo);
 redoButton.addEventListener("click", redo);
 
 document.querySelector("#add-layer").addEventListener("click", () => {
-  const before = cloneDocument(state.document);
   const layer = createLayer("Layer " + (state.document.layers.length + 1));
-  state.document.layers.push(layer);
+  const before = cloneDocument(state.document);
+  const next = addLayer(state.document, layer);
+  if (!next) return;
+  state.document = next;
   setSelection([layer.id], layer.id);
-  state.history.record(before, state.document);
+  state.history.record(before, next);
   refreshDocument();
   persistDocument();
 });
@@ -988,8 +990,10 @@ document.querySelector("#clear").addEventListener("click", () => {
   const layer = selectedLayer();
   if (!layer || layer.locked || layer.contentType === "image" || layer.strokes.length === 0) return;
   const before = cloneDocument(state.document);
-  layer.strokes = [];
-  state.history.record(before, state.document);
+  const next = clearLayer(state.document, layer.id);
+  if (!next) return;
+  state.document = next;
+  state.history.record(before, next);
   refreshDocument();
   persistDocument();
 });
