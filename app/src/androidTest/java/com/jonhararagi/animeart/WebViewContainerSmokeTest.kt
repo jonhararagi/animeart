@@ -29,7 +29,7 @@ class WebViewContainerSmokeTest {
             }
             assertEquals(
                 "https://appassets.androidplatform.net/assets/index.html",
-                webView.url
+                evaluate(webView, "window.location.href")
             )
             assertEquals("true", evaluate(webView, "document.querySelector('#canvas') !== null"))
 

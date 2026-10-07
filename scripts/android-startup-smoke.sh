@@ -69,11 +69,13 @@ webview_probe="$(timeout 20s adb shell 'am instrument -w -e class com.jonhararag
 probe_status=$?
 set -e
 printf '%s\n' "$webview_probe"
-if [ "$probe_status" -ne 0 ]; then
-  echo "WebView container smoke failed (exit=$probe_status). Logcat:"
+if [ "$probe_status" -ne 0 ] || printf '%s' "$webview_probe" | grep -q 'FAILURES!!!' || ! printf '%s' "$webview_probe" | grep -q 'OK (1 test)'; then
+  echo "WebView container smoke failed (exit=$probe_status). Instrumentation output:"
+  printf '%s\n' "$webview_probe"
+  echo "Logcat:"
   adb logcat -d -t 800 || true
   exit 1
 fi
 
-echo "WebView container smoke confirmed."
+echo "WebView container smoke confirmed: 1 instrumentation test passed."
 adb shell am force-stop com.jonhararagi.animeart
