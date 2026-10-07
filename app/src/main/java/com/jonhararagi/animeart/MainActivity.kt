@@ -37,9 +37,8 @@ class MainActivity : ComponentActivity() {
                     override fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse? {
                         val path = request.url.path ?: return null
                         if (!path.startsWith("/assets/")) return null
-                        return serviceWorkerAssets.handleServiceWorker(
-                            path.removePrefix("/assets/")
-                        )
+                        val assetPath = path.removePrefix("/assets/").ifBlank { "index.html" }
+                        return serviceWorkerAssets.handleServiceWorker(assetPath)
                     }
                 }
             )
