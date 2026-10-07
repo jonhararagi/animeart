@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createDocument, createLayer, createStroke, createStrokePoint, restoreDocument } from "../domain/model.mjs";
 import {
+  addLayer,
+  clearLayer,
   deleteLayer,
   duplicateLayer,
   setLayerReference,
@@ -182,4 +184,28 @@ test("T042 E2E contract: import image → reference → opacity/lock → drawing
 
   const deleted = deleteLayer(hidden, duplicateId);
   assert.equal(deleted.layers.some(layer => layer.id === duplicateId), false);
+});
+
+
+test("T043 completed layer lifecycle mutations preserve the single domain operation boundary", () => {
+  let documentModel = createDocument(320, 240);
+  const added = createLayer("Added");
+  let next = addLayer(documentModel, added);
+  assert.ok(next);
+  assert.equal(next.layers.length, 2);
+  assert.notEqual(next, documentModel);
+  documentModel = next;
+
+  const drawing = documentModel.layers[0];
+  drawing.strokes.push(createStroke("brush", 4, [
+    createStrokePoint(10, 10),
+    createStrokePoint(20, 20)
+  ]));
+  next = clearLayer(documentModel, drawing.id);
+  assert.ok(next);
+  assert.equal(next.layers[0].strokes.length, 0);
+  assert.equal(documentModel.layers[0].strokes.length, 1);
+
+  drawing.locked = true;
+  assert.equal(clearLayer(documentModel, drawing.id), null);
 });
