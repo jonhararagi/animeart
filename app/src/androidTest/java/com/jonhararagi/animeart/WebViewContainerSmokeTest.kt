@@ -30,14 +30,14 @@ class WebViewContainerSmokeTest {
         val serviceWorkerSettings = ServiceWorkerControllerCompat.getInstance().serviceWorkerWebSettings
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             val webView = waitForWebView(scenario)
+            waitForCondition("local web document") {
+                evaluate(webView, "window.location.href") == "https://appassets.androidplatform.net/assets/index.html"
+            }
+            assertEquals("loading-complete", evaluate(webView, "document.readyState === 'complete' ? 'loading-complete' : document.readyState"))
+            assertEquals("true", evaluate(webView, "document.querySelector('#canvas') !== null"))
             waitForCondition("canvas ready") {
                 evaluate(webView, "document.documentElement.dataset.animeartCanvasReady === 'true'") == "true"
             }
-            assertEquals(
-                "https://appassets.androidplatform.net/assets/index.html",
-                evaluate(webView, "window.location.href")
-            )
-            assertEquals("true", evaluate(webView, "document.querySelector('#canvas') !== null"))
 
             waitForCondition("service worker registered") {
                 evaluate(webView, "document.documentElement.dataset.animeartServiceWorker === 'registered'") == "true"
