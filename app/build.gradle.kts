@@ -31,6 +31,22 @@ android {
     }
 }
 
+sourceSets {
+    getByName("main") {
+        assets.srcDir(layout.buildDirectory.dir("generated/webAssets"))
+    }
+}
+
+tasks.register<Copy>("syncWebAssets") {
+    from("../web") {
+        include("index.html", "styles.css", "app.js", "manifest.webmanifest", "service-worker.js")
+        include("domain/**")
+    }
+    into(layout.buildDirectory.dir("generated/webAssets"))
+}
+
+tasks.named("preBuild").configure { dependsOn("syncWebAssets") }
+
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2025.01.00")
     implementation(composeBom)
@@ -51,15 +67,4 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
 
-    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/webAssets"))
-
-    tasks.register<Copy>("syncWebAssets") {
-        from("../web") {
-            include("index.html", "styles.css", "app.js", "manifest.webmanifest", "service-worker.js")
-            include("domain/**")
-        }
-        into(layout.buildDirectory.dir("generated/webAssets"))
-    }
-
-    tasks.named("preBuild").configure { dependsOn("syncWebAssets") }
 }
