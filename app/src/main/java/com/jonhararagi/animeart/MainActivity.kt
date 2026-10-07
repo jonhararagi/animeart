@@ -65,6 +65,12 @@ class MainActivity : ComponentActivity() {
             return WebResourceResponse(
                 javascriptMimeType(path),
                 "UTF-8",
+                200,
+                "OK",
+                mapOf(
+                    "Content-Type" to "${javascriptMimeType(path)}; charset=UTF-8",
+                    "Cache-Control" to "no-cache"
+                ),
                 input
             )
         }
