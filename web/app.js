@@ -9,6 +9,7 @@ import { canvasToPngBlob, createPngExportCanvas, downloadPngBlob, renderDocument
 
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
+document.documentElement.dataset.animeartCanvasReady = "true";
 const status = document.querySelector("#status");
 const layersEl = document.querySelector("#layers");
 const undoButton = document.querySelector("#undo");
@@ -657,6 +658,7 @@ function beginSelectionInteraction(event) {
 }
 
 canvas.addEventListener("pointerdown", event => {
+  document.documentElement.dataset.animeartPointerEvents = String(Number(document.documentElement.dataset.animeartPointerEvents || "0") + 1);
   if (state.tool === "pan") {
     state.transformInteraction = null;
     state.transformPointerId = null;
@@ -1158,7 +1160,10 @@ window.addEventListener("resize", resizeCanvas);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js").catch(() => {
+    navigator.serviceWorker.register("./service-worker.js").then(() => {
+      document.documentElement.dataset.animeartServiceWorker = "registered";
+    }).catch(() => {
+      document.documentElement.dataset.animeartServiceWorker = "error";
       // Offline shell is an enhancement; editor operation must remain available without it.
     });
   });

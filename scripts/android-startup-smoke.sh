@@ -54,4 +54,18 @@ if [ -z "$top_activity" ]; then
 fi
 
 echo "Startup confirmado: pid=$pid; MainActivity resumida=$top_activity"
+
+# T047 container smoke: query the real WebView DOM and verify the existing Web editor is alive.
+set +e
+webview_probe="$(timeout 20s adb shell 'am instrument -w -e class com.jonhararagi.animeart.WebViewContainerSmokeTest com.jonhararagi.animeart.test/androidx.test.runner.AndroidJUnitRunner' 2>&1)"
+probe_status=$?
+set -e
+printf '%s\n' "$webview_probe"
+if [ "$probe_status" -ne 0 ]; then
+  echo "WebView container smoke failed (exit=$probe_status). Logcat:"
+  adb logcat -d -t 800 || true
+  exit 1
+fi
+
+echo "WebView container smoke confirmed."
 adb shell am force-stop com.jonhararagi.animeart
