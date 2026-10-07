@@ -1912,3 +1912,46 @@ PENDIENTES:
 
 SIGUIENTE TAREA:
 Decisión de CEREBRO después de cerrar la evidencia post-continuidad.
+
+
+## T044 — WEB EDITOR CORE / PREPARACIÓN V1 — AUDITORÍA Y VERIFICACIÓN
+
+FECHA: 2026-10-07
+
+BASELINE / MAIN:
+- main verificado en c9fb1631a851e45d23cd626a9fbbb6d96ac1e0b5.
+- Coincide con el baseline T043 esperado.
+
+T044-A — AUDITORÍA REAL:
+- Document: web/domain/model.mjs; restoreDocument/normalizeDocument mantienen la frontera de dominio existente.
+- Layers: web/domain/document-operations.mjs concentra addLayer, clearLayer, deleteLayer, duplicateLayer, reorder, visibility, lock, opacity y transformaciones.
+- Renderer: web/app.js reutiliza un único renderer Canvas 2D sobre state.document; no existe renderer paralelo.
+- Viewport: web/domain/viewport.mjs implementa createViewport, screenToDocument, documentToScreen, panBy y zoomAt; app.js lo consume para pointer/wheel.
+- Input: app.js gestiona pointerdown/pointermove/pointerup/pointercancel/wheel y convierte Screen -> Document antes de mutar strokes/transformaciones.
+- History: web/domain/history.mjs contiene la única frontera DocumentHistory; undo/redo se realizan sobre Document.
+- Persistence: web/domain/image-import.mjs expone persistDocumentSnapshot; app.js conserva la clave localStorage existente y maneja fallos sin reemplazar el Document actual.
+- Tests: web/test/smoke.test.mjs y web/test/mvp-e2e.test.mjs cubren contratos, viewport, lifecycle de capas, history, persistence, drawing y regresiones.
+
+REUTILIZACIÓN:
+- T044 no requirió crear DocumentManager, LayerManager, CanvasManager, RendererManager, ViewportManager, HistoryManager ni PersistenceManager.
+- La arquitectura existente ya satisface el flujo Document -> Layers -> Canvas -> Viewport -> Input -> Domain Operations -> History -> Persistence -> Render.
+
+T044-B — EDITOR INTERACTION FOUNDATION: GREEN por auditoría del código existente y cobertura de tests; no se añadió un segundo sistema de coordenadas.
+T044-C — LAYER EDITING FLOW: GREEN por auditoría; las mutaciones de lifecycle pasan por document-operations + History + persistence.
+T044-D — HISTORY / UNDO / REDO: GREEN por auditoría y tests existentes; no se creó un segundo historial y viewport navigation no registra history.
+T044-E — TESTS: GREEN por cobertura existente y CI real; no se añadieron tests artificiales.
+
+NO MODIFICADO:
+- Android no fue tocado.
+- Workflows CI no fueron alterados.
+- No se creó renderer, Document, layer system, history, persistence o arquitectura paralela.
+
+CI POST-T043 / EVIDENCIA:
+- Web CI #137 / run 37557605801 — SUCCESS sobre c9fb1631a851e45d23cd626a9fbbb6d96ac1e0b5.
+- Android CI #236 / run 37557605774 — SUCCESS sobre c9fb1631a851e45d23cd626a9fbbb6d96ac1e0b5.
+- Android evidencia: Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS y artifact PASS.
+
+DECISIÓN T044:
+- La implementación T044 no necesitó cambios funcionales porque las capacidades requeridas ya estaban implementadas y verificadas.
+- Se actualiza únicamente esta continuidad para registrar la auditoría y evidencia.
+- No declarar GREEN de T044 hasta que la CI posterior a este cambio documental confirme Web + Android PASS.
