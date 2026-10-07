@@ -2,10 +2,12 @@ package com.jonhararagi.animeart
 
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
+import android.webkit.WebChromeClient
 import androidx.activity.ComponentActivity
 import androidx.webkit.ServiceWorkerClientCompat
 import androidx.webkit.ServiceWorkerControllerCompat
@@ -44,6 +46,12 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(message: android.webkit.ConsoleMessage): Boolean {
+                Log.d(TAG, "Web console " + message.messageLevel() + ": " + message.message() + " @ " + message.sourceId() + ":" + message.lineNumber())
+                return true
+            }
+        }
         webView.webViewClient = LocalContentWebViewClient(assetLoader)
         setContentView(webView)
         webView.loadUrl(WEB_APP_URL)
@@ -96,6 +104,14 @@ class MainActivity : ComponentActivity() {
             request: WebResourceRequest
         ): WebResourceResponse? = assetLoader.shouldInterceptRequest(request.url)
 
+        override fun onReceivedError(
+            view: WebView,
+            request: WebResourceRequest,
+            error: android.webkit.WebResourceError
+        ) {
+            Log.e(TAG, "Web resource error " + request.url + ": " + error.errorCode + " " + error.description)
+        }
+
         @Suppress("DEPRECATION")
         override fun shouldInterceptRequest(
             view: WebView,
@@ -104,6 +120,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private companion object {
+        const val TAG = "AnimeArtWebView"
         const val WEBVIEW_TAG = "animeart-webview"
         const val WEB_APP_URL = "https://appassets.androidplatform.net/assets/index.html"
     }
