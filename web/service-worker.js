@@ -5,7 +5,15 @@ const APP_SHELL = [
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
-  "./service-worker.js"
+  "./service-worker.js",
+  "./domain/document-operations.mjs",
+  "./domain/history.mjs",
+  "./domain/image-import.mjs",
+  "./domain/image-input.mjs",
+  "./domain/model.mjs",
+  "./domain/png-export.mjs",
+  "./domain/selection.mjs",
+  "./domain/viewport.mjs"
 ];
 
 self.addEventListener("install", event => {
