@@ -1831,3 +1831,84 @@ NO MODIFICAR:
 SIGUIENTE DECISIÓN:
 - No se autoriza ninguna nueva implementación por esta entrada.
 - CEREBRO debe definir el siguiente alcance.
+
+
+---
+
+## T043 — WEB FOUNDATION MERGE-DOWN / RECOVERY EXECUTION
+
+ESTADO:
+IMPLEMENTACIÓN Y MERGE REALIZADOS. La auditoría confirmó una única fuente de verdad Web por responsabilidad. Se corrigieron únicamente dos rutas de mutación persistente que estaban en app.js fuera de la frontera de operaciones de dominio: Add Layer y Clear Layer. No se introdujeron sistemas paralelos.
+
+BASELINE:
+c973aab8d8530ad25c48bc83d7f70aa04e7e5792
+
+BRANCH:
+t043-web-merge-down
+
+OBJETIVO:
+Auditar y consolidar la Web Foundation bajo REUTILIZAR > ADAPTAR > CREAR, sin ampliar el producto ni modificar Android.
+
+AUDITORÍA:
+- Document: web/domain/model.mjs.
+- Layer: layers[] dentro de Document.
+- Stroke: createStroke/normalizeStroke.
+- Viewport: web/domain/viewport.mjs como estado de sesión.
+- Selection: web/domain/selection.mjs.
+- Transform: web/domain/document-operations.mjs para mutación persistente; selection.mjs para geometría de preview.
+- History: única DocumentHistory.
+- Persistence: único límite localStorage existente.
+- Reference: isReference dentro de Image Layer.
+- Renderer: Canvas 2D existente en app.js y reutilizado por PNG export.
+- No se encontró un segundo subsystema paralelo de Document/Layer/History/Persistence/Selection/Transform/Reference/Renderer.
+
+HALLAZGOS:
+1. Add Layer mutaba state.document.layers directamente desde app.js.
+2. Clear Layer vaciaba strokes directamente desde app.js.
+3. docs/ARCHITECTURE.md seguía describiendo principalmente la arquitectura Android histórica y no reflejaba la Web Foundation actual.
+
+REPARACIONES:
+- Añadidos addLayer() y clearLayer() a web/domain/document-operations.mjs.
+- Add Layer y Clear Layer ahora siguen Document Operation -> History -> Persistence.
+- Añadida cobertura de regresión/guard en web/test/smoke.test.mjs y web/test/mvp-e2e.test.mjs.
+- Actualizada docs/ARCHITECTURE.md para documentar la arquitectura Web-first actual.
+- No se modificó Android ni ningún workflow CI.
+
+COMMITS DE IMPLEMENTACIÓN:
+24576201cfdc56042c7afb9272de87c953e9c0f3
+0a72bf40e8a8126f60ec401742de6a80649303b5
+6aa2bdecc58815ae383f93c49384e63085f1460c
+d3e1997bedbc7f81cddb542dbb811b7272eb7475
+3d49b79cf1ec4bc326c51cb84dc7ba88af016701
+8b254c11fffa8b7269300789d884c33407c0333f
+63fa7f75b4aa4f7b2b5ef143e109d6ccddfc7119
+
+PR:
+#28 — T043: consolidate Web foundation mutation boundaries
+
+MERGE:
+e046e614a87a8081d5595848be2858f73f1f8bb6
+
+PRE-MERGE CI:
+- Web CI #135 — SUCCESS.
+- Android CI #234 — SUCCESS.
+- Android Build — PASS.
+- Android Unit Tests — PASS.
+- Android Lint — PASS.
+- Android Startup Smoke — PASS.
+- Debug APK artifact — PASS.
+
+REVIEW:
+PR diff inspected: 5 files only. Technical review comment submitted. No Android or CI workflow files changed.
+
+DEUDA TÉCNICA:
+- localStorage remains the current Web persistence boundary and its size ceiling remains unchanged.
+- app.js still contains transient gesture/rendering responsibilities by design; no cosmetic refactor was introduced.
+- Post-merge push CI evidence must be rechecked through a GitHub Actions run listing capable of exposing push-triggered runs.
+
+PENDIENTES:
+- Verify post-merge and post-continuity Web/Android GitHub Actions runs using an Actions endpoint/tool that exposes push-triggered runs.
+- Do not start T044 automatically.
+
+SIGUIENTE TAREA:
+Decisión de CEREBRO después de cerrar la evidencia post-continuidad.
