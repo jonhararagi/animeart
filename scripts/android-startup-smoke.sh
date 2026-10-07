@@ -55,6 +55,10 @@ fi
 
 echo "Startup confirmado: pid=$pid; MainActivity resumida=$top_activity"
 
+# End the standalone startup probe before instrumentation so the WebView test starts
+# with exactly one fresh MainActivity/WebView and no cross-test page state.
+adb shell am force-stop com.jonhararagi.animeart
+
 # T047 container smoke: reuse this startup script and install the instrumentation APK needed by the WebView assertions.
 # The workflow already provisions Gradle, so no second smoke system is introduced.
 android_test_apk="app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
