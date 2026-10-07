@@ -1957,3 +1957,70 @@ DECISIÓN T044:
 - CI posterior al cambio documental: Web CI #138 / run 37559764977 — SUCCESS; Android CI #237 / run 37559765056 — SUCCESS.
 - Android CI #237: Build PASS, Unit Tests PASS, Lint PASS, Android Startup Smoke PASS, Debug APK artifact PASS.
 - T044-A/B/C/D/E quedan GREEN por implementación existente + auditoría + tests + CI real; no se requirieron cambios funcionales.
+
+## T045 — WEB PWA / OFFLINE SHELL
+
+FECHA: 2026-10-07
+
+ESTADO:
+IMPLEMENTADO, MERGED Y VERIFICADO. El siguiente bloque arquitectónicamente correcto después de T044 fue la fundación PWA/offline mínima, porque la Web Foundation, local persistence y editor core ya estaban verificadas. No se introdujo IndexedDB, backend, AI ni un runtime paralelo.
+
+BASELINE:
+35bc6aba35de0a033bbb1aa7a6bc3c83c4c8b9c1
+
+IMPLEMENTACIÓN:
+- Añadido web/manifest.webmanifest con identidad y modo standalone.
+- Añadido web/service-worker.js para cachear el shell estático existente y los módulos de dominio Web necesarios para reabrir el editor offline.
+- web/index.html enlaza el manifest existente.
+- web/app.js registra el único service worker como mejora progresiva; si el registro falla, el editor continúa funcionando normalmente.
+- Añadida cobertura web/test/pwa.test.mjs para manifest, registro, cache y guardas de arquitectura.
+- No se creó ningún DocumentManager, LayerManager, CanvasManager, RendererManager, ViewportManager, HistoryManager o PersistenceManager.
+- Android y workflows CI no fueron modificados.
+
+REPARACIÓN DURANTE T045:
+- La primera versión del service worker cacheaba app.js pero no sus módulos web/domain/*.mjs, por lo que el editor no habría podido arrancar completamente offline.
+- Se corrigió antes del cierre añadiendo todos los módulos de dominio actualmente importados por app.js al app shell y una aserción de regresión.
+
+PR:
+#29 — T045: establish Web PWA offline shell
+MERGE SHA:
+0b761df3c093d7bd47a850b926385cf9076a33d8
+
+PRE-MERGE CI:
+- Web CI #141 / run 37561416464 — SUCCESS.
+- Android CI #240 / run 37561416355 — SUCCESS.
+- Android Build — PASS.
+- Android Unit Tests — PASS.
+- Android Lint — PASS.
+- Android Startup Smoke — PASS.
+- Debug APK artifact — PASS.
+
+SCOPE:
+IN:
+- Web manifest.
+- Offline app shell.
+- Existing Web runtime/module cache coverage.
+- Progressive service-worker registration.
+- Tests.
+- CI.
+- Continuity.
+
+OUT:
+- IndexedDB migration.
+- Cloud/backend.
+- AI.
+- Background removal.
+- Smart shading.
+- Filters.
+- Text.
+- Shapes.
+- Collaboration.
+- Android PWA/WebView redesign.
+- New renderer/history/persistence/document systems.
+
+RESULTADO:
+T045 queda GREEN por implementación real, tests, pre-merge Web/Android CI y merge real. La evidencia post-merge de la continuidad documental debe quedar registrada por la siguiente CI antes de cerrar el handoff definitivo.
+
+NO MODIFICAR:
+- T044 remains GREEN.
+- T045 debe considerarse parte de la Web Foundation existente; no crear un segundo offline/cache/runtime system.
