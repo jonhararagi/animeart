@@ -1,65 +1,51 @@
 # Architecture
 
-AnimeArt keeps a single layered pipeline:
+AnimeArt is a Web-first, local-first editor with a protected Android foundation. The two platforms have separate UI/runtime implementations, but each platform keeps one source of truth per responsibility.
 
-UI -> Gesture Dispatcher -> Tool -> Stroke -> Layer -> Document -> Renderer -> Persistence
+## Web source of truth
 
-## Core models
+The Web editor uses one persistent Document model:
 
-- CanvasDocument: dimensions, ordered layers and metadata.
-- Layer: stable id, name, visibility, lock, opacity, transform, blend mode and content.
-- EditorState.selectedLayerId: single source of truth for the active layer.
-- Transform: non-destructive translation, uniform scale and rotation stored on the layer.
-- LayerContent.Drawing: persistent vector-like stroke list for the layer.
-- Stroke/StrokePoint: compact drawing data stored in document coordinates.
-- Viewport: scale, translation and rotation; viewport changes do not mutate stroke coordinates.
-- EditorState: single conceptual source of truth for document, selection, tool and brush settings.
-- CommandHistory: reversible operation boundary. One completed stroke is one command.
+UI
+-> existing domain operation
+-> Document mutation
+-> DocumentHistory
+-> existing local persistence
+-> UI refresh
 
-## Drawing pipeline
+The browser session keeps Viewport and selection state outside the persisted Document. Rendering uses the existing Canvas 2D pipeline and the same Document/Layer data used by history and persistence.
 
-Touch Down -> Begin Stroke -> Append Points -> Render Active Stroke -> Touch Up -> Commit Stroke
+## Web core responsibilities
 
-A two-pointer gesture cancels any active stroke and switches to viewport navigation. One pointer draws when Brush/Eraser is selected, or pans when Pan is selected.
+- Document: web/domain/model.mjs is the single persistent document representation.
+- Layer: the layers[] records in Document are the single representation for visibility, lock, opacity, ordering, transform, content type and Reference state.
+- Stroke: createStroke / normalizeStroke in model.mjs are the single Web stroke representation. Active pointer drawing is transient interaction state and is committed as one history operation on pointer release.
+- Viewport: web/domain/viewport.mjs owns zoom/pan session state. Viewport is not persisted with Document.
+- Selection: web/domain/selection.mjs owns selection normalization, hit testing and transform geometry.
+- Transform: web/domain/document-operations.mjs owns persisted transform mutation; selection.mjs calculates preview geometry.
+- History: web/domain/history.mjs provides the single DocumentHistory boundary for Web undo/redo.
+- Persistence: web/domain/image-import.mjs provides the existing localStorage serialization/storage boundary. T043 does not introduce another persistence system.
+- Reference: isReference is a property of an existing Image Layer. There is no separate Reference model, store or renderer.
+- Renderer: web/app.js contains the existing Canvas 2D document renderer and web/domain/png-export.mjs reuses it for PNG output; no second renderer is introduced.
 
-## Coordinates
+## Web mutation rule
 
-Screen coordinates are converted to document coordinates through ViewportTransform. Strokes are never stored in physical screen coordinates.
+Completed persistent mutations must pass through the existing domain-operation boundary before History and Persistence. UI code may keep transient gesture state during pointer interaction, but it must not create a second persistent mutation path.
 
-When a transformed layer is edited, document coordinates are converted through the inverse layer transform before points are stored. LayerTransformMath is the single reusable implementation for layer-local transform and inverse-transform calculations.
+## Android
 
-## Rendering
+Android retains its existing Kotlin/Compose foundation and separate platform renderer. T043 does not alter Android architecture or introduce a shared runtime.
 
-The existing Compose Canvas remains the only renderer. The pipeline is Canvas -> Viewport -> each layer Transform -> layer content -> selection overlay. Layer opacity is independent from brush/stroke opacity. Eraser strokes use the Canvas clear blend mode rather than a second drawing engine.
+## Persistence and recovery
 
-## Persistence
+The Web document is serialized through the existing localStorage boundary. Recovery uses restoreDocument() and resets the same DocumentHistory instance. The viewport is session-only.
 
-ProjectPersistence stores document dimensions, ordered layer metadata, transform state, content type and complete stroke point data in the existing local recovery store. Older documents without transform metadata load with the identity transform.
+## Performance
 
-## Reuse
+Web transforms remain non-destructive: layer transforms are stored as metadata and applied at render time. Drawing commits one completed stroke as one history operation rather than recording every pointer point.
 
-No third-party source code is copied. External projects remain architectural references because the Day 1 reuse audit did not establish a need or compatible licensing path for direct code reuse.
+## Architecture rule
 
-## Startup and verification pipeline
+REUTILIZAR > ADAPTAR > CREAR
 
-The app startup path is intentionally single-directional:
-
-Android launcher
--> MainActivity.onCreate
--> guarded recovery load
--> fallback to new CanvasDocument
--> Compose setContent
--> EditorScreen(initialDocument)
--> DrawingEditor(EditorState(document))
--> existing Canvas renderer
-
-Startup recovery must never be allowed to abort Activity creation. Persistence errors are isolated at the boundary and fall back to a fresh document.
-
-CI verification is layered:
-1. Build — Kotlin/Android compilation.
-2. Unit tests — domain/editor behavior.
-3. Lint — Android/static correctness.
-4. Android smoke — install the debug APK, verify ADB/device readiness, launch MainActivity, verify the process remains alive, and print logcat on failure.
-5. APK artifact — only after all previous layers pass.
-
-An emulator/ADB failure is infrastructure evidence, not evidence of an application crash. The smoke step therefore records emulator readiness separately before installing the APK.
+T043 does not introduce DocumentManager, LayerManager, HistoryManager, PersistenceManager, SelectionManager, TransformManager, ReferenceManager, RendererManager or equivalent parallel systems.
