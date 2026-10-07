@@ -1954,4 +1954,6 @@ CI POST-T043 / EVIDENCIA:
 DECISIÓN T044:
 - La implementación T044 no necesitó cambios funcionales porque las capacidades requeridas ya estaban implementadas y verificadas.
 - Se actualiza únicamente esta continuidad para registrar la auditoría y evidencia.
-- No declarar GREEN de T044 hasta que la CI posterior a este cambio documental confirme Web + Android PASS.
+- CI posterior al cambio documental: Web CI #138 / run 37559764977 — SUCCESS; Android CI #237 / run 37559765056 — SUCCESS.
+- Android CI #237: Build PASS, Unit Tests PASS, Lint PASS, Android Startup Smoke PASS, Debug APK artifact PASS.
+- T044-A/B/C/D/E quedan GREEN por implementación existente + auditoría + tests + CI real; no se requirieron cambios funcionales.
