@@ -2040,102 +2040,101 @@ La continuidad T045 y el estado resultante de main quedaron verificados con CI r
 
 ## T046 — ANDROID CONTAINER AUDIT
 
-FECHA: 2026-10-07
+FECHA:
+2026-10-07
 
 ESTADO:
-GREEN — auditoría arquitectónica completada sin cambios funcionales de Android.
+GREEN — auditoría arquitectónica completada, PR revisado y mergeado con evidencia real de CI.
 
 BASELINE:
 96a944859100bce377de86422d96f182e46fe281
 
-AUDITORÍA ANDROID:
-- `MainActivity` crea/recupera `CanvasDocument` mediante `ProjectPersistence` y entrega el documento a `EditorScreen`.
-- `EditorScreen` es la UI/renderizador Compose actual y procesa pointer/gestos.
-- `DrawingEditor` concentra estado de edición, stroke pipeline, operaciones de capa y CommandHistory.
-- `Models.kt` contiene CanvasDocument, Layer, Stroke, StrokePoint, Transform, Viewport y EditorState.
-- `DocumentReducer` es la frontera de mutación documental Android.
-- `ProjectPersistence` es la persistencia Android actual basada en SharedPreferences/JSON.
-- `ViewportTransform` es la frontera Android screen/document.
-- Tests Android existentes cubren DocumentReducer y DrawingEditor.
-- No existe integración WebView actual.
+PR:
+#30 — T046: audit Android container boundary
 
-AUDITORÍA WEB:
-- `web/domain/model.mjs`: Document/Layer/Stroke/StrokePoint.
-- `web/domain/document-operations.mjs`: operaciones persistentes de documento/capas.
-- `web/domain/history.mjs`: DocumentHistory único.
-- `web/domain/viewport.mjs`: viewport y screen/document.
-- `web/domain/selection.mjs`: selection/hit-test/transform geometry.
-- `web/domain/image-import.mjs`: persistencia local Web actual.
-- `web/app.js`: UI e integración del renderer Canvas 2D existente.
-- T045: manifest + Service Worker offline shell.
-- No existe un runtime Web paralelo.
+MERGE SHA:
+b39d674d1ecf6df8c8d4253b8023832bb9daa1f4
 
-BUSQUEDA WEBVIEW:
-Repositorio completo auditado. No se encontraron referencias a:
-WebView, android.webkit, loadUrl, loadData, WebViewClient, JavascriptInterface.
-No existe actualmente mecanismo Android→Web ni Web→Android.
+MAIN HEAD:
+b39d674d1ecf6df8c8d4253b8023832bb9daa1f4
 
-MATRIZ REAL:
-- Document: Android CanvasDocument | Web Document | DUPLICADO DE RESPONSABILIDAD | destino: Web principal; Android transicional.
-- Layer: Android Layer | Web layer records | DUPLICADO | destino: Web principal.
-- Stroke: Android Stroke/StrokePoint | Web Stroke/StrokePoint records | DUPLICADO | destino: Web principal.
-- History: Android CommandHistory | Web DocumentHistory | DUPLICADO | destino: Web principal.
-- Selection: Android selecciona mediante EditorState/UI; no existe un módulo Android dedicado equivalente a Web selection.mjs | Web selection.mjs | responsabilidad parcialmente duplicada | destino: Web principal.
-- Transform: Android LayerTransformMath/ViewportTransform | Web document-operations/selection/viewport | DUPLICADO | destino: Web principal.
-- Viewport: Android Viewport/ViewportTransform | Web viewport.mjs | DUPLICADO | destino: Web principal.
-- Persistence: Android ProjectPersistence | Web localStorage boundary | DUPLICADO DE PERSISTENCIA POR PLATAFORMA | destino: Web principal.
-- Renderer: Android Compose Canvas | Web Canvas 2D | DUPLICADO DE RENDERER | destino: Web Canvas 2D principal.
-- Gestures: Android Compose pointer/gesture APIs | Web Pointer Events | duplicación de UI/input por plataforma | destino: Web principal.
-- UI: Android Compose EditorScreen | Web index/app UI | duplicación de presentación | destino: Web principal.
-- Importación: Android ImageImporter | Web image-input/image-import | duplicación parcial | destino: Web principal, Android solo integración futura.
-- Exportación: Web PNG export existe; Android no tiene equivalente verificado en esta auditoría | Web principal | no se puede afirmar paridad Android | destino: Web.
-- Offline: Android core es local-first pero sin WebView/PWA integration; Web T045 tiene manifest + Service Worker | capacidades distintas | destino: Web offline shell principal.
+CAMBIOS:
+- docs/ARCHITECTURE.md
+- docs/CONTINUITY.md
+- Sin cambios Android source.
+- Sin cambios Web runtime.
+- Sin cambios de workflows CI.
+
+VALIDACIÓN PRE-MERGE:
+- Web CI #145 / run 37563672148 — SUCCESS.
+- Android CI #244 / run 37563672200 — SUCCESS.
+- Android Build — PASS.
+- Android Unit Tests — PASS.
+- Android Lint — PASS.
+- Android Startup Smoke — PASS.
+- Debug APK artifact — PASS.
+
+REVISIÓN PR:
+- HEAD verificado: 1fdba0feedd5b68bc85606465c3f205aea1742e4.
+- Base verificada: main.
+- PR #30 estuvo OPEN y mergeable.
+- Diff verificado: únicamente docs/ARCHITECTURE.md y docs/CONTINUITY.md.
+- No aparecieron cambios funcionales adicionales antes del merge.
+- PR #30 fue mergeado realmente por GitHub.
+- Merge commit verificado: b39d674d1ecf6df8c8d4253b8023832bb9daa1f4.
 
 DECISIÓN:
-**Opción B — Web = editor principal; Android = Container/WebView host.**
+**Opción B — Web = editor principal; Android = futuro Container/WebView host.**
 
-No se selecciona C porque no existe actualmente un runtime compartido real y crear uno sería una arquitectura nueva, no reutilización.
+La decisión T046 es arquitectónica y no implica que Android ya utilice WebView. El editor Android existente permanece intacto como runtime legacy/fallback hasta que T047 demuestre el container de forma reversible.
 
-NO SE MODIFICÓ:
-- EditorScreen.
-- DrawingEditor.
-- Compose Canvas.
-- ProjectPersistence.
-- Android workflows.
-- Android source code.
-
-VALIDACIÓN:
-La auditoría no cambió runtime Android/Web. La evidencia de CI existente sobre HEAD baseline se conserva:
-- Web CI #144 / run 37562073030 — SUCCESS.
-- Android CI #243 / run 37562073120 — SUCCESS.
-- Android Build PASS.
-- Android Unit Tests PASS.
-- Android Lint PASS.
-- Android Startup Smoke PASS.
-- Debug APK PASS.
-
-PR:
-Se creará un PR documental para registrar la decisión y mantener revisión auditable.
+GUARD:
+No eliminar EditorScreen, DrawingEditor, Compose Canvas, ProjectPersistence, Models.kt, DocumentReducer ni CommandHistory durante T047.
 
 PROBLEMAS ENCONTRADOS:
-- Duplicación real de responsabilidades entre los runtimes Android y Web.
-- No existe WebView/container actual.
+- Duplicación real de responsabilidades entre Android y Web durante la transición.
+- No existe WebView/container implementado todavía.
 - El Android editor sigue siendo un runtime paralelo completo.
 
 REPARACIÓN:
-No se realizó reparación funcional porque T046 es auditoría. Se documentó una frontera objetivo y un guard de migración no destructiva.
+No se realizó reparación funcional en T046 porque la tarea era audit-only. Se documentó la frontera objetivo y el guard de migración no destructiva.
 
 DEUDA TÉCNICA:
-- El dominio está duplicado entre Kotlin y JavaScript durante la transición.
+- Dominio duplicado entre Kotlin y JavaScript durante la transición.
 - ProjectPersistence Android y localStorage Web son fronteras separadas.
-- Compose renderer y Canvas 2D renderer son ambos activos hoy.
-- Falta un spike WebView verificable.
-- No debe eliminarse Android hasta validar el container.
+- Compose renderer y Canvas 2D renderer siguen coexistiendo hasta validar el container.
+- Falta demostrar el WebView container.
 
 SIGUIENTE TAREA:
-**T047 — ANDROID WEBVIEW CONTAINER SPIKE**, mínimo y reversible. Debe demostrar APK → MainActivity → WebView → Web app → renderer → interacción básica → offline shell, con Web CI + Android CI + startup smoke. No eliminar el editor Android durante T047.
+**T047 — ANDROID WEBVIEW CONTAINER SPIKE**, mínimo, reversible y no destructivo.
+
+T047 debe demostrar:
+1. APK installation.
+2. MainActivity startup.
+3. WebView creation.
+4. Web app asset loading.
+5. Web editor/Canvas 2D rendering.
+6. Basic pointer interaction.
+7. Manifest behavior.
+8. Offline shell behavior dentro del APK.
+9. Android Startup Smoke.
+10. Web CI.
+11. Android CI.
+
+NO HACER EN T047:
+- No IA.
+- No filtros.
+- No WebGL.
+- No PixiJS.
+- No IndexedDB.
+- No backend.
+- No cuentas.
+- No colaboración.
+- No bridge JavascriptInterface salvo requisito concreto.
+- No eliminar el editor Android.
+- No crear SharedDomainManager ni nuevos sistemas equivalentes.
 
 NO REPETIR:
 - T044 GREEN.
 - T045 GREEN.
-- No repetir la auditoría T046 una vez documentada.
+- Auditoría T046.
