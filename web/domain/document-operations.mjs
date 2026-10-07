@@ -1,4 +1,4 @@
-import { normalizeDocument, normalizeTransform } from "./model.mjs";
+import { createId, normalizeDocument, normalizeTransform } from "./model.mjs";
 
 function cloneDocument(document) {
   const cloned = normalizeDocument(JSON.parse(JSON.stringify(document)));
@@ -143,7 +143,7 @@ export function duplicateLayer(document, layerId) {
   const index = next.layers.findIndex(item => item.id === layerId);
   if (index < 0) return null;
   const duplicate = cloneDocument({ ...next, layers: [next.layers[index]] }).layers[0];
-  duplicate.id = crypto.randomUUID();
+  duplicate.id = createId();
   duplicate.name = next.layers[index].name + " Copy";
   next.layers.splice(index + 1, 0, duplicate);
   return next;

@@ -57,6 +57,8 @@ const state = {
 
 state.history = new DocumentHistory(state.document);
 
+function lastItem(items) { return items[items.length - 1]; }
+
 function selectedLayer() {
   return state.document.layers.find(layer => layer.id === state.selectedLayerId) || state.document.layers[0];
 }
@@ -75,7 +77,7 @@ function setSelection(layerIds, anchorId = null) {
   state.selectedLayerIds = normalized;
   state.selectedLayerId = anchorId && normalized.includes(anchorId)
     ? anchorId
-    : normalized.at(-1) || null;
+    : lastItem(normalized) || null;
 }
 
 function toggleSelection(layerId) {
@@ -293,7 +295,7 @@ function screenPointFromEvent(event) {
 }
 
 function renderLayers() {
-  layersEl.replaceChildren();
+  while (layersEl.firstChild) layersEl.removeChild(layersEl.firstChild);
   [...state.document.layers].reverse().forEach(layer => {
     const li = document.createElement("li");
     li.dataset.layerId = layer.id;
@@ -436,7 +438,7 @@ function refreshHistoryControls() {
 function syncSelection() {
   const normalized = normalizeLayerSelection(state.selectedLayerIds, state.document);
   if (!normalized.length) {
-    const fallback = state.document.layers.at(-1)?.id || null;
+    const fallback = lastItem(state.document.layers)?.id || null;
     setSelection(fallback ? [fallback] : [], fallback);
     return;
   }
@@ -717,7 +719,7 @@ canvas.addEventListener("pointermove", event => {
   }
   if (!state.drawing || event.pointerId !== state.drawingPointerId) return;
   const layer = selectedLayer();
-  const stroke = layer?.strokes.at(-1);
+  const stroke = lastItem(layer?.strokes || []);
   if (!stroke) return;
   stroke.points.push(pointFromEvent(event));
   redraw();
@@ -1013,7 +1015,7 @@ function restoreStoredProject({ confirmDiscard = true } = {}) {
     if (!restored) throw new Error("Stored project is invalid");
     state.document = restored;
     state.history.reset(restored);
-    setSelection(restored.layers.at(-1)?.id ? [restored.layers.at(-1).id] : [], restored.layers.at(-1)?.id || null);
+    setSelection(lastItem(restored.layers)?.id ? [restored.layers.at(-1).id] : [], restored.layers.at(-1)?.id || null);
     state.viewport = createViewport();
     state.transformInteraction = null;
     state.multiTransformInteraction = null;
