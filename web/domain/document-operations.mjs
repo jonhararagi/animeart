@@ -6,6 +6,23 @@ function cloneDocument(document) {
   return cloned;
 }
 
+export function addLayer(document, layer) {
+  if (!document || !Array.isArray(document.layers) || !layer) return null;
+  const next = cloneDocument(document);
+  const candidate = cloneDocument({ ...next, layers: [layer] }).layers[0];
+  if (!candidate || next.layers.some(item => item.id === candidate.id)) return null;
+  next.layers.push(candidate);
+  return next;
+}
+
+export function clearLayer(document, layerId) {
+  const next = cloneDocument(document);
+  const layer = next.layers.find(item => item.id === layerId);
+  if (!layer || layer.locked || layer.contentType !== "drawing" || layer.strokes.length === 0) return null;
+  layer.strokes = [];
+  return next;
+}
+
 export function updateLayerTransform(document, layerId, transformPatch) {
   const next = cloneDocument(document);
   const layer = next.layers.find(item => item.id === layerId);
