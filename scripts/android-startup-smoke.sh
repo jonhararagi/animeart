@@ -55,6 +55,14 @@ fi
 
 echo "Startup confirmado: pid=$pid; MainActivity resumida=$top_activity"
 
+# T047 container smoke: reuse this startup script and install the instrumentation APK needed by the WebView assertions.
+# The workflow already provisions Gradle, so no second smoke system is introduced.
+android_test_apk="app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"
+if [ ! -f "$android_test_apk" ]; then
+  gradle assembleDebugAndroidTest
+fi
+adb install -r "$android_test_apk"
+
 # T047 container smoke: query the real WebView DOM and verify the existing Web editor is alive.
 set +e
 webview_probe="$(timeout 20s adb shell 'am instrument -w -e class com.jonhararagi.animeart.WebViewContainerSmokeTest com.jonhararagi.animeart.test/androidx.test.runner.AndroidJUnitRunner' 2>&1)"
