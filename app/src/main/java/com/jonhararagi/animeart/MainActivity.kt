@@ -31,10 +31,14 @@ class MainActivity : ComponentActivity() {
             .build()
 
         if (WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_SHOULD_INTERCEPT_REQUEST)) {
+            val serviceWorkerAssets = WebAssetPathHandler(this)
             ServiceWorkerControllerCompat.getInstance().setServiceWorkerClient(
                 object : ServiceWorkerClientCompat() {
-                    override fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse? =
-                        assetLoader.shouldInterceptRequest(request.url)
+                    override fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse? {
+                        val path = request.url.path ?: return null
+                        if (!path.startsWith("/assets/")) return null
+                        return serviceWorkerAssets.handle(path.removePrefix("/assets/"))
+                    }
                 }
             )
         }
