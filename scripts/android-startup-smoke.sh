@@ -83,7 +83,19 @@ wait_for_ui_marker() {
 }
 
 echo "Startup WebView confirmado: pid=$pid; MainActivity=$top_activity; Web=ANIMEART; status=Local-first editor; canvas=AnimeArt canvas"
-if ! wait_for_ui_marker "SW ACTIVE; CACHE 13/13; CANVAS READY" 20; then
+wait_for_log_marker() {
+  local marker="$1"
+  local attempts="$2"
+  for _ in $(seq 1 "$attempts"); do
+    if adb logcat -d -t 1200 | grep -Fq "$marker"; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-shell-v1","cachedCount":13,"requiredCount":13,"missing":[],"canvas":true' 30; then
   echo "No se demostró SW ACTIVE + CACHE 13/13 antes de offline. Logcat:"
   adb logcat -d -t 800 || true
   exit 1
@@ -98,6 +110,7 @@ if ! printf '%s' "$network_state" | grep -qi 'enabled'; then
 fi
 echo "NETWORK OFF confirmado: $network_state"
 
+adb logcat -c
 adb shell am force-stop com.jonhararagi.animeart
 set +e
 offline_output="$(timeout 60s adb shell am start -W -n com.jonhararagi.animeart/.MainActivity --ez animeart_offline_validation true 2>&1)"
