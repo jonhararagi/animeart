@@ -63,24 +63,42 @@ const browser = spawn(chrome, [
   "--no-sandbox",
   "--disable-gpu",
   "--disable-dev-shm-usage",
-  "--remote-debugging-port=9222",
+  "--remote-debugging-port=0",
+  "--remote-allow-origins=*",
   `--user-data-dir=${profile}`,
   `http://${HOST}:${PORT}/index.html`
 ], { stdio: ["ignore", "ignore", "pipe"] });
 
 const sleep = ms => new Promise(resolveSleep => setTimeout(resolveSleep, ms));
 
+const devToolsPort = await new Promise((resolvePort, rejectPort) => {
+  let stderr = "";
+  const timeout = setTimeout(() => rejectPort(new Error(`Chromium DevTools endpoint did not become ready. stderr: ${stderr}`)), 30000);
+  browser.stderr.on("data", chunk => {
+    stderr += chunk.toString();
+    const match = stderr.match(/DevTools listening on ws:\/\/127\.0\.0\.1:(\d+)\//);
+    if (match) {
+      clearTimeout(timeout);
+      resolvePort(Number(match[1]));
+    }
+  });
+  browser.once("exit", code => {
+    clearTimeout(timeout);
+    rejectPort(new Error(`Chromium exited before DevTools became ready (code ${code}). stderr: ${stderr}`));
+  });
+});
+
 async function waitForDevTools() {
-  for (let attempt = 0; attempt < 80; attempt += 1) {
+  for (let attempt = 0; attempt < 150; attempt += 1) {
     try {
-      const response = await fetch("http://127.0.0.1:9222/json/list");
+      const response = await fetch(`http://127.0.0.1:${devToolsPort}/json/list`);
       const pages = await response.json();
       const page = pages.find(item => item.type === "page" && item.url.includes(`http://${HOST}:${PORT}`));
       if (page?.webSocketDebuggerUrl) return page.webSocketDebuggerUrl;
     } catch {}
     await sleep(100);
   }
-  throw new Error("Chromium DevTools endpoint did not become ready");
+  throw new Error("Chromium page DevTools endpoint did not become ready");
 }
 
 const wsUrl = await waitForDevTools();
