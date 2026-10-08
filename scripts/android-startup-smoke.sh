@@ -101,18 +101,7 @@ if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-
   exit 1
 fi
 
-adb shell settings put global airplane_mode_on 1
-adb shell am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true >/dev/null || true
-adb shell svc wifi disable >/dev/null 2>&1 || true
-adb shell svc data disable >/dev/null 2>&1 || true
-airplane_state="$(adb shell settings get global airplane_mode_on 2>/dev/null | tr -d '\r' | tail -n 1)"
-if [ "$airplane_state" != "1" ]; then
-  echo "No se pudo verificar network OFF mediante AIRPLANE_MODE_ON. Estado='$airplane_state'."
-  adb logcat -d -t 800 || true
-  exit 1
-fi
-echo "NETWORK OFF confirmado: AIRPLANE_MODE_ON=$airplane_state"
-
+echo "NETWORK OFF will be enforced by Android WebView offline mode: blockNetworkLoads=true + LOAD_CACHE_ONLY"
 adb logcat -c
 adb shell am force-stop com.jonhararagi.animeart
 set +e
@@ -133,6 +122,12 @@ if [ "$offline_status" -ne 0 ] || ! printf '%s' "$offline_output" | grep -q 'Sta
   adb logcat -d -t 800 || true
   exit 1
 fi
+if ! wait_for_log_marker 'ANIMEART_OFFLINE_NETWORK webViewBlockNetworkLoads=true; webViewCacheMode=3; serviceWorkerBlockNetworkLoads=true' 30; then
+  echo "Offline reload no demostró network OFF real en WebView."
+  adb logcat -d -t 1200 || true
+  exit 1
+fi
+
 if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-shell-v1","cachedCount":13,"requiredCount":13,"missing":[],"canvas":true' 30; then
   echo "Offline reload no demostró Service Worker ACTIVE + Cache 13/13 + JavaScript + Canvas. Logcat:"
   adb logcat -d -t 1200 || true

@@ -1,6 +1,7 @@
 package com.jonhararagi.animeart
 
 import android.graphics.Color
+import android.util.Log
 import android.os.Bundle
 import android.view.ViewGroup
 import android.webkit.WebResourceError
@@ -52,6 +53,10 @@ class MainActivity : ComponentActivity() {
             settings.allowFileAccess = false
             settings.allowContentAccess = false
             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            if (offlineValidation) {
+                settings.blockNetworkLoads = true
+                settings.cacheMode = android.webkit.WebSettings.LOAD_CACHE_ONLY
+            }
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(
                     view: WebView,
@@ -69,6 +74,9 @@ class MainActivity : ComponentActivity() {
             loadUrl(START_URL)
         }
 
+        if (offlineValidation) {
+            Log.i("AnimeArtOffline", "ANIMEART_OFFLINE_NETWORK webViewBlockNetworkLoads=" + view.settings.blockNetworkLoads + "; webViewCacheMode=" + view.settings.cacheMode + "; serviceWorkerBlockNetworkLoads=" + if (WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BLOCK_NETWORK_LOADS)) "true" else "unsupported")
+        }
         webView = view
         setContentView(view)
     }
