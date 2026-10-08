@@ -130,7 +130,13 @@ if [ "$offline_status" -ne 0 ] || ! printf '%s' "$offline_output" | grep -q 'Sta
   adb logcat -d -t 800 || true
   exit 1
 fi
-for marker in "ANIMEART" "SW ACTIVE; CACHE 14/14; CANVAS READY" "AnimeArt canvas"; do
+if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-shell-v1","cachedCount":13,"requiredCount":13,"missing":[],"canvas":true' 30; then
+  echo "Offline reload no demostró Service Worker ACTIVE + Cache 13/13 + JavaScript + Canvas. Logcat:"
+  adb logcat -d -t 1200 || true
+  exit 1
+fi
+
+for marker in "ANIMEART" "AnimeArt canvas"; do
   if ! wait_for_ui_marker "$marker" 20; then
     echo "Offline reload no encontró el marcador '$marker'. Logcat:"
     adb logcat -d -t 800 || true
