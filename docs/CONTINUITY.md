@@ -2213,13 +2213,13 @@ BRANCH:
 t047-3-offline-validation
 
 HEAD FINAL:
-a0d87f19758e015bdbf0a8ea6835c862321e275e
+64265f882580ca97f01d8fb2425991d70c3b0ca1
 
 PR:
 #33 — T047.3 — Offline / Service Worker validation
 Estado: OPEN / NO MERGE
-Base: main @ 0e4641ce9a8c464fd7ddac318b100daa832532f8
-PR #32 permanece separado y OPEN como T047.2; T047.3 no fue mezclado dentro de PR #32.
+Base: t047-2-webview-minimal @ 08a214d06a7121c9189bf87997713fa855f658ba
+PR #32 permanece OPEN sobre main como T047.2. T047.3 depende legítimamente de T047.2 porque reutiliza su WebViewAssetLoader, assets Android y contenedor WebView; por ello #33 queda como PR apilado sobre #32 y su diff se limita a la capa T047.3.
 
 SERVICE WORKER:
 - Registered: PASS.
@@ -2282,8 +2282,8 @@ RESULTADO:
 T047.3 queda GREEN por evidencia real de Service Worker, Cache Storage, network OFF, reload offline, recuperación desde cache, JavaScript, Canvas y CI Web/Android completo.
 
 DEUDA:
-- PR #32 sigue OPEN y no mergeada.
-- PR #33 sigue OPEN y no mergeada.
+- PR #32 sigue OPEN y no mergeada; es la capa base requerida por T047.3.
+- PR #33 sigue OPEN y no mergeada; está apilada sobre t047-2-webview-minimal y no debe mergearse antes de #32.
 - Interaction/pointer no fue un requisito del offline gate y no fue medida específicamente.
 - Sincronización de assets Web dentro del APK sigue siendo deuda operativa ante futuros cambios del Web runtime.
 
