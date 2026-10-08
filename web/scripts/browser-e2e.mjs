@@ -246,7 +246,8 @@ try {
   const dragLayer = beforeMulti.layers.find(layer => layer.id === multiBefore[0].id);
   const dragPoint = dragLayer?.strokes?.[0]?.points?.[0];
   assert(Boolean(dragPoint), "multi-selection has a real drawable hit point");
-  await mouseDrag({ x: dragPoint.x, y: dragPoint.y }, { x: dragPoint.x + 50, y: dragPoint.y });
+  const canvasRect = await evaluate('(() => { const r = document.querySelector("#canvas").getBoundingClientRect(); return { left: r.left, top: r.top }; })()');
+  await mouseDrag({ x: canvasRect.left + dragPoint.x, y: canvasRect.top + dragPoint.y }, { x: canvasRect.left + dragPoint.x + 50, y: canvasRect.top + dragPoint.y });
   const afterMulti = await readDocument();
   const multiDeltas = multiBefore.map(item => ({
     id: item.id,
