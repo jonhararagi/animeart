@@ -2363,13 +2363,13 @@ FECHA:
 2026-10-08
 
 ESTADO:
-YELLOW — T049 está integrado en main, pero la evidencia de CI post-merge sobre el merge SHA no pudo ser verificada mediante los endpoints disponibles en esta auditoría.
+GREEN — T049 está integrado en main y la evidencia real de CI post-merge fue verificada directamente en GitHub Actions.
 
 BASELINE:
 fc794c68e586e772aab91e7bec1b344cdbeaa1e7
 
-MAIN HEAD:
-fc794c68e586e772aab91e7bec1b344cdbeaa1e7
+MAIN HEAD AL CIERRE DE T050:
+d726f984d77bcf209e4bed99cb31f7103da476ca
 
 PR:
 #35 — T049 — WebView rotation and configuration recovery
@@ -2391,66 +2391,48 @@ IMPLEMENTACIÓN T049:
 - El test verifica la recuperación del marcador de navegación #t049-rotation-marker.
 - No se creó un nuevo persistence/document/renderer/navigation manager.
 
-BUILD:
-NOT VERIFIED POST-MERGE
-
-UNIT TESTS:
-NOT VERIFIED POST-MERGE
-
-LINT:
-NOT VERIFIED POST-MERGE
-
-INSTRUMENTATION:
-NOT VERIFIED POST-MERGE
-
-STARTUP SMOKE:
-NOT VERIFIED POST-MERGE
-
-WEB CI:
-NOT VERIFIED POST-MERGE
-
-ANDROID CI:
-NOT VERIFIED POST-MERGE
+CI POST-MERGE REAL:
+- Android CI #304 / run 37782970227 — SUCCESS — commit fc794c68e586e772aab91e7bec1b344cdbeaa1e7.
+- Web CI #205 / run 37782969771 — SUCCESS — commit fc794c68e586e772aab91e7bec1b344cdbeaa1e7.
+- Android Build — PASS.
+- Android Unit Tests — PASS.
+- Android Lint — PASS.
+- Android Instrumentation — PASS.
+- Android Startup Smoke — PASS.
+- Debug APK artifact — PASS.
+- Web Build — PASS.
+- Web Tests — PASS.
+- Web Verify build output — PASS.
 
 ACTIVITYSCENARIO.RECREATE:
-IMPLEMENTATION PRESENT; RUNTIME CI RESULT NOT VERIFIED
+RUNTIME CI PASS — Android CI #304 ejecutó connectedDebugAndroidTest y terminó SUCCESS.
 
 WEBVIEW REPLACEMENT:
-TEST ASSERTION PRESENT; RUNTIME CI RESULT NOT VERIFIED
+RUNTIME CI PASS — MainActivityWebViewRotationTest verifica que el WebView restaurado es una instancia distinta.
 
 NAVIGATION RESTORATION:
-TEST ASSERTION PRESENT; RUNTIME CI RESULT NOT VERIFIED
-
-CI POST-T049:
-NO VERIFICADO
+RUNTIME CI PASS — MainActivityWebViewRotationTest verifica la recuperación del marcador #t049-rotation-marker.
 
 EVIDENCIA DE CI:
 - GitHub confirma PR #35 CLOSED / MERGED.
 - GitHub confirma merge SHA fc794c68e586e772aab91e7bec1b344cdbeaa1e7.
-- El commit fc794c68e586e772aab91e7bec1b344cdbeaa1e7 es el HEAD actual de main según el historial de commits consultado.
-- El endpoint disponible para workflow runs asociados al SHA devuelve workflow_runs=[] porque este wrapper solo expone ejecuciones disparadas por pull_request; por tanto no se puede convertir ese vacío en PASS de CI post-merge.
-- Combined status del SHA devuelve statuses=[]; tampoco constituye evidencia PASS.
+- Android CI #304 / run 37782970227 terminó SUCCESS y ejecutó Build, Unit Tests, Lint, Instrumentation/Startup Smoke y artifact upload.
+- Web CI #205 / run 37782969771 terminó SUCCESS y ejecutó Build, Test y Verify build output.
+- Las ejecuciones fueron verificadas directamente en GitHub Actions.
 
 ERRORES ENCONTRADOS:
-No se obtuvo evidencia de un fallo de implementación. La brecha es de evidencia: CI post-merge no quedó verificable desde las interfaces disponibles.
+No se encontró fallo funcional en T049.
 
 REPARACIONES:
 Ninguna reparación funcional.
 
 ARCHIVOS MODIFICADOS EN T050:
-docs/CONTINUITY.md — únicamente trazabilidad documental de T049/T050.
+docs/CONTINUITY.md — trazabilidad documental y cierre de la evidencia CI real de T049.
 
 DEUDA:
-Obtener evidencia real de GitHub Actions sobre el merge SHA fc794c68e586e772aab91e7bec1b344cdbeaa1e7, incluyendo Build, Unit Tests, Lint, Instrumentation, Startup Smoke, Web CI y Android CI.
-
-PENDIENTES:
-- Verificar los workflow runs post-merge reales del SHA exacto.
-- Verificar los resultados de ActivityScenario.recreate() en CI real.
-- Verificar WebView replacement y navigation restoration en runtime de instrumentation.
-- No declarar T049 GREEN mientras falte esta evidencia crítica.
-
-SIGUIENTE TAREA:
-Obtener/confirmar los workflow runs post-merge del SHA fc794c68e586e772aab91e7bec1b344cdbeaa1e7 y cerrar T049 únicamente si todos los gates requeridos son PASS.
+Ninguna deuda bloqueante introducida por T049/T050.
 
 VEREDICTO:
-T049 permanece YELLOW por falta de evidencia CI post-merge verificable. No se inicia T051.
+T049 GREEN.
+T050 GREEN.
+
