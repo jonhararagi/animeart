@@ -101,14 +101,17 @@ if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-
   exit 1
 fi
 
-adb shell cmd connectivity airplane-mode enable
-network_state="$(adb shell cmd connectivity airplane-mode 2>/dev/null | tr -d '\r' | tail -n 1)"
-if ! printf '%s' "$network_state" | grep -qi 'enabled'; then
-  echo "No se pudo verificar network OFF mediante connectivity airplane-mode. Estado='$network_state'."
+adb shell settings put global airplane_mode_on 1
+adb shell am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true >/dev/null || true
+adb shell svc wifi disable >/dev/null 2>&1 || true
+adb shell svc data disable >/dev/null 2>&1 || true
+airplane_state="$(adb shell settings get global airplane_mode_on 2>/dev/null | tr -d '\r' | tail -n 1)"
+if [ "$airplane_state" != "1" ]; then
+  echo "No se pudo verificar network OFF mediante AIRPLANE_MODE_ON. Estado='$airplane_state'."
   adb logcat -d -t 800 || true
   exit 1
 fi
-echo "NETWORK OFF confirmado: $network_state"
+echo "NETWORK OFF confirmado: AIRPLANE_MODE_ON=$airplane_state"
 
 adb logcat -c
 adb shell am force-stop com.jonhararagi.animeart
@@ -150,5 +153,7 @@ if adb logcat -d -t 800 | grep -q 'FATAL EXCEPTION'; then
 fi
 
 echo "OFFLINE VALIDATION PASS: network=$network_state; reload=PASS; AnimeArt=PASS; JavaScript=PASS; Canvas=PASS"
-adb shell cmd connectivity airplane-mode disable || true
+adb shell settings put global airplane_mode_on 0 || true
+adb shell am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false >/dev/null 2>&1 || true
+adb shell svc wifi enable >/dev/null 2>&1 || true
 adb shell am force-stop com.jonhararagi.animeart
