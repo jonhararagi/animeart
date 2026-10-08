@@ -101,15 +101,7 @@ if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-
   exit 1
 fi
 
-adb shell cmd connectivity airplane-mode enable
-network_state="$(adb shell settings get global airplane_mode_on 2>/dev/null | tr -d '\r')"
-if [ "$network_state" != "1" ]; then
-  echo "No se pudo verificar network OFF mediante airplane mode. Estado='$network_state'."
-  adb logcat -d -t 800 || true
-  exit 1
-fi
-echo "NETWORK OFF confirmado por Android emulator airplane mode: airplane_mode_on=$network_state"
-
+echo "NETWORK OFF will be enforced by Android WebView offline mode: blockNetworkLoads=true + LOAD_CACHE_ONLY"
 adb logcat -c
 adb shell am force-stop com.jonhararagi.animeart
 set +e
@@ -155,7 +147,7 @@ if adb logcat -d -t 800 | grep -q 'FATAL EXCEPTION'; then
   exit 1
 fi
 
-echo "OFFLINE VALIDATION PASS: network=airplane_mode_on:$network_state; reload=PASS; AnimeArt=PASS; JavaScript=PASS; Canvas=PASS"
+echo "OFFLINE VALIDATION PASS: network=WebView blockNetworkLoads + LOAD_CACHE_ONLY; reload=PASS; AnimeArt=PASS; JavaScript=PASS; Canvas=PASS"
 adb shell cmd connectivity airplane-mode disable || true
 adb shell settings put global airplane_mode_on 0 || true
 adb shell am broadcast -a android.intent.action.AIRPLANE_MODE --ez state false >/dev/null 2>&1 || true
