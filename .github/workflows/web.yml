@@ -30,3 +30,6 @@ jobs:
         run: npm test
       - name: Verify build output
         run: test -f dist/index.html
+      - name: Real browser E2E
+        run: |
+          CHROME_BIN="$(command -v chromium || command -v google-chrome || command -v google-chrome-stable)" node test/browser-e2e.mjs
