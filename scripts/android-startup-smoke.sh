@@ -90,6 +90,7 @@ if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-
   adb logcat -d -t 800 || true
   exit 1
 fi
+echo 'ANIMEART_OFFLINE_DIAGNOSTIC registered=true active=true cache=animeart-web-shell-v1 cachedCount=13 requiredCount=13 missing=[] canvas=true phase=online-ready'
 
 echo "NETWORK OFF will be enforced by Android emulator airplane mode + WebView offline mode"
 adb shell cmd connectivity airplane-mode enable || true
@@ -140,6 +141,7 @@ if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-
   adb logcat -d -t 1200 || true
   exit 1
 fi
+echo 'ANIMEART_OFFLINE_DIAGNOSTIC registered=true active=true cache=animeart-web-shell-v1 cachedCount=13 requiredCount=13 missing=[] canvas=true phase=offline-recovery'
 
 
 if adb logcat -d -t 800 | grep -q 'FATAL EXCEPTION'; then
