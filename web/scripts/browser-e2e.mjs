@@ -210,6 +210,13 @@ try {
 
   assert(await evaluate('document.querySelectorAll("#layers li").length === 1'), "initial editor state contains one drawing layer");
 
+  await click("#new-document");
+  await waitFor('document.querySelector("#project-dialog").open === true');
+  await evaluate('(() => { document.querySelector("#document-width").value = "800"; document.querySelector("#document-height").value = "600"; document.querySelector("#document-width").dispatchEvent(new Event("input", { bubbles: true })); document.querySelector("#document-height").dispatchEvent(new Event("input", { bubbles: true })); })()');
+  await click('#project-form button[type="submit"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").width === 800 && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").height === 600');
+  assert((await readDocument()).width === 800 && (await readDocument()).height === 600, "real browser new-document flow creates exportable document dimensions");
+
   await click('[data-tool="brush"]');
   const c = await selectorCenter("#canvas");
   await mouseStroke([
