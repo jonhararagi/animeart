@@ -2197,3 +2197,95 @@ DEUDA:
 
 SIGUIENTE:
 T047.3 — OFFLINE / SERVICE WORKER VALIDATION
+
+## T047.3 — OFFLINE / SERVICE WORKER VALIDATION
+
+FECHA:
+2026-10-08
+
+ESTADO:
+GREEN — validación offline real completada en Android WebView con CI real. La evidencia final demuestra NETWORK OFF → reload → cache recovery → AnimeArt → JavaScript → Canvas.
+
+BASELINE:
+08a214d06a7121c9189bf87997713fa855f658ba
+
+BRANCH:
+t047-3-offline-validation
+
+HEAD FINAL:
+a0d87f19758e015bdbf0a8ea6835c862321e275e
+
+PR:
+#33 — T047.3 — Offline / Service Worker validation
+Estado: OPEN / NO MERGE
+Base: main @ 0e4641ce9a8c464fd7ddac318b100daa832532f8
+PR #32 permanece separado y OPEN como T047.2; T047.3 no fue mezclado dentro de PR #32.
+
+SERVICE WORKER:
+- Registered: PASS.
+- Active: PASS.
+- Cache: animeart-web-shell-v1.
+- Resources: 13/13 requeridos presentes.
+- missing=[] confirmado por el diagnóstico del smoke.
+
+OFFLINE REAL:
+- Primera fase: Android WebView cargó AnimeArt y el diagnóstico confirmó registered=true, active=true, cachedCount=13, requiredCount=13, missing=[], canvas=true.
+- Network OFF: PASS — Android emulator confirmó airplane mode=ON.
+- WebView offline: PASS — blockNetworkLoads=true + LOAD_CACHE_ONLY.
+- Reload offline: PASS — am start -W confirmó Status: ok para MainActivity.
+- Cache recovery: PASS — el diagnóstico posterior al reload confirmó nuevamente active=true, 13/13, missing=[] y canvas=true.
+- AnimeArt: PASS.
+- JavaScript: PASS.
+- Canvas: PASS.
+- Evidencia final del smoke: OFFLINE VALIDATION PASS: network=WebView blockNetworkLoads + LOAD_CACHE_ONLY; reload=PASS; AnimeArt=PASS; JavaScript=PASS; Canvas=PASS.
+
+REPARACIONES T047.3:
+- APP_SHELL del Service Worker adaptado mínimamente porque ./ no era compatible con el flujo concreto de WebViewAssetLoader; no se creó un segundo shell.
+- Añadido fallback compatible para crypto.randomUUID() en Android WebView.
+- Sincronizado app/src/main/assets/web/ con el runtime Web actualizado.
+- Reemplazado Element.replaceChildren() por eliminación de hijos compatible con el WebView usado por CI.
+- Añadido routing de Service Worker mediante ServiceWorkerControllerCompat + WebViewAssetLoader cuando corresponde.
+- Smoke corregido para no depender de texto WebView expuesto por uiautomator, que produjo un falso fallo en Android WebView.
+- Smoke reforzado con Android emulator airplane mode real y verificación del estado de red.
+- Smoke final imprime evidencia explícita de online-ready y offline-recovery con 13/13 y canvas=true.
+
+CI FINAL:
+- Android CI #295 / run 37746511429 — SUCCESS.
+- Android Build — PASS.
+- Android Unit Tests — PASS.
+- Android Lint — PASS.
+- Android Startup Smoke — PASS.
+- Debug APK artifact — PASS.
+- Web CI #196 / run 37746511381 — SUCCESS.
+- Web Build — PASS.
+- Web Tests — PASS.
+- Web Verify build output — PASS.
+
+LOG REAL DEL OFFLINE GATE:
+- ANIMEART_OFFLINE_DIAGNOSTIC registered=true active=true cache=animeart-web-shell-v1 cachedCount=13 requiredCount=13 missing=[] canvas=true phase=online-ready
+- NETWORK OFF confirmado por Android emulator airplane mode
+- ANIMEART_OFFLINE_DIAGNOSTIC registered=true active=true cache=animeart-web-shell-v1 cachedCount=13 requiredCount=13 missing=[] canvas=true phase=offline-recovery
+- OFFLINE VALIDATION PASS: network=WebView blockNetworkLoads + LOAD_CACHE_ONLY; reload=PASS; AnimeArt=PASS; JavaScript=PASS; Canvas=PASS
+
+LEGACY ANDROID:
+- EditorScreen preservado.
+- DrawingEditor preservado.
+- Compose Canvas preservado.
+- ProjectPersistence preservado.
+- Models / DocumentReducer / CommandHistory preservados.
+
+BRIDGE:
+- No implementado.
+- No JavascriptInterface añadido.
+
+RESULTADO:
+T047.3 queda GREEN por evidencia real de Service Worker, Cache Storage, network OFF, reload offline, recuperación desde cache, JavaScript, Canvas y CI Web/Android completo.
+
+DEUDA:
+- PR #32 sigue OPEN y no mergeada.
+- PR #33 sigue OPEN y no mergeada.
+- Interaction/pointer no fue un requisito del offline gate y no fue medida específicamente.
+- Sincronización de assets Web dentro del APK sigue siendo deuda operativa ante futuros cambios del Web runtime.
+
+SIGUIENTE:
+Cerrar/revisar PR #33 según la política de merge del proyecto. No iniciar T048 automáticamente.
