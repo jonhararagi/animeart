@@ -181,8 +181,7 @@ try {
   assert(await evaluate(`getComputedStyle(document.querySelector("#canvas")).visibility !== "hidden" && getComputedStyle(document.querySelector("#canvas")).display !== "none"`), "canvas is visible");
   assert((await evaluate('document.querySelector("#status").textContent'))?.includes("CANVAS READY"), "editor reports canvas/service-worker readiness");
 
-  const initial = await readDocument();
-  assert(initial.layers.length === 1, "initial editor state contains one drawing layer");
+  assert(await evaluate('document.querySelectorAll("#layers li").length === 1'), "initial editor state contains one drawing layer");
 
   await click('[data-tool="brush"]');
   const c = await selectorCenter("#canvas");
