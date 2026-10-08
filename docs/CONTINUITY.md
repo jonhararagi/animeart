@@ -2517,3 +2517,58 @@ CIERRE:
 
 SIGUIENTE:
 Nuevo bloque técnico solo después de una nueva auditoría/readiness gate. No existe deuda bloqueante introducida por T052.
+
+
+## T052 — FOLLOW-UP REPAIR / FINAL CI
+
+FECHA:
+2026-10-08
+
+BASELINE:
+9ae35319046fd6f1fa9bf83c2718d85c9cf34d53
+
+IMPLEMENTACIÓN T052:
+- PR #36 merged.
+- Real browser E2E added using Chromium + CDP.
+- Web build, 328 Web tests, browser E2E, Android build/tests/lint/instrumentation/startup smoke were verified on implementation commits.
+
+REGRESIÓN ENCONTRADA:
+- Tras el cierre documental de T052, Web CI run 37836566045 falló en Real browser E2E porque Chromium no publicó el endpoint DevTools en stderr.
+- Build y los 328 Web tests pasaron; el fallo quedó aislado al launcher Chromium.
+
+REPARACIÓN:
+- PR #37 — fix: stabilize T052 Chromium E2E launcher.
+- Se reemplazó la dependencia del anuncio "DevTools listening" por un puerto local libre asignado antes de lanzar Chromium y polling directo del endpoint DevTools.
+- No se modificó el editor ni se creó arquitectura paralela.
+
+CI PR #37:
+- Web CI run 37839605327 — SUCCESS.
+- Web Build — PASS.
+- Web Tests — PASS (328).
+- Verify build output — PASS.
+- Real browser E2E — PASS.
+- Android CI run 37839605489 — SUCCESS.
+- Android Build — PASS.
+- Unit tests — PASS.
+- Lint — PASS.
+- Instrumentation and startup smoke — PASS.
+- Debug APK upload — PASS.
+
+PR #37:
+MERGED
+MERGE SHA:
+8ddde0aa179f79952d1992c6b7bfca0269a35706
+
+ESTADO T052:
+GREEN — la implementación E2E real y la reparación de estabilidad del launcher quedaron verificadas en CI.
+
+DEUDA:
+No se detectó deuda bloqueante introducida por T052.
+
+RIESGOS:
+- El runner depende de Chromium/Chrome disponible en GitHub Actions.
+- La cobertura E2E cubre el flujo principal solicitado, no todos los comandos del editor.
+- Android legacy/fallback permanece fuera de alcance.
+
+SIGUIENTE:
+No iniciar otra funcionalidad hasta definir el siguiente bloque técnico a partir de una nueva auditoría/roadmap.
