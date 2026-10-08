@@ -35,7 +35,7 @@ jobs:
         run: gradle test
       - name: Lint
         run: gradle lintDebug
-      - name: Android startup smoke test
+      - name: Android instrumentation and startup smoke tests
         timeout-minutes: 15
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -49,7 +49,7 @@ jobs:
           force-avd-creation: true
           disable-animations: true
           emulator-options: -no-window -noaudio -no-boot-anim -no-snapshot -no-snapshot-save -gpu swiftshader_indirect
-          script: bash scripts/android-startup-smoke.sh
+          script: gradle connectedDebugAndroidTest && bash scripts/android-startup-smoke.sh
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
