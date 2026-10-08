@@ -2629,3 +2629,80 @@ T052 GREEN.
 
 SIGUIENTE:
 T052 cerrado. No iniciar T053 todavía. Preparar nueva auditoría técnica/roadmap antes de iniciar el siguiente bloque.
+
+
+## T055 — REAL BROWSER E2E COVERAGE EXPANSION
+
+FECHA:
+2026-10-08
+
+BASELINE:
+f1421488324540a3fbd482e147cb81a1966657fc
+
+BRANCH:
+t055-real-browser-e2e-coverage
+
+PR:
+#38 — T055 — Real Browser E2E Coverage Expansion
+
+IMPLEMENTACIÓN:
+- Se reutilizó web/scripts/browser-e2e.mjs.
+- No se creó un segundo E2E runner, launcher, CDP system, renderer, Document, History, Persistence, Selection o Viewport.
+- No se modificó Android.
+- La cobertura se amplió mediante Chromium real + CDP + DOM/pointer input real.
+
+COBERTURA T055:
+- Multi-selection mediante shift-click real.
+- Multi-selection move mediante pointer drag real.
+- Layer visibility hide/show.
+- Layer lock/unlock.
+- Layer duplicate/delete.
+- New-document UI con dimensiones válidas para ejercicio de export.
+- Image import mediante file input real del navegador.
+- PNG export mediante descarga real del navegador.
+- Persistence/reload sobre el estado ampliado.
+- Service Worker/offline shell readiness.
+
+NO CUBIERTO:
+- Clipboard-specific E2E no se añadió por no aportar una ruta CI determinista adicional frente al file-input real.
+- Offline network-disconnect completo no se simuló artificialmente; se verifica la frontera real del Service Worker/cache existente.
+
+TESTS:
+- Web tests: 328/328 PASS.
+- Real Browser E2E: PASS.
+
+CI FINAL DEL HEAD T055:
+- Web CI run 37853155065 — SUCCESS — head 323b82d8a8e43be1c5b4a22766eab4ce1af099a3.
+- Android CI run 37853155142 — SUCCESS — head 323b82d8a8e43be1c5b4a22766eab4ce1af099a3.
+- Web Build — PASS.
+- Web Tests — PASS.
+- Web Verify build output — PASS.
+- Real browser E2E — PASS.
+- Android Build — PASS.
+- Android Unit tests — PASS.
+- Android Lint — PASS.
+- Android Instrumentation and startup smoke — PASS.
+- Debug APK upload — PASS.
+
+ARQUITECTURA:
+WEB-FIRST / LOCAL-FIRST / ANDROID-AS-CONTAINER preservado.
+
+ARCHIVOS DE PRODUCCIÓN MODIFICADOS:
+NONE.
+
+ARCHIVO E2E MODIFICADO:
+web/scripts/browser-e2e.mjs
+
+PR STATE:
+OPEN — pendiente de merge.
+
+DEUDA:
+No se detectó deuda bloqueante introducida por T055.
+
+VEREDICTO:
+T055 IMPLEMENTATION GREEN.
+CI FINAL GREEN.
+PR #38 OPEN / READY FOR MERGE REVIEW.
+
+SIGUIENTE:
+No iniciar una nueva tarea hasta auditar/mergear T055 y realizar la siguiente readiness/roadmap gate.
