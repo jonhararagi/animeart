@@ -44,8 +44,6 @@ class MainActivity : ComponentActivity() {
                 controller.serviceWorkerWebSettings.setCacheMode(android.webkit.WebSettings.LOAD_CACHE_ONLY)
             }
         }
-            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
-            .build()
 
         val view = WebView(this).apply {
             setBackgroundColor(Color.TRANSPARENT)
@@ -58,7 +56,7 @@ class MainActivity : ComponentActivity() {
                 override fun shouldInterceptRequest(
                     view: WebView,
                     request: WebResourceRequest
-                ) = loader.shouldInterceptRequest(request.url)
+                ) = if (offlineValidation) null else loader.shouldInterceptRequest(request.url)
 
                 override fun onReceivedError(
                     view: WebView,
