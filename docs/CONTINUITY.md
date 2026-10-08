@@ -2355,3 +2355,102 @@ T047/T047.2/T047.3 están integradas y verificadas en main. T048.1 no implementa
 
 SIGUIENTE:
 No crear otra implementación WebView. La siguiente acción debe ser decidida por CEREBRO a partir de las brechas aún no demostradas (principalmente rotación/configuración y E2E real), no por trabajo heredado de T047.
+
+
+## T050 — VERIFICACIÓN REAL DE CI Y CIERRE DE T049
+
+FECHA:
+2026-10-08
+
+ESTADO:
+YELLOW — T049 está integrado en main, pero la evidencia de CI post-merge sobre el merge SHA no pudo ser verificada mediante los endpoints disponibles en esta auditoría.
+
+BASELINE:
+fc794c68e586e772aab91e7bec1b344cdbeaa1e7
+
+MAIN HEAD:
+fc794c68e586e772aab91e7bec1b344cdbeaa1e7
+
+PR:
+#35 — T049 — WebView rotation and configuration recovery
+
+PR STATE:
+CLOSED / MERGED
+
+MERGE SHA:
+fc794c68e586e772aab91e7bec1b344cdbeaa1e7
+
+IMPLEMENTACIÓN T049:
+- MainActivity recibe savedInstanceState.
+- WebView.saveState(outState) se ejecuta en onSaveInstanceState.
+- WebView.restoreState(savedInstanceState) se intenta antes de cargar START_URL.
+- START_URL solo se carga cuando no existe/restaura estado.
+- Existe instrumentation test MainActivityWebViewRotationTest.
+- El test utiliza ActivityScenario.recreate().
+- El test verifica que el WebView nuevo no es la misma instancia que el anterior.
+- El test verifica la recuperación del marcador de navegación #t049-rotation-marker.
+- No se creó un nuevo persistence/document/renderer/navigation manager.
+
+BUILD:
+NOT VERIFIED POST-MERGE
+
+UNIT TESTS:
+NOT VERIFIED POST-MERGE
+
+LINT:
+NOT VERIFIED POST-MERGE
+
+INSTRUMENTATION:
+NOT VERIFIED POST-MERGE
+
+STARTUP SMOKE:
+NOT VERIFIED POST-MERGE
+
+WEB CI:
+NOT VERIFIED POST-MERGE
+
+ANDROID CI:
+NOT VERIFIED POST-MERGE
+
+ACTIVITYSCENARIO.RECREATE:
+IMPLEMENTATION PRESENT; RUNTIME CI RESULT NOT VERIFIED
+
+WEBVIEW REPLACEMENT:
+TEST ASSERTION PRESENT; RUNTIME CI RESULT NOT VERIFIED
+
+NAVIGATION RESTORATION:
+TEST ASSERTION PRESENT; RUNTIME CI RESULT NOT VERIFIED
+
+CI POST-T049:
+NO VERIFICADO
+
+EVIDENCIA DE CI:
+- GitHub confirma PR #35 CLOSED / MERGED.
+- GitHub confirma merge SHA fc794c68e586e772aab91e7bec1b344cdbeaa1e7.
+- El commit fc794c68e586e772aab91e7bec1b344cdbeaa1e7 es el HEAD actual de main según el historial de commits consultado.
+- El endpoint disponible para workflow runs asociados al SHA devuelve workflow_runs=[] porque este wrapper solo expone ejecuciones disparadas por pull_request; por tanto no se puede convertir ese vacío en PASS de CI post-merge.
+- Combined status del SHA devuelve statuses=[]; tampoco constituye evidencia PASS.
+
+ERRORES ENCONTRADOS:
+No se obtuvo evidencia de un fallo de implementación. La brecha es de evidencia: CI post-merge no quedó verificable desde las interfaces disponibles.
+
+REPARACIONES:
+Ninguna reparación funcional.
+
+ARCHIVOS MODIFICADOS EN T050:
+docs/CONTINUITY.md — únicamente trazabilidad documental de T049/T050.
+
+DEUDA:
+Obtener evidencia real de GitHub Actions sobre el merge SHA fc794c68e586e772aab91e7bec1b344cdbeaa1e7, incluyendo Build, Unit Tests, Lint, Instrumentation, Startup Smoke, Web CI y Android CI.
+
+PENDIENTES:
+- Verificar los workflow runs post-merge reales del SHA exacto.
+- Verificar los resultados de ActivityScenario.recreate() en CI real.
+- Verificar WebView replacement y navigation restoration en runtime de instrumentation.
+- No declarar T049 GREEN mientras falte esta evidencia crítica.
+
+SIGUIENTE TAREA:
+Obtener/confirmar los workflow runs post-merge del SHA fc794c68e586e772aab91e7bec1b344cdbeaa1e7 y cerrar T049 únicamente si todos los gates requeridos son PASS.
+
+VEREDICTO:
+T049 permanece YELLOW por falta de evidencia CI post-merge verificable. No se inicia T051.
