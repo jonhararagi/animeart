@@ -294,7 +294,9 @@ try {
   assert(importedLayer?.name === "e2e-fixture", "real browser image import preserves the image layer name");
 
   await click("#export-png");
-  await waitFor('document.querySelector("#status").textContent === "PNG exported"', 10000);
+  await waitFor('document.querySelector("#status").textContent !== "Exporting PNG…"', 10000);
+  const exportStatus = await evaluate('document.querySelector("#status").textContent');
+  assert(exportStatus === "PNG exported", "real browser PNG export completes successfully: " + exportStatus);
   const downloadedPng = join(downloadDir, "animeart.png");
   const downloadDeadline = Date.now() + 10000;
   while (Date.now() < downloadDeadline && !statSync(downloadedPng, { throwIfNoEntry: false })) await sleep(100);
