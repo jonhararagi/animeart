@@ -74,7 +74,7 @@ function setSelection(layerIds, anchorId = null) {
   state.selectedLayerIds = normalized;
   state.selectedLayerId = anchorId && normalized.includes(anchorId)
     ? anchorId
-    : normalized.at(-1) || null;
+    : normalized[normalized.length - 1] || null;
 }
 
 function toggleSelection(layerId) {
@@ -292,7 +292,7 @@ function screenPointFromEvent(event) {
 }
 
 function renderLayers() {
-  layersEl.replaceChildren();
+  while (layersEl.firstChild) layersEl.removeChild(layersEl.firstChild);
   [...state.document.layers].reverse().forEach(layer => {
     const li = document.createElement("li");
     li.dataset.layerId = layer.id;
@@ -435,7 +435,7 @@ function refreshHistoryControls() {
 function syncSelection() {
   const normalized = normalizeLayerSelection(state.selectedLayerIds, state.document);
   if (!normalized.length) {
-    const fallback = state.document.layers.at(-1)?.id || null;
+    const fallback = state.document.layers[state.document.layers.length - 1]?.id || null;
     setSelection(fallback ? [fallback] : [], fallback);
     return;
   }
@@ -715,7 +715,7 @@ canvas.addEventListener("pointermove", event => {
   }
   if (!state.drawing || event.pointerId !== state.drawingPointerId) return;
   const layer = selectedLayer();
-  const stroke = layer?.strokes.at(-1);
+  const stroke = layer?.strokes[layer.strokes.length - 1];
   if (!stroke) return;
   stroke.points.push(pointFromEvent(event));
   redraw();
