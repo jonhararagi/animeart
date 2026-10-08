@@ -83,8 +83,8 @@ wait_for_ui_marker() {
 }
 
 echo "Startup WebView confirmado: pid=$pid; MainActivity=$top_activity; Web=ANIMEART; status=Local-first editor; canvas=AnimeArt canvas"
-if ! wait_for_ui_marker "SW ACTIVE; CACHE 14/14; CANVAS READY" 20; then
-  echo "No se demostró SW ACTIVE + CACHE 14/14 antes de offline. Logcat:"
+if ! wait_for_ui_marker "SW ACTIVE; CACHE 13/13; CANVAS READY" 20; then
+  echo "No se demostró SW ACTIVE + CACHE 13/13 antes de offline. Logcat:"
   adb logcat -d -t 800 || true
   exit 1
 fi
