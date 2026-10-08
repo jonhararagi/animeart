@@ -2289,3 +2289,69 @@ DEUDA:
 
 SIGUIENTE:
 Cerrar/revisar PR #33 según la política de merge del proyecto. No iniciar T048 automáticamente.
+
+
+## T048.1 — AUDITORÍA FINAL DE TRABAJO HEREDADO, WEBVIEW Y CIERRE DEL REPOSITORIO
+
+FECHA:
+2026-10-08
+
+ESTADO:
+AUDITORÍA COMPLETADA. No se detectó fallo funcional que justifique cambios de código en main. Se realizó únicamente una corrección documental para dejar trazable el estado post-merge real.
+
+MAIN ACTUAL:
+a6bfcd376bcc69a2d35dfd3e4b49819b6a198216
+
+PR / TRAZABILIDAD:
+- PR #31 — T047 Android WebView Container Spike: CERRADA SIN MERGE. Clasificada SUPERADA/OBSOLETA. Su implementación fue sustituida por T047.2/T047.3; no debe fusionarse ni reintroducirse.
+- PR #32 — T047.2 Android WebView minimal container: MERGED. Merge SHA: 1a741293907151fbc6626a451d6f070153f689a5.
+- PR #33 — T047.3 Offline / Service Worker validation: MERGED. Merge SHA: a6bfcd376bcc69a2d35dfd3e4b49819b6a198216.
+- No queda una PR funcional abierta asociada a T047/T047.2/T047.3.
+
+WEBVIEW — EVIDENCIA EN MAIN:
+- app/src/main/java/com/jonhararagi/animeart/MainActivity.kt crea WebView, habilita JavaScript/DOM storage, usa WebViewAssetLoader y carga https://appassets.androidplatform.net/assets/web/index.html.
+- El fallback Compose legacy permanece explícitamente en onReceivedError para fallo de main frame.
+- Service Worker se integra mediante ServiceWorkerControllerCompat cuando la feature está disponible.
+- scripts/android-startup-smoke.sh demuestra instalación, proceso vivo, MainActivity resumida, renderer WebView, ausencia de FATAL EXCEPTION y recuperación offline mediante blockNetworkLoads + LOAD_CACHE_ONLY.
+
+PERSISTENCIA / RECUPERACIÓN:
+- Web: localStorage mediante persistDocumentSnapshot() con límite de almacenamiento y manejo no destructivo ante fallo de escritura.
+- Web: restoreDocument() constituye la frontera de restauración y los tests verifican migración/normalización/round-trip.
+- Android legacy: ProjectPersistence.kt conserva SharedPreferences/JSON como fallback/runtime histórico; no fue eliminado porque la migración WebView no requiere borrarlo.
+- La persistencia del documento Web es real; la persistencia de viewport/navegación es deliberadamente de sesión y no forma parte del documento.
+
+ROTACIÓN / RELANZAMIENTO:
+- Relanzamiento: DEMOSTRADO a nivel de Android startup/offline smoke.
+- Recuperación del documento Web después de recreación: mecanismo existente mediante localStorage; no existe una prueba de instrumentación específica de rotación.
+- Rotación/configuración: NO DEMOSTRADA como contrato explícito. MainActivity recrea el WebView en onCreate y destruye el WebView en onDestroy; no existe política específica de onSaveInstanceState/restauración de navegación/viewport.
+- No se introduce una afirmación de PASS para rotación que la CI actual no demuestre.
+
+TESTS — CLASIFICACIÓN REAL:
+- Web UNIT/DOMAIN: PASS. web/test/* se ejecuta con node --test y cubre modelo, history, viewport, selección, transforms, import y contratos.
+- Web E2E: LIMITADO. mvp-e2e.test.mjs valida un contrato de ciclo de vida con modelo/datos y lectura estática de app.js; no conduce un navegador real ni un WebView real.
+- Android UNIT: PASS. DocumentReducerTest y DrawingEditorTest cubren reducer/editor/history/transform.
+- Android INSTRUMENTATION: NO PRESENTE EN main. No existe app/src/androidTest en el árbol actual.
+- Android SMOKE/INTEGRATION: PASS. scripts/android-startup-smoke.sh usa emulador real y está ejecutado por Android CI.
+
+CI POST-MERGE ACTUAL:
+- Web CI #200 / run 37760125776 — SUCCESS — main @ a6bfcd376bcc69a2d35dfd3e4b49819b6a198216.
+- Android CI #299 / run 37760125753 — SUCCESS — main @ a6bfcd376bcc69a2d35dfd3e4b49819b6a198216.
+- Android run: Build PASS, Unit Tests PASS, Lint PASS, Android Startup Smoke PASS, Debug APK artifact PASS.
+- Web run: Build PASS, Test PASS, Verify build output PASS.
+- Offline evidence remains the T047.3 real emulator gate recorded above: airplane mode ON, WebView network blocked/cache-only, reload PASS, Service Worker cache recovery 13/13, JavaScript PASS, Canvas PASS.
+
+BRANCHES / TRABAJO HEREDADO:
+- Existen numerosas ramas históricas T020–T047.3 y otras ramas de desarrollo. Su existencia no implica que estén pendientes de integración.
+- t048-project-lifecycle-runtime-resilience contiene trabajo no integrado en main y no forma parte de esta auditoría ni de la evidencia GREEN de main. No se debe fusionar automáticamente.
+- t047-android-webview-container conserva el spike histórico que dio origen a PR #31; no debe reintroducirse.
+
+ARQUITECTURA:
+- No se encontró evidencia de un segundo renderer Web, segundo DocumentHistory Web, segundo Viewport Web o manager paralelo dentro del runtime Web actual.
+- Android Compose legacy y Web Canvas 2D siguen coexistiendo por decisión de migración no destructiva; el fallback no debe eliminarse sin una tarea explícita.
+- REUTILIZAR > ADAPTAR > CREAR continúa siendo la regla vigente.
+
+CIERRE:
+T047/T047.2/T047.3 están integradas y verificadas en main. T048.1 no implementa una nueva funcionalidad del producto. La única modificación de esta auditoría es este registro documental para corregir la trazabilidad post-merge.
+
+SIGUIENTE:
+No crear otra implementación WebView. La siguiente acción debe ser decidida por CEREBRO a partir de las brechas aún no demostradas (principalmente rotación/configuración y E2E real), no por trabajo heredado de T047.
