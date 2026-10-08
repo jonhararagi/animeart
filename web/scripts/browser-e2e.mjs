@@ -221,11 +221,15 @@ try {
 
   const beforeTransform = await readDocument();
   const selectedId = beforeTransform.layers.at(-1).id;
+  const selectedDomId = await evaluate('document.querySelector("#layers li:first-child")?.dataset.layerId');
+  assert(selectedDomId === selectedId, "real layer selection targets the expected document layer");
   const beforeX = beforeTransform.layers.find(layer => layer.id === selectedId).transform.x;
   await click('[data-transform="right"]');
   const afterTransform = await readDocument();
   const afterX = afterTransform.layers.find(layer => layer.id === selectedId).transform.x;
-  assert(afterX === beforeX + 10, "real transform control moves the selected layer through the existing domain operation");
+  const transformStatus = await evaluate('document.querySelector("#status").textContent');
+  console.log(JSON.stringify({ transformBeforeX: beforeX, transformAfterX: afterX, transformStatus }));
+  assert(afterX === beforeX + 10, `real transform control moves the selected layer through the existing domain operation (before=${beforeX}, after=${afterX})`);
 
   await click("#undo");
   const afterUndo = await readDocument();
