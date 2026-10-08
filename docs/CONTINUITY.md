@@ -2509,7 +2509,11 @@ IMPLEMENTACIÓN T052 PASS.
 CI DEL COMMIT DE IMPLEMENTACIÓN a0afe2565636a5c8df6f64cf2b6e65237f231995: GREEN.\n\nHEAD FINAL DE T052 ANTES DEL CIERRE DOCUMENTAL:\n754b46b885f679792591297705ec4de514a6d39a\n\nCI DEL HEAD 754b46b885f679792591297705ec4de514a6d39a:\n- Web CI run 37836749228 — SUCCESS.\n- Android CI run 37836749246 — SUCCESS.
 
 CIERRE:
-No se modifica T049. No se reabren PRs históricas. T052 queda listo para su gate final sobre el HEAD que incluya esta actualización documental.
+- PR #36 CLOSED / MERGED.
+- Merge SHA: 95e868695519ca679441099ecbf9aaa40cadab39.
+- Web CI post-merge del merge SHA: run 37837849683 — SUCCESS.
+- Android CI post-merge del merge SHA: run 37837849688 — SUCCESS en attempt 2. El attempt 1 falló por infraestructura del runner al descargar el paquete Android Emulator (unknown archive); no hubo fallo de Build, Unit Tests ni Lint. El retry completó Instrumentation, Startup Smoke y APK upload con SUCCESS.
+- T052 queda GREEN y no se modifica T049.
 
 SIGUIENTE:
-Verificar CI del HEAD final de T052, cerrar PR #36 si todos los checks continúan GREEN y solo después definir el siguiente bloque técnico.
+Nuevo bloque técnico solo después de una nueva auditoría/readiness gate. No existe deuda bloqueante introducida por T052.
