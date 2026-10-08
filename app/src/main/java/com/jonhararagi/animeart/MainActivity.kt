@@ -29,16 +29,21 @@ class MainActivity : ComponentActivity() {
 
     private fun showWebEditor() {
         val offlineValidation = intent.getBooleanExtra("animeart_offline_validation", false)
-        if (offlineValidation && WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BASIC_USAGE)) {
-            val controller = ServiceWorkerControllerCompat.getInstance()
-            controller.serviceWorkerWebSettings.setBlockNetworkLoads(true)
-            controller.serviceWorkerWebSettings.setCacheMode(android.webkit.WebSettings.LOAD_CACHE_ONLY)
-            controller.setServiceWorkerClient(object : ServiceWorkerClientCompat() {
-                override fun shouldInterceptRequest(request: WebResourceRequest) = null
-            })
-        }
-
         val loader = WebViewAssetLoader.Builder()
+            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+            .build()
+
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BASIC_USAGE)) {
+            val controller = ServiceWorkerControllerCompat.getInstance()
+            controller.setServiceWorkerClient(object : ServiceWorkerClientCompat() {
+                override fun shouldInterceptRequest(request: WebResourceRequest) =
+                    if (offlineValidation) null else loader.shouldInterceptRequest(request.url)
+            })
+            if (offlineValidation) {
+                controller.serviceWorkerWebSettings.setBlockNetworkLoads(true)
+                controller.serviceWorkerWebSettings.setCacheMode(android.webkit.WebSettings.LOAD_CACHE_ONLY)
+            }
+        }
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
 
