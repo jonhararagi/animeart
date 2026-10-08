@@ -4,6 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { extname, join, normalize, resolve } from "node:path";
 import { spawn } from "node:child_process";
+import { createServer as createPortProbe } from "node:net";
 
 const ROOT = resolve(process.env.ANIMEART_E2E_ROOT || "dist");
 const PORT = Number(process.env.ANIMEART_E2E_PORT || 4173);
@@ -58,38 +59,32 @@ const chromeCandidates = [
 const chrome = chromeCandidates.find(existsSync);
 if (!chrome) throw new Error("No Chromium/Chrome executable found");
 
+const sleep = ms => new Promise(resolveSleep => setTimeout(resolveSleep, ms));
+
+const devToolsPort = await new Promise((resolvePort, rejectPort) => {
+  const probe = createPortProbe();
+  probe.listen(0, HOST, () => {
+    const address = probe.address();
+    const port = typeof address === "object" && address ? address.port : 0;
+    probe.close(() => resolvePort(port));
+  });
+  probe.once("error", rejectPort);
+});
+
 const browser = spawn(chrome, [
   "--headless=new",
   "--no-sandbox",
   "--disable-gpu",
   "--disable-dev-shm-usage",
-  "--remote-debugging-port=0",
+  `--remote-debugging-port=${devToolsPort}`,
   "--remote-allow-origins=*",
   `--user-data-dir=${profile}`,
   `http://${HOST}:${PORT}/index.html`
 ], { stdio: ["ignore", "ignore", "pipe"] });
 
-const sleep = ms => new Promise(resolveSleep => setTimeout(resolveSleep, ms));
-
-const devToolsPort = await new Promise((resolvePort, rejectPort) => {
-  let stderr = "";
-  const timeout = setTimeout(() => rejectPort(new Error(`Chromium DevTools endpoint did not become ready. stderr: ${stderr}`)), 90000);
-  browser.stderr.on("data", chunk => {
-    stderr += chunk.toString();
-    const match = stderr.match(/DevTools listening on ws:\/\/127\.0\.0\.1:(\d+)\//);
-    if (match) {
-      clearTimeout(timeout);
-      resolvePort(Number(match[1]));
-    }
-  });
-  browser.once("exit", code => {
-    clearTimeout(timeout);
-    rejectPort(new Error(`Chromium exited before DevTools became ready (code ${code}). stderr: ${stderr}`));
-  });
-});
-
 async function waitForDevTools() {
-  for (let attempt = 0; attempt < 150; attempt += 1) {
+  const deadline = Date.now() + 90000;
+  while (Date.now() < deadline) {
     try {
       const response = await fetch(`http://127.0.0.1:${devToolsPort}/json/list`);
       const pages = await response.json();
@@ -98,7 +93,7 @@ async function waitForDevTools() {
     } catch {}
     await sleep(100);
   }
-  throw new Error("Chromium page DevTools endpoint did not become ready");
+  throw new Error("Chromium DevTools endpoint did not become ready");
 }
 
 const wsUrl = await waitForDevTools();
