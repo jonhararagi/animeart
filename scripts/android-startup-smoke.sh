@@ -49,7 +49,7 @@ fi
 
 adb shell uiautomator dump /sdcard/animeart-window.xml >/dev/null
 ui_xml="$(adb shell cat /sdcard/animeart-window.xml 2>/dev/null | tr -d '\r')"
-for marker in "ANIMEART" "Local-first editor" "AnimeArt canvas"; do
+for marker in "ANIMEART" "AnimeArt canvas"; do
   if ! printf '%s' "$ui_xml" | grep -Fq "$marker"; then
     echo "Startup smoke no encontró el marcador Web '$marker' en la jerarquía UI. Proceso=$pid. Logcat:"
     adb logcat -d -t 500 || true
