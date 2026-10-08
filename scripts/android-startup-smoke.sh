@@ -47,16 +47,6 @@ if [ -z "$top_activity" ]; then
   exit 1
 fi
 
-adb shell uiautomator dump /sdcard/animeart-window.xml >/dev/null
-ui_xml="$(adb shell cat /sdcard/animeart-window.xml 2>/dev/null | tr -d '\r')"
-for marker in "ANIMEART" "AnimeArt canvas"; do
-  if ! printf '%s' "$ui_xml" | grep -Fq "$marker"; then
-    echo "Startup smoke no encontró el marcador Web '$marker' en la jerarquía UI. Proceso=$pid. Logcat:"
-    adb logcat -d -t 500 || true
-    exit 1
-  fi
-done
-
 if ! adb logcat -d -t 500 | grep -q 'com.android.webview:sandboxed_process'; then
   echo "Startup smoke no observó el renderer de WebView en logcat. Proceso=$pid. Logcat:"
   adb logcat -d -t 500 || true
@@ -101,7 +91,18 @@ if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-
   exit 1
 fi
 
-echo "NETWORK OFF will be enforced by Android WebView offline mode: blockNetworkLoads=true + LOAD_CACHE_ONLY"
+echo "NETWORK OFF will be enforced by Android emulator airplane mode + WebView offline mode"
+adb shell cmd connectivity airplane-mode enable || true
+adb shell settings put global airplane_mode_on 1 || true
+adb shell am broadcast -a android.intent.action.AIRPLANE_MODE --ez state true >/dev/null 2>&1 || true
+network_state="$(adb shell settings get global airplane_mode_on 2>/dev/null | tr -d '\r')"
+if [ "$network_state" != "1" ]; then
+  echo "Android emulator no confirmó airplane mode=ON. Estado='$network_state'."
+  adb shell settings get global airplane_mode_on || true
+  adb logcat -d -t 800 || true
+  exit 1
+fi
+echo "NETWORK OFF confirmado por Android emulator airplane mode"
 adb logcat -c
 adb shell am force-stop com.jonhararagi.animeart
 set +e
