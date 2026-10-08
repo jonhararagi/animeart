@@ -150,7 +150,9 @@ export function isValidDocument(document) {
     document &&
     document.version === DOCUMENT_VERSION &&
     Number.isFinite(document.width) &&
+    document.width > 0 &&
     Number.isFinite(document.height) &&
+    document.height > 0 &&
     Array.isArray(document.layers) &&
     document.layers.length > 0 &&
     document.layers.every(layer => {
@@ -218,8 +220,11 @@ export function migrateLegacyDocument(saved) {
 }
 
 export function restoreDocument(saved) {
-  if (!saved) return null;
+  if (!saved || typeof saved !== "object") return null;
+
   const legacy = migrateLegacyDocument(saved);
-  if (legacy) return legacy;
-  return normalizeDocument(saved);
+  if (legacy) return isValidDocument(legacy) ? legacy : null;
+
+  const normalized = normalizeDocument(saved);
+  return isValidDocument(normalized) ? normalized : null;
 }
