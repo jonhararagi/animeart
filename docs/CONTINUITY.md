@@ -2693,8 +2693,20 @@ NONE.
 ARCHIVO E2E MODIFICADO:
 web/scripts/browser-e2e.mjs
 
-PR STATE:
-OPEN — pendiente de merge.
+PR STATE AL CIERRE DE T056:
+CLOSED / MERGED.
+
+MERGE SHA:
+43675096a30336b715e548c32155dcc996ba4068.
+
+MAIN POST-MERGE:
+43675096a30336b715e548c32155dcc996ba4068.
+
+INTEGRACIÓN:
+Verificada directamente en GitHub. main coincide con el merge SHA y contiene los escenarios E2E aprobados.
+
+CI POST-MERGE:
+Pendiente de evidencia directa en GitHub; los checks Web/Android pre-merge pasaron sobre el HEAD exacto del PR.
 
 DEUDA:
 No se detectó deuda bloqueante introducida por T055.
@@ -2705,4 +2717,4 @@ CI FINAL GREEN.
 PR #38 OPEN / READY FOR MERGE REVIEW.
 
 SIGUIENTE:
-No iniciar una nueva tarea hasta auditar/mergear T055 y realizar la siguiente readiness/roadmap gate.
+T055 está integrado. No iniciar nuevas funcionalidades hasta completar la verificación de CI post-merge y ejecutar una nueva readiness/roadmap gate.
