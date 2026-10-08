@@ -155,14 +155,25 @@ const selectorCenter = async selector => {
   return rect;
 };
 
-const click = async selector => {
+const click = async (selector, modifiers = 0) => {
   const point = await selectorCenter(selector);
   await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: point.x, y: point.y });
-  await cdp("Input.dispatchMouseEvent", { type: "mousePressed", x: point.x, y: point.y, button: "left", clickCount: 1 });
-  await cdp("Input.dispatchMouseEvent", { type: "mouseReleased", x: point.x, y: point.y, button: "left", clickCount: 1 });
+  await cdp("Input.dispatchMouseEvent", { type: "mousePressed", x: point.x, y: point.y, button: "left", clickCount: 1, modifiers });
+  await cdp("Input.dispatchMouseEvent", { type: "mouseReleased", x: point.x, y: point.y, button: "left", clickCount: 1, modifiers });
   await sleep(120);
 };
 
+const mouseDrag = async (start, end, modifiers = 0) => {
+  await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: start.x, y: start.y });
+  await cdp("Input.dispatchMouseEvent", { type: "mousePressed", x: start.x, y: start.y, button: "left", buttons: 1, clickCount: 1, modifiers });
+  const steps = 8;
+  for (let index = 1; index <= steps; index += 1) {
+    const progress = index / steps;
+    await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: start.x + (end.x - start.x) * progress, y: start.y + (end.y - start.y) * progress, button: "left", buttons: 1, modifiers });
+  }
+  await cdp("Input.dispatchMouseEvent", { type: "mouseReleased", x: end.x, y: end.y, button: "left", buttons: 0, clickCount: 1, modifiers });
+  await sleep(180);
+};
 const mouseStroke = async points => {
   const first = points[0];
   await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: first.x, y: first.y });
@@ -176,8 +187,16 @@ const mouseStroke = async points => {
 };
 
 const readDocument = async () => JSON.parse(await evaluate(`localStorage.getItem("animeart-web-document")`));
+const readLayerSummary = async () => evaluate(`JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.map(layer => ({ id: layer.id, name: layer.name, contentType: layer.contentType, visible: layer.visible, locked: layer.locked, isReference: layer.isReference, transform: layer.transform, strokes: layer.strokes?.length || 0 })) || []`);
+const layerSelector = layerId => "#layers li[data-layer-id=\"" + layerId + "\"]";
+const layerButtonSelector = layerId => layerSelector(layerId) + " .layer-select";
+const layerToggleSelector = (layerId, index) => layerSelector(layerId) + " .layer-toggle:nth-of-type(" + index + ")";
+
 
 try {
+  const downloadDir = join(profile, "downloads");
+  await mkdir(downloadDir, { recursive: true });
+  await cdp("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: downloadDir });
   await cdp("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   await waitFor(`document.readyState === "complete"`);
   await waitFor(`document.querySelector("#canvas") !== null`);
@@ -198,45 +217,91 @@ try {
     { x: c.x - 20, y: c.y },
     { x: c.x + 80, y: c.y + 60 }
   ]);
-  const drawn = await readDocument();
-  assert(drawn.layers[0].strokes.length === 1, "real pointer input creates a stroke");
-  assert(drawn.layers[0].strokes[0].points.length >= 3, "stroke contains the real pointer path");
+  let documentState = await readDocument();
+  assert(documentState.layers[0].strokes.length === 1, "real pointer input creates a stroke");
+  assert(documentState.layers[0].strokes[0].points.length >= 3, "stroke contains the real pointer path");
 
   await click("#add-layer");
-  let afterLayer = await readDocument();
-  assert(afterLayer.layers.length === 2, "real layer control creates a second layer");
+  documentState = await readDocument();
+  assert(documentState.layers.length === 2, "real layer control creates a second layer");
+  const secondLayerId = documentState.layers.at(-1).id;
+  await click('[data-tool="brush"]');
+  await mouseStroke([
+    { x: c.x + 120, y: c.y - 80 },
+    { x: c.x + 160, y: c.y - 20 },
+    { x: c.x + 200, y: c.y + 40 }
+  ]);
+  documentState = await readDocument();
+  assert(documentState.layers.find(layer => layer.id === secondLayerId)?.strokes.length === 1, "second layer accepts real pointer drawing");
 
-  await click("#layers li:first-child .layer-select");
-  assert(await evaluate('document.querySelector("#layers li:first-child").dataset.selected === "true"'), "real layer selection updates the editor selection");
+  const newestLayerId = documentState.layers.at(-1).id;
+  await click('[data-tool="select"]');
+  await click(layerButtonSelector(newestLayerId));
+  await click(layerButtonSelector(secondLayerId), 8);
+  const selectedLayerIds = await evaluate('Array.from(document.querySelectorAll("#layers li[data-selected=\"true\"]")).map(el => el.dataset.layerId)');
+  assert(selectedLayerIds.length === 2, "real shift-click selects multiple layers");
 
-  const beforeTransform = await readDocument();
-  const selectedId = beforeTransform.layers.at(-1).id;
-  const selectedDomId = await evaluate('document.querySelector("#layers li:first-child")?.dataset.layerId');
-  assert(selectedDomId === selectedId, "real layer selection targets the expected document layer");
-  const beforeX = beforeTransform.layers.find(layer => layer.id === selectedId).transform.x;
-  await click('[data-transform="right"]');
-  const afterTransform = await readDocument();
-  const afterX = afterTransform.layers.find(layer => layer.id === selectedId).transform.x;
-  const transformStatus = await evaluate('document.querySelector("#status").textContent');
-  console.log(JSON.stringify({ transformBeforeX: beforeX, transformAfterX: afterX, transformStatus }));
-  assert(afterX === beforeX + 10, `real transform control moves the selected layer through the existing domain operation (before=${beforeX}, after=${afterX})`);
+  const beforeMulti = await readDocument();
+  const multiBefore = selectedLayerIds.map(id => ({ id, x: beforeMulti.layers.find(layer => layer.id === id).transform.x }));
+  await mouseDrag({ x: c.x + 150, y: c.y }, { x: c.x + 200, y: c.y });
+  const afterMulti = await readDocument();
+  for (const item of multiBefore) {
+    const layer = afterMulti.layers.find(candidate => candidate.id === item.id);
+    assert(layer && layer.transform.x === item.x + 50, "real multi-selection move transforms both selected layers");
+  }
+  assert(await evaluate('document.querySelector("#status").textContent === "Layers moved"'), "real multi-selection move reports the committed operation");
 
-  await click("#undo");
-  const afterUndo = await readDocument();
-  assert(afterUndo.layers.find(layer => layer.id === selectedId).transform.x === beforeX, "real Undo restores the pre-transform document state");
+  const lifecycleLayerId = multiBefore[0].id;
+  await click(layerToggleSelector(lifecycleLayerId, 1));
+  let lifecycle = await readLayerSummary();
+  assert(lifecycle.find(layer => layer.id === lifecycleLayerId)?.visible === false, "real layer visibility control hides the layer");
+  await click(layerToggleSelector(lifecycleLayerId, 1));
+  lifecycle = await readLayerSummary();
+  assert(lifecycle.find(layer => layer.id === lifecycleLayerId)?.visible === true, "real layer visibility control shows the layer");
 
-  await click("#redo");
-  const afterRedo = await readDocument();
-  assert(afterRedo.layers.find(layer => layer.id === selectedId).transform.x === beforeX + 10, "real Redo reapplies the transform");
+  await click(layerToggleSelector(lifecycleLayerId, 2));
+  lifecycle = await readLayerSummary();
+  assert(lifecycle.find(layer => layer.id === lifecycleLayerId)?.locked === true, "real layer lock control locks the layer");
+  await click(layerToggleSelector(lifecycleLayerId, 2));
+  lifecycle = await readLayerSummary();
+  assert(lifecycle.find(layer => layer.id === lifecycleLayerId)?.locked === false, "real layer lock control unlocks the layer");
 
-  const persistedBeforeReload = JSON.stringify(afterRedo);
+  const lifecycleCountBeforeDuplicate = lifecycle.length;
+  await click(layerSelector(lifecycleLayerId) + ' .layer-action[title="Duplicate layer"]');
+  lifecycle = await readLayerSummary();
+  assert(lifecycle.length === lifecycleCountBeforeDuplicate + 1, "real layer duplicate creates a new layer");
+  const duplicateId = lifecycle.at(-1).id;
+  await click(layerSelector(duplicateId) + ' .layer-action[title="Delete layer"]');
+  lifecycle = await readLayerSummary();
+  assert(lifecycle.length === lifecycleCountBeforeDuplicate, "real layer delete removes the duplicated layer");
+
+  const imageLayerCountBefore = lifecycle.length;
+  const imported = await evaluate('(() => { const bytes = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="), char => char.charCodeAt(0)); const file = new File([bytes], "e2e-fixture.png", { type: "image/png" }); const transfer = new DataTransfer(); transfer.items.add(file); const input = document.querySelector("#image-file-input"); input.files = transfer.files; input.dispatchEvent(new Event("change", { bubbles: true })); return true; })()');
+  assert(imported === true, "real browser file input accepted an image file");
+  await waitFor("JSON.parse(localStorage.getItem(\"animeart-web-document\") || \"{}\").layers?.length === " + (imageLayerCountBefore + 1), 10000);
+  const afterImport = await readLayerSummary();
+  const importedLayer = afterImport.at(-1);
+  assert(importedLayer?.contentType === "image", "real browser image import creates an image layer");
+  assert(importedLayer?.name === "e2e-fixture", "real browser image import preserves the image layer name");
+
+  await click("#export-png");
+  await waitFor('document.querySelector("#status").textContent === "PNG exported"', 10000);
+  const downloadedPng = join(downloadDir, "animeart.png");
+  const downloadDeadline = Date.now() + 10000;
+  while (Date.now() < downloadDeadline && !statSync(downloadedPng, { throwIfNoEntry: false })) await sleep(100);
+  const pngStat = statSync(downloadedPng, { throwIfNoEntry: false });
+  assert(Boolean(pngStat && pngStat.size > 0), "real browser PNG export produces a non-empty downloaded PNG file");
+
+  const persistedBeforeReload = JSON.stringify(await readDocument());
   await cdp("Page.reload", { ignoreCache: true });
-  await waitFor(`document.readyState === "complete"`);
-  await waitFor(`JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document"))) === ${JSON.stringify(persistedBeforeReload)}`, 10000);
+  await waitFor('document.readyState === "complete"');
+  await waitFor("JSON.stringify(JSON.parse(localStorage.getItem(\"animeart-web-document\"))) === " + JSON.stringify(persistedBeforeReload), 10000);
   const recovered = await readDocument();
-  assert(JSON.stringify(recovered) === persistedBeforeReload, "reload recovers the persisted document exactly");
+  assert(JSON.stringify(recovered) === persistedBeforeReload, "reload recovers the expanded editor document exactly");
   assert(await evaluate('document.querySelector("#layers li:first-child").dataset.selected === "true"'), "reloaded editor restores a valid selected layer");
 
+  assert(await evaluate('document.documentElement.dataset.serviceWorkerActive === "true"'), "real browser service worker is active");
+  assert(await evaluate('document.documentElement.dataset.cacheReady === "true"'), "real browser service worker cache contains the required offline shell");
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {
   try { ws.close(); } catch {}
