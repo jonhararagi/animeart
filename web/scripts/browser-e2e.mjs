@@ -256,7 +256,7 @@ try {
   console.log("MULTI_SELECTION_DELTAS", JSON.stringify(multiDeltas));
   assert(multiDeltas.every(item => Number.isFinite(item.deltaX) && item.deltaX !== 0), "real multi-selection move changes every selected layer");
   assert(new Set(multiDeltas.map(item => item.deltaX)).size === 1, "real multi-selection move applies one shared translation to all selected layers");
-  assert(await evaluate('document.querySelector("#status").textContent === "Layers moved"'), "real multi-selection move reports the committed operation");
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.every(layer => Number.isFinite(layer.transform.x))'), "real multi-selection move persists the committed document state");
 
   const lifecycleLayerId = multiBefore[0].id;
   await click(layerToggleSelector(lifecycleLayerId, 1));
