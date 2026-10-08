@@ -7,6 +7,9 @@ import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.webkit.ServiceWorkerControllerCompat
+import androidx.webkit.ServiceWorkerClientCompat
+import androidx.webkit.WebViewFeature
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +28,16 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showWebEditor() {
+        val offlineValidation = intent.getBooleanExtra("animeart_offline_validation", false)
+        if (offlineValidation && WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BASIC_USAGE)) {
+            val controller = ServiceWorkerControllerCompat.getInstance()
+            controller.serviceWorkerWebSettings.setBlockNetworkLoads(true)
+            controller.serviceWorkerWebSettings.setCacheMode(android.webkit.WebSettings.LOAD_CACHE_ONLY)
+            controller.setServiceWorkerClient(object : ServiceWorkerClientCompat() {
+                override fun shouldInterceptRequest(request: WebResourceRequest) = null
+            })
+        }
+
         val loader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()

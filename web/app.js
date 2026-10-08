@@ -1156,10 +1156,56 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v1";
+const OFFLINE_REQUIRED_RESOURCES = [
+  "./",
+  "./index.html",
+  "./styles.css",
+  "./app.js",
+  "./manifest.webmanifest",
+  "./service-worker.js",
+  "./domain/document-operations.mjs",
+  "./domain/history.mjs",
+  "./domain/image-import.mjs",
+  "./domain/image-input.mjs",
+  "./domain/model.mjs",
+  "./domain/png-export.mjs",
+  "./domain/selection.mjs",
+  "./domain/viewport.mjs"
+];
+
+async function reportServiceWorkerReadiness() {
+  if (!("serviceWorker" in navigator) || !("caches" in window)) {
+    status.textContent = "SW UNAVAILABLE";
+    return;
+  }
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const cache = await caches.open(OFFLINE_CACHE_NAME);
+    const requests = await cache.keys();
+    const cachedUrls = new Set(requests.map(request => request.url));
+    const missing = OFFLINE_REQUIRED_RESOURCES.filter(resource => !cachedUrls.has(new URL(resource, location.href).href));
+    const active = Boolean(registration.active);
+    const ready = active && missing.length === 0;
+    status.textContent = ready
+      ? `SW ACTIVE; CACHE ${OFFLINE_REQUIRED_RESOURCES.length}/${OFFLINE_REQUIRED_RESOURCES.length}; CANVAS READY`
+      : `SW ${active ? "ACTIVE" : "NOT ACTIVE"}; CACHE ${OFFLINE_REQUIRED_RESOURCES.length - missing.length}/${OFFLINE_REQUIRED_RESOURCES.length}; CANVAS ${canvas ? "READY" : "MISSING"}`;
+    document.documentElement.dataset.serviceWorkerActive = String(active);
+    document.documentElement.dataset.cacheReady = String(missing.length === 0);
+    document.documentElement.dataset.cacheMissing = missing.join("|");
+    console.log("ANIMEART_OFFLINE_DIAGNOSTIC", JSON.stringify({registered:true,active,cache:OFFLINE_CACHE_NAME,cachedCount:requests.length,requiredCount:OFFLINE_REQUIRED_RESOURCES.length,missing,canvas:Boolean(canvas)}));
+  } catch (error) {
+    status.textContent = "SW DIAGNOSTIC FAILED";
+    console.error("ANIMEART_OFFLINE_DIAGNOSTIC", error);
+  }
+}
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js").catch(() => {
-      // Offline shell is an enhancement; editor operation must remain available without it.
-    });
+    navigator.serviceWorker.register("./service-worker.js")
+      .then(() => reportServiceWorkerReadiness())
+      .catch(() => {
+        status.textContent = "SW REGISTER FAILED";
+      });
   });
 }

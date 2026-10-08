@@ -69,5 +69,67 @@ if adb logcat -d -t 500 | grep -q 'FATAL EXCEPTION'; then
   exit 1
 fi
 
+wait_for_ui_marker() {
+  local marker="$1"
+  local attempts="$2"
+  for _ in $(seq 1 "$attempts"); do
+    adb shell uiautomator dump /sdcard/animeart-window.xml >/dev/null
+    local xml
+    xml="$(adb shell cat /sdcard/animeart-window.xml 2>/dev/null | tr -d '\r')"
+    if printf '%s' "$xml" | grep -Fq "$marker"; then return 0; fi
+    sleep 1
+  done
+  return 1
+}
+
 echo "Startup WebView confirmado: pid=$pid; MainActivity=$top_activity; Web=ANIMEART; status=Local-first editor; canvas=AnimeArt canvas"
+if ! wait_for_ui_marker "SW ACTIVE; CACHE 14/14; CANVAS READY" 20; then
+  echo "No se demostró SW ACTIVE + CACHE 14/14 antes de offline. Logcat:"
+  adb logcat -d -t 800 || true
+  exit 1
+fi
+
+adb shell cmd connectivity airplane-mode enable
+network_state="$(adb shell cmd connectivity airplane-mode 2>/dev/null | tr -d '\r' | tail -n 1)"
+if ! printf '%s' "$network_state" | grep -qi 'enabled'; then
+  echo "No se pudo verificar network OFF mediante connectivity airplane-mode. Estado='$network_state'."
+  adb logcat -d -t 800 || true
+  exit 1
+fi
+echo "NETWORK OFF confirmado: $network_state"
+
+adb shell am force-stop com.jonhararagi.animeart
+set +e
+offline_output="$(timeout 60s adb shell am start -W -n com.jonhararagi.animeart/.MainActivity --ez animeart_offline_validation true 2>&1)"
+offline_status=$?
+set -e
+printf '%s\n' "$offline_output"
+sleep 5
+
+offline_pid="$(timeout 10s adb shell pidof com.jonhararagi.animeart 2>/dev/null | tr -d '\r')"
+if [ -z "$offline_pid" ] || ! printf '%s' "$offline_pid" | grep -q '[0-9]'; then
+  echo "Offline reload no dejó el proceso vivo. Logcat:"
+  adb logcat -d -t 800 || true
+  exit 1
+fi
+if [ "$offline_status" -ne 0 ] || ! printf '%s' "$offline_output" | grep -q 'Status: ok'; then
+  echo "Offline reload no confirmó Status: ok. Logcat:"
+  adb logcat -d -t 800 || true
+  exit 1
+fi
+for marker in "ANIMEART" "SW ACTIVE; CACHE 14/14; CANVAS READY" "AnimeArt canvas"; do
+  if ! wait_for_ui_marker "$marker" 20; then
+    echo "Offline reload no encontró el marcador '$marker'. Logcat:"
+    adb logcat -d -t 800 || true
+    exit 1
+  fi
+done
+if adb logcat -d -t 800 | grep -q 'FATAL EXCEPTION'; then
+  echo "Offline smoke detectó FATAL EXCEPTION. Logcat:"
+  adb logcat -d -t 800 || true
+  exit 1
+fi
+
+echo "OFFLINE VALIDATION PASS: network=$network_state; reload=PASS; AnimeArt=PASS; JavaScript=PASS; Canvas=PASS"
+adb shell cmd connectivity airplane-mode disable || true
 adb shell am force-stop com.jonhararagi.animeart
