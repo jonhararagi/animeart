@@ -2572,3 +2572,60 @@ RIESGOS:
 
 SIGUIENTE:
 No iniciar otra funcionalidad hasta definir el siguiente bloque técnico a partir de una nueva auditoría/roadmap.
+
+
+## T052 — FINAL ANDROID CI CLOSURE
+
+FECHA:
+2026-10-08
+
+MAIN HEAD VERIFICADO:
+091724586d8f123cfb33ec0bae8ccecc991b2e60
+
+BASELINE:
+9ae35319046fd6f1fa9bf83c2718d85c9cf34d53
+
+WEB CI:
+- Run 37840653531 — SUCCESS — commit 091724586d8f123cfb33ec0bae8ccecc991b2e60.
+
+ANDROID CI:
+- Run 37840653501 — SUCCESS — commit 091724586d8f123cfb33ec0bae8ccecc991b2e60.
+- Build — PASS.
+- Unit tests — PASS.
+- Lint — PASS.
+- Instrumentation and startup smoke — PASS.
+- Debug APK upload — PASS.
+
+T052 E2E PREVIAMENTE VALIDADO:
+- Real Chromium — PASS.
+- Editor — PASS.
+- Canvas — PASS.
+- Drawing — PASS.
+- Layer — PASS.
+- Selection — PASS.
+- Transform — PASS.
+- Undo — PASS.
+- Redo — PASS.
+- Persistence — PASS.
+- Reload/Recovery — PASS.
+- Web tests — 328/328 PASS.
+
+ARQUITECTURA:
+- WEB-FIRST — PASS.
+- LOCAL-FIRST — PASS.
+- ANDROID-AS-CONTAINER — PASS.
+- Duplicate systems — NONE.
+
+PRs:
+- #36 — MERGED.
+- #37 — MERGED.
+- Open PRs — 0.
+
+REPARACIÓN:
+NONE.
+
+VEREDICTO:
+T052 GREEN.
+
+SIGUIENTE:
+T052 cerrado. No iniciar T053 todavía. Preparar nueva auditoría técnica/roadmap antes de iniciar el siguiente bloque.
