@@ -2138,3 +2138,62 @@ NO REPETIR:
 - T044 GREEN.
 - T045 GREEN.
 - Auditoría T046.
+
+## T047.2 — ANDROID WEBVIEW MINIMAL CONTAINER
+
+FECHA:
+2026-10-07
+
+ESTADO:
+GREEN EN PR #32. El container mínimo Android → WebView → WebViewAssetLoader → AnimeArt Web quedó implementado y verificado con Web CI y Android CI reales. No se fusionó a main en T047.2.
+
+BASELINE:
+0e4641ce9a8c464fd7ddac318b100daa832532f8
+
+BRANCH:
+t047-2-webview-minimal
+
+IMPLEMENTACIÓN:
+- AndroidX WebKit añadido únicamente para WebViewAssetLoader: androidx.webkit:webkit:1.15.0.
+- MainActivity aloja un WebView con WebViewClient y WebViewAssetLoader usando AssetsPathHandler.
+- Entrada local: https://appassets.androidplatform.net/assets/web/index.html.
+- JavaScript y DOM storage habilitados porque el Web actual usa ES modules y localStorage.
+- file://, data:, acceso de archivos y contenido mixto no se usan para la carga principal.
+- No se implementó JavascriptInterface ni bridge Android ↔ JavaScript.
+- Los assets Web necesarios se empaquetan bajo app/src/main/assets/web/ sin tests, scripts, dist ni node_modules.
+- El editor Android legacy permanece disponible como fallback si la carga principal del WebView falla.
+- web/index.html, web/app.js, web/styles.css, web/manifest.webmanifest, web/service-worker.js y web/domain/*.mjs no fueron modificados.
+
+ASSET STRATEGY:
+- Se reutiliza directamente el contenido Web existente; no se creó un segundo build system ni renderer.
+- El APK contiene únicamente los recursos estáticos requeridos por index.html/app.js y sus imports actuales.
+
+CANVAS:
+- Se mantiene el único <canvas id="canvas"> existente y el renderer Canvas 2D de web/app.js.
+
+STARTUP SMOKE:
+- scripts/android-startup-smoke.sh reutiliza el smoke existente.
+- Comprueba instalación, MainActivity, proceso/resume, marcadores Web accesibles (ANIMEART, estado de página y canvas) y presencia del renderer sandboxed de WebView.
+- Android CI #276 / run 37651748078 falló porque el detector trató el warning benigno de Crashpad de Chromium como error.
+- Reparación: commit 275d39ebe54bcdcb302b879e1225fdc757861a62 eliminó ese falso positivo y mantuvo FATAL EXCEPTION + renderer WebView como checks.
+- Android CI #277 / run 37652255928 terminó SUCCESS.
+- No valida offline ni Service Worker.
+
+SERVICE WORKER / OFFLINE:
+- service-worker.js no fue modificado.
+- Service Worker dentro de Android WebView: NO DEMOSTRADO en T047.2.
+- Offline Android: reservado para T047.3.
+
+VALIDACIÓN:
+- Web CI #178 / run 37652255954 — SUCCESS: Build PASS, Test PASS, Verify build output PASS.
+- Android CI #277 / run 37652255928 — SUCCESS: Build PASS, Unit Tests PASS, Lint PASS, Startup Smoke PASS, Debug APK artifact PASS.
+- PR #32 permanece OPEN sobre main @ 0e4641ce9a8c464fd7ddac318b100daa832532f8.
+- Canvas 2D quedó demostrado por la carga del shell Web, el canvas accesible y el renderer WebView observado en smoke.
+- Interacción de puntero no fue medida específicamente en T047.2.
+
+DEUDA:
+- Los assets Web quedan versionados dentro del APK y deben sincronizarse cuando cambie el Web runtime.
+- El fallback Compose permanece durante la transición y podrá retirarse solo en una tarea futura explícita.
+
+SIGUIENTE:
+T047.3 — OFFLINE / SERVICE WORKER VALIDATION
