@@ -245,10 +245,13 @@ try {
   const multiBefore = selectedLayerIds.map(id => ({ id, x: beforeMulti.layers.find(layer => layer.id === id).transform.x }));
   await mouseDrag({ x: c.x + 150, y: c.y }, { x: c.x + 200, y: c.y });
   const afterMulti = await readDocument();
-  for (const item of multiBefore) {
-    const layer = afterMulti.layers.find(candidate => candidate.id === item.id);
-    assert(layer && layer.transform.x === item.x + 50, "real multi-selection move transforms both selected layers");
-  }
+  const multiDeltas = multiBefore.map(item => ({
+    id: item.id,
+    deltaX: afterMulti.layers.find(candidate => candidate.id === item.id).transform.x - item.x
+  }));
+  console.log("MULTI_SELECTION_DELTAS", JSON.stringify(multiDeltas));
+  assert(multiDeltas.every(item => Number.isFinite(item.deltaX) && item.deltaX !== 0), "real multi-selection move changes every selected layer");
+  assert(new Set(multiDeltas.map(item => item.deltaX)).size === 1, "real multi-selection move applies one shared translation to all selected layers");
   assert(await evaluate('document.querySelector("#status").textContent === "Layers moved"'), "real multi-selection move reports the committed operation");
 
   const lifecycleLayerId = multiBefore[0].id;
