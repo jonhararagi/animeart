@@ -25,10 +25,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        showWebEditor()
+        showWebEditor(savedInstanceState)
     }
 
-    private fun showWebEditor() {
+    private fun showWebEditor(savedInstanceState: Bundle?) {
         val offlineValidation = intent.getBooleanExtra("animeart_offline_validation", false)
         Log.i("AnimeArtOffline", "ANIMEART_OFFLINE_INTENT=" + offlineValidation)
         val loader = WebViewAssetLoader.Builder()
@@ -72,14 +72,24 @@ class MainActivity : ComponentActivity() {
                     if (request.isForMainFrame) showLegacyEditor()
                 }
             }
-            loadUrl(START_URL)
+        }
+
+        webView = view
+        setContentView(view)
+
+        val restored = savedInstanceState != null && view.restoreState(savedInstanceState) != null
+        if (!restored) {
+            view.loadUrl(START_URL)
         }
 
         if (offlineValidation) {
             Log.i("AnimeArtOffline", "ANIMEART_OFFLINE_NETWORK webViewBlockNetworkLoads=" + view.settings.blockNetworkLoads + "; webViewCacheMode=" + view.settings.cacheMode + "; serviceWorkerBlockNetworkLoads=" + if (WebViewFeature.isFeatureSupported(WebViewFeature.SERVICE_WORKER_BLOCK_NETWORK_LOADS)) "true" else "unsupported")
         }
-        webView = view
-        setContentView(view)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        webView?.saveState(outState)
+        super.onSaveInstanceState(outState)
     }
 
     private fun showLegacyEditor() {
