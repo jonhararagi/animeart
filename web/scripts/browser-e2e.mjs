@@ -190,7 +190,7 @@ const readDocument = async () => JSON.parse(await evaluate(`localStorage.getItem
 const readLayerSummary = async () => evaluate(`JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.map(layer => ({ id: layer.id, name: layer.name, contentType: layer.contentType, visible: layer.visible, locked: layer.locked, isReference: layer.isReference, transform: layer.transform, strokes: layer.strokes?.length || 0 })) || []`);
 const layerSelector = layerId => "#layers li[data-layer-id=\"" + layerId + "\"]";
 const layerButtonSelector = layerId => layerSelector(layerId) + " .layer-select";
-const layerToggleSelector = (layerId, index) => layerSelector(layerId) + " .layer-toggle:nth-of-type(" + index + ")";
+const layerToggleSelector = (layerId, index) => layerSelector(layerId) + " .layer-controls .layer-toggle:nth-of-type(" + index + ")";
 
 
 try {
@@ -234,9 +234,9 @@ try {
   documentState = await readDocument();
   assert(documentState.layers.find(layer => layer.id === secondLayerId)?.strokes.length === 1, "second layer accepts real pointer drawing");
 
-  const newestLayerId = documentState.layers.at(-1).id;
+  const initialLayerId = documentState.layers[0].id;
   await click('[data-tool="select"]');
-  await click(layerButtonSelector(newestLayerId));
+  await click(layerButtonSelector(initialLayerId));
   await click(layerButtonSelector(secondLayerId), 8);
   const selectedLayerIds = await evaluate('Array.from(document.querySelectorAll("#layers li[data-selected=\"true\"]")).map(el => el.dataset.layerId)');
   assert(selectedLayerIds.length === 2, "real shift-click selects multiple layers");
@@ -267,10 +267,12 @@ try {
   assert(lifecycle.find(layer => layer.id === lifecycleLayerId)?.locked === false, "real layer lock control unlocks the layer");
 
   const lifecycleCountBeforeDuplicate = lifecycle.length;
+  const lifecycleIdsBeforeDuplicate = new Set(lifecycle.map(layer => layer.id));
   await click(layerSelector(lifecycleLayerId) + ' .layer-action[title="Duplicate layer"]');
   lifecycle = await readLayerSummary();
   assert(lifecycle.length === lifecycleCountBeforeDuplicate + 1, "real layer duplicate creates a new layer");
-  const duplicateId = lifecycle.at(-1).id;
+  const duplicateId = lifecycle.find(layer => !lifecycleIdsBeforeDuplicate.has(layer.id))?.id;
+  assert(Boolean(duplicateId), "real layer duplicate has a distinct document id");
   await click(layerSelector(duplicateId) + ' .layer-action[title="Delete layer"]');
   lifecycle = await readLayerSummary();
   assert(lifecycle.length === lifecycleCountBeforeDuplicate, "real layer delete removes the duplicated layer");
