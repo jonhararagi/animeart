@@ -2436,3 +2436,80 @@ VEREDICTO:
 T049 GREEN.
 T050 GREEN.
 
+
+
+## T052 — REAL WEB E2E / EDITOR INTEGRATION GATE
+
+FECHA:
+2026-10-08
+
+BASELINE:
+9ae35319046fd6f1fa9bf83c2718d85c9cf34d53
+
+BRANCH:
+t052-real-web-e2e-2026-10-08
+
+PR:
+#36 — T052 — Real Web E2E / Editor Integration Gate
+
+IMPLEMENTACIÓN:
+- Se reutiliza el editor Web existente.
+- No se creó Document, Layer, Stroke, History, Renderer, Viewport, Persistence, Selection ni Interaction manager paralelo.
+- Se añadió un gate de navegador real mediante Chromium y Chrome DevTools Protocol (CDP), sin framework E2E externo.
+- El runner sirve el build Web local mediante un servidor HTTP mínimo y ejecuta Chromium headless contra dist/.
+- La interacción de usuario se realiza mediante Input.dispatchMouseEvent de CDP, no mediante mocks ni dispatchEvent de DOM.
+
+ARCHIVOS T052:
+- web/scripts/browser-e2e.mjs
+- .github/workflows/web.yml
+- docs/CONTINUITY.md
+
+E2E REAL VERIFICADO EN CI:
+- Browser launch — PASS.
+- Editor load — PASS.
+- Canvas layout/visibility — PASS.
+- Service Worker/cache readiness — PASS.
+- Real pointer drawing — PASS.
+- Stroke creation and pointer path — PASS.
+- Real layer creation — PASS.
+- Real layer selection — PASS.
+- Real transform control — PASS.
+- Real Undo — PASS.
+- Real Redo — PASS.
+- localStorage persistence — PASS.
+- Browser reload/recovery — PASS.
+- Existing Web tests — PASS (328 tests).
+
+ERRORES ENCONTRADOS Y REPARADOS DURANTE T052:
+1. El primer intento colocó el runner en web/test/, provocando que npm test lo descubriera como test Node. Web CI run 37834784327 terminó FAILURE. Reparación: mover el runner a web/scripts/.
+2. El primer launcher Chromium dependía de un puerto DevTools fijo y no obtuvo el endpoint en CI. Web CI run 37834996789 terminó FAILURE. Reparación: usar puerto dinámico y esperar el anuncio real de DevTools.
+3. El control de transformación estaba fuera del viewport del navegador headless. Web CI run 37835596263 terminó FAILURE. Reparación: hacer scrollIntoView del control antes de ejecutar el click físico CDP.
+
+CI DE IMPLEMENTACIÓN VERIFICADA:
+- Web CI run 37835931901 — SUCCESS — commit a0afe2565636a5c8df6f64cf2b6e65237f231995.
+- Android CI run 37835931906 — SUCCESS — commit a0afe2565636a5c8df6f64cf2b6e65237f231995.
+- Web job: Build PASS, Test PASS, Verify build output PASS, Real browser E2E PASS.
+- Android job: Build PASS, Unit tests PASS, Lint PASS, Instrumentation and startup smoke PASS, Debug APK upload PASS.
+
+ARQUITECTURA:
+WEB-FIRST / LOCAL-FIRST / ANDROID-AS-CONTAINER preservado.
+El E2E consume el runtime Web existente y no introduce un segundo runtime, renderer, document model, history ni persistence.
+
+DEUDA:
+No se detectó deuda bloqueante introducida por T052.
+La cobertura E2E real queda establecida para el flujo principal; futuros bloques pueden ampliar escenarios sin crear nueva arquitectura.
+
+RIESGOS:
+- El runner depende de Chromium/Chrome disponible en el runner GitHub Actions.
+- La prueba actual cubre el flujo principal solicitado, no todos los comandos del editor.
+- Android continúa conservando su runtime legacy/fallback, fuera de alcance de T052.
+
+ESTADO:
+IMPLEMENTACIÓN T052 PASS.
+CI DEL COMMIT DE IMPLEMENTACIÓN a0afe2565636a5c8df6f64cf2b6e65237f231995: GREEN.\n\nHEAD FINAL DE T052 ANTES DEL CIERRE DOCUMENTAL:\n754b46b885f679792591297705ec4de514a6d39a\n\nCI DEL HEAD 754b46b885f679792591297705ec4de514a6d39a:\n- Web CI run 37836749228 — SUCCESS.\n- Android CI run 37836749246 — SUCCESS.
+
+CIERRE:
+No se modifica T049. No se reabren PRs históricas. T052 queda listo para su gate final sobre el HEAD que incluya esta actualización documental.
+
+SIGUIENTE:
+Verificar CI del HEAD final de T052, cerrar PR #36 si todos los checks continúan GREEN y solo después definir el siguiente bloque técnico.
