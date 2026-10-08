@@ -245,8 +245,11 @@ try {
 
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {
-  ws.close();
-  browser.kill("SIGTERM");
-  await rm(profile, { recursive: true, force: true });
-  server.close();
+  try { ws.close(); } catch {}
+  if (!browser.killed) {
+    browser.kill("SIGTERM");
+    await new Promise(resolveExit => browser.once("exit", resolveExit));
+  }
+  await rm(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  await new Promise(resolveClose => server.close(resolveClose));
 }
