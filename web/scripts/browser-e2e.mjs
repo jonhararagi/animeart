@@ -73,7 +73,7 @@ const sleep = ms => new Promise(resolveSleep => setTimeout(resolveSleep, ms));
 
 const devToolsPort = await new Promise((resolvePort, rejectPort) => {
   let stderr = "";
-  const timeout = setTimeout(() => rejectPort(new Error(`Chromium DevTools endpoint did not become ready. stderr: ${stderr}`)), 30000);
+  const timeout = setTimeout(() => rejectPort(new Error(`Chromium DevTools endpoint did not become ready. stderr: ${stderr}`)), 90000);
   browser.stderr.on("data", chunk => {
     stderr += chunk.toString();
     const match = stderr.match(/DevTools listening on ws:\/\/127\.0\.0\.1:(\d+)\//);
