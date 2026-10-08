@@ -224,6 +224,8 @@ try {
   const selectedDomId = await evaluate('document.querySelector("#layers li:first-child")?.dataset.layerId');
   assert(selectedDomId === selectedId, "real layer selection targets the expected document layer");
   const beforeX = beforeTransform.layers.find(layer => layer.id === selectedId).transform.x;
+  const transformButtonProbe = await evaluate('(() => { const el = document.querySelector(\'[data-transform="right"]\'); const r = el.getBoundingClientRect(); const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return { tag: hit?.tagName, text: hit?.textContent, action: hit?.dataset?.transform, rect: { x: r.x, y: r.y, w: r.width, h: r.height } }; })()');
+  console.log(JSON.stringify({ transformButtonProbe }));
   await click('[data-transform="right"]');
   const afterTransform = await readDocument();
   const afterX = afterTransform.layers.find(layer => layer.id === selectedId).transform.x;
