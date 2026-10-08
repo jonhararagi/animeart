@@ -243,7 +243,10 @@ try {
 
   const beforeMulti = await readDocument();
   const multiBefore = selectedLayerIds.map(id => ({ id, x: beforeMulti.layers.find(layer => layer.id === id).transform.x }));
-  await mouseDrag({ x: c.x + 150, y: c.y }, { x: c.x + 200, y: c.y });
+  const dragLayer = beforeMulti.layers.find(layer => layer.id === multiBefore[0].id);
+  const dragPoint = dragLayer?.strokes?.[0]?.points?.[0];
+  assert(Boolean(dragPoint), "multi-selection has a real drawable hit point");
+  await mouseDrag({ x: dragPoint.x, y: dragPoint.y }, { x: dragPoint.x + 50, y: dragPoint.y });
   const afterMulti = await readDocument();
   const multiDeltas = multiBefore.map(item => ({
     id: item.id,
