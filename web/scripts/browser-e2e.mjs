@@ -238,7 +238,7 @@ try {
   await click('[data-tool="select"]');
   await click(layerButtonSelector(initialLayerId));
   await click(layerButtonSelector(secondLayerId), 8);
-  const selectedLayerIds = await evaluate('Array.from(document.querySelectorAll("#layers li[data-selected=\"true\"]")).map(el => el.dataset.layerId)');
+  const selectedLayerIds = await evaluate("Array.from(document.querySelectorAll('#layers li[data-selected=true]')).map(el => el.dataset.layerId)");
   assert(selectedLayerIds.length === 2, "real shift-click selects multiple layers");
 
   const beforeMulti = await readDocument();
