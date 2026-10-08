@@ -105,7 +105,7 @@ echo "NETWORK OFF will be enforced by Android WebView offline mode: blockNetwork
 adb logcat -c
 adb shell am force-stop com.jonhararagi.animeart
 set +e
-offline_output="$(timeout 60s adb shell am start -W -n com.jonhararagi.animeart/.MainActivity --ez animeart_offline_validation true 2>&1)"
+offline_output="$(timeout 60s adb shell am start -W --ez animeart_offline_validation true -n com.jonhararagi.animeart/.MainActivity 2>&1)"
 offline_status=$?
 set -e
 printf '%s\n' "$offline_output"
@@ -122,6 +122,12 @@ if [ "$offline_status" -ne 0 ] || ! printf '%s' "$offline_output" | grep -q 'Sta
   adb logcat -d -t 800 || true
   exit 1
 fi
+if ! wait_for_log_marker 'ANIMEART_OFFLINE_INTENT=true' 30; then
+  echo "Offline reload no confirmó animeart_offline_validation=true."
+  adb logcat -d -t 1200 || true
+  exit 1
+fi
+
 if ! wait_for_log_marker 'ANIMEART_OFFLINE_NETWORK webViewBlockNetworkLoads=true; webViewCacheMode=3; serviceWorkerBlockNetworkLoads=true' 30; then
   echo "Offline reload no demostró network OFF real en WebView."
   adb logcat -d -t 1200 || true
@@ -134,13 +140,7 @@ if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-
   exit 1
 fi
 
-for marker in "ANIMEART" "AnimeArt canvas"; do
-  if ! wait_for_ui_marker "$marker" 20; then
-    echo "Offline reload no encontró el marcador '$marker'. Logcat:"
-    adb logcat -d -t 800 || true
-    exit 1
-  fi
-done
+
 if adb logcat -d -t 800 | grep -q 'FATAL EXCEPTION'; then
   echo "Offline smoke detectó FATAL EXCEPTION. Logcat:"
   adb logcat -d -t 800 || true

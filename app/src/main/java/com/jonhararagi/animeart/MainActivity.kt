@@ -30,6 +30,7 @@ class MainActivity : ComponentActivity() {
 
     private fun showWebEditor() {
         val offlineValidation = intent.getBooleanExtra("animeart_offline_validation", false)
+        Log.i("AnimeArtOffline", "ANIMEART_OFFLINE_INTENT=" + offlineValidation)
         val loader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
             .build()
