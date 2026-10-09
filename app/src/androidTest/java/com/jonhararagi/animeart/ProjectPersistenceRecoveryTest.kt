@@ -82,6 +82,23 @@ class ProjectPersistenceRecoveryTest {
     }
 
     @Test
+    fun knownLayerContentWithoutValueIsRejectedAndRawRecoveryIsPreserved() {
+        val raw = """{"projectId":"test","timestamp":1,"width":640,"height":480,"layers":[{"id":"layer-1","name":"Label","visible":true,"locked":false,"opacity":1.0,"contentType":"text","transform":{"translationX":0,"translationY":0,"scale":1,"rotation":0},"strokes":[]}]}"""
+        context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
+            .edit().putString("project", raw).commit()
+
+        val result = persistence.loadDocument()
+
+        assertTrue("Known content types missing their payload must fail recovery", result is RecoveryResult.Failed)
+        assertEquals(
+            "The original recovery payload must remain unchanged",
+            raw,
+            context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
+                .getString("project", null)
+        )
+    }
+
+    @Test
     fun incompatibleLayerContentIsReportedAndRawRecoveryIsPreserved() {
         val raw = """{"projectId":"test","timestamp":1,"width":640,"height":480,"layers":[{"id":"layer-1","name":"Sketch","visible":true,"locked":false,"opacity":1.0,"contentType":"future-unknown-type","contentValue":"keep-me","transform":{"translationX":0,"translationY":0,"scale":1,"rotation":0},"strokes":[]}]}"""
         context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
