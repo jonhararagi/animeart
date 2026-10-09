@@ -57,7 +57,12 @@ class ProjectPersistence(private val context: Context) {
     }
 
     fun loadDocument(): RecoveryResult {
-        val raw = prefs.getString("project", null) ?: return RecoveryResult.Missing
+        val raw = try {
+            prefs.getString("project", null)
+        } catch (_: Exception) {
+            // A storage type/read failure is not equivalent to an absent document.
+            return RecoveryResult.Failed
+        } ?: return RecoveryResult.Missing
         return try {
             RecoveryResult.Loaded(loadDocumentUnsafe(raw))
         } catch (_: Exception) {
