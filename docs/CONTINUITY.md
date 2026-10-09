@@ -2795,3 +2795,40 @@ ESTADO DE DOCUMENTACIÓN AL PREFLIGHT T057.1:
 
 PENDIENTE AL REGISTRAR ESTA ENTRADA:
 Completar T057.1 con PR documental, auditoría del diff, checks del HEAD exacto y CI post-merge vinculada al SHA final. Esta entrada no declara T057 GREEN ni autoriza T058.
+
+
+---
+
+## T059.1 — Android Legacy Recovery Safety Gate
+
+FECHA:
+2026-10-09
+
+ESTADO DE IMPLEMENTACIÓN:
+IMPLEMENTADO EN RAMA DE TRABAJO; VALIDACIÓN CI PENDIENTE. Esta entrada registra el estado real previo a los checks y no declara T059.1 GREEN.
+
+BASELINE:
+`4d4b2a03be0fc1bedae59b91d2980984d3cafe81`
+
+DIAGNÓSTICO:
+- Se confirmó en el código que `loadDocument()` convertía excepciones en `null`.
+- `MainActivity.showLegacyEditor()` interpretaba el resultado nulo como un documento nuevo vacío.
+- El decodificador también aceptaba algunos datos incompletos/desconocidos mediante valores predeterminados.
+
+CAMBIOS PROPUESTOS EN LA RAMA:
+- `ProjectPersistence.kt`: resultado explícito `Missing`, `Loaded` o `Failed`; los datos ausentes se distinguen de JSON corrupto o estructuras incompatibles. El cargador rechaza dimensiones/capas ausentes, listas de capas vacías y tipos de contenido desconocidos. No se registra el contenido guardado en logs.
+- `MainActivity.kt`: ante recuperación fallida no abre automáticamente el editor vacío. Muestra un aviso y exige que el usuario elija iniciar un documento nuevo; la recuperación almacenada no se sustituye hasta que se pulse Guardar explícitamente.
+- `ProjectPersistenceRecoveryTest.kt`: pruebas instrumentadas para round-trip válido, documento ausente, JSON corrupto y tipo de capa incompatible; los casos de error comprueban que el contenido bruto permanece intacto.
+
+PRUEBAS:
+- Pruebas nuevas añadidas; aún no ejecutadas en esta entrada.
+- Android build, unit tests, lint e instrumentation: pendientes de CI del PR.
+- Web CI: pendiente de resultado del PR; el cambio no modifica archivos Web, pero el workflow de PR se conserva como evidencia de regresión del repositorio.
+
+LIMITACIONES:
+- No se ha reproducido una pérdida real de datos en una instalación de usuario.
+- Las pruebas cubren JSON corrupto y un tipo de capa desconocido; no prueban todas las corrupciones posibles.
+- El guardado explícito del editor continúa usando la misma entrada SharedPreferences. La protección añadida evita el reemplazo automático por la ruta de recuperación fallida; no implementa un sistema de versionado/backup nuevo.
+
+SIGUIENTE:
+Esperar los checks reales del PR, revisar el diff completo y corregir cualquier fallo atribuible al cambio. No fusionar automáticamente.
