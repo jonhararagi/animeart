@@ -81,11 +81,11 @@ class ProjectPersistence(private val context: Context) {
         val layers = buildList {
             for (i in 0 until layersJson.length()) {
                 val l = layersJson.getJSONObject(i)
-                val strokesJson = l.optJSONArray("strokes") ?: JSONArray()
+                val strokesJson = l.optJSONArray("strokes") ?: throw JSONException("Missing layer strokes")
                 val strokes = buildList {
                     for (j in 0 until strokesJson.length()) {
                         val s = strokesJson.getJSONObject(j)
-                        val pointsJson = s.optJSONArray("points") ?: JSONArray()
+                        val pointsJson = s.optJSONArray("points") ?: throw JSONException("Missing stroke points")
                         val points = buildList {
                             for (k in 0 until pointsJson.length()) {
                                 val p = pointsJson.getJSONObject(k)
@@ -159,7 +159,9 @@ private fun contentValue(content: LayerContent): String = when (content) {
     is LayerContent.Shape -> content.type
 }
 
-private fun JSONObject.readContent(): LayerContent? = when (optString("contentType", "drawing")) {
+private fun JSONObject.readContent(): LayerContent? {
+    if (!has("contentType")) throw JSONException("Missing layer content type")
+    return when (optString("contentType")) {
     "empty" -> LayerContent.Empty
     "image" -> LayerContent.Image(optString("contentValue"))
     "reference" -> LayerContent.Reference(optString("contentValue"))
@@ -167,4 +169,5 @@ private fun JSONObject.readContent(): LayerContent? = when (optString("contentTy
     "shape" -> LayerContent.Shape(optString("contentValue"))
     "drawing" -> null
     else -> throw JSONException("Unknown layer content type")
+    }
 }
