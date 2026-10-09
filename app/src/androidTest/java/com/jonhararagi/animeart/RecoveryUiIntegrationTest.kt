@@ -1,6 +1,7 @@
 package com.jonhararagi.animeart
 
 import android.content.Context
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -40,10 +41,10 @@ class RecoveryUiIntegrationTest {
     }
 
     @Test
-    fun cancelAfterFailedRecoveryFinishesActivityAndPreservesStoredPayload() {
+    fun mainFrameLoadErrorShowsRecoveryDecisionAndCancelPreservesStoredPayload() {
         val raw = "{known-corrupt-recovery-payload"
         seedCorruptRecovery(raw)
-        showRecoveryDecision()
+        simulateMainFrameLoadError()
 
         composeRule.onNodeWithText("No se pudo recuperar el documento").assertIsDisplayed()
         composeRule.onNodeWithText("Cancelar").performClick()
@@ -54,10 +55,10 @@ class RecoveryUiIntegrationTest {
     }
 
     @Test
-    fun choosingNewDocumentDoesNotWriteUntilExplicitSave() {
+    fun choosingNewDocumentDoesNotWriteUntilExplicitSaveAfterMainFrameError() {
         val raw = "{known-corrupt-recovery-payload"
         seedCorruptRecovery(raw)
-        showRecoveryDecision()
+        simulateMainFrameLoadError()
 
         composeRule.onNodeWithText("Iniciar documento nuevo").performClick()
         composeRule.waitForIdle()
@@ -87,13 +88,23 @@ class RecoveryUiIntegrationTest {
         context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
             .getString("project", null)
 
-    private fun showRecoveryDecision() {
+    @Test
+    fun subframeLoadErrorDoesNotEnterRecoveryUi() {
+        seedCorruptRecovery("{known-corrupt-recovery-payload")
+
         composeRule.activity.runOnUiThread {
-            // Exercise the real recovery UI deterministically without relying on a WebView
-            // network failure, which varies across emulator images and network conditions.
-            val method = MainActivity::class.java.getDeclaredMethod("showLegacyEditor")
-            method.isAccessible = true
-            method.invoke(composeRule.activity)
+            composeRule.activity.handleWebViewLoadError(isMainFrame = false)
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("No se pudo recuperar el documento").assertDoesNotExist()
+        assertEquals("{known-corrupt-recovery-payload", storedPayload())
+    }
+
+    private fun simulateMainFrameLoadError() {
+        composeRule.activity.runOnUiThread {
+            // Invoke the same deterministic handler wired directly to WebViewClient.onReceivedError.
+            composeRule.activity.handleWebViewLoadError(isMainFrame = true)
         }
         composeRule.waitForIdle()
     }
