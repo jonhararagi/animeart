@@ -160,14 +160,23 @@ private fun contentValue(content: LayerContent): String = when (content) {
 }
 
 private fun JSONObject.readContent(): LayerContent? {
-    if (!has("contentType")) throw JSONException("Missing layer content type")
-    return when (optString("contentType")) {
-    "empty" -> LayerContent.Empty
-    "image" -> LayerContent.Image(optString("contentValue"))
-    "reference" -> LayerContent.Reference(optString("contentValue"))
-    "text" -> LayerContent.Text(optString("contentValue"))
-    "shape" -> LayerContent.Shape(optString("contentValue"))
-    "drawing" -> null
-    else -> throw JSONException("Unknown layer content type")
+    if (!has("contentType") || isNull("contentType")) {
+        throw JSONException("Missing layer content type")
     }
+    return when (getString("contentType")) {
+        "empty" -> LayerContent.Empty
+        "image" -> LayerContent.Image(requiredContentValue())
+        "reference" -> LayerContent.Reference(requiredContentValue())
+        "text" -> LayerContent.Text(requiredContentValue())
+        "shape" -> LayerContent.Shape(requiredContentValue())
+        "drawing" -> null
+        else -> throw JSONException("Unknown layer content type")
+    }
+}
+
+private fun JSONObject.requiredContentValue(): String {
+    if (!has("contentValue") || isNull("contentValue")) {
+        throw JSONException("Missing layer content value")
+    }
+    return getString("contentValue")
 }
