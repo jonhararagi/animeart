@@ -1,7 +1,8 @@
 package com.jonhararagi.animeart
 
 import android.content.Context
-import androidx.compose.ui.test.assertDoesNotExist
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -97,7 +98,7 @@ class RecoveryUiIntegrationTest {
         }
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("No se pudo recuperar el documento").assertDoesNotExist()
+        composeRule.onAllNodesWithText("No se pudo recuperar el documento").assertCountEquals(0)
         assertEquals("{known-corrupt-recovery-payload", storedPayload())
     }
 
