@@ -26,14 +26,14 @@ class ProjectPersistenceRecoveryTest {
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
-            .edit().clear().commit()
+            .edit().remove("project").commit()
         persistence = ProjectPersistence(context)
     }
 
     @After
     fun tearDown() {
         context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
-            .edit().clear().commit()
+            .edit().remove("project").commit()
     }
 
     @Test
