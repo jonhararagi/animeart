@@ -2854,8 +2854,10 @@ ESTADO HEREDADO VERIFICADO:
 
 HALLAZGO Y CORRECCIÓN:
 - `readContent()` aceptaba `contentType` conocido (`image`, `reference`, `text` o `shape`) con `contentValue` ausente o nulo, y lo convertía silenciosamente en una cadena vacía.
+- `loadDocument()` leía `SharedPreferences.getString()` fuera del bloque de captura; un valor guardado bajo `project` con un tipo inesperado podía lanzar una excepción en vez de devolver un resultado de recuperación explícito.
 - Se endureció el lector para rechazar tipo ausente/nulo y exigir `contentValue` para esos tipos conocidos, manteniendo el rechazo de tipos desconocidos.
-- Se añadió una prueba instrumentada que comprueba que el contenido de recuperación original permanece sin cambios cuando falta `contentValue`.
+- Los errores de lectura/tipo de almacenamiento ahora producen `RecoveryResult.Failed`; no se confunden con un documento ausente.
+- Se añadieron pruebas instrumentadas para payload conocido sin `contentValue` y para valor de almacenamiento con tipo inesperado; ambas verifican que el valor original permanece intacto.
 
 VALIDACIÓN FUNCIONAL INSPECCIONADA:
 - Documento válido: existe test instrumentado de round-trip y comparación del documento.
@@ -2863,6 +2865,7 @@ VALIDACIÓN FUNCIONAL INSPECCIONADA:
 - JSON corrupto: existe test de `RecoveryResult.Failed` y conservación del contenido bruto.
 - Tipo de capa desconocido: existe test de fallo y conservación del contenido bruto.
 - Tipo conocido sin `contentValue`: nueva regresión cubierta por test; resultado de CI pendiente para el HEAD actualizado.
+- Error de lectura por tipo de valor inesperado en SharedPreferences: nueva regresión cubierta por test; resultado de CI pendiente para el HEAD actualizado.
 - Cancelación y ausencia de reemplazo automático: la implementación presenta Cancel como salida (`finish()`) y solo abre un documento nuevo tras elección explícita; el guardado continúa dependiendo del flujo explícito de Guardar del editor. No se ha ejecutado una prueba UI automatizada específica de esa secuencia.
 
 CI DEL HEAD ACTUAL:
