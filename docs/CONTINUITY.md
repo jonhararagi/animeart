@@ -2970,3 +2970,58 @@ GOBERNANZA:
 - No se fusionó ni cerró ningún PR.
 - No se modificó `main` ni el PR #42.
 - Se mantiene el apilamiento #44 → #43 y la base de #43 sin cambios.
+
+
+---
+
+## T060.5.2 — Final Android/Web CI Verification
+
+FECHA:
+2026-10-09
+
+ESTADO:
+YELLOW — la validación técnica del HEAD anterior fue SUCCESS; esta sección registra la evidencia y requiere revalidación de CI en el nuevo HEAD documental.
+
+REPOSITORIO / PR:
+- Repositorio: `jonhararagi/animeart`.
+- PR #44: https://github.com/jonhararagi/animeart/pull/44.
+- Rama: `t060-2-deterministic-webview-recovery-callback`.
+- HEAD con validación completada: `3818d9aa7b72d3b8f0852b0674bd9f9f400a949c`.
+- `main` observado: `4d4b2a03be0fc1bedae59b91d2980984d3cafe81`.
+
+REPARACIÓN Y CAUSA:
+- El fallo previo fue un error de compilación Kotlin: `Unresolved reference 'assertDoesNotExist'` en `RecoveryUiIntegrationTest.kt`.
+- Se sustituyó por `onAllNodesWithText(...).assertCountEquals(0)`, conservando la assertion negativa de ausencia de UI para error de subframe.
+- No se actualizaron dependencias ni se eliminó la comprobación negativa.
+
+EVIDENCIA ANDROID CI:
+- Run 37936690315: https://github.com/jonhararagi/animeart/actions/runs/37936690315 — SUCCESS.
+- Job `build`, ID 113840395366 — SUCCESS.
+- Build `gradle assembleDebug`: SUCCESS.
+- Unit tests `gradle test`: SUCCESS.
+- Lint `gradle lintDebug`: SUCCESS.
+- `gradle connectedDebugAndroidTest`: SUCCESS; log confirma `Starting 10 tests` y `Finished 10 tests` en el emulador `emulator-5554 - 11`.
+- La compilación `:app:compileDebugAndroidTestKotlin` terminó correctamente.
+- Startup smoke: SUCCESS; la Activity y WebView arrancaron, cache Service Worker mostró 13/13 recursos requeridos, y el log terminó con `OFFLINE VALIDATION PASS`.
+- APK debug: subida correctamente como artifact `animeart-debug-apk`, artifact ID 11618866536.
+
+EVIDENCIA WEB CI:
+- Run 37936690321: https://github.com/jonhararagi/animeart/actions/runs/37936690321 — SUCCESS.
+- Job `build`, ID 113840395612 — SUCCESS.
+- Install, Build, Test, Verify build output y Real browser E2E: SUCCESS.
+
+INTEGRIDAD DEL PAYLOAD:
+- La instrumentación incluye pruebas de Cancel que conserva el payload corrupto, abrir documento nuevo sin reemplazo, guardar explícitamente para reemplazar y cargar correctamente el documento guardado.
+- El run Android terminó con éxito y ejecutó 10 pruebas instrumentadas; esto valida el conjunto de pruebas configurado en CI. No se debe inferir cobertura exhaustiva fuera de esas assertions.
+
+LIMITACIÓN DE COBERTURA:
+- La prueba invoca `MainActivity.handleWebViewLoadError(isMainFrame)`, la misma función conectada a `WebViewClient.onReceivedError`.
+- No crea un `WebResourceRequest` de plataforma ni invoca directamente `WebViewClient.onReceivedError`; por tanto, la entrada de plataforma del callback no está probada directamente.
+
+CADENA DE PR / GOBERNANZA:
+- PR #44 continúa apilado sobre PR #43; PR #43 se basa en PR #41.
+- PR #41, #42, #43 y #44 siguen abiertos y sin merge según la inspección realizada.
+- No se modificó PR #42 ni `main`; no se fusionó ni cerró ningún PR.
+
+SIGUIENTE:
+- Este registro documental genera un nuevo HEAD; repetir Android CI y Web CI y confirmar SUCCESS en ese SHA antes de clasificar T060.5 como GREEN.
