@@ -78,3 +78,16 @@ The instrumentation and startup-smoke commands require a booted, reachable emula
 - A green workflow does not imply exhaustive feature coverage, all-device compatibility, performance certification, or absence of all defects.
 
 For a release or task closure, record the exact commit SHA, workflow run URL/ID, terminal conclusion, and relevant job-step results. Do not infer a run's commit from a nearby PR or from the current branch head.
+
+
+## Android recovery UI preservation tests
+
+Instrumentation class: `app/src/androidTest/java/com/jonhararagi/animeart/RecoveryUiIntegrationTest.kt`.
+
+The Compose UI tests use synthetic corrupt recovery data in the Android instrumentation app sandbox and clear that test-owned SharedPreferences entry during setup/teardown. They exercise the actual recovery decision UI and verify the stored raw payload, not only dialog visibility:
+
+- **Cancel:** the Activity finishes and the original corrupt payload remains byte-for-byte unchanged.
+- **Start new document:** the editor opens while the corrupt payload remains unchanged and recovery still reports failure.
+- **Explicit Save:** only after tapping the existing `Guardar` action does the stored payload change; the resulting document must load successfully.
+
+To keep the test deterministic, it invokes the existing legacy-recovery entry point directly instead of relying on a WebView main-frame network failure. Therefore this suite verifies the recovery decision UI and persistence invariant, but does not itself verify that WebView's `onReceivedError` callback routes into that entry point. The configured Android CI instrumentation workflow is the authoritative emulator execution; do not count the test source alone as a passing result.
