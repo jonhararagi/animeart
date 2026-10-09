@@ -3,7 +3,14 @@ package com.jonhararagi.animeart.persistence
 import android.content.Context
 import com.jonhararagi.animeart.document.*
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
+
+sealed interface RecoveryResult {
+    data object Missing : RecoveryResult
+    data class Loaded(val document: CanvasDocument) : RecoveryResult
+    data object Failed : RecoveryResult
+}
 
 class ProjectPersistence(private val context: Context) {
     private val prefs = context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
@@ -49,13 +56,26 @@ class ProjectPersistence(private val context: Context) {
         prefs.edit().putString("project", root.toString()).apply()
     }
 
-    fun loadDocument(): CanvasDocument? = runCatching {
-        loadDocumentUnsafe()
-    }.getOrNull()
+    fun loadDocument(): RecoveryResult {
+        val raw = prefs.getString("project", null) ?: return RecoveryResult.Missing
+        return try {
+            RecoveryResult.Loaded(loadDocumentUnsafe(raw))
+        } catch (_: Exception) {
+            // Do not log the stored document: it may contain user content.
+            RecoveryResult.Failed
+        }
+    }
 
-    private fun loadDocumentUnsafe(): CanvasDocument? {
-        val root = prefs.getString("project", null)?.let(::JSONObject) ?: return null
-        val layersJson = root.optJSONArray("layers") ?: return null
+    private fun loadDocumentUnsafe(raw: String): CanvasDocument {
+        val root = JSONObject(raw)
+        if (!root.has("width") || !root.has("height")) {
+            throw JSONException("Missing document dimensions")
+        }
+        val layersJson = root.optJSONArray("layers")
+            ?: throw JSONException("Missing document layers")
+        if (layersJson.length() == 0) {
+            throw JSONException("Document has no layers")
+        }
         val layers = buildList {
             for (i in 0 until layersJson.length()) {
                 val l = layersJson.getJSONObject(i)
@@ -84,9 +104,7 @@ class ProjectPersistence(private val context: Context) {
                                 colorArgb = s.optLong("color", 0xFF111111),
                                 size = s.optDouble("size", 12.0).toFloat(),
                                 opacity = s.optDouble("opacity", 1.0).toFloat(),
-                                tool = runCatching {
-                                    StrokeTool.valueOf(s.optString("tool", "BRUSH"))
-                                }.getOrDefault(StrokeTool.BRUSH)
+                                tool = StrokeTool.valueOf(s.optString("tool", "BRUSH"))
                             )
                         )
                     }
@@ -116,7 +134,7 @@ class ProjectPersistence(private val context: Context) {
         return CanvasDocument(
             root.optInt("width", 1080),
             root.optInt("height", 1080),
-            layers.ifEmpty { listOf(Layer(name = "Background", content = LayerContent.Drawing())) }
+            layers
         )
     }
 
@@ -150,5 +168,5 @@ private fun JSONObject.readContent(): LayerContent? = when (optString("contentTy
     "text" -> LayerContent.Text(optString("contentValue"))
     "shape" -> LayerContent.Shape(optString("contentValue"))
     "drawing" -> null
-    else -> null
+    else -> throw JSONException("Unknown layer content type")
 }
