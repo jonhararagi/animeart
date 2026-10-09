@@ -2719,3 +2719,79 @@ PR #38 CLOSED / MERGED — merge SHA 43675096a30336b715e548c32155dcc996ba4068.
 
 SIGUIENTE:
 T055 está integrado y la CI Web/Android post-merge está verificada. No iniciar nuevas funcionalidades hasta ejecutar una nueva readiness/roadmap gate.
+
+
+---
+
+## T056.2 — Revalidación del cierre de T055
+
+FECHA DE REVALIDACIÓN:
+2026-10-09
+
+FUENTE:
+GitHub: PR #38, commit de merge y ejecuciones de Actions consultadas directamente.
+
+PR:
+[#38 — T055 Real Browser E2E Coverage Expansion](https://github.com/jonhararagi/animeart/pull/38)
+
+ESTADO:
+CLOSED / MERGED.
+
+BASELINE DEL PR:
+`f1421488324540a3fbd482e147cb81a1966657fc`.
+
+MERGE SHA:
+`43675096a30336b715e548c32155dcc996ba4068`.
+
+CI POST-MERGE:
+- [Web CI run 37857894538](https://github.com/jonhararagi/animeart/actions/runs/37857894538) — SUCCESS. Job completado; Install, Build, Test, Verify build output y Real browser E2E terminaron SUCCESS.
+- [Android CI run 37857894449](https://github.com/jonhararagi/animeart/actions/runs/37857894449) — SUCCESS. Job completado; Build, Unit tests, Lint, Android instrumentation/startup smoke y Upload debug APK terminaron SUCCESS.
+
+ALCANCE TÉCNICO:
+T055 amplió el E2E de navegador real usando el runner Chromium/CDP existente para selección múltiple, operaciones de capa, importación de imagen, exportación PNG y persistencia/recarga. No añadió un segundo editor ni un segundo runner E2E.
+
+LIMITACIONES REGISTRADAS:
+- No se añadió una prueba E2E específica de clipboard.
+- El E2E Web verifica Service Worker/cache readiness; no simula por sí mismo una desconexión completa de red.
+- La ruta de validación offline del emulador Android es una suite separada.
+
+VEREDICTO DE CONTINUIDAD:
+La integración de T055 y los dos runs indicados están revalidados. Esta entrada conserva la evidencia histórica; no sustituye la verificación de CI del HEAD actual.
+
+---
+
+## T056.3 — Corrección de continuidad y estado de main
+
+FECHA DE REVALIDACIÓN:
+2026-10-09
+
+PR:
+[#39 — docs: record T055 merge gate result](https://github.com/jonhararagi/animeart/pull/39).
+
+ESTADO:
+CLOSED / MERGED (revalidado en la metadata de GitHub).
+
+HEAD DEL PR:
+`6223bc4689d44f0c273b00e8fdf05014419576b4`.
+
+MAIN SHA OBSERVADO DURANTE T057.1 PREFLIGHT:
+`ac0b7fe33ac7b4b86f962411854b5da7dc909067`.
+[Commit en GitHub](https://github.com/jonhararagi/animeart/commit/ac0b7fe33ac7b4b86f962411854b5da7dc909067).
+
+PROPÓSITO VERIFICADO:
+La corrección de continuidad elimina la contradicción anterior que describía PR #38 como abierto después de su integración. El historial de T055 queda registrado como CLOSED / MERGED y mantiene separado el CI de PR del CI post-merge.
+
+CI CONSULTADA:
+- [Web CI run 37877012952](https://github.com/jonhararagi/animeart/actions/runs/37877012952) — job y todos los pasos del workflow observados en estado COMPLETED / SUCCESS, incluidos Build, Test, Verify build output y Real browser E2E.
+- [Android CI run 37877012908](https://github.com/jonhararagi/animeart/actions/runs/37877012908) — job y todos los pasos del workflow observados en estado COMPLETED / SUCCESS, incluidos Build, Unit tests, Lint, Android instrumentation/startup smoke y Upload debug APK.
+
+LÍMITE DE TRAZABILIDAD:
+La operación disponible para consultar los jobs confirma sus conclusiones y pasos, pero no expone el campo `head_sha` de esas ejecuciones. Por tanto, esta entrada no atribuye esos dos runs a un SHA específico. La asociación exacta run → commit debe verificarse en la metadata de la ejecución de GitHub Actions antes de usarla como evidencia de post-merge del SHA final.
+
+ESTADO DE DOCUMENTACIÓN AL PREFLIGHT T057.1:
+- `docs/TESTING.md` seguía describiendo únicamente la verificación inicial Android y omitía los gates Web/Android actuales.
+- `docs/ARCHITECTURE.md` conservaba una decisión T046 histórica que debía etiquetarse como tal frente al WebView implementado actualmente.
+- `docs/CONTINUITY.md` no contenía entradas identificables T056.2/T056.3 antes de esta reconciliación.
+
+PENDIENTE AL REGISTRAR ESTA ENTRADA:
+Completar T057.1 con PR documental, auditoría del diff, checks del HEAD exacto y CI post-merge vinculada al SHA final. Esta entrada no declara T057 GREEN ni autoriza T058.
