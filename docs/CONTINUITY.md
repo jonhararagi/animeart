@@ -3025,3 +3025,54 @@ CADENA DE PR / GOBERNANZA:
 
 SIGUIENTE:
 - Este registro documental genera un nuevo HEAD; repetir Android CI y Web CI y confirmar SUCCESS en ese SHA antes de clasificar T060.5 como GREEN.
+
+
+---
+
+## T060.5.3 — Exact-SHA CI Revalidation & Continuity Correction
+
+FECHA:
+2026-10-09
+
+ESTADO:
+EVIDENCIA CI VERIFICADA PARA EL SHA AUDITADO. Esta entrada registra los resultados de las ejecuciones existentes; no implica que un commit posterior esté validado ni autoriza integración.
+
+REPOSITORIO / PR:
+- Repositorio: `jonhararagi/animeart`.
+- PR #44: https://github.com/jonhararagi/animeart/pull/44 — abierto, sin fusionar al preflight.
+- Rama: `t060-2-deterministic-webview-recovery-callback`.
+- HEAD exacto auditado por ambos workflows: `08c4f77447b6c44dd5d660093203c2c1ccfad3fe`.
+- `main` en el preflight: `4d4b2a03be0fc1bedae59b91d2980984d3cafe81`.
+- Archivo inspeccionado en el HEAD anterior a esta adición; blob SHA: `bfc9942763e5302fe23243fded010f79f0bee835`.
+
+EVIDENCIA ANDROID CI:
+- Run 37941032336: https://github.com/jonhararagi/animeart/actions/runs/37941032336 — estado `completed`, conclusión `success`, HEAD SHA `08c4f77447b6c44dd5d660093203c2c1ccfad3fe`.
+- Job `build`, ID 113855146741: https://github.com/jonhararagi/animeart/actions/runs/37941032336/job/113855146741 — estado `completed`, conclusión `success`.
+- Build (`gradle assembleDebug`): SUCCESS; log `BUILD SUCCESSFUL`.
+- Unit tests (`gradle test`): SUCCESS; log `BUILD SUCCESSFUL`.
+- Lint (`gradle lintDebug`): SUCCESS; log `BUILD SUCCESSFUL`.
+- Instrumentación (`gradle connectedDebugAndroidTest`): SUCCESS; el log registra `Starting 10 tests` y `Finished 10 tests` en `emulator-5554 - 11`; la compilación y ejecución instrumentada concluyeron correctamente.
+- Startup smoke: SUCCESS; el log registra `Status: ok` y `OFFLINE VALIDATION PASS`, con WebView `blockNetworkLoads` + `LOAD_CACHE_ONLY`, reload PASS y AnimeArt/JavaScript/Canvas PASS.
+- Artifact de APK debug: subida correcta; artifact ID `11621752769`.
+
+EVIDENCIA WEB CI:
+- Run 37941032391: https://github.com/jonhararagi/animeart/actions/runs/37941032391 — estado `completed`, conclusión `success`, HEAD SHA `08c4f77447b6c44dd5d660093203c2c1ccfad3fe`.
+- Job `build`, ID 113855145728: https://github.com/jonhararagi/animeart/actions/runs/37941032391/job/113855145728 — estado `completed`, conclusión `success`.
+- Install: SUCCESS.
+- Build (`npm run build`): SUCCESS; el log confirma `AnimeArt Web static build complete.`
+- Tests: SUCCESS; resumen TAP del log: `# tests 328`, `# pass 328`, `# fail 0` (328/328).
+- Verify build output: SUCCESS.
+- Real browser E2E: SUCCESS; el log termina con `ANIMEART_REAL_WEB_E2E: PASS` y confirma carga del entrypoint, flujo de documento nuevo, importación de imagen, exportación PNG no vacía y service worker/caché offline activos.
+
+LIMITACIÓN DE COBERTURA:
+- La prueba invoca directamente `MainActivity.handleWebViewLoadError(isMainFrame)`, el handler compartido que está conectado a `WebViewClient.onReceivedError`.
+- No simula una llamada completa a `WebViewClient.onReceivedError` con un `WebResourceRequest` de plataforma. Por tanto, se verifica el comportamiento del handler compartido, pero no se prueba directamente la entrada del callback de plataforma.
+
+ADVERTENCIA DE ALCANCE DE CI:
+- Los runs Android 37941032336 y Web 37941032391 validan únicamente el SHA exacto `08c4f77447b6c44dd5d660093203c2c1ccfad3fe`.
+- No validan automáticamente este commit documental ni ningún otro commit posterior. Tras esta adición, Android CI y Web CI deben terminar en SUCCESS para el nuevo HEAD exacto antes de declarar T060.5.3 GREEN.
+
+GOBERNANZA:
+- En el preflight, `main` permanecía en el baseline declarado; PR #44 estaba abierto y sin fusionar; PR #42 también estaba abierto y sin fusionar.
+- Esta entrada se añade de forma aditiva al final. Las entradas históricas, incluida T060.5.2 y los registros anteriores de T059/T060/T060.5, se conservan sin reescritura.
+- No se autoriza ni ejecuta ninguna integración por esta entrada.
