@@ -2816,7 +2816,7 @@ DIAGNÓSTICO:
 - El decodificador también aceptaba algunos datos incompletos/desconocidos mediante valores predeterminados.
 
 CAMBIOS PROPUESTOS EN LA RAMA:
-- `ProjectPersistence.kt`: resultado explícito `Missing`, `Loaded` o `Failed`; los datos ausentes se distinguen de JSON corrupto o estructuras incompatibles. El cargador rechaza dimensiones/capas ausentes, listas de capas vacías y tipos de contenido desconocidos. No se registra el contenido guardado en logs.
+- `ProjectPersistence.kt`: resultado explícito `Missing`, `Loaded` o `Failed`; los datos ausentes se distinguen de JSON corrupto o estructuras incompatibles. El cargador rechaza dimensiones/capas ausentes, listas de capas vacías, trazos/puntos obligatorios ausentes y tipos de contenido ausentes o desconocidos. No se registra el contenido guardado en logs.
 - `MainActivity.kt`: ante recuperación fallida no abre automáticamente el editor vacío. Muestra un aviso y exige que el usuario elija iniciar un documento nuevo; la recuperación almacenada no se sustituye hasta que se pulse Guardar explícitamente.
 - `ProjectPersistenceRecoveryTest.kt`: pruebas instrumentadas para round-trip válido, documento ausente, JSON corrupto y tipo de capa incompatible; los casos de error comprueban que el contenido bruto permanece intacto.
 
