@@ -2795,3 +2795,111 @@ ESTADO DE DOCUMENTACIÓN AL PREFLIGHT T057.1:
 
 PENDIENTE AL REGISTRAR ESTA ENTRADA:
 Completar T057.1 con PR documental, auditoría del diff, checks del HEAD exacto y CI post-merge vinculada al SHA final. Esta entrada no declara T057 GREEN ni autoriza T058.
+
+
+---
+
+## T059.3 — Historical Traceability & Final Validation Gate
+
+FECHA:
+2026-10-09
+
+FUENTE DE VERDAD:
+GitHub repository, PR metadata, commit search, workflow runs and current documentation.
+
+ESTADO GENERAL:
+YELLOW — T059.1 has passing CI on its current HEAD, but it remains an open PR and historical evidence is incomplete for several task identifiers.
+
+BASELINE MAIN:
+`4d4b2a03be0fc1bedae59b91d2980984d3cafe81`
+
+MAIN:
+Unchanged during this audit. PR #41 base SHA matches this main SHA.
+
+DOCUMENTATION HEAD INSPECTED:
+- `docs/CONTINUITY.md` blob SHA `7b7158b1dc24e87ba5bed8ac61035082603b79c4`.
+- `docs/TESTING.md` blob SHA `18194c0ec3e89c1aabff0327a1c7bb8474e9fd1b`.
+- `docs/ARCHITECTURE.md` blob SHA `5d2f5bdacf2a0bbb01b383e82c0acbc795f2bbb5`.
+- The current Testing and Architecture docs describe the configured Web/Android workflows and current WebView container boundary; the T046 section explicitly labels its earlier no-WebView observation as historical.
+
+### T050–T059 Traceability Matrix
+
+| Task | Current classification | GitHub evidence | Limits / debt |
+|---|---|---|---|
+| T050 | GREEN — VERIFIED for its documented CI-closure scope | Continuity entry and commit `9ae35319046fd6f1fa9bf83c2718d85c9cf34d53`; PR #35 merged at `fc794c68e586e772aab91e7bec1b344cdbeaa1e7); post-merge Android run 37782970227 and Web run 37782969771 are recorded as SUCCESS. | T050 is a verification/closure record for T049, not a separate product feature. |
+| T051 | INSUFFICIENT EVIDENCE | No distinct PR, commit result, or continuity heading for T051 was found in the current GitHub queries. | Original scope and acceptance criteria not recoverable from the inspected evidence. This is not proof that no work ever occurred. |
+| T052 | GREEN — VERIFIED for the recorded E2E gate and launcher repair | PR #36 merged at `95e868695519ca679441099ecbf9aaa40cadab39`; Web run 37837394442 and Android run 37837394238 on PR #36 HEAD succeeded. PR #37 merged at `8ddde0aa179f79952d1992c6b7bfca0269a35706`; Web run 37839605327 and Android run 37839605489 succeeded on PR #37 HEAD. | Browser E2E is the documented flow, not exhaustive coverage of every editor action/device/browser. |
+| T053 | INSUFFICIENT EVIDENCE | No distinct T053 PR, commit result, or continuity heading was found in the current GitHub queries. | Original scope and acceptance criteria not recoverable from the inspected evidence. |
+| T054 | INSUFFICIENT EVIDENCE | No distinct T054 PR, commit result, or continuity heading was found in the current GitHub queries. | Original scope and acceptance criteria not recoverable from the inspected evidence. |
+| T055 | GREEN — VERIFIED for the documented browser-E2E expansion | PR #38 merged at `43675096a30336b715e548c32155dcc996ba4068`; Web run 37853767718 and Android run 37853767669 succeeded on PR #38 HEAD. Continuity records post-merge Web run 37857894538 and Android run 37857894449 as SUCCESS on the merge SHA. | Clipboard-specific E2E and a complete network-disconnect simulation are explicitly outside recorded coverage. |
+| T056 | GREEN — VERIFIED for the continuity correction | PR #39 merged at `ac0b7fe33ac7b4b86f962411854b5da7dc909067`; Web run 37873979858 and Android run 37873979859 succeeded on PR #39 HEAD. | Documentation-only correction; not a separate product feature. |
+| T057 | INSUFFICIENT EVIDENCE as a separate task identifier | The verified artifact is PR #40 titled T057.1; no separate T057 implementation/PR was established in this audit. | Do not infer a standalone T057 scope from the T057.1 suffix. |
+| T057.1 | GREEN — VERIFIED for documentation reconciliation | PR #40 merged at `4d4b2a03be0fc1bedae59b91d2980984d3cafe81`; Android run 37883519176 and Web run 37883519177 succeeded on its HEAD `bdddf0c13256f37cb4ab66d6b70f3a7d3914a8b2`. | Documentation alignment does not independently prove every product behavior. |
+| T058 | INSUFFICIENT EVIDENCE | No distinct T058 PR, commit result, or continuity heading was found in the current GitHub queries. | Original scope and acceptance criteria not recoverable from the inspected evidence. |
+| T059 (umbrella) | DOCUMENTED ONLY / scope not independently defined | The concrete tracked work located is T059.1 PR #41; no independent umbrella PR or acceptance contract was found. | Treat T059 as a grouping label unless a separate scope is recovered. |
+| T059.0 | INSUFFICIENT EVIDENCE | No current repository PR, commit result, or continuity entry explicitly identifying T059.0 was established by the queries. | Earlier conversational descriptions are not repository evidence and are not used to claim completion. |
+| T059.1 | OPEN — NOT MERGED; CI VERIFIED, UI coverage incomplete | PR #41 open at `https://github.com/jonhararagi/animeart/pull/41`; base `main` at `4d4b2a03be0fc1bedae59b91d2980984d3cafe81`; HEAD `9fb6643b5a2711ef66a09d9151ab93a1ca1ef90b`. Web run 37921005755 and Android run 37921005818 both SUCCESS on the queried HEAD. | No dedicated UI instrumentation test exercises the full failure-dialog → Cancel/new-document → explicit Save sequence. |
+
+### PR #41 — Current state and code review
+
+PR:
+[#41 — T059.1 Android legacy recovery safety gate](https://github.com/jonhararagi/animeart/pull/41)
+
+STATE:
+OPEN / NOT MERGED.
+
+BRANCH:
+`t059-1-android-legacy-recovery-safety`.
+
+HEAD:
+`9fb6643b5a2711ef66a09d9151ab93a1ca1ef90b`.
+
+PR METADATA:
+- Base `main`; base SHA `4d4b2a03be0fc1bedae59b91d2980984d3cafe81`.
+- 14 commits, 4 changed files, 316 additions and 28 deletions at audit time.
+- GitHub currently reports `mergeable: true`; the earlier `mergeable: false` observation is stale and no longer applies to this snapshot.
+- Changed files: `ProjectPersistence.kt`, `MainActivity.kt`, `ProjectPersistenceRecoveryTest.kt`, `docs/CONTINUITY.md`.
+
+CI ON THE QUERIED HEAD:
+- [Web CI run 37921005755](https://github.com/jonhararagi/animeart/actions/runs/37921005755) — SUCCESS. Install, Build, Test, Verify build output and Real browser E2E passed.
+- [Android CI run 37921005818](https://github.com/jonhararagi/animeart/actions/runs/37921005818) — SUCCESS. Build, Unit tests, Lint, Android instrumentation/startup smoke tests and debug APK upload passed.
+- These are the runs returned by GitHub for the exact HEAD SHA queried above. Do not reuse earlier runs on previous commits as evidence for this HEAD.
+
+CODE REVIEW FINDINGS:
+- Missing storage entry returns `RecoveryResult.Missing`; a SharedPreferences read/type exception returns `Failed`.
+- Corrupt JSON, invalid/missing dimensions, missing/empty layers, missing strokes/points, unknown stroke tool, missing content type, unknown content type, and missing/null content payload for image/reference/text/shape do not silently become a new empty document.
+- The failure path in `MainActivity` presents an explicit dialog. Cancel exits the activity; the new-document choice opens an empty editor.
+- In the inspected `EditorScreen`, persistence is attached to the explicit “Guardar” button; no automatic save was observed in that file. Thus the inspected path does not replace the stored recovery merely by choosing a new document.
+- Instrumentation tests cover valid round-trip, missing document, wrong SharedPreferences value type, corrupt JSON, missing known content payload, and unknown content type; failure tests assert preservation of the original stored value.
+- The generic recovery failure is shown to the user, but the underlying exception is deliberately not logged. This avoids leaking document data, but also leaves limited diagnostics. The full UI decision/save sequence is not covered by a dedicated UI test.
+- The separate legacy helper `loadRecovery()` still uses a direct `getString(...)`/JSON parse rather than the structured `RecoveryResult` contract. Its call-site reachability was not established in this audit; do not assume it is covered by the `loadDocument()` tests.
+
+T059.1 VERDICT:
+The current HEAD passes both configured workflows and the core persistence regression tests. It is suitable for final human review, but not certified as exhaustive UI recovery validation. Keep PR #41 open until the UI coverage gap and the legacy helper's relevance are consciously accepted or addressed; do not merge automatically.
+
+### Safety and audit boundaries
+
+- No direct changes to `main`.
+- No merge or PR closure performed.
+- No branch deletion.
+- No destructive operation.
+- No existing project data was accessed or altered by this audit; tests assert preservation of their synthetic SharedPreferences payloads.
+- This audit does not establish that every historical task T050–T059 is complete; the matrix distinguishes verifiable GitHub artifacts from insufficient evidence.
+
+### Recommended next task
+
+T059.4 — Targeted Android Recovery UI Validation.
+
+GOAL:
+Add focused Android UI/instrumentation coverage for failed recovery, Cancel, explicit new-document choice, and persistence only after Save; first determine whether the legacy `loadRecovery()` helper is used and whether it should share the structured failure contract.
+
+ACCEPTANCE:
+1. A corrupt/incompatible saved value produces the recovery decision UI.
+2. Cancel exits without changing the stored raw value.
+3. Choosing a new document alone does not change the stored raw value.
+4. Pressing Save is the only tested action that replaces the saved recovery.
+5. Tests run in Android CI on the final tested SHA; Web CI remains green.
+6. Any code correction is isolated to a dedicated branch/PR; no direct main changes or automatic merge.
+
+RISKS TO AVOID:
+Do not overwrite recovery during initialization, do not hide errors by opening an empty document, do not log raw user document contents, and do not expand into unrelated Web or architecture changes.
