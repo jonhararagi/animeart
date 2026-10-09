@@ -32,13 +32,13 @@ class RecoveryUiIntegrationTest {
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
         context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
-            .edit().clear().commit()
+            .edit().remove("project").commit()
     }
 
     @After
     fun tearDown() {
         context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
-            .edit().clear().commit()
+            .edit().remove("project").commit()
     }
 
     @Test
