@@ -138,7 +138,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     dismissButton = {
-                                        TextButton(onClick = {}) {
+                                        TextButton(onClick = { finish() }) {
                                             Text("Cancelar")
                                         }
                                     }
