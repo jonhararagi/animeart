@@ -3076,3 +3076,38 @@ GOBERNANZA:
 - En el preflight, `main` permanecía en el baseline declarado; PR #44 estaba abierto y sin fusionar; PR #42 también estaba abierto y sin fusionar.
 - Esta entrada se añade de forma aditiva al final. Las entradas históricas, incluida T060.5.2 y los registros anteriores de T059/T060/T060.5, se conservan sin reescritura.
 - No se autoriza ni ejecuta ninguna integración por esta entrada.
+
+
+---
+
+## T060.5.9 — Instrumentation Recovery Preference Isolation
+
+FECHA:
+2026-10-09
+
+ESTADO:
+CORRECCIÓN DE PRUEBAS ENVIADA; CI DEL HEAD RESULTANTE PENDIENTE.
+
+PR:
+[#44 — T060.2 Deterministic WebView recovery callback routing test](https://github.com/jonhararagi/animeart/pull/44).
+
+HALLAZGO:
+- Las pruebas de `ProjectPersistenceRecoveryTest` y `RecoveryUiIntegrationTest` usaban `SharedPreferences.edit().clear()` en setup/teardown.
+- `clear()` elimina todas las claves de `animeart_recovery`, no solo el payload de recuperación controlado por la prueba.
+- Limitarse a `remove("project")` también podía descartar un payload preexistente en un dispositivo donde alguien ejecutara las pruebas manualmente.
+
+CORRECCIÓN:
+- Las pruebas guardan el valor y el tipo originales de la clave `project`.
+- Antes de cada prueba eliminan únicamente esa clave para aislar el escenario.
+- En teardown restauran el valor original, incluyendo los tipos estándar admitidos por SharedPreferences.
+- Se elimina el uso de `clear()` en ambas clases de prueba.
+- No cambia la lógica de producción, el formato de persistencia, la dependencia Compose ni la rama `main`.
+
+VALIDACIÓN:
+- Código actualizado en la rama `t060-2-deterministic-webview-recovery-callback`.
+- Android CI y Web CI deben terminar SUCCESS sobre el HEAD final exacto antes de considerar esta corrección GREEN.
+- Los resultados de commits anteriores no validan automáticamente este cambio.
+
+GOBERNANZA:
+- PR #44 permanece abierto y apilado sobre PR #43.
+- Sin merge, cierre de PR, eliminación de ramas ni cambios directos en `main`.
