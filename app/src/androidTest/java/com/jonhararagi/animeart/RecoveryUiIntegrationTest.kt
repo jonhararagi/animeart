@@ -48,10 +48,12 @@ class RecoveryUiIntegrationTest {
         simulateMainFrameLoadError()
 
         composeRule.onNodeWithText("No se pudo recuperar el documento").assertIsDisplayed()
+        // Capture the Activity while the Compose rule still owns a live Activity instance.
+        val activity = composeRule.activity
         composeRule.onNodeWithText("Cancelar").performClick()
         composeRule.waitForIdle()
 
-        assertTrue("Cancel must finish the Activity", composeRule.activity.isFinishing)
+        assertTrue("Cancel must finish the Activity", activity.isFinishing)
         assertEquals(raw, storedPayload())
     }
 
