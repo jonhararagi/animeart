@@ -2879,3 +2879,49 @@ GOBERNANZA:
 
 SIGUIENTE:
 Verificar el HEAD definitivo de la rama, esperar Android CI y Web CI de ese SHA, revisar sus jobs y resultados. Mantener YELLOW hasta que los checks del HEAD final sean SUCCESS. No fusionar automáticamente.
+
+
+---
+
+## T060.2 — Deterministic WebView Recovery Callback Routing
+
+FECHA:
+2026-10-09
+
+ESTADO:
+YELLOW — implementación propuesta en PR apilado; Android/Web CI del HEAD de esta tarea todavía pendientes.
+
+BASELINE:
+- PR #43 HEAD (T060): `e6dfe2c010808bd5f5259bf86969ebdae78e076e`.
+- Rama de trabajo: `t060-2-deterministic-webview-recovery-callback`.
+- PR #43 sigue siendo la base apilada; no se modifica `main` ni se fusiona ningún PR.
+
+HALLAZGO:
+- T060 verifica la UI real de recuperación y la preservación del payload, pero invoca `showLegacyEditor()` por reflexión. No comprueba la ruta de filtrado del callback WebView para errores de main frame frente a subframe.
+- La limitación estaba declarada explícitamente en PR #43 y `docs/TESTING.md`.
+
+CAMBIO MÍNIMO:
+- `WebViewClient.onReceivedError` delega el filtro `request.isForMainFrame` a `handleWebViewLoadError(isMainFrame)`.
+- La función interna compartida invoca la ruta de recuperación únicamente para errores de main frame.
+- `RecoveryUiIntegrationTest` ejercita esa misma función determinísticamente, sin depender de fallos de red del emulador ni de reflexión sobre `showLegacyEditor()`.
+- Se agrega regresión para confirmar que un error de subframe no abre la UI de recuperación y no altera el payload corrupto.
+- Se reutilizan `MainActivity`, la ruta existente de recuperación y la dependencia Compose UI test ya añadida por T060. No se introduce otro sistema de recuperación ni nuevas dependencias.
+
+EVIDENCIA HEREDADA (NO EQUIVALE A VALIDAR T060.2):
+- PR #43 HEAD `e6dfe2c010808bd5f5259bf86969ebdae78e076e`: Web CI run 37924634697 SUCCESS, con Build, Test, Verify build output y Real browser E2E SUCCESS.
+- El mismo HEAD: Android CI run 37924634752 SUCCESS, con Build, Unit tests, Lint, Android instrumentation/startup smoke y debug APK upload SUCCESS.
+- Esos runs corresponden al HEAD anterior de PR #43, no a los cambios de T060.2.
+
+PRUEBAS PENDIENTES:
+- Android CI del HEAD final: build, unit tests, lint, instrumentación y startup smoke.
+- Web CI del HEAD final: build, tests, verificación de artefactos y real-browser E2E.
+- Revisar los jobs de ambos workflows y confirmar que corresponden al SHA final del PR de T060.2.
+
+GOBERNANZA:
+- Sin cambios directos en `main`.
+- Sin merge ni cierre de PRs.
+- No declarar GREEN hasta que ambos workflows del HEAD exacto terminen SUCCESS.
+- La prueba invoca el mismo handler conectado al callback real, pero no fabrica un objeto de plataforma `WebResourceRequest` ni llama directamente a `WebViewClient.onReceivedError`; esa limitación debe mantenerse explícita.
+
+SIGUIENTE:
+Verificar diff y CI del PR T060.2. Si Android instrumentación falla, leer los logs, aplicar reparación mínima y volver a ejecutar ambos workflows.
