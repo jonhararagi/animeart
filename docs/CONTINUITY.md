@@ -2925,3 +2925,48 @@ GOBERNANZA:
 
 SIGUIENTE:
 Verificar diff y CI del PR T060.2. Si Android instrumentación falla, leer los logs, aplicar reparación mínima y volver a ejecutar ambos workflows.
+
+---
+
+## T060.5.1 — Android CI Compile Fix and Recovery Verification Gate
+
+FECHA:
+2026-10-09
+
+ESTADO:
+YELLOW — reparación mínima enviada a la rama; los workflows del nuevo HEAD deben terminar antes de declarar GREEN.
+
+REPOSITORIO / PR:
+- Repositorio: `jonhararagi/animeart`.
+- PR #44: `https://github.com/jonhararagi/animeart/pull/44`.
+- Rama: `t060-2-deterministic-webview-recovery-callback`.
+- Baseline revisado antes de la reparación: `8778cb3103b61877836815c8c38eacabc1d3fbfe`.
+- main observado en la auditoría: `4d4b2a03be0fc1bedae59b91d2980984d3cafe81`.
+
+EVIDENCIA DEL FALLO:
+- Android CI run 37929438822: `https://github.com/jonhararagi/animeart/actions/runs/37929438822`.
+- Job 113816254177 (`build`) completó Build, Unit tests y Lint con SUCCESS, pero falló durante `Android instrumentation and startup smoke tests`.
+- Error exacto de compilación: `RecoveryUiIntegrationTest.kt:4:33 Unresolved reference 'assertDoesNotExist'.`
+- Falló `:app:compileDebugAndroidTestKotlin`; por tanto, los tests instrumentados y startup smoke no llegaron a ejecutarse en ese run. El APK no se publicó.
+- Web CI run 37929438788: `https://github.com/jonhararagi/animeart/actions/runs/37929438788`, SUCCESS en el SHA previo; no valida el nuevo HEAD.
+
+REPARACIÓN MÍNIMA:
+- Sustituir la importación y uso no resoluble de `assertDoesNotExist()` por `onAllNodesWithText(...).assertCountEquals(0)` con las APIs Compose UI Test disponibles en el proyecto.
+- Se conserva la aserción negativa: el mensaje de recuperación debe tener cero nodos cuando se simula un error de subframe.
+- Sin actualización de dependencias, sin cambios de lógica de producción y sin cambios al contenido persistido.
+
+VALIDACIÓN PENDIENTE SOBRE EL HEAD RESULTANTE:
+- Android build, unit tests y lint.
+- Compilación de instrumentación, ejecución real de `RecoveryUiIntegrationTest` y startup smoke.
+- Web CI y Web E2E.
+- Revisar jobs/logs y confirmar que todos los resultados corresponden al mismo SHA final.
+- Verificar los tres invariantes de recuperación: Cancel conserva el payload corrupto; abrir documento nuevo no lo reemplaza; solo Guardar explícito lo reemplaza y el documento guardado vuelve a cargar.
+
+LÍMITES DE COBERTURA:
+- El test llama al mismo handler compartido por el callback WebView y la prueba; no invoca directamente `WebViewClient.onReceivedError` con un `WebResourceRequest` de plataforma.
+- No declarar GREEN hasta tener CI verde del HEAD final y evidencia de que la instrumentación realmente se ejecutó.
+
+GOBERNANZA:
+- No se fusionó ni cerró ningún PR.
+- No se modificó `main` ni el PR #42.
+- Se mantiene el apilamiento #44 → #43 y la base de #43 sin cambios.
