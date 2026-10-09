@@ -65,6 +65,22 @@ class ProjectPersistenceRecoveryTest {
     }
 
     @Test
+    fun storageValueWithUnexpectedTypeIsReportedAsFailedRecovery() {
+        context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
+            .edit().putInt("project", 123).commit()
+
+        val result = persistence.loadDocument()
+
+        assertTrue("Storage read/type errors must not be mistaken for missing data", result is RecoveryResult.Failed)
+        assertEquals(
+            "The original typed storage value must remain unchanged",
+            123,
+            context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
+                .getInt("project", -1)
+        )
+    }
+
+    @Test
     fun corruptDocumentIsReportedAndRawRecoveryIsPreserved() {
         val raw = "{not valid json"
         context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
