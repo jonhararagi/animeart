@@ -68,8 +68,10 @@ class ProjectPersistence(private val context: Context) {
 
     private fun loadDocumentUnsafe(raw: String): CanvasDocument {
         val root = JSONObject(raw)
-        if (!root.has("width") || !root.has("height")) {
-            throw JSONException("Missing document dimensions")
+        val width = root.getInt("width")
+        val height = root.getInt("height")
+        if (width <= 0 || height <= 0) {
+            throw JSONException("Invalid document dimensions")
         }
         val layersJson = root.optJSONArray("layers")
             ?: throw JSONException("Missing document layers")
@@ -131,11 +133,7 @@ class ProjectPersistence(private val context: Context) {
                 )
             }
         }
-        return CanvasDocument(
-            root.optInt("width", 1080),
-            root.optInt("height", 1080),
-            layers
-        )
+        return CanvasDocument(width, height, layers)
     }
 
     fun loadRecovery(): JSONObject? = prefs.getString("project", null)?.let(::JSONObject)
