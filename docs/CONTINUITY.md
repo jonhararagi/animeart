@@ -2795,3 +2795,87 @@ ESTADO DE DOCUMENTACIÓN AL PREFLIGHT T057.1:
 
 PENDIENTE AL REGISTRAR ESTA ENTRADA:
 Completar T057.1 con PR documental, auditoría del diff, checks del HEAD exacto y CI post-merge vinculada al SHA final. Esta entrada no declara T057 GREEN ni autoriza T058.
+
+
+---
+
+## T059.1 — Android Legacy Recovery Safety Gate
+
+FECHA:
+2026-10-09
+
+ESTADO DE IMPLEMENTACIÓN:
+IMPLEMENTADO EN RAMA DE TRABAJO; VALIDACIÓN CI PENDIENTE. Esta entrada registra el estado real previo a los checks y no declara T059.1 GREEN.
+
+BASELINE:
+`4d4b2a03be0fc1bedae59b91d2980984d3cafe81`
+
+DIAGNÓSTICO:
+- Se confirmó en el código que `loadDocument()` convertía excepciones en `null`.
+- `MainActivity.showLegacyEditor()` interpretaba el resultado nulo como un documento nuevo vacío.
+- El decodificador también aceptaba algunos datos incompletos/desconocidos mediante valores predeterminados.
+
+CAMBIOS PROPUESTOS EN LA RAMA:
+- `ProjectPersistence.kt`: resultado explícito `Missing`, `Loaded` o `Failed`; los datos ausentes se distinguen de JSON corrupto o estructuras incompatibles. El cargador rechaza dimensiones/capas ausentes, listas de capas vacías, trazos/puntos obligatorios ausentes y tipos de contenido ausentes o desconocidos. No se registra el contenido guardado en logs.
+- `MainActivity.kt`: ante recuperación fallida no abre automáticamente el editor vacío. Muestra un aviso y exige que el usuario elija iniciar un documento nuevo; la recuperación almacenada no se sustituye hasta que se pulse Guardar explícitamente.
+- `ProjectPersistenceRecoveryTest.kt`: pruebas instrumentadas para round-trip válido, documento ausente, JSON corrupto, tipo de capa incompatible y tipo de contenido conocido sin `contentValue`; los casos de error comprueban que el contenido bruto permanece intacto.
+
+PRUEBAS:
+- Pruebas nuevas añadidas; aún no ejecutadas en esta entrada.
+- Android build, unit tests, lint e instrumentation: pendientes de CI del PR.
+- Web CI: pendiente de resultado del PR; el cambio no modifica archivos Web, pero el workflow de PR se conserva como evidencia de regresión del repositorio.
+
+LIMITACIONES:
+- No se ha reproducido una pérdida real de datos en una instalación de usuario.
+- Las pruebas cubren JSON corrupto y un tipo de capa desconocido; no prueban todas las corrupciones posibles.
+- El guardado explícito del editor continúa usando la misma entrada SharedPreferences. La protección añadida evita el reemplazo automático por la ruta de recuperación fallida; no implementa un sistema de versionado/backup nuevo.
+
+SIGUIENTE:
+Esperar los checks reales del PR, revisar el diff completo y corregir cualquier fallo atribuible al cambio. No fusionar automáticamente.
+
+
+---
+
+## T059.2 — Recovery PR Validation & Merge Readiness Gate
+
+FECHA:
+2026-10-09
+
+PR:
+[#41 — T059.1 Android legacy recovery safety gate](https://github.com/jonhararagi/animeart/pull/41)
+
+ESTADO DE AUDITORÍA:
+YELLOW — se encontró y corrigió una ruta adicional de recuperación permisiva; las CI del HEAD actualizado deben terminar antes de una decisión de readiness.
+
+ESTADO HEREDADO VERIFICADO:
+- PR #41 abierto, no fusionado; base `main`.
+- `main` sigue en `4d4b2a03be0fc1bedae59b91d2980984d3cafe81`, idéntico al baseline del PR en la consulta.
+- El HEAD anterior `c3aa58813cded8fb0a7e898dd15dbb6442f44903` tenía Android CI run 37920131498 SUCCESS y Web CI run 37920131509 SUCCESS. Esos resultados no certifican los commits posteriores de esta auditoría.
+
+HALLAZGO Y CORRECCIÓN:
+- `readContent()` aceptaba `contentType` conocido (`image`, `reference`, `text` o `shape`) con `contentValue` ausente o nulo, y lo convertía silenciosamente en una cadena vacía.
+- `loadDocument()` leía `SharedPreferences.getString()` fuera del bloque de captura; un valor guardado bajo `project` con un tipo inesperado podía lanzar una excepción en vez de devolver un resultado de recuperación explícito.
+- Se endureció el lector para rechazar tipo ausente/nulo y exigir `contentValue` para esos tipos conocidos, manteniendo el rechazo de tipos desconocidos.
+- Los errores de lectura/tipo de almacenamiento ahora producen `RecoveryResult.Failed`; no se confunden con un documento ausente.
+- Se añadieron pruebas instrumentadas para payload conocido sin `contentValue` y para valor de almacenamiento con tipo inesperado; ambas verifican que el valor original permanece intacto.
+
+VALIDACIÓN FUNCIONAL INSPECCIONADA:
+- Documento válido: existe test instrumentado de round-trip y comparación del documento.
+- Documento ausente: existe test que espera `RecoveryResult.Missing`.
+- JSON corrupto: existe test de `RecoveryResult.Failed` y conservación del contenido bruto.
+- Tipo de capa desconocido: existe test de fallo y conservación del contenido bruto.
+- Tipo conocido sin `contentValue`: nueva regresión cubierta por test; resultado de CI pendiente para el HEAD actualizado.
+- Error de lectura por tipo de valor inesperado en SharedPreferences: nueva regresión cubierta por test; resultado de CI pendiente para el HEAD actualizado.
+- Cancelación y ausencia de reemplazo automático: la implementación presenta Cancel como salida (`finish()`) y solo abre un documento nuevo tras elección explícita; el guardado continúa dependiendo del flujo explícito de Guardar del editor. No se ha ejecutado una prueba UI automatizada específica de esa secuencia.
+
+CI DEL HEAD ACTUAL:
+- Pendiente de nueva ejecución para el commit que incluye la corrección y la prueba. No reutilizar los runs 37920131498/37920131509 como evidencia del nuevo HEAD.
+
+GOBERNANZA:
+- No se fusionó el PR ni se modificó `main`.
+- Alcance limitado a persistencia de recuperación, prueba instrumentada y continuidad.
+- Sin nuevas dependencias.
+- La recuperación fallida no registra el contenido guardado en logs.
+
+SIGUIENTE:
+Verificar el HEAD definitivo de la rama, esperar Android CI y Web CI de ese SHA, revisar sus jobs y resultados. Mantener YELLOW hasta que los checks del HEAD final sean SUCCESS. No fusionar automáticamente.

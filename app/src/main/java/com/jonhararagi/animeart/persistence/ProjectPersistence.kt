@@ -3,7 +3,14 @@ package com.jonhararagi.animeart.persistence
 import android.content.Context
 import com.jonhararagi.animeart.document.*
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
+
+sealed interface RecoveryResult {
+    data object Missing : RecoveryResult
+    data class Loaded(val document: CanvasDocument) : RecoveryResult
+    data object Failed : RecoveryResult
+}
 
 class ProjectPersistence(private val context: Context) {
     private val prefs = context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
@@ -49,21 +56,41 @@ class ProjectPersistence(private val context: Context) {
         prefs.edit().putString("project", root.toString()).apply()
     }
 
-    fun loadDocument(): CanvasDocument? = runCatching {
-        loadDocumentUnsafe()
-    }.getOrNull()
+    fun loadDocument(): RecoveryResult {
+        val raw = try {
+            prefs.getString("project", null)
+        } catch (_: Exception) {
+            // A storage type/read failure is not equivalent to an absent document.
+            return RecoveryResult.Failed
+        } ?: return RecoveryResult.Missing
+        return try {
+            RecoveryResult.Loaded(loadDocumentUnsafe(raw))
+        } catch (_: Exception) {
+            // Do not log the stored document: it may contain user content.
+            RecoveryResult.Failed
+        }
+    }
 
-    private fun loadDocumentUnsafe(): CanvasDocument? {
-        val root = prefs.getString("project", null)?.let(::JSONObject) ?: return null
-        val layersJson = root.optJSONArray("layers") ?: return null
+    private fun loadDocumentUnsafe(raw: String): CanvasDocument {
+        val root = JSONObject(raw)
+        val width = root.getInt("width")
+        val height = root.getInt("height")
+        if (width <= 0 || height <= 0) {
+            throw JSONException("Invalid document dimensions")
+        }
+        val layersJson = root.optJSONArray("layers")
+            ?: throw JSONException("Missing document layers")
+        if (layersJson.length() == 0) {
+            throw JSONException("Document has no layers")
+        }
         val layers = buildList {
             for (i in 0 until layersJson.length()) {
                 val l = layersJson.getJSONObject(i)
-                val strokesJson = l.optJSONArray("strokes") ?: JSONArray()
+                val strokesJson = l.optJSONArray("strokes") ?: throw JSONException("Missing layer strokes")
                 val strokes = buildList {
                     for (j in 0 until strokesJson.length()) {
                         val s = strokesJson.getJSONObject(j)
-                        val pointsJson = s.optJSONArray("points") ?: JSONArray()
+                        val pointsJson = s.optJSONArray("points") ?: throw JSONException("Missing stroke points")
                         val points = buildList {
                             for (k in 0 until pointsJson.length()) {
                                 val p = pointsJson.getJSONObject(k)
@@ -84,9 +111,7 @@ class ProjectPersistence(private val context: Context) {
                                 colorArgb = s.optLong("color", 0xFF111111),
                                 size = s.optDouble("size", 12.0).toFloat(),
                                 opacity = s.optDouble("opacity", 1.0).toFloat(),
-                                tool = runCatching {
-                                    StrokeTool.valueOf(s.optString("tool", "BRUSH"))
-                                }.getOrDefault(StrokeTool.BRUSH)
+                                tool = StrokeTool.valueOf(s.optString("tool", "BRUSH"))
                             )
                         )
                     }
@@ -113,11 +138,7 @@ class ProjectPersistence(private val context: Context) {
                 )
             }
         }
-        return CanvasDocument(
-            root.optInt("width", 1080),
-            root.optInt("height", 1080),
-            layers.ifEmpty { listOf(Layer(name = "Background", content = LayerContent.Drawing())) }
-        )
+        return CanvasDocument(width, height, layers)
     }
 
     fun loadRecovery(): JSONObject? = prefs.getString("project", null)?.let(::JSONObject)
@@ -143,12 +164,24 @@ private fun contentValue(content: LayerContent): String = when (content) {
     is LayerContent.Shape -> content.type
 }
 
-private fun JSONObject.readContent(): LayerContent? = when (optString("contentType", "drawing")) {
-    "empty" -> LayerContent.Empty
-    "image" -> LayerContent.Image(optString("contentValue"))
-    "reference" -> LayerContent.Reference(optString("contentValue"))
-    "text" -> LayerContent.Text(optString("contentValue"))
-    "shape" -> LayerContent.Shape(optString("contentValue"))
-    "drawing" -> null
-    else -> null
+private fun JSONObject.readContent(): LayerContent? {
+    if (!has("contentType") || isNull("contentType")) {
+        throw JSONException("Missing layer content type")
+    }
+    return when (getString("contentType")) {
+        "empty" -> LayerContent.Empty
+        "image" -> LayerContent.Image(requiredContentValue())
+        "reference" -> LayerContent.Reference(requiredContentValue())
+        "text" -> LayerContent.Text(requiredContentValue())
+        "shape" -> LayerContent.Shape(requiredContentValue())
+        "drawing" -> null
+        else -> throw JSONException("Unknown layer content type")
+    }
+}
+
+private fun JSONObject.requiredContentValue(): String {
+    if (!has("contentValue") || isNull("contentValue")) {
+        throw JSONException("Missing layer content value")
+    }
+    return getString("contentValue")
 }
