@@ -474,8 +474,10 @@ try {
   // T064: inject a deterministic getItem failure before load(), then prove edits cannot auto-save.
   const readFailurePayload = '{"version":999,"sentinel":"read-failure-protected"}';
   await evaluate("localStorage.setItem(\"animeart-web-document\", " + JSON.stringify(readFailurePayload) + ")");
+  await cdp("Page.enable");
+  await cdp("Runtime.enable");
   const preload = await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "(() => { window.__t064ReadFaultInstalled = true; const originalGetItem = Storage.prototype.getItem; let armed = true; Storage.prototype.getItem = function(key) { if (armed && key === 'animeart-web-document') { armed = false; throw new DOMException('T064 injected read failure', 'SecurityError'); } return originalGetItem.call(this, key); }; })();" });
-  await cdp("Page.navigate", { url: `http://${HOST}:${PORT}/index.html` });
+  await cdp("Page.reload", { ignoreCache: true });
   await waitFor('document.readyState === "complete"');
   await waitFor('window.__t064ReadFaultInstalled === true');
   await waitFor('document.querySelector("#storage-recovery-notice").hidden === false');
