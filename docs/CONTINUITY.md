@@ -2906,7 +2906,7 @@ Cierre acotado de la brecha de error genérico de escritura en la prueba Chromiu
 
 AISLAMIENTO:
 - PR: #46, rama `t064-web-storage-integrity-tests`, apilada sobre `t062-web-recovery-safety` / PR #45.
-- HEAD final de implementación/prueba de esta regresión: `75f2480c80d9fd838e52a155f93acd05322f3218`.
+- HEAD final de implementación/prueba de esta regresión: `2adab389ae876fd08d50155ff8df6ded83ea3fc8`.
 - Commit previo documentado de T064-R1: `a1e38a51a25321e94e5bfdd3d238a79e4fd742e2`.
 - T064-R2 añade un escenario y no modifica `web/app.js` ni el contrato de producción.
 
@@ -2915,7 +2915,7 @@ REGRESIÓN DINÁMICA:
 - Aserciones añadidas: payload protegido idéntico; aviso de recuperación visible; mensaje visible `Project could not be saved in localStorage; the current document was not changed`; ausencia de falso mensaje `Saved locally`; restauración de la referencia original `Storage.prototype.setItem`.
 - El escenario de cuota `QuotaExceededError` permanece independiente y no se debilita.
 - `persistDocumentSnapshot()` convierte la excepción de escritura vacía en el mensaje visible `Project could not be saved in localStorage; the current document was not changed`. Ese es el contrato real que valida el E2E; el fallback `Could not save project locally` de `app.js` no se alcanza porque la capa de dominio normaliza antes el error.
-- SHA de implementación/prueba específica: `75f2480c80d9fd838e52a155f93acd05322f3218`. El resultado dinámico sólo puede declararse PASS después de inspeccionar el job Real browser E2E de Web CI asociado a este SHA.
+- SHA de implementación/prueba específica: `2adab389ae876fd08d50155ff8df6ded83ea3fc8`. El resultado dinámico sólo puede declararse PASS después de inspeccionar el job Real browser E2E de Web CI asociado a este SHA.
 
 ARCHIVOS:
 - `web/scripts/browser-e2e.mjs`: prueba Chromium de excepción genérica, preservación de payload, feedback y restauración del método nativo.
@@ -2930,7 +2930,7 @@ COBERTURA:
 CI Y SHA:
 - Web CI histórico de T064-R1 en `cee55409b1b1828064fe3e0df71a011470ade30e`: [run 38036321253](https://github.com/jonhararagi/animeart/actions/runs/38036321253), SUCCESS. No valida el nuevo escenario T064-R2.
 - Android CI histórico de T064-R1 en `a1e38a51a25321e94e5bfdd3d238a79e4fd742e2`: [run 38036503329](https://github.com/jonhararagi/animeart/actions/runs/38036503329), SUCCESS. No se reutiliza como evidencia del SHA posterior.
-- La nueva regresión y los workflows disparados por `75f2480c80d9fd838e52a155f93acd05322f3218` deben consultarse en GitHub antes de cerrar T064.
+- La nueva regresión y los workflows disparados por `2adab389ae876fd08d50155ff8df6ded83ea3fc8` deben consultarse en GitHub antes de cerrar T064.
 - El SHA de implementación de la prueba y el SHA final de documentación se registrarán por separado en el informe de cierre. Los resultados CI del HEAD documental final se verificarán independientemente.
 
 RIESGOS Y PENDIENTES:
