@@ -3111,3 +3111,40 @@ VALIDACIÓN:
 GOBERNANZA:
 - PR #44 permanece abierto y apilado sobre PR #43.
 - Sin merge, cierre de PR, eliminación de ramas ni cambios directos en `main`.
+
+
+---
+
+## T060.5.10 — Exact-HEAD CI Verification
+
+FECHA:
+2026-10-10
+
+ESTADO:
+IMPLEMENTACIÓN Y CI VERIFICADOS PARA EL HEAD INSPECCIONADO. La adición de esta entrada documental crea un nuevo HEAD que requiere su propia revalidación.
+
+PR:
+[#44 — T060.2 Deterministic WebView recovery callback routing test](https://github.com/jonhararagi/animeart/pull/44).
+
+HEAD VALIDADO ANTES DE ESTA ENTRADA:
+- SHA: `e1722688febbfba854e781cbd39446c5d401f2be`.
+- PR #44 permanece abierto y apilado sobre PR #43; no se fusionó ni se cerró ningún PR.
+
+ANDROID CI:
+- Run [38003702787](https://github.com/jonhararagi/animeart/actions/runs/38003702787): COMPLETED / SUCCESS.
+- Job `build` (ID `114067622788`): SUCCESS.
+- Build, unit tests, lint, Android instrumentation/startup smoke y upload de APK debug: todos SUCCESS.
+
+WEB CI:
+- Run [38003702753](https://github.com/jonhararagi/animeart/actions/runs/38003702753): COMPLETED / SUCCESS.
+- Job `build` (ID `114067522238`): SUCCESS.
+- Install, build, tests, verificación del artefacto y real-browser E2E: todos SUCCESS.
+
+ALCANCE:
+- Los dos runs corresponden al SHA exacto `e1722688febbfba854e781cbd39446c5d401f2be`.
+- Esto verifica ese HEAD, no este nuevo commit documental ni futuros HEADs.
+- Se conserva la limitación declarada: la prueba llama al handler compartido `handleWebViewLoadError(isMainFrame)), pero no invoca directamente el callback de plataforma `WebViewClient.onReceivedError` con un `WebResourceRequest` real.
+
+SIGUIENTE:
+- Esperar y revisar Web CI y Android CI del nuevo HEAD generado por esta entrada.
+- Mantener el PR apilado, sin merge automático.
