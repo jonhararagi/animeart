@@ -441,11 +441,13 @@ try {
   assert(JSON.stringify(await readDocument()) === JSON.stringify(quotaRecoverySaved), "document saved after successful retry survives reload");
 
   // T064: supported current documents and the explicitly supported legacy format use the real loader.
-  const validFixture = JSON.stringify(await readDocument());
+  const validFixtureDocument = await readDocument();
+  validFixtureDocument.layers[0].name = "T064 Valid Restore";
+  const validFixture = JSON.stringify(validFixtureDocument);
   await evaluate("localStorage.setItem(\"animeart-web-document\", " + JSON.stringify(validFixture) + ")");
   await cdp("Page.reload", { ignoreCache: true });
   await waitFor('document.readyState === "complete"');
-  await waitFor('document.querySelector("#status").textContent === "Recovered local project"');
+  await waitFor('document.querySelector("#layers .layer-select").textContent.includes("T064 Valid Restore")');
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "valid current-version project restores without entering recovery mode");
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(validFixture)), "valid current-version payload remains byte-for-byte stable during restoration");
 
