@@ -377,3 +377,12 @@ test("T062 image import cannot bypass the pending-recovery persistence guard", a
   const js = await readFile("app.js", "utf8");
   assert.match(js, /persist: next => \{[\s\S]{0,180}state\.storageRecoveryPending[\s\S]{0,180}persistDocumentSnapshot/);
 });
+
+
+test("T062 rejects unsupported document versions while retaining the supported legacy migration path", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /saved\?\.version !== DOCUMENT_VERSION/);
+  assert.match(js, /saved\?\.version === 1[\s\S]{0,100}Array\.isArray\(saved\.strokes\)/);
+  assert.match(js, /return restoreDocument\(saved\)/);
+  assert.match(js, /const restored = restoreStoredDocument\(saved\)/);
+});

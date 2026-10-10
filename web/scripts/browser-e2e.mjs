@@ -349,6 +349,35 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").width === 640');
   assert((await readDocument()).layers[0].strokes.length === 1, "replacement project recovers after a subsequent reload");
 
+  const incompatiblePayload = JSON.stringify({
+    version: 999,
+    width: 640,
+    height: 480,
+    layers: [{
+      id: "incompatible-version-layer",
+      name: "Layer",
+      visible: true,
+      locked: false,
+      opacity: 1,
+      transform: { x: 0, y: 0, scale: 1, rotation: 0 },
+      contentType: "drawing",
+      strokes: []
+    }]
+  });
+  await evaluate("localStorage.setItem(\"animeart-web-document\", " + JSON.stringify(incompatiblePayload) + ")");
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitFor('document.querySelector("#storage-recovery-notice").hidden === false');
+  assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(incompatiblePayload)), "unsupported document version remains intact until explicit save");
+  await click("#save");
+  await waitFor('document.querySelector("#status").textContent === "Saved locally"');
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").version === 2'), "explicit Save replaces the incompatible version with a supported document");
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitFor('document.querySelector("#storage-recovery-notice").hidden === true');
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").version === 2'), "explicitly saved supported document remains recoverable");
+
+
   assert(await evaluate('document.documentElement.dataset.serviceWorkerActive === "true"'), "real browser service worker is active");
   assert(await evaluate('document.documentElement.dataset.cacheReady === "true"'), "real browser service worker cache contains the required offline shell");
   console.log("ANIMEART_REAL_WEB_E2E: PASS");

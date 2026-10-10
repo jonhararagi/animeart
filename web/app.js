@@ -1,4 +1,4 @@
-import { createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
+import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
 import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerReference, setLayerVisibility, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
@@ -422,6 +422,18 @@ function setStorageRecoveryPending(pending, message = "") {
   state.storageRecoveryMessage = pending ? message : "";
   recoveryNotice.hidden = !pending;
   recoveryNotice.textContent = pending ? message : "";
+}
+
+function restoreStoredDocument(saved) {
+  const supportedLegacyDocument = saved?.version === 1 &&
+    Array.isArray(saved.layers) &&
+    Array.isArray(saved.strokes);
+  if (saved?.version !== undefined &&
+      saved.version !== DOCUMENT_VERSION &&
+      !supportedLegacyDocument) {
+    return null;
+  }
+  return restoreDocument(saved);
 }
 
 function persistDocument({ markSaved = false } = {}) {
@@ -1035,7 +1047,7 @@ function restoreStoredProject({ confirmDiscard = true } = {}) {
   if (confirmDiscard && state.dirty && !window.confirm("Discard changes since the last explicit save?")) return false;
   try {
     const saved = JSON.parse(raw);
-    const restored = restoreDocument(saved);
+    const restored = restoreStoredDocument(saved);
     if (!restored) throw new Error("Stored project is invalid");
     state.document = restored;
     state.history.reset(restored);
@@ -1173,7 +1185,7 @@ function load() {
   if (!raw) return;
   try {
     const saved = JSON.parse(raw);
-    const restored = restoreDocument(saved);
+    const restored = restoreStoredDocument(saved);
     if (!restored) throw new Error("Stored project is invalid");
     state.document = restored;
     state.history.reset(state.document);
