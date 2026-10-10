@@ -447,7 +447,7 @@ try {
   await evaluate("localStorage.setItem(\"animeart-web-document\", " + JSON.stringify(validFixture) + ")");
   await cdp("Page.reload", { ignoreCache: true });
   await waitFor('document.readyState === "complete"');
-  await waitFor('document.querySelector("#layers .layer-select").textContent.includes("T064 Valid Restore")');
+  await waitFor('Array.from(document.querySelectorAll("#layers .layer-select")).some(el => el.textContent.includes("T064 Valid Restore"))');
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "valid current-version project restores without entering recovery mode");
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(validFixture)), "valid current-version payload remains byte-for-byte stable during restoration");
 
