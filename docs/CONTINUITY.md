@@ -2823,15 +2823,28 @@ CAMBIOS:
 POLÍTICA:
 La edición puede continuar en memoria mientras los datos previos están protegidos. Las escrituras automáticas quedan pausadas. Un guardado explícito exitoso reemplaza los datos anteriores y limpia el aviso; si el guardado falla, el estado protegido se conserva.
 
-VALIDACIÓN:
-La validación de este HEAD debe confirmarse mediante Web CI del SHA final. No atribuir resultados de CI a commits previos ni declarar T062 PASS antes de que terminen build, tests, verificación del artefacto y E2E de Chromium.
+VALIDACIÓN DEL SHA AUDITADO (2026-10-10):
+SHA exacto validado: `7223a06d411eccb94a08e9f26946c5f092f40f6f`.
+
+CI asociada directamente a ese SHA:
+- [Web CI run #272 / ID 38029714930](https://github.com/jonhararagi/animeart/actions/runs/38029714930) — SUCCESS.
+  - Install, Build, Test (334 tests), Verify build output y Real browser E2E: SUCCESS.
+- [Android CI run #371 / ID 38029714931](https://github.com/jonhararagi/animeart/actions/runs/38029714931) — SUCCESS.
+  - Build, Unit tests, Lint, Instrumentation/Startup Smoke y Debug APK upload: SUCCESS.
+
+Estos resultados validan únicamente el SHA `7223a06d411eccb94a08e9f26946c5f092f40f6f`; no se transfieren a commits posteriores ni al HEAD final de una rama después de esta reconciliación documental.
+
+LECTURA TÉCNICA:
+T065-R1 revisó las rutas de recuperación y las pruebas disponibles y encontró evidencia favorable, sin demostrar un defecto funcional de pérdida de datos en las rutas inspeccionadas. La cobertura observada incluye JSON corrupto, versión no soportada, errores de lectura/escritura, preservación del payload hasta el guardado explícito, reintento exitoso, edición en memoria y restauración/migración válida. No constituye una certificación exhaustiva de todas las rutas o condiciones concebibles.
+
+ESTADO:
+CI verde para el SHA indicado y revisión técnica favorable en las rutas inspeccionadas. Esto no equivale por sí solo a aprobación final de T062 ni a autorización para fusionar el PR.
 
 LIMITACIONES:
 La prueba E2E cubre JSON corrupto y sustitución explícita. La restauración de documentos válidos/legacy se mantiene a través de `restoreDocument()`; no se modifica el formato de proyecto. La compatibilidad de almacenamiento Web y persistencia del editor Android siguen siendo fronteras separadas.
 
 SIGUIENTE:
 Después de CI verde, revisar el diff y el PR T062 sin fusionarlo.
-
 
 ---
 
