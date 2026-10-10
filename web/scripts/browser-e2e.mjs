@@ -318,8 +318,8 @@ try {
   assert(JSON.stringify(recovered) === persistedBeforeReload, "reload recovers the expanded editor document exactly");
   assert(await evaluate('document.querySelector("#layers li:first-child").dataset.selected === "true"'), "reloaded editor restores a valid selected layer");
 
-  const corruptPayload = "{\\"version\\":999,";
-  await evaluate("localStorage.setItem(\\"animeart-web-document\\", " + JSON.stringify(corruptPayload) + ")");
+  const corruptPayload = '{"version":999,';
+  await evaluate("localStorage.setItem(\"animeart-web-document\", " + JSON.stringify(corruptPayload) + ")");
   await cdp("Page.reload", { ignoreCache: true });
   await waitFor('document.readyState === "complete"');
   await waitFor('document.querySelector("#storage-recovery-notice").hidden === false');
