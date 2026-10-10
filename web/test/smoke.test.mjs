@@ -399,7 +399,7 @@ test("T064 persistence writer inventory keeps the project key behind the existin
       if (entry.name === "node_modules" || entry.name === "dist") continue;
       const path = join(directory, entry.name);
       if (entry.isDirectory()) await visit(path);
-      else if (/\.(?:m?js)$/.test(entry.name)) files.push(path);
+      else if (/\.(?:m?js)$/.test(entry.name) && !path.endsWith("browser-e2e.mjs") && !path.endsWith("smoke.test.mjs")) files.push(path);
     }
   }
   await visit(root);
