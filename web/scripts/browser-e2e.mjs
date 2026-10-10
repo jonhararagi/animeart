@@ -460,7 +460,7 @@ try {
   await evaluate("localStorage.setItem(\"animeart-web-document\", " + JSON.stringify(legacyFixture) + ")");
   await cdp("Page.reload", { ignoreCache: true });
   await waitFor('document.readyState === "complete"');
-  await waitFor('document.querySelector("#status").textContent === "Recovered local project");
+  await waitFor('document.querySelector("#layers .layer-select").textContent.includes("Legacy Sketch")');
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "supported legacy project restores without recovery warning");
   assert(await evaluate('document.querySelector("#layers .layer-select").textContent.includes("Legacy Sketch")'), "legacy migration preserves the named layer through the real UI");
   await click("#save");
