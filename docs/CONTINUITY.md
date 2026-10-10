@@ -2902,46 +2902,40 @@ FECHA:
 2026-10-10
 
 ALCANCE:
-Cierre acotado de la brecha de error genérico de escritura en la prueba Chromium existente. No crea un runner ni una capa de persistencia paralelos.
+Prueba dinámica específica para una excepción genérica de escritura con mensaje vacío. No se modificó la lógica de producción, el formato del documento ni las dependencias.
 
-AISLAMIENTO:
-- PR: #46, rama `t064-web-storage-integrity-tests`, apilada sobre `t062-web-recovery-safety` / PR #45.
-- HEAD final de implementación/prueba de esta regresión: `2adab389ae876fd08d50155ff8df6ded83ea3fc8`.
-- Commit previo documentado de T064-R1: `a1e38a51a25321e94e5bfdd3d238a79e4fd742e2`.
-- T064-R2 añade un escenario y no modifica `web/app.js` ni el contrato de producción.
+AISLAMIENTO Y SHA:
+- PR #46: `t064-web-storage-integrity-tests`, apilado sobre PR #45 / `t062-web-recovery-safety`.
+- SHA de implementación y prueba del escenario genérico: `2adab389ae876fd08d50155ff8df6ded83ea3fc8`.
+- SHA documental previamente validado: `436b3fcdc602106faf552d17047f3b5db7fd71c2`.
+- Los SHA de implementación/prueba y documentación son distintos deliberadamente. Los resultados de CI enumerados a continuación pertenecen al SHA documental previo, no a un commit documental posterior.
 
 REGRESIÓN DINÁMICA:
-- El escenario separado inyecta `new Error("")` al escribir `animeart-web-document` durante Save explícito, con recuperación pendiente.
-- Aserciones añadidas: payload protegido idéntico; aviso de recuperación visible; mensaje visible `Project could not be saved in localStorage; the current document was not changed`; ausencia de falso mensaje `Saved locally`; restauración de la referencia original `Storage.prototype.setItem`.
-- El escenario de cuota `QuotaExceededError` permanece independiente y no se debilita.
-- `persistDocumentSnapshot()` convierte la excepción de escritura vacía en el mensaje visible `Project could not be saved in localStorage; the current document was not changed`. Ese es el contrato real que valida el E2E; el fallback `Could not save project locally` de `app.js` no se alcanza porque la capa de dominio normaliza antes el error.
-- SHA de implementación/prueba específica: `2adab389ae876fd08d50155ff8df6ded83ea3fc8`. El resultado dinámico sólo puede declararse PASS después de inspeccionar el job Real browser E2E de Web CI asociado a este SHA.
+- El escenario Chromium independiente inyecta `new Error("")` al escribir `animeart-web-document` durante Save explícito con recuperación pendiente.
+- Comprueba la preservación exacta del payload protegido, el aviso visible, la ausencia de un falso `Saved locally` y la restauración de `Storage.prototype.setItem`.
+- El escenario separado de `QuotaExceededError` se conserva.
+- El mensaje visible esperado es `Project could not be saved in localStorage; the current document was not changed`. La prueba valida el mensaje emitido por la capa de persistencia: `persistDocumentSnapshot()` normaliza la excepción vacía antes de que la ruta llegue al fallback `Could not save project locally` de `app.js`. Por tanto, no afirma haber probado ese fallback.
+- Evidencia dinámica: el paso Real browser E2E de Web CI sobre el SHA documental previo terminó SUCCESS y sus logs incluyen los PASS específicos del error genérico, preservación del payload, aviso, mensaje de persistencia, ausencia de falso éxito y restauración del método nativo.
 
-ARCHIVOS:
-- `web/scripts/browser-e2e.mjs`: prueba Chromium de excepción genérica, preservación de payload, feedback y restauración del método nativo.
-- `docs/CONTINUITY.md`: apéndice T064-R2; conserva las entradas históricas T062, T059 y T064-R1 sin reescribirlas.
+ARCHIVOS Y TIPO DE EVIDENCIA:
+- `web/scripts/browser-e2e.mjs`: prueba dinámica real de Chromium/CDP, a través de la UI de Save.
+- `web/test/smoke.test.mjs`: inspección/prueba estática recursiva del inventario de escritores Web. Es una comprobación estructural de llamadas de persistencia, no evidencia dinámica ni prueba por sí sola de comportamiento de runtime.
+- CI Android: validación de compilación, unit tests, lint, instrumentación/startup smoke y generación/subida del APK Android. No ejecuta ni sustituye el escenario de escritura genérica en Chromium.
+- No se modificó código de producción ni se añadieron dependencias.
 
-COBERTURA:
-- Dinámica: Chromium/CDP con interfaz real; guardado explícito bajo excepción vacía; comparación estricta de la cadena almacenada; aviso persistente; estado sin éxito falso; restauración del método de escritura.
-- Estática: inventario recursivo de escritores Web y contratos de frontera de persistencia existentes.
-- La prueba estática no se considera sustituto de la prueba dinámica.
-- Sin modificación del modelo, formato de documento, lógica de recuperación ni persistencia de producción.
+CI VERIFICADA SOBRE EL SHA DOCUMENTAL PREVIO `436b3fcdc602106faf552d17047f3b5db7fd71c2`:
+- Web CI [run 38046005771](https://github.com/jonhararagi/animeart/actions/runs/38046005771): COMPLETED / SUCCESS. Install, Build, Test, Verify build output y Real browser E2E: SUCCESS. El conjunto estático reportó 336 pruebas PASS y 0 FAIL; el runner finalizó con `ANIMEART_REAL_WEB_E2E: PASS`.
+- Android CI [run 38046005803](https://github.com/jonhararagi/animeart/actions/runs/38046005803): COMPLETED / SUCCESS. Build, Unit tests, Lint, Android instrumentation and startup smoke tests, y Upload debug APK: SUCCESS.
+- La consulta de GitHub asoció ambos runs con el SHA documental previo `436b3fcdc602106faf552d17047f3b5db7fd71c2`. Estos resultados no deben presentarse como validación de un SHA documental posterior.
 
-CI Y SHA:
-- Web CI histórico de T064-R1 en `cee55409b1b1828064fe3e0df71a011470ade30e`: [run 38036321253](https://github.com/jonhararagi/animeart/actions/runs/38036321253), SUCCESS. No valida el nuevo escenario T064-R2.
-- Android CI histórico de T064-R1 en `a1e38a51a25321e94e5bfdd3d238a79e4fd742e2`: [run 38036503329](https://github.com/jonhararagi/animeart/actions/runs/38036503329), SUCCESS. No se reutiliza como evidencia del SHA posterior.
-- La nueva regresión y los workflows disparados por `2adab389ae876fd08d50155ff8df6ded83ea3fc8` deben consultarse en GitHub antes de cerrar T064.
-- El SHA de implementación de la prueba y el SHA final de documentación se registrarán por separado en el informe de cierre. Los resultados CI del HEAD documental final se verificarán independientemente.
+LIMITACIONES Y DEUDA FUERA DE ALCANCE:
+- La reconciliación integral de los apéndices de `docs/CONTINUITY.md` con PR #42 queda pendiente para una tarea de integración posterior. #42 también modifica documentación desde `main`; esta tarea no altera su base ni intenta resolver el diff combinado.
+- PR #45 / T062 requiere revisión y aprobación independiente. El CI verde de T064 no aprueba, cierra ni fusiona T062.
+- Los workflows cubren las matrices configuradas y no prueban todos los dispositivos, navegadores o modos de fallo.
+- La validación del nuevo HEAD creado al registrar esta actualización documental debe anotarse en el informe de T064-R3, no atribuirse retroactivamente a los runs anteriores.
 
-RIESGOS Y PENDIENTES:
-- Confirmar Web CI, incluido Real browser E2E, en el SHA de la prueba específica.
-- Confirmar Web CI y Android CI en el SHA final documental exacto.
-- Verificar la metadata actual de PR #42, #45 y #46; #42 también modifica este archivo, por lo que la reconciliación documental combinada sigue pendiente hasta una comparación real de los diffs integrados.
-- No inferir que T062 queda cerrado o aprobado por el resultado de T064.
-- No se modificaron `main`, las bases/cabezas de otros PR ni sus contenidos.
-
-VEREDICTO:
-PARTIAL hasta verificar la ejecución dinámica del nuevo escenario y ambos workflows en el SHA final documental.
+VEREDICTO DE T064-R2:
+La regresión dinámica del error genérico y ambos workflows quedaron validados en el SHA documental previo indicado. La actualización de continuidad corrige el estado histórico pendiente sin borrar las entradas anteriores de T059, T062 ni T064-R1.
 
 SIGUIENTE:
-Completar únicamente la verificación de CI y metadata de PR; no avanzar a funcionalidades de dibujo ni cerrar T062 automáticamente.
+Validar Web CI y Android CI sobre el nuevo HEAD documental exacto. No crear otro commit después de capturar esos resultados.
