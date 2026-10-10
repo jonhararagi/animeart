@@ -2831,3 +2831,63 @@ La prueba E2E cubre JSON corrupto y sustitución explícita. La restauración de
 
 SIGUIENTE:
 Después de CI verde, revisar el diff y el PR T062 sin fusionarlo.
+
+
+---
+
+## T064-R1 — Integridad dinámica de persistencia Web
+
+FECHA:
+2026-10-10
+
+ESTADO:
+IMPLEMENTACIÓN Y VALIDACIÓN EN CURSO. No declarar PASS hasta verificar Web CI y Android CI sobre el SHA final exacto.
+
+BASE Y AISLAMIENTO:
+- main verificada en SHA 4d4b2a03be0fc1bedae59b91d2980984d3cafe81.
+- PR T062 #45 verificado abierto, no fusionado, base main, head t062-web-recovery-safety, SHA 7223a06d411eccb94a08e9f26946c5f092f40f6f.
+- Rama T064: t064-web-storage-integrity-tests, creada desde el HEAD verificado de T062.
+- Esta tarea no modifica main, no cambia bases/head de PR existentes y no crea un sistema paralelo de persistencia.
+
+ARCHIVOS:
+- web/scripts/browser-e2e.mjs: escenarios Chromium reales para excepción de cuota durante guardado explícito, preservación exacta del payload, reintento, mutaciones en memoria con recuperación pendiente, Undo/Redo, importación rechazada, restauración de documento actual, migración legacy y fallo de lectura inyectado antes de load().
+- web/test/smoke.test.mjs: inventario estático recursivo de llamadas directas a localStorage.setItem en módulos Web y verificación de la frontera delegada existente.
+- docs/CONTINUITY.md: esta entrada append-only. Se conserva íntegra la entrada T062 anterior.
+
+AUDITORÍA ESTÁTICA DE ESCRITORES:
+- web/app.js usa persistDocumentSnapshot(localStorage, "animeart-web-document", state.document) para el guardado del documento.
+- web/domain/image-import.mjs contiene la escritura delegada storage.setItem(key, serialized); la importación pasa por su callback de persistencia y revierte el registro de historial si la persistencia falla.
+- La prueba de inventario verifica que no haya llamadas literales directas localStorage.setItem(...) en los módulos JavaScript Web. Esto no sustituye la evidencia dinámica ni afirma que una inspección textual por sí sola pruebe la seguridad.
+
+MATRIZ DE EVIDENCIA:
+| Escenario | Estado | Evidencia |
+|---|---|---|
+| JSON corrupto | PARTIAL | E2E Chromium existente; T064 amplía rutas de fallo |
+| Versión futura desconocida | PARTIAL | E2E Chromium existente y escenarios nuevos |
+| Restauración válida actual | NOT RUN | Nuevo fixture dinámico pendiente de CI |
+| Migración legacy admitida | NOT RUN | Nuevo fixture dinámico pendiente de CI |
+| Lectura de almacenamiento fallida | NOT RUN | Inyección CDP antes de la carga, pendiente de CI |
+| Guardado explícito fallido | NOT RUN | Inyección QuotaExceededError, pendiente de CI |
+| Reintento explícito exitoso | NOT RUN | Escenario dinámico pendiente de CI |
+| Dibujo durante recuperación | PARTIAL | Escenario previo; T064 agrega verificación al flujo ampliado |
+| Cambios de capas durante recuperación | NOT RUN | Nuevo escenario dinámico pendiente de CI |
+| Undo/Redo durante recuperación | NOT RUN | Nuevo escenario dinámico pendiente de CI |
+| Importación durante recuperación | NOT RUN | Nuevo escenario dinámico pendiente de CI |
+| Preservación exacta del payload | PARTIAL | E2E existente; ampliación pendiente de CI |
+| Mensajes visibles sin falso éxito | NOT RUN | Nuevo escenario dinámico pendiente de CI |
+| Inventario de escritores | PARTIAL | Inspección estática y prueba automatizada estática; ejecución pendiente |
+
+PRUEBAS Y CI:
+- La validación local no se declara ejecutada desde esta sesión.
+- La prueba dinámica requiere que GitHub Actions ejecute el runner Chromium existente.
+- Web CI y Android CI para el SHA final T064: pendientes. Los resultados de T062 (#45) no se reutilizan como evidencia de T064.
+- No se modifica el formato de documento ni se relaja la validación de versiones.
+
+RIESGOS Y PENDIENTES:
+- Confirmar que la inyección CDP de fallo de lectura ocurre antes de load() y que la prueba termina con el payload original idéntico.
+- Confirmar la estabilidad del fixture PNG durante importación rechazada y la reversibilidad del fallo de escritura.
+- Reconciliar este apéndice con PR #42, que también modifica este archivo desde main; no cambiar la base de ese PR ni descartar ninguna sección.
+- T062 continúa abierto y sin fusionar; su estado no se eleva automáticamente por los tests T064.
+
+SIGUIENTE:
+Esperar los resultados CI del SHA final, corregir solo fallos reproducibles y actualizar esta entrada con resultados exactos antes del informe final.
