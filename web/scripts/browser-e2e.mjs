@@ -318,6 +318,37 @@ try {
   assert(JSON.stringify(recovered) === persistedBeforeReload, "reload recovers the expanded editor document exactly");
   assert(await evaluate('document.querySelector("#layers li:first-child").dataset.selected === "true"'), "reloaded editor restores a valid selected layer");
 
+  const corruptPayload = "{\\"version\\":999,";
+  await evaluate("localStorage.setItem(\\"animeart-web-document\\", " + JSON.stringify(corruptPayload) + ")");
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitFor('document.querySelector("#storage-recovery-notice").hidden === false');
+  assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(corruptPayload)), "corrupt project payload is preserved at startup");
+  assert((await evaluate('document.querySelector("#status").textContent')).includes("could not be recovered"), "invalid project produces explicit recovery status");
+
+  await click("#new-document");
+  await waitFor('document.querySelector("#project-dialog").open === true');
+  await evaluate('(() => { document.querySelector("#document-width").value = "640"; document.querySelector("#document-height").value = "480"; })()');
+  await click('#project-form button[type="submit"]');
+  await waitFor('document.querySelector("#status").textContent === "New document created"');
+  const recoveryCanvas = await selectorCenter("#canvas");
+  await mouseStroke([
+    { x: recoveryCanvas.x - 40, y: recoveryCanvas.y - 20 },
+    { x: recoveryCanvas.x, y: recoveryCanvas.y },
+    { x: recoveryCanvas.x + 40, y: recoveryCanvas.y + 20 }
+  ]);
+  assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(corruptPayload)), "drawing in a new document cannot overwrite the protected payload");
+  await click("#save");
+  await waitFor('document.querySelector("#status").textContent === "Saved locally"');
+  const explicitlySaved = await readDocument();
+  assert(explicitlySaved.width === 640 && explicitlySaved.height === 480, "explicit Save replaces invalid payload with the chosen new document");
+  assert(explicitlySaved.layers[0].strokes.length === 1, "explicitly saved replacement preserves current drawing");
+  assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "explicit successful save clears recovery warning");
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").width === 640');
+  assert((await readDocument()).layers[0].strokes.length === 1, "replacement project recovers after a subsequent reload");
+
   assert(await evaluate('document.documentElement.dataset.serviceWorkerActive === "true"'), "real browser service worker is active");
   assert(await evaluate('document.documentElement.dataset.cacheReady === "true"'), "real browser service worker cache contains the required offline shell");
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
