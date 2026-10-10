@@ -1,4 +1,4 @@
-import { createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
+import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
 import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerReference, setLayerVisibility, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
@@ -10,6 +10,7 @@ import { canvasToPngBlob, createPngExportCanvas, downloadPngBlob, renderDocument
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
 const status = document.querySelector("#status");
+const recoveryNotice = document.querySelector("#storage-recovery-notice");
 const layersEl = document.querySelector("#layers");
 const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
@@ -51,7 +52,9 @@ const state = {
   viewport: createViewport(),
   document: createDocument(),
   history: null,
-  dirty: false
+  dirty: false,
+  storageRecoveryPending: false,
+  storageRecoveryMessage: ""
 };
 
 state.history = new DocumentHistory(state.document);
@@ -414,7 +417,31 @@ function renderLayers() {
   });
 }
 
+function setStorageRecoveryPending(pending, message = "") {
+  state.storageRecoveryPending = pending;
+  state.storageRecoveryMessage = pending ? message : "";
+  recoveryNotice.hidden = !pending;
+  recoveryNotice.textContent = pending ? message : "";
+}
+
+function restoreStoredDocument(saved) {
+  const supportedLegacyDocument = saved?.version === 1 &&
+    Array.isArray(saved.layers) &&
+    Array.isArray(saved.strokes);
+  if (saved?.version !== undefined &&
+      saved.version !== DOCUMENT_VERSION &&
+      !supportedLegacyDocument) {
+    return null;
+  }
+  return restoreDocument(saved);
+}
+
 function persistDocument({ markSaved = false } = {}) {
+  if (state.storageRecoveryPending && !markSaved) {
+    state.dirty = true;
+    status.textContent = "Saved project is protected. Choose Save to replace it explicitly.";
+    return false;
+  }
   try {
     persistDocumentSnapshot(localStorage, "animeart-web-document", state.document);
   } catch (error) {
@@ -423,6 +450,7 @@ function persistDocument({ markSaved = false } = {}) {
     return false;
   }
   state.dirty = !markSaved;
+  if (markSaved) setStorageRecoveryPending(false);
   status.textContent = markSaved ? "Saved locally" : "Local backup updated";
   return true;
 }
@@ -894,7 +922,12 @@ async function importImageIntoEditor(file, message = "Image imported") {
     const result = await applyImageFileImport(file, {
       document: state.document,
       history: state.history,
-      persist: next => persistDocumentSnapshot(localStorage, "animeart-web-document", next)
+      persist: next => {
+        if (state.storageRecoveryPending) {
+          throw new Error("Saved project is protected. Choose Save to replace it explicitly.");
+        }
+        return persistDocumentSnapshot(localStorage, "animeart-web-document", next);
+      }
     });
     state.document = result.document;
     setSelection([result.layer.id], result.layer.id);
@@ -999,7 +1032,14 @@ document.querySelector("#clear").addEventListener("click", () => {
 });
 
 function restoreStoredProject({ confirmDiscard = true } = {}) {
-  const raw = localStorage.getItem("animeart-web-document");
+  let raw;
+  try {
+    raw = localStorage.getItem("animeart-web-document");
+  } catch {
+    setStorageRecoveryPending(true, "Local project storage could not be read. Automatic saving is paused to protect existing data.");
+    status.textContent = "Local project storage unavailable";
+    return false;
+  }
   if (!raw) {
     status.textContent = "No local project to recover";
     return false;
@@ -1007,7 +1047,7 @@ function restoreStoredProject({ confirmDiscard = true } = {}) {
   if (confirmDiscard && state.dirty && !window.confirm("Discard changes since the last explicit save?")) return false;
   try {
     const saved = JSON.parse(raw);
-    const restored = restoreDocument(saved);
+    const restored = restoreStoredDocument(saved);
     if (!restored) throw new Error("Stored project is invalid");
     state.document = restored;
     state.history.reset(restored);
@@ -1018,9 +1058,11 @@ function restoreStoredProject({ confirmDiscard = true } = {}) {
     state.drawing = false;
     state.strokeBefore = null;
     state.dirty = false;
+    setStorageRecoveryPending(false);
     refreshDocument("Recovered local project");
     return true;
   } catch {
+    setStorageRecoveryPending(true, "The saved project could not be opened. Its original data is preserved. Automatic saving is paused. Create a new document, then choose Save only if you want to replace the saved project.");
     status.textContent = "Stored project could not be recovered";
     return false;
   }
@@ -1127,15 +1169,30 @@ function ensureExportImages(document) {
 
 
 function load() {
-  const raw = localStorage.getItem("animeart-web-document");
+  let raw;
+  try {
+    raw = localStorage.getItem("animeart-web-document");
+  } catch {
+    state.document = createDocument();
+    state.history.reset(state.document);
+    refreshHistoryControls();
+    setSelection([state.document.layers[0].id], state.document.layers[0].id);
+    state.dirty = false;
+    setStorageRecoveryPending(true, "Local project storage could not be read. Automatic saving is paused to protect existing data.");
+    status.textContent = "Local project storage unavailable";
+    return;
+  }
   if (!raw) return;
   try {
     const saved = JSON.parse(raw);
-    state.document = restoreDocument(saved) || createDocument();
+    const restored = restoreStoredDocument(saved);
+    if (!restored) throw new Error("Stored project is invalid");
+    state.document = restored;
     state.history.reset(state.document);
     refreshHistoryControls();
     setSelection(state.document.layers.at(-1)?.id ? [state.document.layers.at(-1).id] : [], state.document.layers.at(-1)?.id || null);
     state.dirty = false;
+    setStorageRecoveryPending(false);
     status.textContent = "Recovered local project";
   } catch {
     state.document = createDocument();
@@ -1143,7 +1200,8 @@ function load() {
     refreshHistoryControls();
     setSelection([state.document.layers[0].id], state.document.layers[0].id);
     state.dirty = false;
-    status.textContent = "New local project";
+    setStorageRecoveryPending(true, "The saved project could not be opened. Its original data is preserved. Automatic saving is paused. Create a new document, then choose Save only if you want to replace the saved project.");
+    status.textContent = "Stored project could not be recovered";
   }
 }
 

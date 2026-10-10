@@ -2795,3 +2795,53 @@ ESTADO DE DOCUMENTACIÓN AL PREFLIGHT T057.1:
 
 PENDIENTE AL REGISTRAR ESTA ENTRADA:
 Completar T057.1 con PR documental, auditoría del diff, checks del HEAD exacto y CI post-merge vinculada al SHA final. Esta entrada no declara T057 GREEN ni autoriza T058.
+
+
+---
+
+## T062 — Web recovery safety: preservar proyectos locales inválidos
+
+FECHA:
+2026-10-10
+
+OBJETIVO:
+Evitar que el editor Web reemplace silenciosamente el payload local si JSON no puede parsearse, el documento no puede restaurarse o el acceso de lectura a localStorage falla.
+
+BASE:
+`4d4b2a03be0fc1bedae59b91d2980984d3cafe81` (`main` al iniciar T062).
+
+RAMA:
+`t062-web-recovery-safety`.
+
+CAMBIOS:
+- `web/app.js`: estado explícito de recuperación; lectura segura; rechazo de versiones de documento desconocidas conservando la migración legacy soportada; bloqueo de persistencia automática mientras la recuperación esté pendiente; protección también en la ruta directa de importación de imágenes; sólo el guardado explícito exitoso puede sustituir el payload protegido.
+- `web/index.html` y `web/styles.css`: aviso accesible de recuperación con instrucciones para crear un documento nuevo y decidir explícitamente si se reemplazan los datos.
+- `web/test/smoke.test.mjs`: contratos de regresión para impedir escrituras automáticas y exigir confirmación mediante guardado explícito.
+- `web/scripts/browser-e2e.mjs`: escenario Chromium real con payload corrupto, creación de documento, dibujo, comprobación de conservación byte por byte, guardado explícito y recuperación tras recarga.
+- No se añadió ninguna dependencia ni un segundo sistema de persistencia/historial.
+
+POLÍTICA:
+La edición puede continuar en memoria mientras los datos previos están protegidos. Las escrituras automáticas quedan pausadas. Un guardado explícito exitoso reemplaza los datos anteriores y limpia el aviso; si el guardado falla, el estado protegido se conserva.
+
+VALIDACIÓN DEL SHA AUDITADO (2026-10-10):
+SHA exacto validado: `7223a06d411eccb94a08e9f26946c5f092f40f6f`.
+
+CI asociada directamente a ese SHA:
+- [Web CI run #272 / ID 38029714930](https://github.com/jonhararagi/animeart/actions/runs/38029714930) — SUCCESS.
+  - Install, Build, Test (334 tests), Verify build output y Real browser E2E: SUCCESS.
+- [Android CI run #371 / ID 38029714931](https://github.com/jonhararagi/animeart/actions/runs/38029714931) — SUCCESS.
+  - Build, Unit tests, Lint, Instrumentation/Startup Smoke y Debug APK upload: SUCCESS.
+
+Estos resultados validan únicamente el SHA `7223a06d411eccb94a08e9f26946c5f092f40f6f`; no se transfieren a commits posteriores ni al HEAD final de una rama después de esta reconciliación documental.
+
+LECTURA TÉCNICA:
+T065-R1 revisó las rutas de recuperación y las pruebas disponibles y encontró evidencia favorable, sin demostrar un defecto funcional de pérdida de datos en las rutas inspeccionadas. La cobertura observada incluye JSON corrupto, versión no soportada, errores de lectura/escritura, preservación del payload hasta el guardado explícito, reintento exitoso, edición en memoria y restauración/migración válida. No constituye una certificación exhaustiva de todas las rutas o condiciones concebibles.
+
+ESTADO:
+CI verde para el SHA indicado y revisión técnica favorable en las rutas inspeccionadas. Esto no equivale por sí solo a aprobación final de T062 ni a autorización para fusionar el PR.
+
+LIMITACIONES:
+La prueba E2E cubre JSON corrupto y sustitución explícita. La restauración de documentos válidos/legacy se mantiene a través de `restoreDocument()`; no se modifica el formato de proyecto. La compatibilidad de almacenamiento Web y persistencia del editor Android siguen siendo fronteras separadas.
+
+SIGUIENTE:
+Después de CI verde, revisar el diff y el PR T062 sin fusionarlo.
