@@ -2814,7 +2814,7 @@ RAMA:
 `t062-web-recovery-safety`.
 
 CAMBIOS:
-- `web/app.js`: estado explícito de recuperación; lectura segura; bloqueo de persistencia automática mientras la recuperación esté pendiente; sólo el guardado explícito exitoso puede sustituir el payload protegido.
+- `web/app.js`: estado explícito de recuperación; lectura segura; rechazo de versiones de documento desconocidas conservando la migración legacy soportada; bloqueo de persistencia automática mientras la recuperación esté pendiente; protección también en la ruta directa de importación de imágenes; sólo el guardado explícito exitoso puede sustituir el payload protegido.
 - `web/index.html` y `web/styles.css`: aviso accesible de recuperación con instrucciones para crear un documento nuevo y decidir explícitamente si se reemplazan los datos.
 - `web/test/smoke.test.mjs`: contratos de regresión para impedir escrituras automáticas y exigir confirmación mediante guardado explícito.
 - `web/scripts/browser-e2e.mjs`: escenario Chromium real con payload corrupto, creación de documento, dibujo, comprobación de conservación byte por byte, guardado explícito y recuperación tras recarga.
