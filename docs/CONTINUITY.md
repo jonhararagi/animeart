@@ -2859,28 +2859,29 @@ AUDITORÍA ESTÁTICA DE ESCRITORES:
 - web/domain/image-import.mjs contiene la escritura delegada storage.setItem(key, serialized); la importación pasa por su callback de persistencia y revierte el registro de historial si la persistencia falla.
 - La prueba de inventario verifica que no haya llamadas literales directas localStorage.setItem(...) en los módulos JavaScript Web. Esto no sustituye la evidencia dinámica ni afirma que una inspección textual por sí sola pruebe la seguridad.
 
-MATRIZ DE EVIDENCIA:
+MATRIZ DE EVIDENCIA (validación dinámica del HEAD de implementación cee55409b1b1828064fe3e0df71a011470ade30e):
 | Escenario | Estado | Evidencia |
 |---|---|---|
-| JSON corrupto | PARTIAL | E2E Chromium existente; T064 amplía rutas de fallo |
-| Versión futura desconocida | PARTIAL | E2E Chromium existente y escenarios nuevos |
-| Restauración válida actual | NOT RUN | Nuevo fixture dinámico pendiente de CI |
-| Migración legacy admitida | NOT RUN | Nuevo fixture dinámico pendiente de CI |
-| Lectura de almacenamiento fallida | NOT RUN | Inyección CDP antes de la carga, pendiente de CI |
-| Guardado explícito fallido | NOT RUN | Inyección QuotaExceededError, pendiente de CI |
-| Reintento explícito exitoso | NOT RUN | Escenario dinámico pendiente de CI |
-| Dibujo durante recuperación | PARTIAL | Escenario previo; T064 agrega verificación al flujo ampliado |
-| Cambios de capas durante recuperación | NOT RUN | Nuevo escenario dinámico pendiente de CI |
-| Undo/Redo durante recuperación | NOT RUN | Nuevo escenario dinámico pendiente de CI |
-| Importación durante recuperación | NOT RUN | Nuevo escenario dinámico pendiente de CI |
-| Preservación exacta del payload | PARTIAL | E2E existente; ampliación pendiente de CI |
-| Mensajes visibles sin falso éxito | NOT RUN | Nuevo escenario dinámico pendiente de CI |
-| Inventario de escritores | PARTIAL | Inspección estática y prueba automatizada estática; ejecución pendiente |
+| JSON corrupto | PASS | Chromium E2E, payload protegido y reemplazo explícito |
+| Versión futura desconocida | PASS | Chromium E2E, versión 999 preservada hasta Save |
+| Restauración válida actual | PASS | Fixture version 2 restaurado y payload sin mutaciones |
+| Migración legacy admitida | PASS | Fixture version 1; capa, trazo y 3 puntos preservados tras Save |
+| Lectura de almacenamiento fallida | PASS | CDP Page.enable + script previo a reload; SecurityError controlado |
+| Guardado explícito fallido | PASS | QuotaExceededError; payload idéntico y advertencia visible |
+| Reintento explícito exitoso | PASS | Save posterior actualiza documento y sobrevive a recarga |
+| Dibujo durante recuperación | PASS | Trazo real por pointer; payload original idéntico |
+| Cambios de capas durante recuperación | PASS | Crear capa y cambiar visibilidad; payload idéntico |
+| Undo/Redo durante recuperación | PASS | Ambas operaciones mantienen intacto el payload |
+| Importación de imagen durante recuperación | PASS | Importación rechazada, sin capa añadida ni falso éxito |
+| Preservación exacta del payload | PASS | Comparaciones estrictas de la cadena original |
+| Mensajes visibles sin falso éxito | PASS | Aviso de almacenamiento no disponible y ausencia de Saved locally |
+| Inventario de escritores | PASS | Prueba estática recursiva; 336 pruebas totales, 0 fallidas |
 
 PRUEBAS Y CI:
-- La validación local no se declara ejecutada desde esta sesión.
-- La prueba dinámica requiere que GitHub Actions ejecute el runner Chromium existente.
-- Web CI y Android CI para el SHA final T064: pendientes. Los resultados de T062 (#45) no se reutilizan como evidencia de T064.
+- GitHub Actions Web CI sobre cee55409b1b1828064fe3e0df71a011470ade30e: SUCCESS. [Run 38036321253](https://github.com/jonhararagi/animeart/actions/runs/38036321253). Install, Build, Test, Verify build output y Real browser E2E: SUCCESS.
+- El runner de pruebas reportó 336 PASS y 0 FAIL. El E2E imprimió ANIMEART_REAL_WEB_E2E: PASS.
+- Android CI sobre cee55409b1b1828064fe3e0df71a011470ade30e: estaba en ejecución al actualizar esta sección; Build, Unit tests y Lint ya habían terminado SUCCESS, y Android instrumentation/startup smoke tests seguía en ejecución. No se declara Android PASS hasta terminar.
+- Estos resultados no son los de T062 (#45); se verificó el SHA de T064.
 - No se modifica el formato de documento ni se relaja la validación de versiones.
 
 RIESGOS Y PENDIENTES:
