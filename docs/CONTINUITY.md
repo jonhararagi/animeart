@@ -2892,3 +2892,56 @@ RIESGOS Y PENDIENTES:
 
 SIGUIENTE:
 Esperar los resultados CI del SHA final, corregir solo fallos reproducibles y actualizar esta entrada con resultados exactos antes del informe final.
+
+
+---
+
+## T064-R2 — Error genérico de escritura y cierre de evidencia
+
+FECHA:
+2026-10-10
+
+ALCANCE:
+Cierre acotado de la brecha de error genérico de escritura en la prueba Chromium existente. No crea un runner ni una capa de persistencia paralelos.
+
+AISLAMIENTO:
+- PR: #46, rama `t064-web-storage-integrity-tests`, apilada sobre `t062-web-recovery-safety` / PR #45.
+- HEAD de implementación de esta regresión: `51a10ca157deb1f7dea5635bc5d6cffb8606abf8`.
+- Commit previo documentado de T064-R1: `a1e38a51a25321e94e5bfdd3d238a79e4fd742e2`.
+- T064-R2 añade un escenario y no modifica `web/app.js` ni el contrato de producción.
+
+REGRESIÓN DINÁMICA:
+- El escenario separado inyecta `new Error("")` al escribir `animeart-web-document` durante Save explícito, con recuperación pendiente.
+- Aserciones añadidas: payload protegido idéntico; aviso de recuperación visible; fallback exacto `Could not save project locally`; ausencia de falso mensaje `Saved locally`; restauración de la referencia original `Storage.prototype.setItem`.
+- El escenario de cuota `QuotaExceededError` permanece independiente y no se debilita.
+- La implementación de `persistDocument()` ya usa `error?.message || "Could not save project locally"`; no se cambió código de producción porque el contrato actual ya satisface el caso vacío.
+- SHA de implementación/prueba específica: `51a10ca157deb1f7dea5635bc5d6cffb8606abf8`. El resultado dinámico sólo puede declararse PASS después de inspeccionar el job Real browser E2E de Web CI asociado a este SHA.
+
+ARCHIVOS:
+- `web/scripts/browser-e2e.mjs`: prueba Chromium de excepción genérica, preservación de payload, feedback y restauración del método nativo.
+- `docs/CONTINUITY.md`: apéndice T064-R2; conserva las entradas históricas T062, T059 y T064-R1 sin reescribirlas.
+
+COBERTURA:
+- Dinámica: Chromium/CDP con interfaz real; guardado explícito bajo excepción vacía; comparación estricta de la cadena almacenada; aviso persistente; estado sin éxito falso; restauración del método de escritura.
+- Estática: inventario recursivo de escritores Web y contratos de frontera de persistencia existentes.
+- La prueba estática no se considera sustituto de la prueba dinámica.
+- Sin modificación del modelo, formato de documento, lógica de recuperación ni persistencia de producción.
+
+CI Y SHA:
+- Web CI histórico de T064-R1 en `cee55409b1b1828064fe3e0df71a011470ade30e`: [run 38036321253](https://github.com/jonhararagi/animeart/actions/runs/38036321253), SUCCESS. No valida el nuevo escenario T064-R2.
+- Android CI histórico de T064-R1 en `a1e38a51a25321e94e5bfdd3d238a79e4fd742e2`: [run 38036503329](https://github.com/jonhararagi/animeart/actions/runs/38036503329), SUCCESS. No se reutiliza como evidencia del SHA posterior.
+- La nueva regresión y los workflows disparados por `51a10ca157deb1f7dea5635bc5d6cffb8606abf8` deben consultarse en GitHub antes de cerrar T064.
+- El SHA de implementación de la prueba y el SHA final de documentación se registrarán por separado en el informe de cierre. Los resultados CI del HEAD documental final se verificarán independientemente.
+
+RIESGOS Y PENDIENTES:
+- Confirmar Web CI, incluido Real browser E2E, en el SHA de la prueba específica.
+- Confirmar Web CI y Android CI en el SHA final documental exacto.
+- Verificar la metadata actual de PR #42, #45 y #46; #42 también modifica este archivo, por lo que la reconciliación documental combinada sigue pendiente hasta una comparación real de los diffs integrados.
+- No inferir que T062 queda cerrado o aprobado por el resultado de T064.
+- No se modificaron `main`, las bases/cabezas de otros PR ni sus contenidos.
+
+VEREDICTO:
+PARTIAL hasta verificar la ejecución dinámica del nuevo escenario y ambos workflows en el SHA final documental.
+
+SIGUIENTE:
+Completar únicamente la verificación de CI y metadata de PR; no avanzar a funcionalidades de dibujo ni cerrar T062 automáticamente.
