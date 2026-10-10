@@ -371,3 +371,9 @@ test("T062 invalid local projects pause automatic writes and require explicit re
   assert.match(js, /if \(markSaved\) setStorageRecoveryPending\(false\)/);
   assert.doesNotMatch(js, /state\.document = restoreDocument\(saved\) \|\| createDocument\(\)/);
 });
+
+
+test("T062 image import cannot bypass the pending-recovery persistence guard", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /persist: next => \{[\s\S]{0,180}state\.storageRecoveryPending[\s\S]{0,180}persistDocumentSnapshot/);
+});

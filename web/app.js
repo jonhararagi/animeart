@@ -910,7 +910,12 @@ async function importImageIntoEditor(file, message = "Image imported") {
     const result = await applyImageFileImport(file, {
       document: state.document,
       history: state.history,
-      persist: next => persistDocumentSnapshot(localStorage, "animeart-web-document", next)
+      persist: next => {
+        if (state.storageRecoveryPending) {
+          throw new Error("Saved project is protected. Choose Save to replace it explicitly.");
+        }
+        return persistDocumentSnapshot(localStorage, "animeart-web-document", next);
+      }
     });
     state.document = result.document;
     setSelection([result.layer.id], result.layer.id);
