@@ -414,7 +414,6 @@ try {
   assert(await evaluate('Storage.prototype.setItem === window.__t064OriginalSetItem'), "generic write fault restores the original Storage.prototype.setItem method");
 
   await click("#add-layer");
-  await click("#add-layer");
   await waitFor('document.querySelector("#status").textContent === "Saved project is protected. Choose Save to replace it explicitly."');
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(quotaPayload)), "layer creation during recovery cannot overwrite the protected payload");
   assert(await evaluate('document.querySelector("#undo").disabled === false'), "layer mutation remains available in memory and records history while recovery is pending");
