@@ -405,10 +405,10 @@ try {
   // T064-R2: independently exercise a generic write exception with an empty message.
   await evaluate("(() => { Storage.prototype.setItem = function(key, value) { if (key === 'animeart-web-document') throw new Error(''); return window.__t064OriginalSetItem.call(this, key, value); }; })()");
   await click("#save");
-  await waitFor('document.querySelector("#status").textContent === "Could not save project locally"');
+  await waitFor('document.querySelector("#status").textContent === "Project could not be saved in localStorage; the current document was not changed"');
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(quotaPayload)), "generic empty-message write exception preserves the exact protected payload");
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "generic write exception keeps the recovery warning visible");
-  assert(await evaluate('document.querySelector("#status").textContent === "Could not save project locally"'), "generic write exception uses the application fallback message instead of false success");
+  assert(await evaluate('document.querySelector("#status").textContent === "Project could not be saved in localStorage; the current document was not changed"'), "generic write exception uses the application fallback message instead of false success");
   assert(!(await evaluate('document.querySelector("#status").textContent')).includes("Saved locally"), "generic write exception never reports a false success");
   await evaluate("(() => { Storage.prototype.setItem = window.__t064OriginalSetItem; window.__t064FailWrites = false; })()");
   assert(await evaluate('Storage.prototype.setItem === window.__t064OriginalSetItem'), "generic write fault restores the original Storage.prototype.setItem method");
