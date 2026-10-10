@@ -387,3 +387,30 @@ test("T062 rejects unsupported document versions while retaining the supported l
   assert.match(js, /return restoreDocument\(saved\)/);
   assert.match(js, /const restored = restoreStoredDocument\(saved\)/);
 });
+
+
+test("T064 persistence writer inventory keeps the project key behind the existing snapshot boundary", async () => {
+  const { readdir } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const root = join(import.meta.dirname, "..");
+  const files = [];
+  async function visit(directory) {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (entry.name === "node_modules" || entry.name === "dist") continue;
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) await visit(path);
+      else if (/\\.(?:m?js)$/.test(entry.name)) files.push(path);
+    }
+  }
+  await visit(root);
+  const sources = await Promise.all(files.map(async path => [path, await readFile(path, "utf8")]));
+  const directWriters = sources.flatMap(([path, source]) =>
+    [...source.matchAll(/localStorage\\s*\\.\\s*setItem\\s*\\(/g)].map(() => path)
+  );
+  assert.deepEqual(directWriters, [], "no Web module writes the project key through a direct localStorage.setItem call");
+  const snapshotModule = sources.find(([path]) => path.endsWith(join("domain", "image-import.mjs")));
+  assert.ok(snapshotModule, "existing image-import domain module is included in the writer inventory");
+  assert.match(snapshotModule[1], /storage\\.setItem\\(key, serialized\\)/, "the shared snapshot boundary owns the delegated storage write");
+  const editor = sources.find(([path]) => path.endsWith("app.js"));
+  assert.ok(editor && editor[1].includes('persistDocumentSnapshot(localStorage, "animeart-web-document", state.document)'), "ordinary document persistence delegates through the existing snapshot boundary");
+});
