@@ -2845,3 +2845,110 @@ La prueba E2E cubre JSON corrupto y sustitución explícita. La restauración de
 
 SIGUIENTE:
 Después de CI verde, revisar el diff y el PR T062 sin fusionarlo.
+
+---
+
+## T064-R1 — Integridad dinámica de persistencia Web
+
+FECHA:
+2026-10-10
+
+ESTADO:
+IMPLEMENTACIÓN Y VALIDACIÓN EN CURSO. No declarar PASS hasta verificar Web CI y Android CI sobre el SHA final exacto.
+
+BASE Y AISLAMIENTO:
+- main verificada en SHA 4d4b2a03be0fc1bedae59b91d2980984d3cafe81.
+- PR T062 #45 verificado abierto, no fusionado, base main, head t062-web-recovery-safety, SHA 7223a06d411eccb94a08e9f26946c5f092f40f6f.
+- Rama T064: t064-web-storage-integrity-tests, creada desde el HEAD verificado de T062.
+- Esta tarea no modifica main, no cambia bases/head de PR existentes y no crea un sistema paralelo de persistencia.
+
+ARCHIVOS:
+- web/scripts/browser-e2e.mjs: escenarios Chromium reales para excepción de cuota durante guardado explícito, preservación exacta del payload, reintento, mutaciones en memoria con recuperación pendiente, Undo/Redo, importación rechazada, restauración de documento actual, migración legacy y fallo de lectura inyectado antes de load().
+- web/test/smoke.test.mjs: inventario estático recursivo de llamadas directas a localStorage.setItem en módulos Web y verificación de la frontera delegada existente.
+- docs/CONTINUITY.md: esta entrada append-only. Se conserva íntegra la entrada T062 anterior.
+
+AUDITORÍA ESTÁTICA DE ESCRITORES:
+- web/app.js usa persistDocumentSnapshot(localStorage, "animeart-web-document", state.document) para el guardado del documento.
+- web/domain/image-import.mjs contiene la escritura delegada storage.setItem(key, serialized); la importación pasa por su callback de persistencia y revierte el registro de historial si la persistencia falla.
+- La prueba de inventario verifica que no haya llamadas literales directas localStorage.setItem(...) en los módulos JavaScript Web. Esto no sustituye la evidencia dinámica ni afirma que una inspección textual por sí sola pruebe la seguridad.
+
+MATRIZ DE EVIDENCIA (validación dinámica del HEAD de implementación cee55409b1b1828064fe3e0df71a011470ade30e):
+| Escenario | Estado | Evidencia |
+|---|---|---|
+| JSON corrupto | PASS | Chromium E2E, payload protegido y reemplazo explícito |
+| Versión futura desconocida | PASS | Chromium E2E, versión 999 preservada hasta Save |
+| Restauración válida actual | PASS | Fixture version 2 restaurado y payload sin mutaciones |
+| Migración legacy admitida | PASS | Fixture version 1; capa, trazo y 3 puntos preservados tras Save |
+| Lectura de almacenamiento fallida | PASS | CDP Page.enable + script previo a reload; SecurityError controlado |
+| Guardado explícito fallido | PASS | QuotaExceededError; payload idéntico y advertencia visible |
+| Reintento explícito exitoso | PASS | Save posterior actualiza documento y sobrevive a recarga |
+| Dibujo durante recuperación | PASS | Trazo real por pointer; payload original idéntico |
+| Cambios de capas durante recuperación | PASS | Crear capa y cambiar visibilidad; payload idéntico |
+| Undo/Redo durante recuperación | PASS | Ambas operaciones mantienen intacto el payload |
+| Importación de imagen durante recuperación | PASS | Importación rechazada, sin capa añadida ni falso éxito |
+| Preservación exacta del payload | PASS | Comparaciones estrictas de la cadena original |
+| Mensajes visibles sin falso éxito | PASS | Aviso de almacenamiento no disponible y ausencia de Saved locally |
+| Inventario de escritores | PASS | Prueba estática recursiva; 336 pruebas totales, 0 fallidas |
+
+PRUEBAS Y CI:
+- GitHub Actions Web CI sobre cee55409b1b1828064fe3e0df71a011470ade30e: SUCCESS. [Run 38036321253](https://github.com/jonhararagi/animeart/actions/runs/38036321253). Install, Build, Test, Verify build output y Real browser E2E: SUCCESS.
+- El runner de pruebas reportó 336 PASS y 0 FAIL. El E2E imprimió ANIMEART_REAL_WEB_E2E: PASS.
+- Android CI sobre cee55409b1b1828064fe3e0df71a011470ade30e: estaba en ejecución al actualizar esta sección; Build, Unit tests y Lint ya habían terminado SUCCESS, y Android instrumentation/startup smoke tests seguía en ejecución. No se declara Android PASS hasta terminar.
+- Estos resultados no son los de T062 (#45); se verificó el SHA de T064.
+- No se modifica el formato de documento ni se relaja la validación de versiones.
+
+RIESGOS Y PENDIENTES:
+- Confirmar que la inyección CDP de fallo de lectura ocurre antes de load() y que la prueba termina con el payload original idéntico.
+- Confirmar la estabilidad del fixture PNG durante importación rechazada y la reversibilidad del fallo de escritura.
+- Reconciliar este apéndice con PR #42, que también modifica este archivo desde main; no cambiar la base de ese PR ni descartar ninguna sección.
+- T062 continúa abierto y sin fusionar; su estado no se eleva automáticamente por los tests T064.
+
+SIGUIENTE:
+Esperar los resultados CI del SHA final, corregir solo fallos reproducibles y actualizar esta entrada con resultados exactos antes del informe final.
+
+
+---
+
+## T064-R2 — Error genérico de escritura y cierre de evidencia
+
+FECHA:
+2026-10-10
+
+ALCANCE:
+Prueba dinámica específica para una excepción genérica de escritura con mensaje vacío. No se modificó la lógica de producción, el formato del documento ni las dependencias.
+
+AISLAMIENTO Y SHA:
+- PR #46: `t064-web-storage-integrity-tests`, apilado sobre PR #45 / `t062-web-recovery-safety`.
+- SHA de implementación y prueba del escenario genérico: `2adab389ae876fd08d50155ff8df6ded83ea3fc8`.
+- SHA documental previamente validado: `436b3fcdc602106faf552d17047f3b5db7fd71c2`.
+- Los SHA de implementación/prueba y documentación son distintos deliberadamente. Los resultados de CI enumerados a continuación pertenecen al SHA documental previo, no a un commit documental posterior.
+
+REGRESIÓN DINÁMICA:
+- El escenario Chromium independiente inyecta `new Error("")` al escribir `animeart-web-document` durante Save explícito con recuperación pendiente.
+- Comprueba la preservación exacta del payload protegido, el aviso visible, la ausencia de un falso `Saved locally` y la restauración de `Storage.prototype.setItem`.
+- El escenario separado de `QuotaExceededError` se conserva.
+- El mensaje visible esperado es `Project could not be saved in localStorage; the current document was not changed`. La prueba valida el mensaje emitido por la capa de persistencia: `persistDocumentSnapshot()` normaliza la excepción vacía antes de que la ruta llegue al fallback `Could not save project locally` de `app.js`. Por tanto, no afirma haber probado ese fallback.
+- Evidencia dinámica: el paso Real browser E2E de Web CI sobre el SHA documental previo terminó SUCCESS y sus logs incluyen los PASS específicos del error genérico, preservación del payload, aviso, mensaje de persistencia, ausencia de falso éxito y restauración del método nativo.
+
+ARCHIVOS Y TIPO DE EVIDENCIA:
+- `web/scripts/browser-e2e.mjs`: prueba dinámica real de Chromium/CDP, a través de la UI de Save.
+- `web/test/smoke.test.mjs`: inspección/prueba estática recursiva del inventario de escritores Web. Es una comprobación estructural de llamadas de persistencia, no evidencia dinámica ni prueba por sí sola de comportamiento de runtime.
+- CI Android: validación de compilación, unit tests, lint, instrumentación/startup smoke y generación/subida del APK Android. No ejecuta ni sustituye el escenario de escritura genérica en Chromium.
+- No se modificó código de producción ni se añadieron dependencias.
+
+CI VERIFICADA SOBRE EL SHA DOCUMENTAL PREVIO `436b3fcdc602106faf552d17047f3b5db7fd71c2`:
+- Web CI [run 38046005771](https://github.com/jonhararagi/animeart/actions/runs/38046005771): COMPLETED / SUCCESS. Install, Build, Test, Verify build output y Real browser E2E: SUCCESS. El conjunto estático reportó 336 pruebas PASS y 0 FAIL; el runner finalizó con `ANIMEART_REAL_WEB_E2E: PASS`.
+- Android CI [run 38046005803](https://github.com/jonhararagi/animeart/actions/runs/38046005803): COMPLETED / SUCCESS. Build, Unit tests, Lint, Android instrumentation and startup smoke tests, y Upload debug APK: SUCCESS.
+- La consulta de GitHub asoció ambos runs con el SHA documental previo `436b3fcdc602106faf552d17047f3b5db7fd71c2`. Estos resultados no deben presentarse como validación de un SHA documental posterior.
+
+LIMITACIONES Y DEUDA FUERA DE ALCANCE:
+- La reconciliación integral de los apéndices de `docs/CONTINUITY.md` con PR #42 queda pendiente para una tarea de integración posterior. #42 también modifica documentación desde `main`; esta tarea no altera su base ni intenta resolver el diff combinado.
+- PR #45 / T062 requiere revisión y aprobación independiente. El CI verde de T064 no aprueba, cierra ni fusiona T062.
+- Los workflows cubren las matrices configuradas y no prueban todos los dispositivos, navegadores o modos de fallo.
+- La validación del nuevo HEAD creado al registrar esta actualización documental debe anotarse en el informe de T064-R3, no atribuirse retroactivamente a los runs anteriores.
+
+VEREDICTO DE T064-R2:
+La regresión dinámica del error genérico y ambos workflows quedaron validados en el SHA documental previo indicado. La actualización de continuidad corrige el estado histórico pendiente sin borrar las entradas anteriores de T059, T062 ni T064-R1.
+
+SIGUIENTE:
+Validar Web CI y Android CI sobre el nuevo HEAD documental exacto. No crear otro commit después de capturar esos resultados.
