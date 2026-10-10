@@ -2879,3 +2879,272 @@ GOBERNANZA:
 
 SIGUIENTE:
 Verificar el HEAD definitivo de la rama, esperar Android CI y Web CI de ese SHA, revisar sus jobs y resultados. Mantener YELLOW hasta que los checks del HEAD final sean SUCCESS. No fusionar automáticamente.
+
+
+---
+
+## T060.2 — Deterministic WebView Recovery Callback Routing
+
+FECHA:
+2026-10-09
+
+ESTADO:
+YELLOW — implementación propuesta en PR apilado; Android/Web CI del HEAD de esta tarea todavía pendientes.
+
+BASELINE:
+- PR #43 HEAD (T060): `e6dfe2c010808bd5f5259bf86969ebdae78e076e`.
+- Rama de trabajo: `t060-2-deterministic-webview-recovery-callback`.
+- PR #43 sigue siendo la base apilada; no se modifica `main` ni se fusiona ningún PR.
+
+HALLAZGO:
+- T060 verifica la UI real de recuperación y la preservación del payload, pero invoca `showLegacyEditor()` por reflexión. No comprueba la ruta de filtrado del callback WebView para errores de main frame frente a subframe.
+- La limitación estaba declarada explícitamente en PR #43 y `docs/TESTING.md`.
+
+CAMBIO MÍNIMO:
+- `WebViewClient.onReceivedError` delega el filtro `request.isForMainFrame` a `handleWebViewLoadError(isMainFrame)`.
+- La función interna compartida invoca la ruta de recuperación únicamente para errores de main frame.
+- `RecoveryUiIntegrationTest` ejercita esa misma función determinísticamente, sin depender de fallos de red del emulador ni de reflexión sobre `showLegacyEditor()`.
+- Se agrega regresión para confirmar que un error de subframe no abre la UI de recuperación y no altera el payload corrupto.
+- Se reutilizan `MainActivity`, la ruta existente de recuperación y la dependencia Compose UI test ya añadida por T060. No se introduce otro sistema de recuperación ni nuevas dependencias.
+
+EVIDENCIA HEREDADA (NO EQUIVALE A VALIDAR T060.2):
+- PR #43 HEAD `e6dfe2c010808bd5f5259bf86969ebdae78e076e`: Web CI run 37924634697 SUCCESS, con Build, Test, Verify build output y Real browser E2E SUCCESS.
+- El mismo HEAD: Android CI run 37924634752 SUCCESS, con Build, Unit tests, Lint, Android instrumentation/startup smoke y debug APK upload SUCCESS.
+- Esos runs corresponden al HEAD anterior de PR #43, no a los cambios de T060.2.
+
+PRUEBAS PENDIENTES:
+- Android CI del HEAD final: build, unit tests, lint, instrumentación y startup smoke.
+- Web CI del HEAD final: build, tests, verificación de artefactos y real-browser E2E.
+- Revisar los jobs de ambos workflows y confirmar que corresponden al SHA final del PR de T060.2.
+
+GOBERNANZA:
+- Sin cambios directos en `main`.
+- Sin merge ni cierre de PRs.
+- No declarar GREEN hasta que ambos workflows del HEAD exacto terminen SUCCESS.
+- La prueba invoca el mismo handler conectado al callback real, pero no fabrica un objeto de plataforma `WebResourceRequest` ni llama directamente a `WebViewClient.onReceivedError`; esa limitación debe mantenerse explícita.
+
+SIGUIENTE:
+Verificar diff y CI del PR T060.2. Si Android instrumentación falla, leer los logs, aplicar reparación mínima y volver a ejecutar ambos workflows.
+
+---
+
+## T060.5.1 — Android CI Compile Fix and Recovery Verification Gate
+
+FECHA:
+2026-10-09
+
+ESTADO:
+YELLOW — reparación mínima enviada a la rama; los workflows del nuevo HEAD deben terminar antes de declarar GREEN.
+
+REPOSITORIO / PR:
+- Repositorio: `jonhararagi/animeart`.
+- PR #44: `https://github.com/jonhararagi/animeart/pull/44`.
+- Rama: `t060-2-deterministic-webview-recovery-callback`.
+- Baseline revisado antes de la reparación: `8778cb3103b61877836815c8c38eacabc1d3fbfe`.
+- main observado en la auditoría: `4d4b2a03be0fc1bedae59b91d2980984d3cafe81`.
+
+EVIDENCIA DEL FALLO:
+- Android CI run 37929438822: `https://github.com/jonhararagi/animeart/actions/runs/37929438822`.
+- Job 113816254177 (`build`) completó Build, Unit tests y Lint con SUCCESS, pero falló durante `Android instrumentation and startup smoke tests`.
+- Error exacto de compilación: `RecoveryUiIntegrationTest.kt:4:33 Unresolved reference 'assertDoesNotExist'.`
+- Falló `:app:compileDebugAndroidTestKotlin`; por tanto, los tests instrumentados y startup smoke no llegaron a ejecutarse en ese run. El APK no se publicó.
+- Web CI run 37929438788: `https://github.com/jonhararagi/animeart/actions/runs/37929438788`, SUCCESS en el SHA previo; no valida el nuevo HEAD.
+
+REPARACIÓN MÍNIMA:
+- Sustituir la importación y uso no resoluble de `assertDoesNotExist()` por `onAllNodesWithText(...).assertCountEquals(0)` con las APIs Compose UI Test disponibles en el proyecto.
+- Se conserva la aserción negativa: el mensaje de recuperación debe tener cero nodos cuando se simula un error de subframe.
+- Sin actualización de dependencias, sin cambios de lógica de producción y sin cambios al contenido persistido.
+
+VALIDACIÓN PENDIENTE SOBRE EL HEAD RESULTANTE:
+- Android build, unit tests y lint.
+- Compilación de instrumentación, ejecución real de `RecoveryUiIntegrationTest` y startup smoke.
+- Web CI y Web E2E.
+- Revisar jobs/logs y confirmar que todos los resultados corresponden al mismo SHA final.
+- Verificar los tres invariantes de recuperación: Cancel conserva el payload corrupto; abrir documento nuevo no lo reemplaza; solo Guardar explícito lo reemplaza y el documento guardado vuelve a cargar.
+
+LÍMITES DE COBERTURA:
+- El test llama al mismo handler compartido por el callback WebView y la prueba; no invoca directamente `WebViewClient.onReceivedError` con un `WebResourceRequest` de plataforma.
+- No declarar GREEN hasta tener CI verde del HEAD final y evidencia de que la instrumentación realmente se ejecutó.
+
+GOBERNANZA:
+- No se fusionó ni cerró ningún PR.
+- No se modificó `main` ni el PR #42.
+- Se mantiene el apilamiento #44 → #43 y la base de #43 sin cambios.
+
+
+---
+
+## T060.5.2 — Final Android/Web CI Verification
+
+FECHA:
+2026-10-09
+
+ESTADO:
+YELLOW — la validación técnica del HEAD anterior fue SUCCESS; esta sección registra la evidencia y requiere revalidación de CI en el nuevo HEAD documental.
+
+REPOSITORIO / PR:
+- Repositorio: `jonhararagi/animeart`.
+- PR #44: https://github.com/jonhararagi/animeart/pull/44.
+- Rama: `t060-2-deterministic-webview-recovery-callback`.
+- HEAD con validación completada: `3818d9aa7b72d3b8f0852b0674bd9f9f400a949c`.
+- `main` observado: `4d4b2a03be0fc1bedae59b91d2980984d3cafe81`.
+
+REPARACIÓN Y CAUSA:
+- El fallo previo fue un error de compilación Kotlin: `Unresolved reference 'assertDoesNotExist'` en `RecoveryUiIntegrationTest.kt`.
+- Se sustituyó por `onAllNodesWithText(...).assertCountEquals(0)`, conservando la assertion negativa de ausencia de UI para error de subframe.
+- No se actualizaron dependencias ni se eliminó la comprobación negativa.
+
+EVIDENCIA ANDROID CI:
+- Run 37936690315: https://github.com/jonhararagi/animeart/actions/runs/37936690315 — SUCCESS.
+- Job `build`, ID 113840395366 — SUCCESS.
+- Build `gradle assembleDebug`: SUCCESS.
+- Unit tests `gradle test`: SUCCESS.
+- Lint `gradle lintDebug`: SUCCESS.
+- `gradle connectedDebugAndroidTest`: SUCCESS; log confirma `Starting 10 tests` y `Finished 10 tests` en el emulador `emulator-5554 - 11`.
+- La compilación `:app:compileDebugAndroidTestKotlin` terminó correctamente.
+- Startup smoke: SUCCESS; la Activity y WebView arrancaron, cache Service Worker mostró 13/13 recursos requeridos, y el log terminó con `OFFLINE VALIDATION PASS`.
+- APK debug: subida correctamente como artifact `animeart-debug-apk`, artifact ID 11618866536.
+
+EVIDENCIA WEB CI:
+- Run 37936690321: https://github.com/jonhararagi/animeart/actions/runs/37936690321 — SUCCESS.
+- Job `build`, ID 113840395612 — SUCCESS.
+- Install, Build, Test, Verify build output y Real browser E2E: SUCCESS.
+
+INTEGRIDAD DEL PAYLOAD:
+- La instrumentación incluye pruebas de Cancel que conserva el payload corrupto, abrir documento nuevo sin reemplazo, guardar explícitamente para reemplazar y cargar correctamente el documento guardado.
+- El run Android terminó con éxito y ejecutó 10 pruebas instrumentadas; esto valida el conjunto de pruebas configurado en CI. No se debe inferir cobertura exhaustiva fuera de esas assertions.
+
+LIMITACIÓN DE COBERTURA:
+- La prueba invoca `MainActivity.handleWebViewLoadError(isMainFrame)`, la misma función conectada a `WebViewClient.onReceivedError`.
+- No crea un `WebResourceRequest` de plataforma ni invoca directamente `WebViewClient.onReceivedError`; por tanto, la entrada de plataforma del callback no está probada directamente.
+
+CADENA DE PR / GOBERNANZA:
+- PR #44 continúa apilado sobre PR #43; PR #43 se basa en PR #41.
+- PR #41, #42, #43 y #44 siguen abiertos y sin merge según la inspección realizada.
+- No se modificó PR #42 ni `main`; no se fusionó ni cerró ningún PR.
+
+SIGUIENTE:
+- Este registro documental genera un nuevo HEAD; repetir Android CI y Web CI y confirmar SUCCESS en ese SHA antes de clasificar T060.5 como GREEN.
+
+
+---
+
+## T060.5.3 — Exact-SHA CI Revalidation & Continuity Correction
+
+FECHA:
+2026-10-09
+
+ESTADO:
+EVIDENCIA CI VERIFICADA PARA EL SHA AUDITADO. Esta entrada registra los resultados de las ejecuciones existentes; no implica que un commit posterior esté validado ni autoriza integración.
+
+REPOSITORIO / PR:
+- Repositorio: `jonhararagi/animeart`.
+- PR #44: https://github.com/jonhararagi/animeart/pull/44 — abierto, sin fusionar al preflight.
+- Rama: `t060-2-deterministic-webview-recovery-callback`.
+- HEAD exacto auditado por ambos workflows: `08c4f77447b6c44dd5d660093203c2c1ccfad3fe`.
+- `main` en el preflight: `4d4b2a03be0fc1bedae59b91d2980984d3cafe81`.
+- Archivo inspeccionado en el HEAD anterior a esta adición; blob SHA: `bfc9942763e5302fe23243fded010f79f0bee835`.
+
+EVIDENCIA ANDROID CI:
+- Run 37941032336: https://github.com/jonhararagi/animeart/actions/runs/37941032336 — estado `completed`, conclusión `success`, HEAD SHA `08c4f77447b6c44dd5d660093203c2c1ccfad3fe`.
+- Job `build`, ID 113855146741: https://github.com/jonhararagi/animeart/actions/runs/37941032336/job/113855146741 — estado `completed`, conclusión `success`.
+- Build (`gradle assembleDebug`): SUCCESS; log `BUILD SUCCESSFUL`.
+- Unit tests (`gradle test`): SUCCESS; log `BUILD SUCCESSFUL`.
+- Lint (`gradle lintDebug`): SUCCESS; log `BUILD SUCCESSFUL`.
+- Instrumentación (`gradle connectedDebugAndroidTest`): SUCCESS; el log registra `Starting 10 tests` y `Finished 10 tests` en `emulator-5554 - 11`; la compilación y ejecución instrumentada concluyeron correctamente.
+- Startup smoke: SUCCESS; el log registra `Status: ok` y `OFFLINE VALIDATION PASS`, con WebView `blockNetworkLoads` + `LOAD_CACHE_ONLY`, reload PASS y AnimeArt/JavaScript/Canvas PASS.
+- Artifact de APK debug: subida correcta; artifact ID `11621752769`.
+
+EVIDENCIA WEB CI:
+- Run 37941032391: https://github.com/jonhararagi/animeart/actions/runs/37941032391 — estado `completed`, conclusión `success`, HEAD SHA `08c4f77447b6c44dd5d660093203c2c1ccfad3fe`.
+- Job `build`, ID 113855145728: https://github.com/jonhararagi/animeart/actions/runs/37941032391/job/113855145728 — estado `completed`, conclusión `success`.
+- Install: SUCCESS.
+- Build (`npm run build`): SUCCESS; el log confirma `AnimeArt Web static build complete.`
+- Tests: SUCCESS; resumen TAP del log: `# tests 328`, `# pass 328`, `# fail 0` (328/328).
+- Verify build output: SUCCESS.
+- Real browser E2E: SUCCESS; el log termina con `ANIMEART_REAL_WEB_E2E: PASS` y confirma carga del entrypoint, flujo de documento nuevo, importación de imagen, exportación PNG no vacía y service worker/caché offline activos.
+
+LIMITACIÓN DE COBERTURA:
+- La prueba invoca directamente `MainActivity.handleWebViewLoadError(isMainFrame)`, el handler compartido que está conectado a `WebViewClient.onReceivedError`.
+- No simula una llamada completa a `WebViewClient.onReceivedError` con un `WebResourceRequest` de plataforma. Por tanto, se verifica el comportamiento del handler compartido, pero no se prueba directamente la entrada del callback de plataforma.
+
+ADVERTENCIA DE ALCANCE DE CI:
+- Los runs Android 37941032336 y Web 37941032391 validan únicamente el SHA exacto `08c4f77447b6c44dd5d660093203c2c1ccfad3fe`.
+- No validan automáticamente este commit documental ni ningún otro commit posterior. Tras esta adición, Android CI y Web CI deben terminar en SUCCESS para el nuevo HEAD exacto antes de declarar T060.5.3 GREEN.
+
+GOBERNANZA:
+- En el preflight, `main` permanecía en el baseline declarado; PR #44 estaba abierto y sin fusionar; PR #42 también estaba abierto y sin fusionar.
+- Esta entrada se añade de forma aditiva al final. Las entradas históricas, incluida T060.5.2 y los registros anteriores de T059/T060/T060.5, se conservan sin reescritura.
+- No se autoriza ni ejecuta ninguna integración por esta entrada.
+
+
+---
+
+## T060.5.9 — Instrumentation Recovery Preference Isolation
+
+FECHA:
+2026-10-09
+
+ESTADO:
+CORRECCIÓN DE PRUEBAS ENVIADA; CI DEL HEAD RESULTANTE PENDIENTE.
+
+PR:
+[#44 — T060.2 Deterministic WebView recovery callback routing test](https://github.com/jonhararagi/animeart/pull/44).
+
+HALLAZGO:
+- Las pruebas de `ProjectPersistenceRecoveryTest` y `RecoveryUiIntegrationTest` usaban `SharedPreferences.edit().clear()` en setup/teardown.
+- `clear()` elimina todas las claves de `animeart_recovery`, no solo el payload de recuperación controlado por la prueba.
+- Limitarse a `remove("project")` también podía descartar un payload preexistente en un dispositivo donde alguien ejecutara las pruebas manualmente.
+
+CORRECCIÓN:
+- Las pruebas guardan el valor y el tipo originales de la clave `project`.
+- Antes de cada prueba eliminan únicamente esa clave para aislar el escenario.
+- En teardown restauran el valor original, incluyendo los tipos estándar admitidos por SharedPreferences.
+- Se elimina el uso de `clear()` en ambas clases de prueba.
+- No cambia la lógica de producción, el formato de persistencia, la dependencia Compose ni la rama `main`.
+
+VALIDACIÓN:
+- Código actualizado en la rama `t060-2-deterministic-webview-recovery-callback`.
+- Android CI y Web CI deben terminar SUCCESS sobre el HEAD final exacto antes de considerar esta corrección GREEN.
+- Los resultados de commits anteriores no validan automáticamente este cambio.
+
+GOBERNANZA:
+- PR #44 permanece abierto y apilado sobre PR #43.
+- Sin merge, cierre de PR, eliminación de ramas ni cambios directos en `main`.
+
+
+---
+
+## T060.5.10 — Exact-HEAD CI Verification
+
+FECHA:
+2026-10-10
+
+ESTADO:
+IMPLEMENTACIÓN Y CI VERIFICADOS PARA EL HEAD INSPECCIONADO. La adición de esta entrada documental crea un nuevo HEAD que requiere su propia revalidación.
+
+PR:
+[#44 — T060.2 Deterministic WebView recovery callback routing test](https://github.com/jonhararagi/animeart/pull/44).
+
+HEAD VALIDADO ANTES DE ESTA ENTRADA:
+- SHA: `e1722688febbfba854e781cbd39446c5d401f2be`.
+- PR #44 permanece abierto y apilado sobre PR #43; no se fusionó ni se cerró ningún PR.
+
+ANDROID CI:
+- Run [38003702787](https://github.com/jonhararagi/animeart/actions/runs/38003702787): COMPLETED / SUCCESS.
+- Job `build` (ID `114067622788`): SUCCESS.
+- Build, unit tests, lint, Android instrumentation/startup smoke y upload de APK debug: todos SUCCESS.
+
+WEB CI:
+- Run [38003702753](https://github.com/jonhararagi/animeart/actions/runs/38003702753): COMPLETED / SUCCESS.
+- Job `build` (ID `114067522238`): SUCCESS.
+- Install, build, tests, verificación del artefacto y real-browser E2E: todos SUCCESS.
+
+ALCANCE:
+- Los dos runs corresponden al SHA exacto `e1722688febbfba854e781cbd39446c5d401f2be`.
+- Esto verifica ese HEAD, no este nuevo commit documental ni futuros HEADs.
+- Se conserva la limitación declarada: la prueba llama al handler compartido `handleWebViewLoadError(isMainFrame)), pero no invoca directamente el callback de plataforma `WebViewClient.onReceivedError` con un `WebResourceRequest` real.
+
+SIGUIENTE:
+- Esperar y revisar Web CI y Android CI del nuevo HEAD generado por esta entrada.
+- Mantener el PR apilado, sin merge automático.

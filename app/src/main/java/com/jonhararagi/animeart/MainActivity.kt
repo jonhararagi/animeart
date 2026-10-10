@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
                     request: WebResourceRequest,
                     error: WebResourceError
                 ) {
-                    if (request.isForMainFrame) showLegacyEditor()
+                    handleWebViewLoadError(request.isForMainFrame)
                 }
             }
         }
@@ -98,6 +98,11 @@ class MainActivity : ComponentActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         webView?.saveState(outState)
         super.onSaveInstanceState(outState)
+    }
+
+    /** Deterministic seam shared by the WebView callback and instrumentation tests. */
+    internal fun handleWebViewLoadError(isMainFrame: Boolean) {
+        if (isMainFrame) showLegacyEditor()
     }
 
     private fun showLegacyEditor() {

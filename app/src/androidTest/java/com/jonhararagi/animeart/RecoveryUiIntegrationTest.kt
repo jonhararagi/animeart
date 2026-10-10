@@ -1,6 +1,8 @@
 package com.jonhararagi.animeart
 
 import android.content.Context
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -25,39 +27,56 @@ class RecoveryUiIntegrationTest {
 
     private lateinit var context: Context
     private val preferencesName = "animeart_recovery"
+    private var hadOriginalProjectValue = false
+    private var originalProjectValue: Any? = null
 
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
-            .edit().clear().commit()
+        val prefs = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
+        hadOriginalProjectValue = prefs.contains("project")
+        originalProjectValue = prefs.all["project"]
+        prefs.edit().remove("project").commit()
     }
 
     @After
     fun tearDown() {
-        context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
-            .edit().clear().commit()
+        val prefs = context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
+        val editor = prefs.edit().remove("project")
+        if (hadOriginalProjectValue) {
+            when (val value = originalProjectValue) {
+                is String -> editor.putString("project", value)
+                is Boolean -> editor.putBoolean("project", value)
+                is Int -> editor.putInt("project", value)
+                is Long -> editor.putLong("project", value)
+                is Float -> editor.putFloat("project", value)
+                is Set<*> -> editor.putStringSet("project", value.filterIsInstance<String>().toSet())
+            }
+        }
+        editor.commit()
     }
 
     @Test
-    fun cancelAfterFailedRecoveryFinishesActivityAndPreservesStoredPayload() {
+    fun mainFrameLoadErrorShowsRecoveryDecisionAndCancelPreservesStoredPayload() {
         val raw = "{known-corrupt-recovery-payload"
         seedCorruptRecovery(raw)
-        showRecoveryDecision()
+        simulateMainFrameLoadError()
 
         composeRule.onNodeWithText("No se pudo recuperar el documento").assertIsDisplayed()
+        // Capture the Activity while the Compose rule still owns a live Activity instance.
+        val activity = composeRule.activity
         composeRule.onNodeWithText("Cancelar").performClick()
         composeRule.waitForIdle()
 
-        assertTrue("Cancel must finish the Activity", composeRule.activity.isFinishing)
+        assertTrue("Cancel must finish the Activity", activity.isFinishing)
         assertEquals(raw, storedPayload())
     }
 
     @Test
-    fun choosingNewDocumentDoesNotWriteUntilExplicitSave() {
+    fun choosingNewDocumentDoesNotWriteUntilExplicitSaveAfterMainFrameError() {
         val raw = "{known-corrupt-recovery-payload"
         seedCorruptRecovery(raw)
-        showRecoveryDecision()
+        simulateMainFrameLoadError()
 
         composeRule.onNodeWithText("Iniciar documento nuevo").performClick()
         composeRule.waitForIdle()
@@ -87,13 +106,23 @@ class RecoveryUiIntegrationTest {
         context.getSharedPreferences(preferencesName, Context.MODE_PRIVATE)
             .getString("project", null)
 
-    private fun showRecoveryDecision() {
+    @Test
+    fun subframeLoadErrorDoesNotEnterRecoveryUi() {
+        seedCorruptRecovery("{known-corrupt-recovery-payload")
+
         composeRule.activity.runOnUiThread {
-            // Exercise the real recovery UI deterministically without relying on a WebView
-            // network failure, which varies across emulator images and network conditions.
-            val method = MainActivity::class.java.getDeclaredMethod("showLegacyEditor")
-            method.isAccessible = true
-            method.invoke(composeRule.activity)
+            composeRule.activity.handleWebViewLoadError(isMainFrame = false)
+        }
+        composeRule.waitForIdle()
+
+        composeRule.onAllNodesWithText("No se pudo recuperar el documento").assertCountEquals(0)
+        assertEquals("{known-corrupt-recovery-payload", storedPayload())
+    }
+
+    private fun simulateMainFrameLoadError() {
+        composeRule.activity.runOnUiThread {
+            // Invoke the same deterministic handler wired directly to WebViewClient.onReceivedError.
+            composeRule.activity.handleWebViewLoadError(isMainFrame = true)
         }
         composeRule.waitForIdle()
     }

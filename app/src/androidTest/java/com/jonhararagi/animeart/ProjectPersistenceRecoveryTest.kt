@@ -21,19 +21,34 @@ import org.junit.runner.RunWith
 class ProjectPersistenceRecoveryTest {
     private lateinit var context: Context
     private lateinit var persistence: ProjectPersistence
+    private var hadOriginalProjectValue = false
+    private var originalProjectValue: Any? = null
 
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
-            .edit().clear().commit()
+        val prefs = context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
+        hadOriginalProjectValue = prefs.contains("project")
+        originalProjectValue = prefs.all["project"]
+        prefs.edit().remove("project").commit()
         persistence = ProjectPersistence(context)
     }
 
     @After
     fun tearDown() {
-        context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
-            .edit().clear().commit()
+        val prefs = context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
+        val editor = prefs.edit().remove("project")
+        if (hadOriginalProjectValue) {
+            when (val value = originalProjectValue) {
+                is String -> editor.putString("project", value)
+                is Boolean -> editor.putBoolean("project", value)
+                is Int -> editor.putInt("project", value)
+                is Long -> editor.putLong("project", value)
+                is Float -> editor.putFloat("project", value)
+                is Set<*> -> editor.putStringSet("project", value.filterIsInstance<String>().toSet())
+            }
+        }
+        editor.commit()
     }
 
     @Test
