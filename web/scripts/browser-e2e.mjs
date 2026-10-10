@@ -410,6 +410,11 @@ try {
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(quotaPayload)), "Undo during recovery leaves the protected payload unchanged");
   await click("#redo");
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(quotaPayload)), "Redo during recovery leaves the protected payload unchanged");
+  const pendingSelectedLayerId = await evaluate('document.querySelector("#layers li[data-selected=true]").dataset.layerId');
+  await click(layerToggleSelector(pendingSelectedLayerId, 1));
+  await waitFor('document.querySelector("#status").textContent === "Saved project is protected. Choose Save to replace it explicitly."');
+  assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(quotaPayload)), "layer visibility change during recovery leaves the protected payload unchanged");
+  assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "layer property change keeps the recovery warning visible");
   await click('[data-tool="brush"]');
   const pendingCanvas = await selectorCenter("#canvas");
   await mouseStroke([
