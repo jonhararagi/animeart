@@ -378,6 +378,107 @@ try {
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").version === 2'), "explicitly saved supported document remains recoverable");
 
 
+
+  // T064: prove explicit-write failures preserve the protected payload and can be retried.
+  const quotaPayload = JSON.stringify({
+    version: 999, width: 320, height: 240,
+    layers: [{ id: "quota-protected", name: "Protected", visible: true, locked: false, opacity: 1,
+      transform: { x: 0, y: 0, scale: 1, rotation: 0 }, contentType: "drawing", strokes: [] }]
+  });
+  await evaluate("localStorage.setItem(\"animeart-web-document\", " + JSON.stringify(quotaPayload) + ")");
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitFor('document.querySelector("#storage-recovery-notice").hidden === false');
+  await click("#new-document");
+  await waitFor('document.querySelector("#project-dialog").open === true');
+  await evaluate('(() => { document.querySelector("#document-width").value = "320"; document.querySelector("#document-height").value = "240"; })()');
+  await click('#project-form button[type="submit"]');
+  await waitFor('document.querySelector("#status").textContent === "New document created"');
+  await evaluate("(() => { window.__t064OriginalSetItem = Storage.prototype.setItem; window.__t064FailWrites = true; Storage.prototype.setItem = function(key, value) { if (window.__t064FailWrites && key === 'animeart-web-document') throw new DOMException('Quota exceeded by T064 test', 'QuotaExceededError'); return window.__t064OriginalSetItem.call(this, key, value); }; })()");
+  await click("#save");
+  await waitFor('document.querySelector("#status").textContent.includes("could not be saved")');
+  assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(quotaPayload)), "QuotaExceededError during explicit Save preserves the exact protected payload");
+  assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "failed explicit Save keeps recovery warning visible");
+  assert(!(await evaluate('document.querySelector("#status").textContent')).includes("Saved locally"), "failed explicit Save never reports a false success");
+  assert(await evaluate('document.querySelector("#undo").disabled === true'), "failed Save does not invent a history operation");
+  await evaluate("window.__t064FailWrites = false");
+  await click("#add-layer");
+  await waitFor('document.querySelector("#status").textContent === "Saved project is protected. Choose Save to replace it explicitly."');
+  assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(quotaPayload)), "layer creation during recovery cannot overwrite the protected payload");
+  assert(await evaluate('document.querySelector("#undo").disabled === false'), "layer mutation remains available in memory and records history while recovery is pending");
+  await click("#undo");
+  assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(quotaPayload)), "Undo during recovery leaves the protected payload unchanged");
+  await click("#redo");
+  assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(quotaPayload)), "Redo during recovery leaves the protected payload unchanged");
+  await click('[data-tool="brush"]');
+  const pendingCanvas = await selectorCenter("#canvas");
+  await mouseStroke([
+    { x: pendingCanvas.x - 35, y: pendingCanvas.y - 10 },
+    { x: pendingCanvas.x, y: pendingCanvas.y + 5 },
+    { x: pendingCanvas.x + 35, y: pendingCanvas.y + 20 }
+  ]);
+  assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(quotaPayload)), "drawing during recovery leaves the protected payload unchanged");
+  assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "warning remains visible after in-memory drawing");
+  const pendingLayerCount = await evaluate('document.querySelectorAll("#layers li").length');
+  await evaluate("(() => { const bytes = Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='), char => char.charCodeAt(0)); const file = new File([bytes], 'protected-import.png', { type: 'image/png' }); const transfer = new DataTransfer(); transfer.items.add(file); const input = document.querySelector('#image-file-input'); input.files = transfer.files; input.dispatchEvent(new Event('change', { bubbles: true })); })()");
+  await waitFor('document.querySelector("#status").textContent.includes("protected")', 10000);
+  assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(quotaPayload)), "image import during recovery cannot overwrite the protected payload");
+  assert(await evaluate('document.querySelectorAll("#layers li").length === ' + pendingLayerCount), "rejected image import does not report success or commit a layer");
+  assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "warning remains visible after rejected image import");
+  await click("#save");
+  await waitFor('document.querySelector("#status").textContent === "Saved locally"');
+  assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "successful retry clears the recovery warning only after storage succeeds");
+  const quotaRecoverySaved = await readDocument();
+  assert(quotaRecoverySaved.version === 2 && quotaRecoverySaved.layers.length === pendingLayerCount, "successful retry stores the selected in-memory replacement document");
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitFor('document.querySelector("#storage-recovery-notice").hidden === true');
+  assert(JSON.stringify(await readDocument()) === JSON.stringify(quotaRecoverySaved), "document saved after successful retry survives reload");
+
+  // T064: supported current documents and the explicitly supported legacy format use the real loader.
+  const validFixture = JSON.stringify(await readDocument());
+  await evaluate("localStorage.setItem(\"animeart-web-document\", " + JSON.stringify(validFixture) + ")");
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitFor('document.querySelector("#storage-recovery-notice").hidden === true');
+  assert(await evaluate('document.querySelector("#status").textContent === "Recovered local project"'), "valid current-version project restores without entering recovery mode");
+  assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(validFixture)), "valid current-version payload remains byte-for-byte stable during restoration");
+
+  const legacyFixture = JSON.stringify({
+    version: 1, width: 320, height: 240,
+    layers: [{ id: "t064-legacy-layer", name: "Legacy Sketch" }],
+    strokes: [{ layerIndex: 0, tool: "brush", size: 5, color: "#111318", opacity: 1,
+      points: [{ x: 12, y: 14 }, { x: 42, y: 45 }, { x: 72, y: 66 }] }]
+  });
+  await evaluate("localStorage.setItem(\"animeart-web-document\", " + JSON.stringify(legacyFixture) + ")");
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitFor('document.querySelector("#storage-recovery-notice").hidden === true');
+  assert(await evaluate('document.querySelector("#status").textContent === "Recovered local project"'), "supported legacy project restores without recovery warning");
+  assert(await evaluate('document.querySelector("#layers .layer-select").textContent.includes("Legacy Sketch")'), "legacy migration preserves the named layer through the real UI");
+  await click("#save");
+  await waitFor('document.querySelector("#status").textContent === "Saved locally"');
+  const migratedLegacy = await readDocument();
+  assert(migratedLegacy.version === 2, "explicit save serializes supported legacy project into the current version");
+  assert(migratedLegacy.layers[0].name === "Legacy Sketch", "legacy migration preserves layer metadata");
+  assert(migratedLegacy.layers[0].strokes.length === 1, "legacy migration preserves the original stroke");
+  assert(migratedLegacy.layers[0].strokes[0].points.length === 3, "legacy migration preserves all legacy stroke points");
+
+  // T064: inject a deterministic getItem failure before load(), then prove edits cannot auto-save.
+  const readFailurePayload = '{"version":999,"sentinel":"read-failure-protected"}';
+  await evaluate("localStorage.setItem(\"animeart-web-document\", " + JSON.stringify(readFailurePayload) + ")");
+  const preload = await cdp("Page.addScriptToEvaluateOnNewDocument", { source: "(() => { const originalGetItem = Storage.prototype.getItem; let armed = true; Storage.prototype.getItem = function(key) { if (armed && key === 'animeart-web-document') { armed = false; throw new DOMException('T064 injected read failure', 'SecurityError'); } return originalGetItem.call(this, key); }; })();" });
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitFor('document.querySelector("#storage-recovery-notice").hidden === false');
+  await cdp("Page.removeScriptToEvaluateOnNewDocument", { identifier: preload.identifier });
+  assert(await evaluate('document.querySelector("#status").textContent === "Local project storage unavailable"'), "read failure is reported as unavailable storage, not successful recovery");
+  assert((await evaluate('document.querySelector("#storage-recovery-notice").textContent')).includes("could not be read"), "read failure displays the explicit storage-unavailable warning");
+  assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(readFailurePayload)), "payload is exactly preserved after deterministic startup read failure");
+  await click("#add-layer");
+  assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(readFailurePayload)), "automatic writes remain paused after startup read failure");
+  assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "startup read failure remains in protected recovery state");
+
   assert(await evaluate('document.documentElement.dataset.serviceWorkerActive === "true"'), "real browser service worker is active");
   assert(await evaluate('document.documentElement.dataset.cacheReady === "true"'), "real browser service worker cache contains the required offline shell");
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
