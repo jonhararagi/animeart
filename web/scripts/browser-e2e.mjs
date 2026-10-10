@@ -445,8 +445,8 @@ try {
   await evaluate("localStorage.setItem(\"animeart-web-document\", " + JSON.stringify(validFixture) + ")");
   await cdp("Page.reload", { ignoreCache: true });
   await waitFor('document.readyState === "complete"');
-  await waitFor('document.querySelector("#storage-recovery-notice").hidden === true');
-  assert(await evaluate('document.querySelector("#status").textContent === "Recovered local project"'), "valid current-version project restores without entering recovery mode");
+  await waitFor('document.querySelector("#status").textContent === "Recovered local project"');
+  assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "valid current-version project restores without entering recovery mode");
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(validFixture)), "valid current-version payload remains byte-for-byte stable during restoration");
 
   const legacyFixture = JSON.stringify({
@@ -458,8 +458,8 @@ try {
   await evaluate("localStorage.setItem(\"animeart-web-document\", " + JSON.stringify(legacyFixture) + ")");
   await cdp("Page.reload", { ignoreCache: true });
   await waitFor('document.readyState === "complete"');
-  await waitFor('document.querySelector("#storage-recovery-notice").hidden === true');
-  assert(await evaluate('document.querySelector("#status").textContent === "Recovered local project"'), "supported legacy project restores without recovery warning");
+  await waitFor('document.querySelector("#status").textContent === "Recovered local project");
+  assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "supported legacy project restores without recovery warning");
   assert(await evaluate('document.querySelector("#layers .layer-select").textContent.includes("Legacy Sketch")'), "legacy migration preserves the named layer through the real UI");
   await click("#save");
   await waitFor('document.querySelector("#status").textContent === "Saved locally"');
