@@ -144,6 +144,36 @@ const waitFor = async (expression, timeout = 10000) => {
   throw new Error(`Timed out waiting for: ${expression}`);
 };
 
+const readServiceWorkerDiagnostics = async () => evaluate(`(async () => {
+  const root = document.documentElement;
+  const registration = await navigator.serviceWorker?.getRegistration().catch(() => null);
+  return {
+    serviceWorkerActive: root.dataset.serviceWorkerActive ?? null,
+    cacheReady: root.dataset.cacheReady ?? null,
+    status: document.querySelector("#status")?.textContent ?? null,
+    cacheMissing: root.dataset.cacheMissing ?? null,
+    controllerState: navigator.serviceWorker?.controller?.state ?? null,
+    registrationState: registration?.active?.state
+      ?? registration?.waiting?.state
+      ?? registration?.installing?.state
+      ?? null
+  };
+})()`);
+
+const waitForServiceWorkerReadiness = async (timeout = 15000) => {
+  const deadline = Date.now() + timeout;
+  let diagnostics;
+  while (Date.now() < deadline) {
+    diagnostics = await readServiceWorkerDiagnostics();
+    if (diagnostics.serviceWorkerActive === "true" && diagnostics.cacheReady === "true") {
+      return diagnostics;
+    }
+    await sleep(100);
+  }
+  diagnostics = await readServiceWorkerDiagnostics();
+  throw new Error(`Timed out waiting for Service Worker and offline cache readiness: ${JSON.stringify(diagnostics)}`);
+};
+
 const assert = (condition, message) => {
   if (!condition) throw new Error(message);
   console.log(`PASS: ${message}`);
@@ -200,7 +230,7 @@ try {
   await cdp("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   await waitFor(`document.readyState === "complete"`);
   await waitFor(`document.querySelector("#canvas") !== null`);
-  await waitFor(`document.documentElement.dataset.serviceWorkerActive === "true"`, 15000);
+  await waitForServiceWorkerReadiness();
 
   assert(await evaluate("document.title") === "AnimeArt Web", "real browser loaded the AnimeArt Web entrypoint");
   const canvas = await selectorCenter("#canvas");
@@ -374,9 +404,9 @@ try {
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").version === 2'), "explicit Save replaces the incompatible version with a supported document");
   await cdp("Page.reload", { ignoreCache: true });
   await waitFor('document.readyState === "complete"');
+  await waitForServiceWorkerReadiness();
   await waitFor('document.querySelector("#storage-recovery-notice").hidden === true');
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").version === 2'), "explicitly saved supported document remains recoverable");
-
 
   assert(await evaluate('document.documentElement.dataset.serviceWorkerActive === "true"'), "real browser service worker is active");
   assert(await evaluate('document.documentElement.dataset.cacheReady === "true"'), "real browser service worker cache contains the required offline shell");
