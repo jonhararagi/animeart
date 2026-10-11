@@ -357,3 +357,33 @@ test("T041 group move, pointercancel and single-layer transform boundaries remai
   assert.match(js, /beginTransformInteraction\("scale"/);
   assert.match(js, /beginTransformInteraction\("rotate"/);
 });
+
+
+test("T062 invalid local projects pause automatic writes and require explicit replacement", async () => {
+  const js = await readFile("app.js", "utf8");
+  const html = await readFile("index.html", "utf8");
+  assert.match(html, /id="storage-recovery-notice"[^>]*role="alert"[^>]*hidden/);
+  assert.match(js, /storageRecoveryPending: false/);
+  assert.match(js, /if \(state\.storageRecoveryPending && !markSaved\)/);
+  assert.match(js, /setStorageRecoveryPending\(true, "The saved project could not be opened/);
+  assert.match(js, /setStorageRecoveryPending\(true, "Local project storage could not be read/);
+  assert.match(js, /persistDocument\(\{ markSaved: true \}\)/);
+  assert.match(js, /if \(markSaved\) setStorageRecoveryPending\(false\)/);
+  assert.doesNotMatch(js, /state\.document = restoreDocument\(saved\) \|\| createDocument\(\)/);
+});
+
+
+test("T062 image import cannot bypass the pending-recovery persistence guard", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /persist: next => \{[\s\S]{0,180}state\.storageRecoveryPending[\s\S]{0,180}persistDocumentSnapshot/);
+});
+
+
+test("T062 rejects unsupported document versions while retaining the supported legacy migration path", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.ok(js.includes("saved?.version !== undefined"));
+  assert.ok(js.includes("saved.version !== DOCUMENT_VERSION"));
+  assert.match(js, /saved\?\.version === 1[\s\S]{0,100}Array\.isArray\(saved\.strokes\)/);
+  assert.match(js, /return restoreDocument\(saved\)/);
+  assert.match(js, /const restored = restoreStoredDocument\(saved\)/);
+});
