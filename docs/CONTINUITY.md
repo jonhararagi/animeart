@@ -2952,3 +2952,27 @@ La prueba E2E cubre JSON corrupto y sustitución explícita. La restauración de
 
 SIGUIENTE:
 Después de CI verde, revisar el diff y el PR T062 sin fusionarlo.
+
+---
+
+## T066-R4.4 — Reconciliación limpia de T064 sobre main
+
+FECHA:
+2026-10-11
+
+BASE VERIFICADA:
+- main inicial de esta preparación: `18a6436bd09bd7224c568d703fba397c64357ce1`.
+- HEAD de origen T064: `abcc2033f96779c3b171e1aae876ed724c08731a`.
+- Ancestro común calculado por GitHub Compare: `e12042f58b015560e6739197a460524b0a43ae2e`.
+- El diff neto main → T064 afecta tres archivos: este documento, `web/scripts/browser-e2e.mjs` y `web/test/smoke.test.mjs`. No se trasladó la historia apilada de 24 commits.
+
+RECONCILIACIÓN:
+- `web/scripts/browser-e2e.mjs`: se trasladan los escenarios dinámicos T064 de fallos de escritura/lectura, preservación exacta del payload, reintento explícito, edición en memoria, Undo/Redo, importación rechazada, restauración válida y migración legacy. Se mantienen el helper y las esperas de readiness del Service Worker de T066-R4.2. Tras la última recarga de los escenarios T064 se espera readiness; las aserciones obligatorias de Service Worker y caché offline permanecen.
+- `web/test/smoke.test.mjs`: se conserva el inventario estático recursivo de módulos JavaScript de producción, la comprobación de la frontera delegada `persistDocumentSnapshot` y el escritor compartido de importación de imagen. Se excluyen explícitamente directorios de tests, además de `node_modules` y `dist`; los scripts E2E y smoke no se cuentan como módulos de producción. La inspección estática no sustituye las pruebas dinámicas.
+- `docs/CONTINUITY.md`: se registra la reconciliación en vez de copiar apéndices antiguos completos con estados provisionales. Los registros T064-R1/R2 originales permanecen en la rama de origen sin modificar. Web CI run 38055518966 y Android CI run 38055518976 son evidencia histórica exclusiva del SHA `abcc2033f96779c3b171e1aae876ed724c08731a`, no de esta rama nueva.
+
+ESTADO DE VALIDACIÓN:
+La validación final depende de Web CI y Android CI completadas sobre el HEAD exacto de la nueva rama. No atribuir a este HEAD los resultados históricos anteriores.
+
+PROTECCIONES:
+Esta preparación no modifica main, no fusiona ningún PR y no cambia la base, el HEAD ni el estado de PR #46 o #47. No declara el producto listo para lanzamiento.
