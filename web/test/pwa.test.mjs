@@ -14,5 +14,7 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(worker, /animeart-web-shell-v1/);
   assert.match(worker, /caches\.open/);
   assert.match(worker, /caches\.match/);
+  assert.match(app, /layerAdjustmentsToCanvasFilter/);
+  assert.match(worker, /\.\/domain\/layer-adjustments\.mjs/);
   assert.doesNotMatch(app + worker, /DocumentManager|LayerManager|CanvasManager|RendererManager|ViewportManager|HistoryManager|PersistenceManager/);
 });
