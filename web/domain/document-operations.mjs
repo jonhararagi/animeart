@@ -131,6 +131,7 @@ export function flipImageLayer(document, layerId, axis) {
   return next;
 }
 
+export function setImageMask(document,layerId,mask){if(!["none","circle","rounded","star","heart","hexagon"].includes(mask))return null;const next=cloneDocument(document),layer=next.layers.find(item=>item.id===layerId);if(!layer||layer.locked||layer.contentType!=="image"||!layer.image)return null;layer.image.mask=mask;return next;}
 export function setLayerAdjustments(document, layerId, adjustments) {
   const next = cloneDocument(document);
   const layer = next.layers.find(item => item.id === layerId);
