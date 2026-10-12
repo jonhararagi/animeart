@@ -317,3 +317,10 @@ canvas {
 .background-manual-toggle { grid-column: 1 / -1; display: flex !important; align-items: center; gap: 9px !important; padding: 10px; border: 1px solid #344155; border-radius: 8px; background: #101722; }
 .background-manual-toggle input { accent-color: var(--accent-strong); }
 #background-preview { touch-action: none; }
+
+.text-style-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin:4px 0 10px}.text-style-presets button{padding:6px 3px;font-size:.64rem;font-weight:750}.text-style-presets button[data-text-style-preset="comic"]{color:#fff200}.text-style-presets button[data-text-style-preset="poster"]{color:#fff}.text-style-presets button[data-text-style-preset="manga"]{color:#111;background:#eee}.text-style-presets button[data-text-style-preset="neon"]{color:#fff;border-color:#a51eab}
+#image-mask-panel{margin:0 0 16px;padding:13px;border:1px solid #293448;border-radius:11px;background:#131b27}#image-mask{width:100%;padding:8px;border:1px solid #374258;border-radius:8px;background:#0f141c;color:var(--text);font:inherit}
+#poster-template-dialog{width:min(520px,calc(100vw - 24px));max-height:92dvh;overflow:auto;border:1px solid #344155;border-radius:15px;padding:0;background:#101722;color:var(--text);box-shadow:0 28px 100px rgb(0 0 0 / 65%)}#poster-template-dialog::backdrop{background:rgb(2 5 11 / 78%);backdrop-filter:blur(5px)}
+.poster-template-form{display:grid;gap:13px;padding:22px}.poster-template-form h2{margin:0;font-size:1.1rem}.poster-template-form>p{margin:0}.poster-template-form>label,.poster-color-row label{display:grid;gap:7px;color:#c3ccda;font-size:.74rem}
+.poster-template-form input:not([type="color"]),.poster-template-form select{width:100%;min-width:0;border:1px solid #374258;border-radius:8px;background:#0f141c;color:var(--text);padding:9px;font:inherit}.poster-color-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.poster-color-row input{width:100%;height:36px;padding:3px;border:1px solid #374258;border-radius:8px;background:#0f141c}
+@media(max-width:760px){.toolbar>#poster-templates{grid-column:span 2;text-align:center;padding:7px 4px}.poster-template-form{padding:15px}}
