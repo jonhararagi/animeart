@@ -11,7 +11,7 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(html, /rel="manifest" href="\.\/manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\("\.\/service-worker\.js"\)/);
   assert.match(manifest, /"display": "standalone"/);
-  assert.match(worker, /animeart-web-shell-v8/);
+  assert.match(worker, /animeart-web-shell-v9/);
   assert.match(worker, /caches\.open/);
   assert.match(worker, /caches\.match/);
   assert.match(app, /layerAdjustmentsToCanvasFilter/);
@@ -77,5 +77,32 @@ test("canvas coordinate mapping is cached for offline rendering and editing", as
   assert.match(app, /documentFitScale/);
   assert.match(app, /screenViewportForDocument/);
   assert.match(worker, /\.\/domain\/canvas-space\.mjs/);
-  assert.match(worker, /animeart-web-shell-v8/);
+  assert.match(worker, /animeart-web-shell-v9/);
+});
+
+
+test("mobile touch dock exposes primary editing actions, zoom and a collapsible full tool panel", async () => {
+  const html = await readFile("index.html", "utf8");
+  const app = await readFile("app.js", "utf8");
+  const css = await readFile("styles.css", "utf8");
+  assert.match(html, /class="mobile-touch-dock"/);
+  for (const action of ["tool", "undo", "redo", "import-image", "add-text", "zoom-out", "zoom-in", "layers", "more", "export"]) {
+    assert.ok(html.includes('data-touch-action="' + action + '"'), "mobile dock exposes " + action);
+  }
+  assert.match(app, /const mobileDock = document\.querySelector\("\.mobile-touch-dock"\)/);
+  assert.match(app, /zoomViewportAt\(state\.viewport, zoom, canvasCenter\(\), state\.document, canvasSize\(\)\)/);
+  assert.match(app, /mobile-layers-open/);
+  assert.match(app, /mobile-tools-open/);
+  assert.match(css, /env\(safe-area-inset-bottom\)/);
+  assert.match(css, /min-height: 48px/);
+  assert.match(css, /@media \(max-width: 620px\)/);
+});
+
+test("mystic brush palette selects real brush colors without creating image assets", async () => {
+  const html = await readFile("index.html", "utf8");
+  const app = await readFile("app.js", "utf8");
+  assert.match(html, /data-brush-color="#7c3aed"/);
+  assert.match(html, /data-brush-color="#00e5ff"/);
+  assert.match(html, /data-brush-color="#ff4fd8"/);
+  assert.match(app, /setBrushColor\(button\.dataset\.brushColor\)/);
 });

@@ -1514,6 +1514,60 @@ function syncBrushControls() {
   brushOpacityValue.textContent = Math.round(state.brush.opacity * 100) + "%";
 }
 
+
+document.querySelectorAll("[data-brush-color]").forEach(button => {
+  button.addEventListener("click", () => {
+    if (!setBrushColor(button.dataset.brushColor)) return;
+    syncBrushControls();
+    document.querySelectorAll("[data-brush-color]").forEach(item => {
+      item.setAttribute("aria-pressed", String(item === button));
+    });
+    redraw();
+  });
+});
+
+const mobileDock = document.querySelector(".mobile-touch-dock");
+if (mobileDock) {
+  mobileDock.addEventListener("click", event => {
+    const button = event.target.closest("[data-touch-action]");
+    if (!button) return;
+    const action = button.dataset.touchAction;
+    if (action === "tool") {
+      document.querySelector('.toolbar [data-tool="' + button.dataset.tool + '"]')?.click();
+      mobileDock.querySelectorAll('[data-touch-action="tool"]').forEach(item => {
+        item.setAttribute("aria-pressed", String(item.dataset.tool === state.tool));
+      });
+      return;
+    }
+    if (action === "undo") { undoButton.click(); return; }
+    if (action === "redo") { redoButton.click(); return; }
+    if (action === "import-image") { imageFileInput.click(); return; }
+    if (action === "add-text") { document.querySelector("#add-text-layer")?.click(); return; }
+    if (action === "export") { exportPngButton.click(); return; }
+    if (action === "zoom-in" || action === "zoom-out") {
+      const factor = action === "zoom-in" ? 1.2 : 1 / 1.2;
+      const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, state.viewport.zoom * factor));
+      setViewport(zoomViewportAt(state.viewport, zoom, canvasCenter(), state.document, canvasSize()));
+      status.textContent = "Zoom " + Math.round(zoom * 100) + "%";
+      return;
+    }
+    if (action === "layers") {
+      const open = document.body.classList.toggle("mobile-layers-open");
+      button.setAttribute("aria-expanded", String(open));
+      document.body.classList.remove("mobile-tools-open");
+      mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+      return;
+    }
+    if (action === "more") {
+      const open = document.body.classList.toggle("mobile-tools-open");
+      button.setAttribute("aria-expanded", String(open));
+      document.body.classList.remove("mobile-layers-open");
+      mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
+      return;
+    }
+  });
+}
+
 document.querySelectorAll(".tool").forEach(button => {
   button.addEventListener("click", () => {
     state.tool = button.dataset.tool;
@@ -1959,7 +2013,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v8";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v9";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",

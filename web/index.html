@@ -24,6 +24,14 @@
       <label class="brush-control" for="brush-color">Color<input id="brush-color" type="color" value="#111318" aria-label="Brush color"></label>
       <label class="brush-control" for="brush-size">Size<input id="brush-size" type="range" min="1" max="100" step="1" value="5" aria-label="Brush size"><output id="brush-size-value">5</output></label>
       <label class="brush-control" for="brush-opacity">Opacity<input id="brush-opacity" type="range" min="0" max="100" step="1" value="100" aria-label="Brush opacity"><output id="brush-opacity-value">100%</output></label>
+      <div class="brush-palette" role="group" aria-label="Mystic brush color palette">
+        <button type="button" data-brush-color="#7c3aed" aria-label="Mystic violet" title="Mystic violet" style="--swatch:#7c3aed"></button>
+        <button type="button" data-brush-color="#00e5ff" aria-label="Arcane cyan" title="Arcane cyan" style="--swatch:#00e5ff"></button>
+        <button type="button" data-brush-color="#ff4fd8" aria-label="Astral pink" title="Astral pink" style="--swatch:#ff4fd8"></button>
+        <button type="button" data-brush-color="#ffd166" aria-label="Solar gold" title="Solar gold" style="--swatch:#ffd166"></button>
+        <button type="button" data-brush-color="#6ee7b7" aria-label="Spirit mint" title="Spirit mint" style="--swatch:#6ee7b7"></button>
+        <button type="button" data-brush-color="#ffffff" aria-label="White" title="White" style="--swatch:#ffffff"></button>
+      </div>
       <button id="undo" disabled>Undo</button>
       <button id="redo" disabled>Redo</button>
       <button id="add-layer">+ Layer</button>
@@ -133,6 +141,20 @@
       </section>
     </aside>
   </main>
+  <nav class="mobile-touch-dock" aria-label="Mobile editing controls">
+    <button type="button" data-touch-action="tool" data-tool="select" aria-label="Select tool">Select</button>
+    <button type="button" data-touch-action="tool" data-tool="brush" aria-label="Brush tool">Brush</button>
+    <button type="button" data-touch-action="tool" data-tool="eraser" aria-label="Eraser tool">Erase</button>
+    <button type="button" data-touch-action="undo" aria-label="Undo">Undo</button>
+    <button type="button" data-touch-action="redo" aria-label="Redo">Redo</button>
+    <button type="button" data-touch-action="import-image" aria-label="Add image">＋ Image</button>
+    <button type="button" data-touch-action="add-text" aria-label="Add text">＋ Text</button>
+    <button type="button" data-touch-action="zoom-out" aria-label="Zoom out">−</button>
+    <button type="button" data-touch-action="zoom-in" aria-label="Zoom in">＋</button>
+    <button type="button" data-touch-action="layers" aria-label="Show or hide layers" aria-expanded="false">Layers</button>
+    <button type="button" data-touch-action="more" aria-label="Show more tools" aria-expanded="false">More</button>
+    <button type="button" data-touch-action="export" aria-label="Export image">Export</button>
+  </nav>
   <dialog id="image-edit-dialog" aria-labelledby="image-edit-title">
     <form id="image-edit-form" method="dialog">
       <h2 id="image-edit-title">Crop / Resize Image</h2>
