@@ -378,8 +378,8 @@ test("PNG export pipeline creates exact document dimensions and preserves transp
   assert.deepEqual(calls.slice(0, 4), [
     ["clearRect", 0, 0, 1200, 900],
     ["save"],
-    ["translate", 600, 450],
-    ["render", 600, 450]
+    ["render", 600, 450],
+    ["restore"]
   ]);
 
   const blob = await canvasToPngBlob({

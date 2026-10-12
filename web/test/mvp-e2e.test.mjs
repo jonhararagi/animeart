@@ -165,7 +165,7 @@ test("T042 E2E contract: import image → reference → opacity/lock → drawing
   assert.equal(renderSnapshot[0].some(layer => layer.opacity === 0.5), true);
   assert.equal(calls[0][0], "clearRect");
   assert.deepEqual(calls[0].slice(1), [0, 0, 800, 600]);
-  assert.deepEqual(calls[2], ["translate", 400, 300]);
+  assert.deepEqual(calls, [["clearRect", 0, 0, 800, 600], ["save"], ["restore"]]);
 
   const blob = await canvasToPngBlob({
     convertToBlob: async options => {
