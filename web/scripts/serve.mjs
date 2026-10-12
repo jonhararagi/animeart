@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { readFile, realpath } from "node:fs/promises";
-import { dirname, extname, relative, resolve, sep } from "node:path";
+import { dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const SCRIPT_DIRECTORY = dirname(fileURLToPath(import.meta.url));
@@ -40,7 +40,7 @@ const ROOT = await realpath(CONFIGURED_ROOT);
 function isInsideRoot(candidate) {
   const pathFromRoot = relative(ROOT, candidate);
   return pathFromRoot === "" ||
-    (!pathFromRoot.startsWith(".." + sep) && pathFromRoot !== ".." && !resolve(pathFromRoot).startsWith(sep));
+    (pathFromRoot !== ".." && !pathFromRoot.startsWith(".." + sep) && !isAbsolute(pathFromRoot));
 }
 
 function send(response, status, message, headers = {}) {
