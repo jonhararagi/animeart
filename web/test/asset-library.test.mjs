@@ -19,7 +19,7 @@ test("bundled character sample has verified source, CC0 license and an import co
   assert.ok(worker.includes("./assets/cc0-detailed-anime-character.png.base64"));
   assert.ok(worker.includes("./assets/ASSET_SOURCES.md"));
   assert.match(sources, /SpriteCook\/spritecook-free-game-assets/);
-  assert.match(sources, /CC0 1\.0 Universal/);
+  assert.match(sources, /Creative Commons Zero 1\.0 Universal/);
   assert.match(sources, /45a20ccca3921a58f22b06ad9bd0c123d9b82708/);
   assert.match(asset.slice(0, 24), /^iVBORw0KGgo/);
   assert.ok(metadata.size > 900_000 && metadata.size < 1_000_000);
