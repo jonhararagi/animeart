@@ -91,7 +91,7 @@ test("dev server supports HEAD and rejects unsafe paths and write methods", asyn
     assert.equal(post.status, 405);
     assert.match(post.headers.get("allow") || "", /GET.*HEAD/);
 
-    const traversal = await fetch(baseUrl + "/%2e%2e/package.json");
+    const traversal = await fetch(baseUrl + "/..%2fpackage.json");
     assert.ok([400, 403, 404].includes(traversal.status));
     assert.notEqual(traversal.status, 200);
 
