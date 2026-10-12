@@ -24,12 +24,21 @@
       <label class="brush-control" for="brush-color">Color<input id="brush-color" type="color" value="#111318" aria-label="Brush color"></label>
       <label class="brush-control" for="brush-size">Size<input id="brush-size" type="range" min="1" max="100" step="1" value="5" aria-label="Brush size"><output id="brush-size-value">5</output></label>
       <label class="brush-control" for="brush-opacity">Opacity<input id="brush-opacity" type="range" min="0" max="100" step="1" value="100" aria-label="Brush opacity"><output id="brush-opacity-value">100%</output></label>
+      <div class="brush-palette" role="group" aria-label="Mystic brush color palette">
+        <button type="button" data-brush-color="#7c3aed" aria-label="Mystic violet" title="Mystic violet" style="--swatch:#7c3aed"></button>
+        <button type="button" data-brush-color="#00e5ff" aria-label="Arcane cyan" title="Arcane cyan" style="--swatch:#00e5ff"></button>
+        <button type="button" data-brush-color="#ff4fd8" aria-label="Astral pink" title="Astral pink" style="--swatch:#ff4fd8"></button>
+        <button type="button" data-brush-color="#ffd166" aria-label="Solar gold" title="Solar gold" style="--swatch:#ffd166"></button>
+        <button type="button" data-brush-color="#6ee7b7" aria-label="Spirit mint" title="Spirit mint" style="--swatch:#6ee7b7"></button>
+        <button type="button" data-brush-color="#ffffff" aria-label="White" title="White" style="--swatch:#ffffff"></button>
+      </div>
       <button id="undo" disabled>Undo</button>
       <button id="redo" disabled>Redo</button>
       <button id="add-layer">+ Layer</button>
       <button id="add-text-layer">+ Text</button>
       <button id="add-meme-text" title="Add top and bottom outlined Impact captions">+ Meme Text</button>
-      <button id="add-image-layer">+ Image / Reference</button>
+      <button id="poster-templates" type="button">Poster templates</button>
+      <button id="add-image-layer" title="Import images up to 25 MB. Large images are optimized locally for project storage.">+ Image / Reference</button>
       <button id="crop-resize-image" disabled>Crop / Resize Image</button>
       <button id="flip-image-horizontal" type="button" disabled title="Mirror selected image left to right">Flip H</button>
       <button id="flip-image-vertical" type="button" disabled title="Mirror selected image top to bottom">Flip V</button>
@@ -75,6 +84,7 @@
     <aside class="layers" aria-label="Layers">
       <h2>Layers</h2>
       <ol id="layers"></ol>
+      <section id="image-mask-panel" class="image-mask-panel" aria-labelledby="image-mask-title" hidden><div class="panel-heading"><div><p class="eyebrow">NON-DESTRUCTIVE</p><h3 id="image-mask-title">Image shape cut</h3></div></div><label class="text-field" for="image-mask">Clip shape<select id="image-mask"><option value="none">Original rectangle</option><option value="circle">Circle / avatar</option><option value="rounded">Rounded card</option><option value="star">Star</option><option value="heart">Heart</option><option value="hexagon">Hexagon</option></select></label><p class="adjustment-note">The mask is editable and does not erase the original pixels.</p></section>
       <section class="adjustment-panel" aria-labelledby="adjustments-title">
         <div class="panel-heading">
           <div>
@@ -94,6 +104,24 @@
         <div id="layer-adjustment-controls" class="adjustment-controls" aria-live="polite"></div>
         <p class="adjustment-note">Effects stay editable, are saved with the project and are included in PNG export.</p>
       </section>
+
+      <section class="quick-recipe-panel" aria-labelledby="quick-recipes-title">
+        <div class="panel-heading"><div><p class="eyebrow">ONE-CLICK EDITS</p><h3 id="quick-recipes-title">Quick edit recipes</h3></div></div>
+        <p class="quick-recipe-note">Apply a look to selected image layers. Recipes stay editable and support undo/redo.</p>
+        <div class="quick-recipe-grid" aria-label="Quick edit shortcuts">
+          <button type="button" data-quick-recipe="anime-pop" title="Ctrl+Alt+1">Anime Pop <kbd>1</kbd></button>
+          <button type="button" data-quick-recipe="cinematic" title="Ctrl+Alt+2">Cinematic <kbd>2</kbd></button>
+          <button type="button" data-quick-recipe="manga-ink" title="Ctrl+Alt+3">Manga Ink <kbd>3</kbd></button>
+          <button type="button" data-quick-recipe="soft-dream" title="Ctrl+Alt+4">Soft Dream <kbd>4</kbd></button>
+          <button type="button" data-quick-recipe="mystic-violet" title="Ctrl+Alt+5">Mystic Violet <kbd>5</kbd></button>
+          <button type="button" data-quick-recipe="golden-hour" title="Ctrl+Alt+6">Golden Hour <kbd>6</kbd></button>
+          <button type="button" data-quick-recipe="ice-blue" title="Ctrl+Alt+7">Ice Blue <kbd>7</kbd></button>
+          <button type="button" data-quick-recipe="xray-glasses" class="quick-recipe-featured" title="Ctrl+Alt+8">X-Ray Glasses <kbd>8</kbd></button>
+        </div>
+        <p class="quick-recipe-note">X-Ray: select 3 image layers in stack order, bottom to top: character, transparent X-ray lens overlay, transparent glasses frame. Use transparent PNGs and align them first.</p>
+        <p id="quick-recipe-status" class="quick-recipe-status" role="status" aria-live="polite">Select image layers, then choose a recipe.</p>
+      </section>
+
       <section id="text-panel" class="text-panel" aria-labelledby="text-title" hidden>
         <div class="panel-heading">
           <div>
@@ -107,7 +135,7 @@
         </label>
         <label class="text-field" for="text-font-family">Font family
           <select id="text-font-family">
-            <option value="Arial">Arial</option>
+            <option value="Arial">Arial</option><option value="Arial Black">Arial Black</option><option value="Impact">Impact</option><option value="Palatino Linotype">Palatino Linotype</option><option value="Lucida Console">Lucida Console</option>
             <option value="Georgia">Georgia</option>
             <option value="Trebuchet MS">Trebuchet MS</option>
             <option value="Verdana">Verdana</option>
@@ -140,11 +168,40 @@
         <label class="text-field" for="text-outline-width">Outline <output id="text-outline-width-value">0 px</output>
           <input id="text-outline-width" type="range" min="0" max="24" step="1" value="0">
         </label>
+        <div class="text-style-presets" aria-label="Text style presets"><button type="button" data-text-style-preset="comic">Comic</button><button type="button" data-text-style-preset="poster">Poster</button><button type="button" data-text-style-preset="manga">Manga</button><button type="button" data-text-style-preset="neon">Neon</button></div>
+        <div class="text-inline-controls"><label class="text-field" for="text-shadow-color">Shadow color<input id="text-shadow-color" type="color" value="#000000"></label><label class="text-field" for="text-shadow-blur">Shadow <output id="text-shadow-blur-value">0 px</output><input id="text-shadow-blur" type="range" min="0" max="48" value="0"></label></div>
         <p class="adjustment-note">Text remains a native editable layer. Changes support undo/redo and are included in PNG export.</p>
       </section>
     </aside>
   </main>
-  <dialog id="image-edit-dialog" aria-labelledby="image-edit-title">
+  <nav class="mobile-touch-dock" aria-label="Mobile editing shortcuts">
+    <button type="button" data-touch-action="tool" data-tool="select" aria-pressed="true">Select</button>
+    <button type="button" data-touch-action="tool" data-tool="brush" aria-pressed="false">Brush</button>
+    <button type="button" data-touch-action="tool" data-tool="eraser" aria-pressed="false">Erase</button>
+    <button type="button" data-touch-action="undo">Undo</button>
+    <button type="button" data-touch-action="redo">Redo</button>
+    <button type="button" data-touch-action="import-image">+ Image</button>
+    <button type="button" data-touch-action="add-text">+ Text</button>
+    <button type="button" data-touch-action="zoom-out">−</button>
+    <button type="button" data-touch-action="zoom-in">+</button>
+    <button type="button" data-touch-action="layers" aria-expanded="false">Layers</button>
+    <button type="button" data-touch-action="more" aria-expanded="false">More</button>
+    <button type="button" data-touch-action="export">Export</button>
+  </nav>
+  <dialog id="image-edit-dialog"
+  <dialog id="poster-template-dialog" aria-labelledby="poster-template-title">
+    <form id="poster-template-form" method="dialog">
+      <h2 id="poster-template-title">Create a poster</h2>
+      <label>Style<select id="poster-template-style"><option value="poster">Event poster</option><option value="comic">Comic cover</option><option value="manga">Manga cover</option></select></label>
+      <label>Canvas size<select id="poster-size"><option value="portrait">Portrait 1080 × 1350</option><option value="square">Square 1080 × 1080</option><option value="story">Story 1080 × 1920</option><option value="banner">Banner 1920 × 1080</option></select></label>
+      <label>Background<input id="poster-background-color" type="color" value="#171324"></label>
+      <label>Accent<input id="poster-accent-color" type="color" value="#ff2b6d"></label>
+      <label>Title<input id="poster-title-value" maxlength="180" value="YOUR HEADLINE"></label>
+      <label>Subtitle<input id="poster-subtitle-value" maxlength="240" value="ADD YOUR DETAILS HERE"></label>
+      <div class="dialog-actions"><button type="button" id="cancel-poster-template">Cancel</button><button type="submit">Create poster</button></div>
+    </form>
+  </dialog>
+ aria-labelledby="image-edit-title">
     <form id="image-edit-form" method="dialog">
       <h2 id="image-edit-title">Crop / Resize Image</h2>
       <p id="image-edit-source-size" class="image-edit-source-size">Select an image layer first.</p>
