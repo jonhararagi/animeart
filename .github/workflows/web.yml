@@ -30,6 +30,15 @@ jobs:
         run: npm test
       - name: Verify build output
         run: test -f dist/index.html
+      - name: Upload downloadable Web editor build
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: animeart-web-editor-build
+          path: web/dist/
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Real browser E2E
         run: |
           CHROME_BIN="$(command -v chromium || command -v google-chrome || command -v google-chrome-stable)" node scripts/browser-e2e.mjs
