@@ -192,6 +192,8 @@
         <button type="button" id="background-pick-color">Pick color from image</button>
         <label>Tolerance <output id="background-tolerance-value">36</output><input id="background-tolerance" type="range" min="0" max="180" value="36"></label>
         <label>Edge softness <output id="background-feather-value">18</output><input id="background-feather" type="range" min="0" max="100" value="18"></label>
+        <label class="background-manual-toggle"><input id="background-manual-erase" type="checkbox"> Manual erase for detailed backgrounds</label>
+        <label>Erase brush <output id="background-erase-size-value">32 px</output><input id="background-erase-size" type="range" min="4" max="160" value="32"></label>
       </div>
       <p id="background-removal-status" class="image-edit-note" role="status" aria-live="polite">Preview stays local. Apply can be undone.</p>
       <div class="dialog-actions"><button type="button" id="cancel-background-removal">Cancel</button><button type="submit" id="apply-background-removal">Apply to selected layer</button></div>
