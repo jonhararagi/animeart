@@ -86,7 +86,7 @@ button:disabled { cursor: not-allowed; opacity: .42; }
 .toolbar > .tool { min-height: 38px; text-align: center; font-size: .78rem; }
 .toolbar > .tool.active { color: #d7f9ff; background: #153541; border-color: #28798b; box-shadow: inset 0 0 0 1px rgb(104 213 237 / 12%); }
 .toolbar > #undo, .toolbar > #redo { grid-column: span 1; }
-.toolbar > #add-layer, .toolbar > #add-image-layer, .toolbar > #new-document, .toolbar > #recover-project,
+.toolbar > #add-layer, .toolbar > #add-text-layer, .toolbar > #add-image-layer, .toolbar > #new-document, .toolbar > #recover-project,
 .toolbar > #save, .toolbar > #export-png, .toolbar > #clear { grid-column: 1 / -1; text-align: left; padding-left: 12px; }
 .toolbar > [data-transform] { font-size: .9rem; min-height: 32px; }
 .brush-control { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px 12px; color: #b8c2d1; font-size: .74rem; }
@@ -198,7 +198,7 @@ canvas {
   .toolbar { grid-column: 1; grid-row: 1; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 10px; border-right: 0; border-bottom: 1px solid #232d3c; }
   .toolbar > .tool-group-label { grid-column: 1 / -1; }
   .toolbar > .brush-control { grid-column: span 2; }
-  .toolbar > #add-layer, .toolbar > #add-image-layer, .toolbar > #new-document, .toolbar > #recover-project,
+  .toolbar > #add-layer, .toolbar > #add-text-layer, .toolbar > #add-image-layer, .toolbar > #new-document, .toolbar > #recover-project,
   .toolbar > #save, .toolbar > #export-png, .toolbar > #clear { grid-column: span 2; text-align: center; padding: 7px 4px; }
   .toolbar > [data-transform] { grid-column: span 1; }
   .canvas-wrap { grid-column: 1; grid-row: 2; min-height: 48vh; }
@@ -211,3 +211,19 @@ canvas {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
 }
+
+.text-panel { margin-top: 18px; padding-top: 17px; border-top: 1px solid #2a3546; }
+.text-panel[hidden] { display: none; }
+.text-panel h3 { margin: 0; font-size: .92rem; }
+.text-field { display: grid; gap: 7px; min-width: 0; margin-top: 13px; color: #c3ccda; font-size: .72rem; }
+.text-field textarea, .text-field select {
+  width: 100%; min-width: 0; border: 1px solid #374258; border-radius: 8px;
+  background: #0f141c; color: var(--text); padding: 9px; font: inherit;
+}
+.text-field textarea { resize: vertical; min-height: 64px; line-height: 1.45; }
+.text-field input[type="range"] { width: 100%; min-width: 0; accent-color: var(--accent-strong); }
+.text-field input[type="color"] { width: 100%; min-height: 32px; border: 1px solid #374258; border-radius: 8px; padding: 3px; background: #0f141c; }
+.text-field output { color: #8bd9e8; font-size: .7rem; font-variant-numeric: tabular-nums; }
+.text-inline-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.text-field:has(select:disabled), .text-field:has(textarea:disabled) { opacity: .55; }
+.text-field select:focus-visible, .text-field textarea:focus-visible, .text-field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
