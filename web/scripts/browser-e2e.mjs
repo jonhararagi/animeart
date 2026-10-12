@@ -525,7 +525,8 @@ try {
   await waitFor('document.querySelector("#poster-template-dialog").open === true');
   await evaluate('(() => { document.querySelector("#poster-template-style").value="comic";document.querySelector("#poster-background-color").value="#ffffff";document.querySelector("#poster-accent-color").value="#ff2b6d";document.querySelector("#poster-title-value").value="E2E COMIC";document.querySelector("#poster-subtitle-value").value="SATURDAY · 20:00"; })()');
   await click('#poster-template-form button[type="submit"]');
-  await waitFor('document.querySelector("#status").textContent === "Comic Cover template created"');
+  await waitFor('document.querySelector("#poster-template-dialog").open === false');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").width === 1080 && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length === 3');
   const posterDocument = await readDocument();
   assert(posterDocument.width===1080&&posterDocument.height===1350, "poster template creates a 1080×1350 poster canvas");
   assert(posterDocument.layers.length===3&&posterDocument.layers[0].name==="Poster background", "poster template creates a background layer and editable text layers");
