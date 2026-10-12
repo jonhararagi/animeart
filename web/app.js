@@ -1431,7 +1431,8 @@ async function exportPng() {
   const historyBeforeUndo = state.history.canUndo();
   const historyBeforeRedo = state.history.canRedo();
   exportPngButton.disabled = true;
-  const format = exportFormatInput.value;\n  status.textContent = "Exporting " + format.toUpperCase() + "…";
+  const format = exportFormatInput.value;
+  status.textContent = "Exporting " + format.toUpperCase() + "…";
   try {
     await ensureExportImages(state.document);
     const exportCanvas = createPngExportCanvas(state.document);
