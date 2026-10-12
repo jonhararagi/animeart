@@ -238,9 +238,9 @@ test("multi-format export UI uses the existing document renderer and local downl
   assert.match(js, /downloadImageBlob\(blob, "animeart\." \+ format, format\)/);
   assert.match(js, /await ensureExportImages\(state\.document\)/);
   assert.match(exporter, /getContext\("2d", \{ alpha: true \}\)/);
-  assert.match(exporter, /png: "image\\/png"/);
-  assert.match(exporter, /jpeg: "image\\/jpeg"/);
-  assert.match(exporter, /webp: "image\\/webp"/);
+  assert.match(exporter, /png: "image\/png"/);
+  assert.match(exporter, /jpeg: "image\/jpeg"/);
+  assert.match(exporter, /webp: "image\/webp"/);
   assert.match(exporter, /anchor\.download/);
   assert.doesNotMatch(js, /ExportManager|PNGManager|ImageExportManager|RenderManager|CanvasManager|DocumentManager|ProjectManager|LayerManager/);
 });
