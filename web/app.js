@@ -48,6 +48,11 @@ const backgroundToleranceValue = document.querySelector("#background-tolerance-v
 const backgroundFeatherValue = document.querySelector("#background-feather-value");
 const backgroundSourceName = document.querySelector("#background-source-name");
 const backgroundRemovalStatus = document.querySelector("#background-removal-status");
+const backgroundManualEraseInput = document.querySelector("#background-manual-erase");
+const backgroundEraseSizeInput = document.querySelector("#background-erase-size");
+const backgroundEraseSizeValue = document.querySelector("#background-erase-size-value");
+let backgroundManualStrokes = [];
+let backgroundManualStroke = null;
 let backgroundRemovalLayerId = null;
 let backgroundRemovalSourceImage = null;
 let backgroundRemovalSourceCanvas = null;
@@ -869,10 +874,13 @@ function drawBackgroundRemovalPreview() {
   const processed = removeConnectedBackground(pixels, { targetColor: backgroundColorInput.value, tolerance: Number(backgroundToleranceInput.value), feather: Number(backgroundFeatherInput.value) });
   const output = document.createElement("canvas"); output.width = source.width; output.height = source.height;
   output.getContext("2d").putImageData(processed, 0, 0);
+  applyBackgroundManualStrokes(output, backgroundManualStrokes);
   backgroundPreviewCanvas.width = width; backgroundPreviewCanvas.height = height;
   const previewContext = backgroundPreviewCanvas.getContext("2d");
   previewContext.clearRect(0, 0, width, height); previewContext.drawImage(output, 0, 0, width, height);
   backgroundToleranceValue.textContent = backgroundToleranceInput.value; backgroundFeatherValue.textContent = backgroundFeatherInput.value;
+  backgroundEraseSizeValue.textContent = backgroundEraseSizeInput.value + " px";
+  backgroundPreviewCanvas.style.cursor = backgroundManualEraseInput.checked ? "crosshair" : "default";
   backgroundRemovalStatus.textContent = backgroundPickColor ? "Click the background color in the preview." : "Preview ready. Apply replaces only this layer and can be undone.";
 }
 function scheduleBackgroundRemovalPreview() {
@@ -883,7 +891,7 @@ removeBackgroundButton.addEventListener("click", () => {
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) return;
   backgroundRemovalLayerId = layer.id; backgroundSourceName.textContent = layer.name + " · " + layer.image.width + " × " + layer.image.height + " px";
-  backgroundPickColor = false; backgroundRemovalStatus.textContent = "Loading image…";
+  backgroundPickColor = false; backgroundManualStrokes = []; backgroundManualStroke = null; backgroundRemovalStatus.textContent = "Loading image…";
   backgroundRemovalSourceImage = new Image();
   backgroundRemovalSourceImage.onload = () => {
     backgroundRemovalSourceCanvas = document.createElement("canvas"); backgroundRemovalSourceCanvas.width = backgroundRemovalSourceImage.naturalWidth; backgroundRemovalSourceCanvas.height = backgroundRemovalSourceImage.naturalHeight;
@@ -898,6 +906,69 @@ removeBackgroundButton.addEventListener("click", () => {
 document.querySelector("#cancel-background-removal").addEventListener("click", () => backgroundRemovalDialog.close());
 backgroundRemovalDialog.addEventListener("close", () => { backgroundPickColor = false; backgroundRemovalSourceImage = null; backgroundRemovalSourceCanvas = null; if (backgroundPreviewTimer !== null) window.clearTimeout(backgroundPreviewTimer); backgroundPreviewTimer = null; });
 document.querySelector("#background-pick-color").addEventListener("click", () => { backgroundPickColor = true; backgroundRemovalStatus.textContent = "Click the background color in the preview."; });
+backgroundManualEraseInput.addEventListener("change", () => {
+  backgroundPickColor = false;
+  backgroundRemovalStatus.textContent = backgroundManualEraseInput.checked ? "Drag over any unwanted background area to erase it to transparency." : "Manual erase disabled.";
+  drawBackgroundRemovalPreview();
+});
+backgroundEraseSizeInput.addEventListener("input", drawBackgroundRemovalPreview);
+function applyBackgroundManualStrokes(canvasElement, strokes) {
+  if (!strokes.length) return;
+  const context = canvasElement.getContext("2d");
+  context.save();
+  context.globalCompositeOperation = "destination-out";
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  for (const stroke of strokes) {
+    if (!stroke.points.length) continue;
+    context.beginPath();
+    context.arc(stroke.points[0].x, stroke.points[0].y, stroke.size / 2, 0, Math.PI * 2);
+    context.fill();
+    if (stroke.points.length > 1) {
+      context.beginPath();
+      context.moveTo(stroke.points[0].x, stroke.points[0].y);
+      for (const point of stroke.points.slice(1)) context.lineTo(point.x, point.y);
+      context.lineWidth = stroke.size;
+      context.stroke();
+    }
+  }
+  context.restore();
+}
+function backgroundPreviewPoint(event) {
+  const rect = backgroundPreviewCanvas.getBoundingClientRect();
+  if (!rect.width || !rect.height || !backgroundRemovalSourceCanvas) return null;
+  return {
+    x: Math.max(0, Math.min(backgroundRemovalSourceCanvas.width, (event.clientX - rect.left) * backgroundRemovalSourceCanvas.width / rect.width)),
+    y: Math.max(0, Math.min(backgroundRemovalSourceCanvas.height, (event.clientY - rect.top) * backgroundRemovalSourceCanvas.height / rect.height))
+  };
+}
+backgroundPreviewCanvas.addEventListener("pointerdown", event => {
+  if (!backgroundManualEraseInput.checked || backgroundPickColor || !backgroundRemovalSourceCanvas) return;
+  const point = backgroundPreviewPoint(event);
+  if (!point) return;
+  event.preventDefault();
+  backgroundManualStroke = { size: Number(backgroundEraseSizeInput.value), points: [point] };
+  backgroundManualStrokes.push(backgroundManualStroke);
+  backgroundPreviewCanvas.setPointerCapture(event.pointerId);
+  drawBackgroundRemovalPreview();
+});
+backgroundPreviewCanvas.addEventListener("pointermove", event => {
+  if (!backgroundManualStroke) return;
+  const point = backgroundPreviewPoint(event);
+  if (!point) return;
+  const previous = backgroundManualStroke.points[backgroundManualStroke.points.length - 1];
+  if (Math.hypot(point.x - previous.x, point.y - previous.y) < 1) return;
+  backgroundManualStroke.points.push(point);
+  drawBackgroundRemovalPreview();
+});
+function finishBackgroundManualStroke(event) {
+  if (!backgroundManualStroke) return;
+  backgroundManualStroke = null;
+  if (backgroundPreviewCanvas.hasPointerCapture(event.pointerId)) backgroundPreviewCanvas.releasePointerCapture(event.pointerId);
+  drawBackgroundRemovalPreview();
+}
+backgroundPreviewCanvas.addEventListener("pointerup", finishBackgroundManualStroke);
+backgroundPreviewCanvas.addEventListener("pointercancel", finishBackgroundManualStroke);
 backgroundPreviewCanvas.addEventListener("click", event => {
   if (!backgroundPickColor || !backgroundRemovalSourceCanvas) return;
   const rect = backgroundPreviewCanvas.getBoundingClientRect();
