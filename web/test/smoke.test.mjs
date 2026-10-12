@@ -74,7 +74,7 @@ test("history integration is document-only and viewport navigation never records
   const js = await readFile("app.js", "utf8");
   assert.match(js, /state\.history\.record\(before, state\.document\)/);
   assert.match(js, /state\.viewport = panBy/);
-  assert.match(js, /setViewport\(zoomAt/);
+  assert.match(js, /setViewport\(zoomViewportAt/);
   assert.doesNotMatch(js, /history\.record\([^\n]*viewport/);
 });
 
@@ -91,7 +91,7 @@ test("layer transform integration uses the existing History boundary", async () 
 test("layer transform stays separate from Viewport", async () => {
   const js = await readFile("app.js", "utf8");
   assert.match(js, /state\.viewport = panBy/);
-  assert.match(js, /setViewport\(zoomAt/);
+  assert.match(js, /setViewport\(zoomViewportAt/);
   assert.match(js, /translateLayer/);
   assert.doesNotMatch(js, /translateLayer\([^\n]*state\.viewport/);
 });
