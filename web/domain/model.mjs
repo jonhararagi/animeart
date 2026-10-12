@@ -1,3 +1,5 @@
+import { isDefaultLayerAdjustments, isValidLayerAdjustments, normalizeLayerAdjustments } from "./layer-adjustments.mjs";
+
 export const DOCUMENT_VERSION = 2;
 
 const DEFAULT_TRANSFORM = Object.freeze({ x: 0, y: 0, scale: 1, rotation: 0 });
@@ -119,7 +121,8 @@ function normalizeLayer(layer, index) {
     contentType,
     isReference: contentType === "image" && layer?.isReference === true,
     strokes,
-    ...(image ? { image } : {})
+    ...(image ? { image } : {}),
+    ...(!isDefaultLayerAdjustments(layer?.adjustments) ? { adjustments: normalizeLayerAdjustments(layer.adjustments) } : {})
   };
 }
 
@@ -181,7 +184,8 @@ export function isValidDocument(document) {
             Number.isFinite(point.y)
           )
         );
-      if (!validCommon || !["drawing", "image"].includes(layer.contentType)) return false;
+      const validAdjustments = layer?.adjustments === undefined || isValidLayerAdjustments(layer.adjustments);
+      if (!validCommon || !validAdjustments || !["drawing", "image"].includes(layer.contentType)) return false;
       if (layer.contentType === "drawing") return !layer.image;
       return Boolean(
         layer.image &&
