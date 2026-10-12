@@ -2,7 +2,8 @@
 
 | Dependency | Version | Reason | License | Component | Maintenance risk |
 |---|---|---|---|---|---|
-| Gradle Wrapper | 8.14.5 | Reproducible Android build; distribution SHA-256 verified | Apache-2.0 | Build/CI | Low |\n| Android Gradle Plugin | 8.7.3 | Android build | Apache-2.0 | Build | Low |
+| Gradle Wrapper | 8.14.5 | Reproducible Android build; distribution SHA-256 verified | Apache-2.0 | Build/CI | Low |
+| Android Gradle Plugin | 8.7.3 | Android build | Apache-2.0 | Build | Low |
 | Kotlin / Compose compiler plugin | 2.3.0 | Aligned Kotlin and Compose compiler plugins | Apache-2.0 | All Kotlin/UI | Medium until CI validates the upgrade |
 | Compose BOM | 2025.01.00 | UI foundation | Apache-2.0 | UI/editor | Low |
 | AndroidX Core KTX | 1.15.0 | Android Kotlin APIs | Apache-2.0 | App | Low |
