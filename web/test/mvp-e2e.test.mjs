@@ -110,7 +110,7 @@ test("T042 E2E contract: import image → reference → opacity/lock → drawing
 
   const lockedSnapshot = structuredClone(documentModel);
   assert.match(app, /if \(layer\.locked \|\| state\.document\.layers\.length <= 1\) return;/);
-  assert.match(app, /if \(!layer \|\| layer\.locked \|\| layer\.contentType === "image"\) return;/);
+  assert.match(app, /if \(!layer \|\| layer\.locked \|\| layer\.contentType !== "drawing"\) return;/);
   assert.deepEqual(documentModel, lockedSnapshot);
 
   const undone = history.undo(documentModel);
