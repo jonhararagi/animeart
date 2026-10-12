@@ -1,4 +1,5 @@
 import { normalizeDocument, normalizeTransform } from "./model.mjs";
+import { isDefaultLayerAdjustments, normalizeLayerAdjustments } from "./layer-adjustments.mjs";
 
 function cloneDocument(document) {
   const cloned = normalizeDocument(JSON.parse(JSON.stringify(document)));
@@ -116,6 +117,19 @@ export function setLayerReference(document, layerId, isReference) {
   const layer = next.layers.find(item => item.id === layerId);
   if (!layer || layer.contentType !== "image" || typeof isReference !== "boolean") return null;
   layer.isReference = isReference;
+  return next;
+}
+
+export function setLayerAdjustments(document, layerId, adjustments) {
+  const next = cloneDocument(document);
+  const layer = next.layers.find(item => item.id === layerId);
+  if (!layer || !adjustments || typeof adjustments !== "object" || Array.isArray(adjustments)) return null;
+  const normalized = normalizeLayerAdjustments(adjustments);
+  if (isDefaultLayerAdjustments(normalized)) {
+    delete layer.adjustments;
+  } else {
+    layer.adjustments = normalized;
+  }
   return next;
 }
 
