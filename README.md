@@ -1,48 +1,41 @@
 # AnimeArt
 
-AnimeArt is a Web-first, local-first drawing and image-editing editor with an Android foundation kept green by CI.
+AnimeArt is a local-first **image editor**, inspired by everyday editors such as Picsart. It is not an AI image generator. The active delivery target is the Web editor; the Android application remains a separate Kotlin/Compose foundation.
 
-## Current Web editor
+## Web editing tools
 
-The Web editor currently provides:
+- Create documents with explicit pixel dimensions.
+- Import images from the file picker, drag-and-drop, and clipboard paste.
+- Draw with brush and eraser; configure color, size and opacity.
+- Manage layers: create, select, rename, duplicate, delete, reorder, hide, lock and set opacity.
+- Move, scale, rotate and mirror image layers horizontally or vertically.
+- Edit images with a visual pixel crop, free selection and common aspect ratios, or resample to new dimensions while preserving transparency.
+- Adjust brightness, contrast, saturation, hue and blur non-destructively, with Original, Anime, Cinematic, Manga and Dream presets.
+- Add editable multiline text layers with font family, weight, size, color and alignment.
+- Select multiple layers and move them together.
+- Undo and redo supported document edits.
+- Save and recover projects locally; export/import portable JSON project files.
+- Export composed artwork as PNG, JPEG or WebP. PNG preserves transparency; JPEG offers a background color; JPEG and WebP offer quality control.
+- Install as a PWA with an offline application shell.
 
-- document creation with validated dimensions;
-- drawing with brush, eraser, color, size and opacity controls;
-- ordered layers with rename, duplicate, delete, reorder, visibility, lock and opacity;
-- image layers and local image import;
-- viewport zoom/pan with Screen ↔ Document coordinate conversion;
-- single-layer selection with bounding box, move, scale and rotation;
-- multi-selection with Shift+click and grouped layer movement;
-- undo/redo through the single DocumentHistory boundary;
-- local persistence and project recovery through the single serializer/storage contract;
-- controlled localStorage quota/size failure handling without replacing the current document;
-- non-destructive per-layer image adjustments for brightness, contrast, saturation, hue and blur, with Original, Anime, Cinematic, Manga and Dream presets;
-- local PNG export using the same document renderer, including active layer adjustments.
+The editor uses the existing Document, Layer, Canvas renderer, History, storage and export boundaries. Images and projects remain in the browser unless the user explicitly exports them. No remote image-generation service is part of the editor workflow.
 
-The project remains dependency-light and local-first. Core editor data stays in the browser; no cloud or external AI service is required for the current editor flow.
-
-## Architecture rule
-
-**REUTILIZAR > ADAPTAR > CREAR**
-
-The Web editor keeps one Document, Layer, Stroke, Viewport, Selection, Transform, History, Persistence and Canvas-rendering boundary. Platform-specific Android and Web implementations remain separate; no parallel universal renderer or shared runtime was introduced.
-
-## Android
-
-The repository also contains the Kotlin/Compose Android foundation. Android changes are kept independent unless a task demonstrates a real shared-architecture requirement. Android CI includes build, unit tests, lint and startup smoke verification.
-
-## Build
+## Build and test
 
 Web:
 
-    cd web
-    npm install
-    npm run build
-    npm test
+```sh
+cd web
+npm install
+npm run build
+npm test
+```
 
 Android:
 
-    gradle assembleDebug
-    gradle test
+```sh
+gradle assembleDebug
+gradle test
+```
 
-See `docs/CONTINUITY.md` for the authoritative project handoff and CI evidence.
+The GitHub Actions workflows validate the Web build and real Chromium interactions, and independently validate the Android foundation.

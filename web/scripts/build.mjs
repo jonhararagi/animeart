@@ -8,8 +8,10 @@ const outputDir = "dist";
 await rm(outputDir, { recursive: true, force: true });
 await mkdir(outputDir, { recursive: true });
 
+const excludedEntries = new Set([outputDir, "node_modules", "scripts", "test", "tests", "package.json", "package-lock.json", "README.md", ".gitignore"]);
+
 for (const entry of await readdir(sourceDir, { withFileTypes: true })) {
-  if (entry.name === outputDir || entry.name === "node_modules") continue;
+  if (excludedEntries.has(entry.name)) continue;
   await cp(join(sourceDir, entry.name), join(outputDir, entry.name), {
     recursive: true
   });
