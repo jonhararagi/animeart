@@ -4,6 +4,7 @@ export const TEXT_FONT_FAMILIES = Object.freeze([
   "Trebuchet MS",
   "Verdana",
   "Courier New",
+  "Impact",
   "sans-serif",
   "serif",
   "monospace"
@@ -17,7 +18,9 @@ export const DEFAULT_TEXT_LAYER = Object.freeze({
   fontFamily: "Arial",
   fontWeight: "bold",
   color: "#172335",
-  align: "left"
+  align: "left",
+  outlineColor: "#000000",
+  outlineWidth: 0
 });
 
 const COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
@@ -26,6 +29,7 @@ const WEIGHTS = Object.freeze(["normal", "bold"]);
 const MAX_TEXT_LENGTH = 500;
 const MIN_FONT_SIZE = 8;
 const MAX_FONT_SIZE = 240;
+const MAX_OUTLINE_WIDTH = 24;
 
 export function normalizeTextLayer(value = {}) {
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -41,7 +45,9 @@ export function normalizeTextLayer(value = {}) {
     fontFamily: TEXT_FONT_FAMILIES.includes(source.fontFamily) ? source.fontFamily : DEFAULT_TEXT_LAYER.fontFamily,
     fontWeight: WEIGHTS.includes(source.fontWeight) ? source.fontWeight : DEFAULT_TEXT_LAYER.fontWeight,
     color: typeof source.color === "string" && COLOR_PATTERN.test(source.color) ? source.color : DEFAULT_TEXT_LAYER.color,
-    align: ALIGNMENTS.includes(source.align) ? source.align : DEFAULT_TEXT_LAYER.align
+    align: ALIGNMENTS.includes(source.align) ? source.align : DEFAULT_TEXT_LAYER.align,
+    outlineColor: typeof source.outlineColor === "string" && COLOR_PATTERN.test(source.outlineColor) ? source.outlineColor : DEFAULT_TEXT_LAYER.outlineColor,
+    outlineWidth: Number.isFinite(Number(source.outlineWidth)) ? Math.min(MAX_OUTLINE_WIDTH, Math.max(0, Number(source.outlineWidth))) : DEFAULT_TEXT_LAYER.outlineWidth
   };
 }
 
@@ -62,7 +68,10 @@ export function isValidTextLayer(value) {
     WEIGHTS.includes(value.fontWeight) &&
     typeof value.color === "string" &&
     COLOR_PATTERN.test(value.color) &&
-    ALIGNMENTS.includes(value.align)
+    ALIGNMENTS.includes(value.align) &&
+    typeof value.outlineColor === "string" &&
+    COLOR_PATTERN.test(value.outlineColor) &&
+    Number.isFinite(value.outlineWidth) && value.outlineWidth >= 0 && value.outlineWidth <= MAX_OUTLINE_WIDTH
   );
 }
 

@@ -426,6 +426,14 @@ try {
   await click("#redo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(textLayerId) + ')?.text?.value === "AnimeArt Studio"', 10000);
 
+  await evaluate('window.__animeArtStrokeTextCount = 0; const originalStrokeText = CanvasRenderingContext2D.prototype.strokeText; CanvasRenderingContext2D.prototype.strokeText = function(...args) { window.__animeArtStrokeTextCount += 1; return originalStrokeText.apply(this, args); };');
+  await click("#add-meme-text");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name === "Meme Top" || layer.name === "Meme Bottom").length === 2', 10000);
+  const memeLayers = (await readDocument()).layers.filter(layer => layer.name === "Meme Top" || layer.name === "Meme Bottom");
+  assert(memeLayers.length === 2 && memeLayers.every(layer => layer.contentType === "text" && layer.text?.fontFamily === "Impact" && layer.text?.outlineWidth > 0), "real browser creates two editable outlined meme caption layers");
+  assert(await evaluate('window.__animeArtStrokeTextCount > 0'), "real browser draws caption outlines through Canvas strokeText");
+  await saveScreenshot("animeart-studio-meme-captions.png");
+
   await click("#export-png");
   await waitFor('document.querySelector("#status").textContent !== "Exporting PNG…"', 10000);
   const exportStatus = await evaluate('document.querySelector("#status").textContent');

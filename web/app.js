@@ -29,6 +29,9 @@ const textFontSizeValue = document.querySelector("#text-font-size-value");
 const textFontFamilyInput = document.querySelector("#text-font-family");
 const textFontWeightInput = document.querySelector("#text-font-weight");
 const textColorInput = document.querySelector("#text-color");
+const textOutlineColorInput = document.querySelector("#text-outline-color");
+const textOutlineWidthInput = document.querySelector("#text-outline-width");
+const textOutlineWidthValue = document.querySelector("#text-outline-width-value");
 const textAlignInput = document.querySelector("#text-align");
 const textLayerName = document.querySelector("#text-layer-name");
 const undoButton = document.querySelector("#undo");
@@ -250,7 +253,15 @@ function drawDocument({ context = ctx, document = state.document, center = docum
       context.font = `${previewText.fontWeight} ${previewText.fontSize}px ${fontFamily}`;
       const lineHeight = previewText.fontSize * 1.2;
       previewText.value.split("\n").forEach((line, index) => {
-        context.fillText(line, previewText.x, previewText.y + index * lineHeight);
+        const x = previewText.x;
+        const y = previewText.y + index * lineHeight;
+        if (previewText.outlineWidth > 0) {
+          context.strokeStyle = previewText.outlineColor;
+          context.lineWidth = previewText.outlineWidth;
+          context.lineJoin = "round";
+          context.strokeText(line, x, y);
+        }
+        context.fillText(line, x, y);
       });
     } else {
       for (const stroke of layer.strokes) {
@@ -979,8 +990,11 @@ function renderLayerText() {
   textFontFamilyInput.value = values.fontFamily;
   textFontWeightInput.value = values.fontWeight;
   textColorInput.value = values.color;
+  textOutlineColorInput.value = values.outlineColor;
+  textOutlineWidthInput.value = String(values.outlineWidth);
+  textOutlineWidthValue.textContent = values.outlineWidth + " px";
   textAlignInput.value = values.align;
-  for (const input of [textContentInput, textFontSizeInput, textFontFamilyInput, textFontWeightInput, textColorInput, textAlignInput]) {
+  for (const input of [textContentInput, textFontSizeInput, textFontFamilyInput, textFontWeightInput, textColorInput, textOutlineColorInput, textOutlineWidthInput, textAlignInput]) {
     input.disabled = disabled;
   }
   textFontSizeInput.setAttribute("aria-label", "Font size for " + layer.name);
@@ -1044,6 +1058,13 @@ textFontWeightInput.addEventListener("change", () => {
 });
 textColorInput.addEventListener("input", () => updateTextPreview({ color: textColorInput.value }));
 textColorInput.addEventListener("change", () => commitTextPreview("Text color updated"));
+textOutlineColorInput.addEventListener("input", () => updateTextPreview({ outlineColor: textOutlineColorInput.value }));
+textOutlineColorInput.addEventListener("change", () => commitTextPreview("Text outline color updated"));
+textOutlineWidthInput.addEventListener("input", () => {
+  textOutlineWidthValue.textContent = textOutlineWidthInput.value + " px";
+  updateTextPreview({ outlineWidth: Number(textOutlineWidthInput.value) });
+});
+textOutlineWidthInput.addEventListener("change", () => commitTextPreview("Text outline updated"));
 textAlignInput.addEventListener("change", () => {
   updateTextPreview({ align: textAlignInput.value });
   commitTextPreview("Text alignment updated");
@@ -1539,6 +1560,35 @@ document.querySelector("#add-layer").addEventListener("click", () => {
   setSelection([layer.id], layer.id);
   state.history.record(before, next);
   refreshDocument();
+  persistDocument();
+});
+
+
+document.querySelector("#add-meme-text").addEventListener("click", () => {
+  const width = Math.max(300, state.document.width || canvas.width || 300);
+  const height = Math.max(180, state.document.height || canvas.height || 180);
+  const fontSize = Math.max(24, Math.min(88, Math.round(height * 0.105)));
+  const outlineWidth = Math.max(2, Math.round(fontSize * 0.075));
+  const top = createTextLayer("Meme Top", {
+    value: "TOP TEXT", x: Math.round(width / 2), y: Math.round(height * 0.14),
+    fontSize, fontFamily: "Impact", fontWeight: "bold", color: "#ffffff", align: "center",
+    outlineColor: "#000000", outlineWidth
+  });
+  const bottom = createTextLayer("Meme Bottom", {
+    value: "BOTTOM TEXT", x: Math.round(width / 2), y: Math.round(height * 0.9),
+    fontSize, fontFamily: "Impact", fontWeight: "bold", color: "#ffffff", align: "center",
+    outlineColor: "#000000", outlineWidth
+  });
+  const before = cloneDocument(state.document);
+  let next = addLayer(state.document, top);
+  if (!next) return;
+  next = addLayer(next, bottom);
+  if (!next) return;
+  state.document = next;
+  state.textPreview = null;
+  setSelection([bottom.id], bottom.id);
+  state.history.record(before, next);
+  refreshDocument("Meme captions added. Edit each text layer in the inspector.");
   persistDocument();
 });
 

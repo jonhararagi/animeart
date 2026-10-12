@@ -24,11 +24,15 @@ test("text layer normalizes bounded typography and rejects unsafe font or color 
     fontFamily: "Arial",
     fontWeight: "bold",
     color: "#172335",
-    align: "left"
+    align: "left",
+    outlineColor: "#000000",
+    outlineWidth: 0
   });
   assert.equal(isValidTextLayer(normalizeTextLayer({ value: "AnimeArt", fontSize: 36 })), true);
   assert.equal(isValidTextLayer({ ...normalizeTextLayer(), color: "red" }), false);
   assert.equal(isValidTextLayer({ ...normalizeTextLayer(), fontFamily: "url(x)" }), false);
+  assert.equal(isValidTextLayer({ ...normalizeTextLayer(), outlineWidth: 25 }), false);
+  assert.equal(normalizeTextLayer({ outlineWidth: 999 }).outlineWidth, 24);
 });
 
 test("text layers survive document normalization and strict validation", () => {
@@ -85,7 +89,9 @@ test("text edits participate in History and use the existing non-destructive PNG
   const app = await readFile("app.js", "utf8");
   const exporter = await readFile("domain/png-export.mjs", "utf8");
   assert.match(app, /layer\.contentType === "text"/);
-  assert.match(app, /context\.fillText\(line, previewText\.x, previewText\.y \+ index \* lineHeight\)/);
+  assert.match(app, /context\.strokeText\(line, x, y\)/);
+  assert.match(app, /context\.fillText\(line, x, y\)/);
+  assert.match(app, /document\.querySelector\("#add-meme-text"\)/);
   assert.match(app, /state\.history\.record\(before, next\)/);
   assert.match(app, /persistDocument\(\)/);
   assert.match(app, /renderDocumentToCanvas\(state\.document, exportCanvas/);
