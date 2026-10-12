@@ -297,8 +297,8 @@ try {
   const dragLayer = beforeMulti.layers.find(layer => layer.id === multiBefore[0].id);
   const dragPoint = dragLayer?.strokes?.[0]?.points?.[0];
   assert(Boolean(dragPoint), "multi-selection has a real drawable hit point");
-  const canvasRect = await evaluate('(() => { const r = document.querySelector("#canvas").getBoundingClientRect(); return { left: r.left, top: r.top }; })()');
-  await mouseDrag({ x: canvasRect.left + dragPoint.x, y: canvasRect.top + dragPoint.y }, { x: canvasRect.left + dragPoint.x + 50, y: canvasRect.top + dragPoint.y });
+  const dragStartScreen = await evaluate('(() => { const canvas = document.querySelector("#canvas"); const rect = canvas.getBoundingClientRect(); const doc = JSON.parse(localStorage.getItem("animeart-web-document")); const layer = doc.layers.find(item => item.id === ' + JSON.stringify(multiBefore[0].id) + '); const point = layer?.strokes?.[0]?.points?.[0]; const fitScale = Math.min(rect.width / doc.width, rect.height / doc.height); return { x: rect.left + rect.width / 2 + (point.x - doc.width / 2) * fitScale, y: rect.top + rect.height / 2 + (point.y - doc.height / 2) * fitScale }; })()');
+  await mouseDrag(dragStartScreen, { x: dragStartScreen.x + 50, y: dragStartScreen.y });
   const afterMulti = await readDocument();
   const multiDeltas = multiBefore.map(item => ({
     id: item.id,
