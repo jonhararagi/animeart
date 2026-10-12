@@ -1,4 +1,5 @@
 import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
+import { initializeAssetLibrary } from "./asset-library.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
@@ -1950,6 +1951,7 @@ function load() {
   }
 }
 
+initializeAssetLibrary({ onImportImage: importImageIntoEditor, onStatus: message => { status.textContent = message; } });
 setSelection([state.document.layers[0].id], state.document.layers[0].id);
 load();
 renderLayers();
@@ -1959,11 +1961,13 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v8";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v9";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./asset-library.js",
+  "./domain/asset-library.mjs",
   "./manifest.webmanifest",
   "./service-worker.js",
   "./assets/cc0-detailed-anime-character.png.base64",

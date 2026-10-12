@@ -33,6 +33,7 @@
       <button id="flip-image-horizontal" type="button" disabled title="Mirror selected image left to right">Flip H</button>
       <button id="flip-image-vertical" type="button" disabled title="Mirror selected image top to bottom">Flip V</button>
       <button id="add-sample-character" title="Import the bundled CC0 1.0 character as a real image layer">+ CC0 Character Sample</button>
+      <button id="open-asset-library" type="button" title="Store and reuse your own images">Asset Library</button>
       <a class="asset-source-link" href="./assets/ASSET_SOURCES.md" target="_blank" rel="noopener">Sample art source &amp; license</a>
       <input id="image-file-input" type="file" accept="image/*" hidden>
       <button id="new-document">New</button>
@@ -178,6 +179,26 @@
       <p class="image-edit-note">Only the selected image layer changes. Undo and redo restore the previous pixels and transform.</p>
       <div class="dialog-actions"><button type="button" id="cancel-image-edit">Cancel</button><button type="submit" id="apply-image-edit">Apply</button></div>
     </form>
+  </dialog>
+  <dialog id="asset-library-dialog" aria-labelledby="asset-library-title">
+    <section class="asset-library-shell">
+      <header class="asset-library-header">
+        <div><p class="eyebrow">YOUR ASSETS · LOCAL STORAGE</p><h2 id="asset-library-title">Asset Library</h2><p>Import your own images, organize them, and reuse them as editable layers. Nothing is uploaded.</p></div>
+        <button id="close-asset-library" type="button">Close</button>
+      </header>
+      <div class="asset-library-toolbar">
+        <label class="asset-library-search">Search<input id="asset-library-search" type="search" placeholder="Name, tag or category"></label>
+        <label class="asset-library-filter">Show<select id="asset-library-filter"><option value="all">All assets</option><option value="favorites">Favorites</option><option value="character">Characters</option><option value="sticker">Stickers</option><option value="background">Backgrounds</option><option value="texture">Textures</option><option value="reference">References</option></select></label>
+        <button id="asset-library-add" type="button">+ Import images</button>
+        <input id="asset-library-files" type="file" accept="image/*" multiple hidden>
+        <button id="asset-library-export" type="button">Export library</button>
+        <button id="asset-library-import" type="button">Import library</button>
+        <input id="asset-library-package" type="file" accept="application/json,.json" hidden>
+      </div>
+      <p id="asset-library-status" role="status" aria-live="polite">Images remain in this browser until you export the library.</p>
+      <div id="asset-library-empty" class="asset-library-empty">Your library is empty. Import images to build your own reusable collection.</div>
+      <div id="asset-library-grid" class="asset-library-grid" aria-label="Your saved images"></div>
+    </section>
   </dialog>
   <dialog id="project-dialog" aria-labelledby="project-dialog-title">
     <form id="project-form" method="dialog">
