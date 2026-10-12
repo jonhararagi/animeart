@@ -1,5 +1,6 @@
 import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
+import { removeConnectedBackground } from "./domain/background-removal.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy } from "./domain/viewport.mjs";
@@ -36,6 +37,22 @@ const imageFileInput = document.querySelector("#image-file-input");
 const cropResizeButton = document.querySelector("#crop-resize-image");
 const flipImageHorizontalButton = document.querySelector("#flip-image-horizontal");
 const flipImageVerticalButton = document.querySelector("#flip-image-vertical");
+const removeBackgroundButton = document.querySelector("#remove-background");
+const backgroundRemovalDialog = document.querySelector("#remove-background-dialog");
+const backgroundRemovalForm = document.querySelector("#remove-background-form");
+const backgroundPreviewCanvas = document.querySelector("#background-preview");
+const backgroundColorInput = document.querySelector("#background-color");
+const backgroundToleranceInput = document.querySelector("#background-tolerance");
+const backgroundFeatherInput = document.querySelector("#background-feather");
+const backgroundToleranceValue = document.querySelector("#background-tolerance-value");
+const backgroundFeatherValue = document.querySelector("#background-feather-value");
+const backgroundSourceName = document.querySelector("#background-source-name");
+const backgroundRemovalStatus = document.querySelector("#background-removal-status");
+let backgroundRemovalLayerId = null;
+let backgroundRemovalSourceImage = null;
+let backgroundRemovalSourceCanvas = null;
+let backgroundPickColor = false;
+let backgroundPreviewTimer = null;
 const imageEditDialog = document.querySelector("#image-edit-dialog");
 const imageEditForm = document.querySelector("#image-edit-form");
 const imageEditSourceSize = document.querySelector("#image-edit-source-size");
@@ -671,6 +688,8 @@ function refreshImageEditButton() {
   const layer = selectedLayerExact();
   const editableImage = Boolean(layer && layer.contentType === "image" && layer.image && !layer.locked);
   cropResizeButton.disabled = !editableImage;
+  if (removeBackgroundButton) removeBackgroundButton.disabled = !editableImage;
+  if (removeBackgroundButton) removeBackgroundButton.title = editableImage ? "Remove a connected background from this image" : "Select an unlocked image layer first";
   cropResizeButton.title = editableImage ? "Crop or resize the selected image layer" : "Select an unlocked image layer to crop or resize";
   for (const button of [flipImageHorizontalButton, flipImageVerticalButton]) {
     if (!button) continue;
@@ -839,6 +858,72 @@ imageEditForm.addEventListener("submit", async event => {
   } finally {
     applyButton.disabled = false;
   }
+});
+
+function drawBackgroundRemovalPreview() {
+  if (!backgroundRemovalSourceCanvas) return;
+  const source = backgroundRemovalSourceCanvas;
+  const scale = Math.min(1, 900 / Math.max(source.width, source.height));
+  const width = Math.max(1, Math.round(source.width * scale)), height = Math.max(1, Math.round(source.height * scale));
+  const pixels = source.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, source.width, source.height);
+  const processed = removeConnectedBackground(pixels, { targetColor: backgroundColorInput.value, tolerance: Number(backgroundToleranceInput.value), feather: Number(backgroundFeatherInput.value) });
+  const output = document.createElement("canvas"); output.width = source.width; output.height = source.height;
+  output.getContext("2d").putImageData(processed, 0, 0);
+  backgroundPreviewCanvas.width = width; backgroundPreviewCanvas.height = height;
+  const previewContext = backgroundPreviewCanvas.getContext("2d");
+  previewContext.clearRect(0, 0, width, height); previewContext.drawImage(output, 0, 0, width, height);
+  backgroundToleranceValue.textContent = backgroundToleranceInput.value; backgroundFeatherValue.textContent = backgroundFeatherInput.value;
+  backgroundRemovalStatus.textContent = backgroundPickColor ? "Click the background color in the preview." : "Preview ready. Apply replaces only this layer and can be undone.";
+}
+function scheduleBackgroundRemovalPreview() {
+  if (backgroundPreviewTimer !== null) window.clearTimeout(backgroundPreviewTimer);
+  backgroundPreviewTimer = window.setTimeout(() => { backgroundPreviewTimer = null; try { drawBackgroundRemovalPreview(); } catch (error) { backgroundRemovalStatus.textContent = error?.message || "Preview failed"; } }, 40);
+}
+removeBackgroundButton.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) return;
+  backgroundRemovalLayerId = layer.id; backgroundSourceName.textContent = layer.name + " · " + layer.image.width + " × " + layer.image.height + " px";
+  backgroundPickColor = false; backgroundRemovalStatus.textContent = "Loading image…";
+  backgroundRemovalSourceImage = new Image();
+  backgroundRemovalSourceImage.onload = () => {
+    backgroundRemovalSourceCanvas = document.createElement("canvas"); backgroundRemovalSourceCanvas.width = backgroundRemovalSourceImage.naturalWidth; backgroundRemovalSourceCanvas.height = backgroundRemovalSourceImage.naturalHeight;
+    const context = backgroundRemovalSourceCanvas.getContext("2d", { willReadFrequently: true }); context.drawImage(backgroundRemovalSourceImage, 0, 0);
+    const pixel = context.getImageData(0, 0, 1, 1).data;
+    backgroundColorInput.value = "#" + [...pixel].slice(0,3).map(v => v.toString(16).padStart(2,"0")).join("");
+    drawBackgroundRemovalPreview();
+  };
+  backgroundRemovalSourceImage.onerror = () => { backgroundRemovalStatus.textContent = "Image could not be loaded"; };
+  backgroundRemovalSourceImage.src = layer.image.source; backgroundRemovalDialog.showModal();
+});
+document.querySelector("#cancel-background-removal").addEventListener("click", () => backgroundRemovalDialog.close());
+backgroundRemovalDialog.addEventListener("close", () => { backgroundPickColor = false; backgroundRemovalSourceImage = null; backgroundRemovalSourceCanvas = null; if (backgroundPreviewTimer !== null) window.clearTimeout(backgroundPreviewTimer); backgroundPreviewTimer = null; });
+document.querySelector("#background-pick-color").addEventListener("click", () => { backgroundPickColor = true; backgroundRemovalStatus.textContent = "Click the background color in the preview."; });
+backgroundPreviewCanvas.addEventListener("click", event => {
+  if (!backgroundPickColor || !backgroundRemovalSourceCanvas) return;
+  const rect = backgroundPreviewCanvas.getBoundingClientRect();
+  const x = Math.max(0, Math.min(backgroundPreviewCanvas.width - 1, Math.floor((event.clientX - rect.left) * backgroundPreviewCanvas.width / rect.width)));
+  const y = Math.max(0, Math.min(backgroundPreviewCanvas.height - 1, Math.floor((event.clientY - rect.top) * backgroundPreviewCanvas.height / rect.height)));
+  const sx = Math.floor(x * backgroundRemovalSourceCanvas.width / backgroundPreviewCanvas.width), sy = Math.floor(y * backgroundRemovalSourceCanvas.height / backgroundPreviewCanvas.height);
+  const pixel = backgroundRemovalSourceCanvas.getContext("2d", { willReadFrequently: true }).getImageData(sx, sy, 1, 1).data;
+  backgroundColorInput.value = "#" + [...pixel].slice(0,3).map(v => v.toString(16).padStart(2,"0")).join(""); backgroundPickColor = false; scheduleBackgroundRemovalPreview();
+});
+for (const input of [backgroundColorInput, backgroundToleranceInput, backgroundFeatherInput]) input.addEventListener("input", scheduleBackgroundRemovalPreview);
+backgroundRemovalForm.addEventListener("submit", event => {
+  event.preventDefault();
+  const layer = state.document.layers.find(item => item.id === backgroundRemovalLayerId);
+  if (!layer || layer.contentType !== "image" || !layer.image || layer.locked || !backgroundRemovalSourceCanvas) { backgroundRemovalStatus.textContent = "The selected image is no longer available"; return; }
+  if (state.storageRecoveryPending) { backgroundRemovalStatus.textContent = "Saved project is protected. Choose Save to replace it explicitly."; return; }
+  const applyButton = document.querySelector("#apply-background-removal"); applyButton.disabled = true;
+  try {
+    const sourcePixels = backgroundRemovalSourceCanvas.getContext("2d", { willReadFrequently: true }).getImageData(0,0,backgroundRemovalSourceCanvas.width,backgroundRemovalSourceCanvas.height);
+    const processed = removeConnectedBackground(sourcePixels, { targetColor: backgroundColorInput.value, tolerance: Number(backgroundToleranceInput.value), feather: Number(backgroundFeatherInput.value) });
+    const output = document.createElement("canvas"); output.width = processed.width; output.height = processed.height; output.getContext("2d").putImageData(processed,0,0);
+    const next = replaceImageLayer(state.document, layer.id, { source: output.toDataURL("image/png"), width: output.width, height: output.height });
+    if (!next) throw new Error("Image output exceeds the current layer size limit. Resize the image and retry.");
+    const before = cloneDocument(state.document); state.document = next; setSelection([layer.id],layer.id); state.history.record(before,next); state.adjustmentPreview = null;
+    refreshDocument("Background removed. Transparency preserved."); persistDocument(); backgroundRemovalDialog.close();
+  } catch(error) { backgroundRemovalStatus.textContent = error?.message || "Background removal failed"; }
+  finally { applyButton.disabled = false; }
 });
 
 function getWorkingLayerAdjustments(layer) {
