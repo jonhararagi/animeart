@@ -224,17 +224,18 @@ test("brush control ranges are bounded and eraser remains a distinct existing to
 
 
 
-test("PNG export UI uses the existing document renderer and local download pipeline", async () => {
+test("multi-format export UI uses the existing document renderer and local download pipeline", async () => {
   const html = await readFile("index.html", "utf8");
   const js = await readFile("app.js", "utf8");
   const exporter = await readFile("domain/png-export.mjs", "utf8");
   assert.match(html, /id="export-png"/);
-  assert.match(html, /Exportar PNG/);
+  assert.match(html, /Export image/);
+  assert.match(html, /id="export-format"/);
   assert.match(js, /createPngExportCanvas/);
   assert.match(js, /renderDocumentToCanvas/);
   assert.match(js, /drawDocument\(\{ context = ctx, document = state\.document, center = canvasCenter\(\)/);
-  assert.match(js, /canvasToPngBlob/);
-  assert.match(js, /downloadPngBlob\(blob, "animeart\.png"\)/);
+  assert.match(js, /canvasToImageBlob\(exportCanvas, format, quality\)/);
+  assert.match(js, /downloadImageBlob\(blob, "animeart\." \+ format, format\)/);
   assert.match(js, /await ensureExportImages\(state\.document\)/);
   assert.match(exporter, /getContext\("2d", \{ alpha: true \}\)/);
   assert.match(exporter, /type: "image\/png"/);
