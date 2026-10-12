@@ -85,12 +85,12 @@ wait_for_log_marker() {
   return 1
 }
 
-if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-shell-v1","cachedCount":13,"requiredCount":13,"missing":[],"canvas":true' 30; then
+if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-shell-v8","cachedCount":19,"requiredCount":19,"missing":[],"canvas":true' 30; then
   echo "No se demostró SW ACTIVE + CACHE 13/13 antes de offline. Logcat:"
   adb logcat -d -t 800 || true
   exit 1
 fi
-echo 'ANIMEART_OFFLINE_DIAGNOSTIC registered=true active=true cache=animeart-web-shell-v1 cachedCount=13 requiredCount=13 missing=[] canvas=true phase=online-ready'
+echo 'ANIMEART_OFFLINE_DIAGNOSTIC registered=true active=true cache=animeart-web-shell-v8 cachedCount=19 requiredCount=19 missing=[] canvas=true phase=online-ready'
 
 echo "NETWORK OFF will be enforced by Android emulator airplane mode + WebView offline mode"
 adb shell cmd connectivity airplane-mode enable || true
@@ -136,12 +136,12 @@ if ! wait_for_log_marker 'ANIMEART_OFFLINE_NETWORK webViewBlockNetworkLoads=true
   exit 1
 fi
 
-if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-shell-v1","cachedCount":13,"requiredCount":13,"missing":[],"canvas":true' 30; then
+if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-shell-v8","cachedCount":19,"requiredCount":19,"missing":[],"canvas":true' 30; then
   echo "Offline reload no demostró Service Worker ACTIVE + Cache 13/13 + JavaScript + Canvas. Logcat:"
   adb logcat -d -t 1200 || true
   exit 1
 fi
-echo 'ANIMEART_OFFLINE_DIAGNOSTIC registered=true active=true cache=animeart-web-shell-v1 cachedCount=13 requiredCount=13 missing=[] canvas=true phase=offline-recovery'
+echo 'ANIMEART_OFFLINE_DIAGNOSTIC registered=true active=true cache=animeart-web-shell-v8 cachedCount=19 requiredCount=19 missing=[] canvas=true phase=offline-recovery'
 
 
 if adb logcat -d -t 800 | grep -q 'FATAL EXCEPTION'; then
