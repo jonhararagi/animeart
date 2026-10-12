@@ -11,7 +11,7 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(html, /rel="manifest" href="\.\/manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\("\.\/service-worker\.js"\)/);
   assert.match(manifest, /"display": "standalone"/);
-  assert.match(worker, /animeart-web-shell-v6/);
+  assert.match(worker, /animeart-web-shell-v7/);
   assert.match(worker, /caches\.open/);
   assert.match(worker, /caches\.match/);
   assert.match(app, /layerAdjustmentsToCanvasFilter/);
@@ -67,4 +67,15 @@ test("image editing crop/resize module is included in the offline editor shell",
   assert.match(app, /resizeImageSource/);
   assert.match(app, /replaceImageLayer/);
   assert.match(worker, /\.\/domain\/image-processing\.mjs/);
+});
+
+
+test("canvas coordinate mapping is cached for offline rendering and editing", async () => {
+  const app = await readFile("app.js", "utf8");
+  const worker = await readFile("service-worker.js", "utf8");
+  assert.match(app, /screenToDocumentPoint/);
+  assert.match(app, /documentFitScale/);
+  assert.match(app, /screenViewportForDocument/);
+  assert.match(worker, /\.\/domain\/canvas-space\.mjs/);
+  assert.match(worker, /animeart-web-shell-v7/);
 });

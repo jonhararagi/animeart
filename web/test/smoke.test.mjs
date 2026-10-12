@@ -59,13 +59,13 @@ test("web editor restores legacy projects through the domain boundary", async ()
   assert.match(js, /restoreDocument/);
 });
 
-test("web interaction keeps viewport, document coordinates and persistence boundaries explicit", async () => {
+test("web interaction maps document pixels to screen coordinates and keeps persistence explicit", async () => {
   const js = await readFile("app.js", "utf8");
-  assert.match(js, /screenToDocument\(screenPoint, state\.viewport/);
-  assert.match(js, /ctx\.translate\(center\.x \+ state\.viewport\.panX/);
-  assert.doesNotMatch(js, /canvas\.style\.transform/);
+  assert.match(js, /screenToDocumentPoint/);
+  assert.match(js, /documentFitScale/);
+  assert.match(js, /documentCenter\(state\.document\)/);
   assert.match(js, /persistDocumentSnapshot\(localStorage, "animeart-web-document", state\.document\)/);
-  assert.doesNotMatch(js, /JSON\.stringify\(\{[^}]*viewport/);
+  assert.doesNotMatch(js, /canvas\.style\.transform/);
   assert.match(js, /event\.pointerId !== state\.drawingPointerId/);
   assert.match(js, /state\.strokeBefore/);
 });

@@ -2,7 +2,8 @@ import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, create
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
-import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
+import { createViewport, panBy } from "./domain/viewport.mjs";
+import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocumentPoint, screenViewportForDocument, zoomViewportAt } from "./domain/canvas-space.mjs";
 import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, replaceImageLayer, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
@@ -141,6 +142,11 @@ function canvasCenter() {
   return { x: rect.width / 2, y: rect.height / 2 };
 }
 
+function canvasSize() {
+  const rect = canvas.getBoundingClientRect();
+  return { width: rect.width, height: rect.height };
+}
+
 function resizeCanvas() {
   const rect = canvas.getBoundingClientRect();
   const dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -150,9 +156,11 @@ function resizeCanvas() {
 }
 
 function applyViewport() {
-  const center = canvasCenter();
-  ctx.translate(center.x + state.viewport.panX, center.y + state.viewport.panY);
-  ctx.scale(state.viewport.zoom, state.viewport.zoom);
+  const screenCenter = canvasCenter();
+  const center = documentCenter(state.document);
+  const scale = documentFitScale(state.document, canvasSize()) * state.viewport.zoom;
+  ctx.translate(screenCenter.x + state.viewport.panX, screenCenter.y + state.viewport.panY);
+  ctx.scale(scale, scale);
   ctx.translate(-center.x, -center.y);
 }
 
@@ -192,7 +200,7 @@ function drawImageLayer(layer, context = ctx) {
   }
 }
 
-function drawDocument({ context = ctx, document = state.document, center = canvasCenter(), transformForLayer = layerTransformForRender } = {}) {
+function drawDocument({ context = ctx, document = state.document, center = documentCenter(document), transformForLayer = layerTransformForRender } = {}) {
   for (const layer of document.layers) {
     if (!layer.visible) continue;
     const transform = transformForLayer(layer);
@@ -249,16 +257,13 @@ function drawSelectionOverlay() {
     const geometry = multiSelectionGeometry(selectedLayers.map(layer => ({
       ...layer,
       transform: layerTransformForRender(layer)
-    })), canvasCenter());
+    })), documentCenter(state.document));
     if (geometry) {
-      const corners = geometry.corners.map(point => {
-        return { x: (point.x - canvasCenter().x) * state.viewport.zoom + canvasCenter().x + state.viewport.panX,
-          y: (point.y - canvasCenter().y) * state.viewport.zoom + canvasCenter().y + state.viewport.panY };
-      });
+      const viewportSize = canvasSize();
+      const corners = geometry.corners.map(point => documentToScreenPoint(point, state.document, state.viewport, viewportSize));
       const groupGeometry = {
         corners,
-        center: { x: (geometry.center.x - canvasCenter().x) * state.viewport.zoom + canvasCenter().x + state.viewport.panX,
-          y: (geometry.center.y - canvasCenter().y) * state.viewport.zoom + canvasCenter().y + state.viewport.panY }
+        center: documentToScreenPoint(geometry.center, state.document, state.viewport, viewportSize)
       };
       ctx.save();
       ctx.setLineDash([6, 4]);
@@ -304,7 +309,7 @@ function drawSelectionOverlay() {
             y: layer.transform.y + state.multiTransformInteraction.previewDelta.y
           }
         : null;
-    const geometry = selectionGeometry(layer, state.viewport, canvasCenter(), previewTransform);
+    const geometry = selectionGeometry(layer, screenViewportForDocument(state.document, state.viewport, canvasSize()), documentCenter(state.document), previewTransform);
     if (!geometry) continue;
     ctx.save();
     ctx.lineWidth = layer.id === state.selectedLayerId ? 1.5 : 1;
@@ -348,7 +353,12 @@ function redraw() {
   ctx.fillRect(0, 0, rect.width, rect.height);
   ctx.save();
   applyViewport();
-  drawDocument({ context: ctx, document: state.document, center: canvasCenter() });
+  if (state.document.width > 0 && state.document.height > 0) {
+    ctx.beginPath();
+    ctx.rect(0, 0, state.document.width, state.document.height);
+    ctx.clip();
+  }
+  drawDocument({ context: ctx, document: state.document, center: documentCenter(state.document) });
   ctx.restore();
   drawSelectionOverlay();
 }
@@ -356,7 +366,7 @@ function redraw() {
 function pointFromEvent(event) {
   const rect = canvas.getBoundingClientRect();
   const screenPoint = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-  return createStrokePoint(screenToDocument(screenPoint, state.viewport, canvasCenter()));
+  return createStrokePoint(screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize()));
 }
 
 function screenPointFromEvent(event) {
@@ -910,7 +920,7 @@ function beginTransformInteraction(type, event, handle = null) {
   const layer = selectedLayerExact();
   if (!layer || layer.locked) return false;
   const screenPoint = screenPointFromEvent(event);
-  const documentPoint = screenToDocument(screenPoint, state.viewport, canvasCenter());
+  const documentPoint = screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize());
   state.transformPointerId = event.pointerId;
   state.transformInteraction = {
     type,
@@ -920,7 +930,7 @@ function beginTransformInteraction(type, event, handle = null) {
     startDocument: documentPoint,
     beforeTransform: { ...layer.transform },
     previewTransform: { ...layer.transform },
-    pivot: canvasCenter()
+    pivot: documentCenter(state.document)
   };
   canvas.setPointerCapture(event.pointerId);
   return true;
@@ -962,7 +972,7 @@ function updateTransformPreview(event) {
   const interaction = state.transformInteraction;
   if (!interaction || event.pointerId !== interaction.pointerId) return;
   const currentScreen = screenPointFromEvent(event);
-  const currentDocument = screenToDocument(currentScreen, state.viewport, canvasCenter());
+  const currentDocument = screenToDocumentPoint(currentScreen, state.document, state.viewport, canvasSize());
   const pivot = interaction.pivot;
   const preview = { ...interaction.previewTransform };
   if (interaction.type === "move") {
@@ -993,22 +1003,16 @@ function updateTransformPreview(event) {
 function beginSelectionInteraction(event) {
   const screenPoint = screenPointFromEvent(event);
   const selected = selectedLayerExact();
-  const selectedGeometry = selected ? selectionGeometry(selected, state.viewport, canvasCenter()) : null;
+  const selectedGeometry = selected ? selectionGeometry(selected, screenViewportForDocument(state.document, state.viewport, canvasSize()), documentCenter(state.document)) : null;
   const selectedHit = hitTestHandle(screenPoint, selectedGeometry, HANDLE_RADIUS);
   if (state.selectedLayerIds.length > 1) {
     const layers = selectedLayersExact();
-    const documentPoint = screenToDocument(screenPoint, state.viewport, canvasCenter());
-    const groupDocumentGeometry = multiSelectionGeometry(layers, canvasCenter());
+    const documentPoint = screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize());
+    const groupDocumentGeometry = multiSelectionGeometry(layers, documentCenter(state.document));
     const groupScreenGeometry = groupDocumentGeometry ? {
       ...groupDocumentGeometry,
-      corners: groupDocumentGeometry.corners.map(point => ({
-        x: (point.x - canvasCenter().x) * state.viewport.zoom + canvasCenter().x + state.viewport.panX,
-        y: (point.y - canvasCenter().y) * state.viewport.zoom + canvasCenter().y + state.viewport.panY
-      })),
-      center: {
-        x: (groupDocumentGeometry.center.x - canvasCenter().x) * state.viewport.zoom + canvasCenter().x + state.viewport.panX,
-        y: (groupDocumentGeometry.center.y - canvasCenter().y) * state.viewport.zoom + canvasCenter().y + state.viewport.panY
-      }
+      corners: groupDocumentGeometry.corners.map(point => documentToScreenPoint(point, state.document, state.viewport, canvasSize())),
+      center: documentToScreenPoint(groupDocumentGeometry.center, state.document, state.viewport, canvasSize())
     } : null;
     if (groupScreenGeometry) {
       const topMid = { x: (groupScreenGeometry.corners[0].x + groupScreenGeometry.corners[1].x) / 2, y: (groupScreenGeometry.corners[0].y + groupScreenGeometry.corners[1].y) / 2 };
@@ -1032,7 +1036,7 @@ function beginSelectionInteraction(event) {
     const hitSelectedLayer = [...state.document.layers].reverse().find(layer =>
       layer.visible &&
       state.selectedLayerIds.includes(layer.id) &&
-      hitTestLayer(layer, documentPoint, canvasCenter())
+      hitTestLayer(layer, documentPoint, documentCenter(state.document))
     );
     if (hitSelectedLayer && layers.every(layer => !layer.locked)) {
       state.selectedLayerId = hitSelectedLayer.id;
@@ -1051,10 +1055,10 @@ function beginSelectionInteraction(event) {
   }
   if (selectedHit?.startsWith("scale-")) return beginTransformInteraction("scale", event, selectedHit);
   if (selectedHit === "rotate") return beginTransformInteraction("rotate", event);
-  const documentPoint = screenToDocument(screenPoint, state.viewport, canvasCenter());
+  const documentPoint = screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize());
   for (const layer of [...state.document.layers].reverse()) {
     if (!layer.visible) continue;
-    if (hitTestLayer(layer, documentPoint, canvasCenter())) {
+    if (hitTestLayer(layer, documentPoint, documentCenter(state.document))) {
       if (event.shiftKey) toggleSelection(layer.id);
       else setSelection([layer.id], layer.id);
       renderLayers();
@@ -1106,16 +1110,16 @@ canvas.addEventListener("pointermove", event => {
   }
   if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
     const interaction = state.multiTransformInteraction;
-    const current = screenToDocument(screenPointFromEvent(event), state.viewport, canvasCenter());
+    const current = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
     const layers = selectedLayersExact();
     if (interaction.type === "move") {
       const start = interaction.startDocument;
       interaction.previewDelta = { x: current.x - start.x, y: current.y - start.y };
     } else if (interaction.type === "scale") {
-      const transforms = groupScaleTransforms(layers, canvasCenter(), interaction.handle, current);
+      const transforms = groupScaleTransforms(layers, documentCenter(state.document), interaction.handle, current);
       if (transforms) interaction.previewTransforms = new Map(transforms.map(item => [item.id, item.transform]));
     } else if (interaction.type === "rotate") {
-      const transforms = groupRotationTransforms(layers, canvasCenter(), current, interaction.startDocument);
+      const transforms = groupRotationTransforms(layers, documentCenter(state.document), current, interaction.startDocument);
       if (transforms) interaction.previewTransforms = new Map(transforms.map(item => [item.id, item.transform]));
     }
     redraw();
@@ -1221,7 +1225,7 @@ canvas.addEventListener("wheel", event => {
   const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
   const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, currentZoom * factor));
   if (nextZoom === currentZoom) return;
-  setViewport(zoomAt(state.viewport, nextZoom, screenPointFromEvent(event), canvasCenter()));
+  setViewport(zoomViewportAt(state.viewport, nextZoom, screenPointFromEvent(event), state.document, canvasSize()));
 }, { passive: false });
 
 function setBrushColor(value) {
@@ -1718,7 +1722,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v6";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v7";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -1732,6 +1736,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/image-import.mjs",
   "./domain/image-input.mjs",
   "./domain/image-processing.mjs",
+  "./domain/canvas-space.mjs",
   "./domain/layer-adjustments.mjs",
   "./domain/model.mjs",
   "./domain/text-layer.mjs",
