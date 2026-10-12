@@ -31,6 +31,29 @@ android {
     }
 }
 
+// The Web editor is the source of truth. Every Android build mirrors its current files
+// into the WebView assets so the APK cannot silently ship an older editor.
+val syncWebEditorAssets by tasks.registering(Sync::class) {
+    from(rootProject.file("web")) {
+        exclude(
+            "dist/**",
+            "node_modules/**",
+            "scripts/**",
+            "test/**",
+            "tests/**",
+            "package.json",
+            "package-lock.json",
+            "README.md",
+            ".gitignore"
+        )
+    }
+    into(layout.projectDirectory.dir("src/main/assets/web"))
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(syncWebEditorAssets)
+}
+
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2025.01.00")
     implementation(composeBom)
