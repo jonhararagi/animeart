@@ -1,5 +1,6 @@
 import { normalizeDocument, normalizeTransform } from "./model.mjs";
 import { isDefaultLayerAdjustments, normalizeLayerAdjustments } from "./layer-adjustments.mjs";
+import { normalizeTextLayer } from "./text-layer.mjs";
 
 function cloneDocument(document) {
   const cloned = normalizeDocument(JSON.parse(JSON.stringify(document)));
@@ -130,6 +131,15 @@ export function setLayerAdjustments(document, layerId, adjustments) {
   } else {
     layer.adjustments = normalized;
   }
+  return next;
+}
+
+export function setLayerText(document, layerId, textPatch) {
+  if (!textPatch || typeof textPatch !== "object" || Array.isArray(textPatch)) return null;
+  const next = cloneDocument(document);
+  const layer = next.layers.find(item => item.id === layerId);
+  if (!layer || layer.contentType !== "text") return null;
+  layer.text = normalizeTextLayer({ ...layer.text, ...textPatch });
   return next;
 }
 
