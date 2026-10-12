@@ -1,4 +1,5 @@
 import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
+import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
 import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
@@ -32,6 +33,9 @@ const redoButton = document.querySelector("#redo");
 const imageFileInput = document.querySelector("#image-file-input");
 const newDocumentButton = document.querySelector("#new-document");
 const recoverButton = document.querySelector("#recover-project");
+const exportProjectButton = document.querySelector("#export-project");
+const importProjectButton = document.querySelector("#import-project");
+const projectFileInput = document.querySelector("#project-file-input");
 const saveButton = document.querySelector("#save");
 const exportPngButton = document.querySelector("#export-png");
 const exportFormatInput = document.querySelector("#export-format");
@@ -1412,6 +1416,60 @@ recoverButton.addEventListener("click", () => {
   restoreStoredProject();
 });
 
+exportProjectButton.addEventListener("click", () => {
+  try {
+    const serialized = serializeProjectFile(state.document);
+    const blob = new Blob([serialized], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "animeart-project.json";
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    status.textContent = "Project file exported";
+  } catch (error) {
+    status.textContent = error?.message || "Could not export project file";
+  }
+});
+
+importProjectButton.addEventListener("click", () => projectFileInput.click());
+
+projectFileInput.addEventListener("change", async () => {
+  const file = projectFileInput.files?.[0];
+  if (!file) return;
+  if (file.size > 2_500_000) {
+    status.textContent = "Project file exceeds the 2.5 MB local-project limit";
+    projectFileInput.value = "";
+    return;
+  }
+  if (state.dirty && !window.confirm("Discard unsaved changes and open this project file?")) {
+    projectFileInput.value = "";
+    return;
+  }
+  try {
+    const imported = parseProjectFile(await file.text());
+    persistDocumentSnapshot(localStorage, "animeart-web-document", imported);
+    state.document = imported;
+    state.history.reset(imported);
+    const activeLayerId = imported.layers.at(-1)?.id || null;
+    setSelection(activeLayerId ? [activeLayerId] : [], activeLayerId);
+    state.viewport = createViewport();
+    state.transformInteraction = null;
+    state.multiTransformInteraction = null;
+    state.adjustmentPreview = null;
+    state.textPreview = null;
+    state.drawing = false;
+    state.strokeBefore = null;
+    state.dirty = false;
+    setStorageRecoveryPending(false);
+    refreshDocument("Project file opened");
+  } catch (error) {
+    status.textContent = error?.message || "Project file could not be opened";
+  } finally {
+    projectFileInput.value = "";
+  }
+});
+
 saveButton.addEventListener("click", () => {
   persistDocument({ markSaved: true });
 });
@@ -1539,7 +1597,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v4";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v5";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",

@@ -11,7 +11,7 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(html, /rel="manifest" href="\.\/manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\("\.\/service-worker\.js"\)/);
   assert.match(manifest, /"display": "standalone"/);
-  assert.match(worker, /animeart-web-shell-v4/);
+  assert.match(worker, /animeart-web-shell-v5/);
   assert.match(worker, /caches\.open/);
   assert.match(worker, /caches\.match/);
   assert.match(app, /layerAdjustmentsToCanvasFilter/);
@@ -37,4 +37,19 @@ test("export toolbar offers PNG, JPEG and WebP with quality and JPEG background 
   assert.match(app, /format === "jpeg"/);
   assert.match(exporter, /export function canvasToImageBlob/);
   assert.match(exporter, /export function downloadImageBlob/);
+});
+
+
+test("project file import and export reuse the existing document and persistence boundaries", async () => {
+  const html = await readFile("index.html", "utf8");
+  const app = await readFile("app.js", "utf8");
+  const worker = await readFile("service-worker.js", "utf8");
+  assert.match(html, /id="export-project"/);
+  assert.match(html, /id="import-project"/);
+  assert.match(html, /id="project-file-input"/);
+  assert.match(app, /serializeProjectFile\(state\.document\)/);
+  assert.match(app, /parseProjectFile\(await file\.text\(\)\)/);
+  assert.match(app, /persistDocumentSnapshot\(localStorage, "animeart-web-document", imported\)/);
+  assert.match(app, /state\.history\.reset\(imported\)/);
+  assert.match(worker, /\.\/domain\/project-file\.mjs/);
 });
