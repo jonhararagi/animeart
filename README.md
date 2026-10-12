@@ -16,7 +16,8 @@ The Web editor currently provides:
 - undo/redo through the single DocumentHistory boundary;
 - local persistence and project recovery through the single serializer/storage contract;
 - controlled localStorage quota/size failure handling without replacing the current document;
-- local PNG export using the existing document renderer.
+- non-destructive per-layer image adjustments for brightness, contrast, saturation, hue and blur, with Original, Anime, Cinematic, Manga and Dream presets;
+- local PNG export using the same document renderer, including active layer adjustments.
 
 The project remains dependency-light and local-first. Core editor data stays in the browser; no cloud or external AI service is required for the current editor flow.
 
