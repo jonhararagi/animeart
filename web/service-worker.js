@@ -9,6 +9,7 @@ const APP_SHELL = [
   "./domain/history.mjs",
   "./domain/image-import.mjs",
   "./domain/image-input.mjs",
+  "./domain/layer-adjustments.mjs",
   "./domain/model.mjs",
   "./domain/png-export.mjs",
   "./domain/selection.mjs",
