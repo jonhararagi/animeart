@@ -1623,7 +1623,7 @@ async function exportPng() {
       if (format === "jpeg") {
         context.save();
         context.fillStyle = exportBackgroundInput.value || "#ffffff";
-        context.fillRect(-center.x, -center.y, document.width, document.height);
+        context.fillRect(0, 0, document.width, document.height);
         context.restore();
       }
       drawDocument({

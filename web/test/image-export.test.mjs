@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { canvasToImageBlob, downloadImageBlob, createPngExportCanvas } from "../domain/png-export.mjs";
+import { canvasToImageBlob, downloadImageBlob, createPngExportCanvas, renderDocumentToCanvas } from "../domain/png-export.mjs";
 
 test("export canvas rejects invalid document dimensions", () => {
   assert.throws(() => createPngExportCanvas({ width: 0, height: 10 }, { createElement() {} }), /dimensions/i);
@@ -39,4 +39,20 @@ test("download names match the selected format", () => {
   const result = downloadImageBlob(new Blob(["jpeg"], { type: "image/jpeg" }), "my-art.png", "jpeg", urlObject, documentObject);
   assert.equal(result.filename, "my-art.jpeg");
   assert.equal(clicked, true);
+});
+
+
+test("document raster rendering keeps document pixels at the export origin", () => {
+  const translations = [];
+  const context = {
+    clearRect() {},
+    save() {},
+    restore() {},
+    translate(...args) { translations.push(args); }
+  };
+  const canvas = { width: 800, height: 600, getContext() { return context; } };
+  let renderCenter = null;
+  renderDocumentToCanvas({ width: 800, height: 600 }, canvas, ({ center }) => { renderCenter = center; });
+  assert.deepEqual(renderCenter, { x: 400, y: 300 });
+  assert.deepEqual(translations, [], "export does not offset pixel coordinates by a second viewport-center translation");
 });
