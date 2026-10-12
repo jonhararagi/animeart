@@ -1,4 +1,5 @@
 import { isDefaultLayerAdjustments, isValidLayerAdjustments, normalizeLayerAdjustments } from "./layer-adjustments.mjs";
+import { isValidTextLayer, normalizeTextLayer } from "./text-layer.mjs";
 
 export const DOCUMENT_VERSION = 2;
 
@@ -90,6 +91,13 @@ export function createImageLayer(name = "Image Layer", width = 64, height = 64, 
   return layer;
 }
 
+export function createTextLayer(name = "Text 1", text = {}) {
+  const layer = createLayer(name);
+  layer.contentType = "text";
+  layer.text = normalizeTextLayer(text);
+  return layer;
+}
+
 export function createTestImageLayer(name = "Test Image") {
   return createImageLayer(name, 64, 64, TEST_IMAGE_SOURCE);
 }
@@ -103,11 +111,12 @@ function normalizeImage(image) {
 }
 
 function normalizeLayer(layer, index) {
-  const contentType = layer?.contentType === "image" ? "image" : "drawing";
+  const contentType = layer?.contentType === "image" || layer?.contentType === "text" ? layer.contentType : "drawing";
   const strokes = Array.isArray(layer?.strokes)
     ? layer.strokes.map(normalizeStroke).filter(Boolean)
     : [];
   const image = contentType === "image" ? normalizeImage(layer?.image) : null;
+  const text = contentType === "text" ? normalizeTextLayer(layer?.text) : null;
 
   return {
     id: layer?.id || createId(),
@@ -122,6 +131,7 @@ function normalizeLayer(layer, index) {
     isReference: contentType === "image" && layer?.isReference === true,
     strokes,
     ...(image ? { image } : {}),
+    ...(text ? { text } : {}),
     ...(!isDefaultLayerAdjustments(layer?.adjustments) ? { adjustments: normalizeLayerAdjustments(layer.adjustments) } : {})
   };
 }
@@ -185,16 +195,17 @@ export function isValidDocument(document) {
           )
         );
       const validAdjustments = layer?.adjustments === undefined || isValidLayerAdjustments(layer.adjustments);
-      if (!validCommon || !validAdjustments || !["drawing", "image"].includes(layer.contentType)) return false;
-      if (layer.contentType === "drawing") return !layer.image;
-      return Boolean(
-        layer.image &&
+      if (!validCommon || !validAdjustments || !["drawing", "image", "text"].includes(layer.contentType)) return false;
+      if (layer.contentType === "drawing") return !layer.image && !layer.text;
+      if (layer.contentType === "image") return Boolean(
+        layer.image && !layer.text &&
         typeof layer.image.source === "string" &&
         Number.isFinite(layer.image.width) &&
         layer.image.width > 0 &&
         Number.isFinite(layer.image.height) &&
         layer.image.height > 0
       );
+      return Boolean(layer.text && isValidTextLayer(layer.text) && !layer.image && layer.strokes.length === 0);
     })
   );
 }
