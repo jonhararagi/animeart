@@ -1442,6 +1442,37 @@ async function exportPng() {
   }
 }
 
+function handleEditorKeyboardShortcuts(event) {
+  const target = event.target;
+  const editingText = target instanceof Element && target.closest("input, textarea, select, [contenteditable='true']");
+  const openDialog = document.querySelector("dialog[open]");
+  const modifier = event.ctrlKey || event.metaKey;
+  const key = event.key.toLowerCase();
+  if (modifier && !event.altKey) {
+    if (key === "z" && !editingText && !openDialog) { event.preventDefault(); event.shiftKey ? redo() : undo(); return; }
+    if (key === "y" && !editingText && !openDialog) { event.preventDefault(); redo(); return; }
+    if (key === "s") { event.preventDefault(); persistDocument({ markSaved: true }); status.textContent = "Project saved locally"; return; }
+    if (key === "e" && !editingText && !openDialog) { event.preventDefault(); exportPngButton.click(); return; }
+    if (key === "o" && !editingText && !openDialog) { event.preventDefault(); projectFileInput.click(); return; }
+    if (key === "n" && event.shiftKey && !editingText && !openDialog) { event.preventDefault(); document.querySelector("#new-document")?.click(); return; }
+  }
+  if ((event.key === "Delete" || event.key === "Backspace") && !modifier && !event.altKey && !event.shiftKey && !editingText && !openDialog && state.selectedLayerIds.length > 0) {
+    event.preventDefault();
+    const selectedIds = [...state.selectedLayerIds];
+    const before = cloneDocument(state.document);
+    let next = state.document;
+    for (const id of selectedIds) next = deleteLayer(next, id) || next;
+    if (JSON.stringify(next) === JSON.stringify(before)) { status.textContent = "At least one layer must remain in the document"; return; }
+    state.document = next;
+    const remainingId = next.layers.at(-1)?.id || null;
+    setSelection(remainingId ? [remainingId] : [], remainingId);
+    state.history.record(before, next);
+    refreshDocument(selectedIds.length > 1 ? "Selected layers deleted" : "Layer deleted");
+    persistDocument();
+  }
+}
+document.addEventListener("keydown", handleEditorKeyboardShortcuts);
+
 exportPngButton.addEventListener("click", exportPng);
 
 function ensureExportImages(document) {
