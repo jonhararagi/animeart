@@ -194,7 +194,7 @@ export async function applyImageFileImport(file, { document, history, persist, R
   if (!document || !history || typeof persist !== "function") {
     throw imageImportError("Image import transaction is not configured");
   }
-  const { layer } = await importImageFile(file, { Reader, ImageCtor, documentObject });
+  const { layer, optimized } = await importImageFile(file, { Reader, ImageCtor, documentObject });
   const before = cloneDocument(document);
   const next = cloneDocument(document);
   next.layers.push(layer);
@@ -207,5 +207,5 @@ export async function applyImageFileImport(file, { document, history, persist, R
     history.discardLastRecord();
     throw error;
   }
-  return { document: next, layer };
+  return { document: next, layer, optimized };
 }
