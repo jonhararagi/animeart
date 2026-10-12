@@ -121,6 +121,16 @@ export function setLayerReference(document, layerId, isReference) {
   return next;
 }
 
+export function flipImageLayer(document, layerId, axis) {
+  if (!["horizontal", "vertical"].includes(axis)) return null;
+  const next = cloneDocument(document);
+  const layer = next.layers.find(item => item.id === layerId);
+  if (!layer || layer.locked || layer.contentType !== "image" || !layer.image) return null;
+  if (axis === "horizontal") layer.image.flipX = !layer.image.flipX;
+  else layer.image.flipY = !layer.image.flipY;
+  return next;
+}
+
 export function setLayerAdjustments(document, layerId, adjustments) {
   const next = cloneDocument(document);
   const layer = next.layers.find(item => item.id === layerId);
@@ -229,6 +239,6 @@ export function replaceImageLayer(document, layerId, replacement, { cropOrigin =
       scale: nextScale
     };
   }
-  layer.image = { source: replacement.source, width, height };
+  layer.image = { source: replacement.source, width, height, flipX: layer.image.flipX === true, flipY: layer.image.flipY === true };
   return next;
 }

@@ -202,6 +202,7 @@ canvas {
   .toolbar > .brush-control { grid-column: span 2; }
   .toolbar > #add-layer, .toolbar > #add-text-layer, .toolbar > #add-image-layer, .toolbar > #add-sample-character, .toolbar > #new-document, .toolbar > #recover-project,
   .toolbar > #save, .toolbar > #export-png, .toolbar > #clear { grid-column: span 2; text-align: center; padding: 7px 4px; }
+  .toolbar > #flip-image-horizontal, .toolbar > #flip-image-vertical { grid-column: span 2; text-align: center; padding: 7px 4px; }
   .toolbar > [data-transform] { grid-column: span 1; }
   .canvas-wrap { grid-column: 1; grid-row: 2; min-height: 48vh; }
   canvas { width: 93%; height: 90%; }

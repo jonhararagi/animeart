@@ -359,8 +359,15 @@ try {
   assert(cc0Sample?.image?.width === 944 && cc0Sample?.image?.height === 944, "real browser decodes the verified CC0 PNG dimensions");
   assert(cc0Sample?.image?.source?.startsWith("data:image/png;base64,"), "CC0 sample is embedded locally instead of uploaded to a server");
   await saveScreenshot("animeart-studio-cc0-sample.png");
+  assert(await evaluate('document.querySelector("#flip-image-horizontal").disabled === false && document.querySelector("#flip-image-vertical").disabled === false'), "image flip controls activate for an unlocked image layer");
+  await click("#flip-image-horizontal");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.flipX === true)', 10000);
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.flipX === false)', 10000);
+  await click("#redo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.flipX === true)', 10000);
 
-  // Exercise actual raster edits, history and aspect preservation in Chromium.
+  // Exercise actual raster edits, history, flips and aspect preservation in Chromium.
   await click("#crop-resize-image");
   await waitFor('document.querySelector("#image-edit-dialog").open === true');
   await waitFor('document.querySelector("#crop-preview").width > 1', 15000);
@@ -382,6 +389,7 @@ try {
   await waitFor('document.querySelector("#status").textContent === "Image cropped"', 15000);
   let croppedSample = (await readDocument()).layers.find(layer => layer.name === "battleworn_knight");
   assert(croppedSample?.image?.width === 400 && croppedSample?.image?.height === 500, "real browser crop changes image pixels to the exact crop dimensions");
+  assert(croppedSample?.image?.flipX === true, "real browser crop retains the image mirror setting");
   assert(Math.abs(croppedSample?.transform?.x - 5) < 0.001 && Math.abs(croppedSample?.transform?.y - 7) < 0.001, "real browser crop compensates the image transform for the crop origin");
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944 && layer.image?.height === 944)', 10000);

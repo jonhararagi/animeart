@@ -4,7 +4,7 @@ import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mj
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy } from "./domain/viewport.mjs";
 import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocumentPoint, screenViewportForDocument, zoomViewportAt } from "./domain/canvas-space.mjs";
-import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, replaceImageLayer, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, flipImageLayer, replaceImageLayer, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
@@ -34,6 +34,8 @@ const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
 const imageFileInput = document.querySelector("#image-file-input");
 const cropResizeButton = document.querySelector("#crop-resize-image");
+const flipImageHorizontalButton = document.querySelector("#flip-image-horizontal");
+const flipImageVerticalButton = document.querySelector("#flip-image-vertical");
 const imageEditDialog = document.querySelector("#image-edit-dialog");
 const imageEditForm = document.querySelector("#image-edit-form");
 const imageEditSourceSize = document.querySelector("#image-edit-source-size");
@@ -51,6 +53,7 @@ const imageResizeHeight = document.querySelector("#image-resize-height");
 const imageResizeKeepAspect = document.querySelector("#image-resize-keep-aspect");
 let imageEditLayerId = null;
 let imageEditOriginalSize = null;
+let imageEditOriginalFlip = { flipX: false, flipY: false };
 let imageEditPreviewImage = null;
 let cropPreviewDrag = null;
 const newDocumentButton = document.querySelector("#new-document");
@@ -201,7 +204,17 @@ function drawImageLayer(layer, context = ctx) {
     imageCache.set(layer.image.source, image);
   }
   if (image.complete && image.naturalWidth > 0) {
+    context.save();
+    if (layer.image.flipX) {
+      context.translate(layer.image.width, 0);
+      context.scale(-1, 1);
+    }
+    if (layer.image.flipY) {
+      context.translate(0, layer.image.height);
+      context.scale(1, -1);
+    }
     context.drawImage(image, 0, 0, layer.image.width, layer.image.height);
+    context.restore();
   }
 }
 
@@ -543,7 +556,17 @@ function drawCropPreview() {
   context.clearRect(0, 0, width, height);
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
+  context.save();
+  if (imageEditOriginalFlip.flipX) {
+    context.translate(width, 0);
+    context.scale(-1, 1);
+  }
+  if (imageEditOriginalFlip.flipY) {
+    context.translate(0, height);
+    context.scale(1, -1);
+  }
   context.drawImage(imageEditPreviewImage, 0, 0, width, height);
+  context.restore();
   if (currentImageEditMode() !== "crop") return;
 
   const left = cropPreviewClamp(imageCropX.value, sourceWidth) / sourceWidth * width;
@@ -649,6 +672,11 @@ function refreshImageEditButton() {
   const editableImage = Boolean(layer && layer.contentType === "image" && layer.image && !layer.locked);
   cropResizeButton.disabled = !editableImage;
   cropResizeButton.title = editableImage ? "Crop or resize the selected image layer" : "Select an unlocked image layer to crop or resize";
+  for (const button of [flipImageHorizontalButton, flipImageVerticalButton]) {
+    if (!button) continue;
+    button.disabled = !editableImage;
+    button.title = editableImage ? "Mirror selected image " + (button === flipImageHorizontalButton ? "left to right" : "top to bottom") : "Select an unlocked image layer first";
+  }
 }
 
 function currentImageEditMode() {
@@ -675,6 +703,27 @@ function syncAspectRatioFromHeight() {
   if (Number.isInteger(height) && height > 0) imageResizeWidth.value = String(Math.max(1, Math.round(height * imageEditOriginalSize.width / imageEditOriginalSize.height)));
 }
 
+function toggleSelectedImageFlip(axis) {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) {
+    status.textContent = "Select an unlocked image layer to flip";
+    return;
+  }
+  const before = cloneDocument(state.document);
+  const next = flipImageLayer(state.document, layer.id, axis);
+  if (!next) {
+    status.textContent = "Image flip was rejected";
+    return;
+  }
+  state.document = next;
+  state.history.record(before, next);
+  refreshDocument(axis === "horizontal" ? "Image flipped horizontally" : "Image flipped vertically");
+  persistDocument();
+}
+
+flipImageHorizontalButton.addEventListener("click", () => toggleSelectedImageFlip("horizontal"));
+flipImageVerticalButton.addEventListener("click", () => toggleSelectedImageFlip("vertical"));
+
 cropResizeButton.addEventListener("click", () => {
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) {
@@ -683,6 +732,7 @@ cropResizeButton.addEventListener("click", () => {
   }
   imageEditLayerId = layer.id;
   imageEditOriginalSize = { width: layer.image.width, height: layer.image.height };
+  imageEditOriginalFlip = { flipX: layer.image.flipX === true, flipY: layer.image.flipY === true };
   imageEditSourceSize.textContent = layer.name + " · " + layer.image.width + " × " + layer.image.height + " px";
   imageCropX.value = "0"; imageCropY.value = "0";
   imageCropWidth.value = String(layer.image.width); imageCropHeight.value = String(layer.image.height);
@@ -758,7 +808,10 @@ imageEditForm.addEventListener("submit", async event => {
     if (mode === "crop") {
       const x = Number(imageCropX.value), y = Number(imageCropY.value);
       const width = Number(imageCropWidth.value), height = Number(imageCropHeight.value);
-      replacement = await cropImageSource(layer.image.source, { x, y, width, height });
+      const sourceX = layer.image.flipX ? layer.image.width - x - width : x;
+      const sourceY = layer.image.flipY ? layer.image.height - y - height : y;
+      replacement = await cropImageSource(layer.image.source, { x: sourceX, y: sourceY, width, height });
+      // Layer offset uses the visible crop origin; raster crop uses source pixel coordinates.
       options = { cropOrigin: { x, y } };
     } else {
       const width = Number(imageResizeWidth.value);
