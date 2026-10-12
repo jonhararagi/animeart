@@ -504,6 +504,36 @@ try {
   await waitFor('document.querySelector("#storage-recovery-notice").hidden === true');
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").version === 2'), "explicitly saved supported document remains recoverable");
 
+
+  // Poster composition and shape-mask interactions use the real browser UI.
+  const beforeMaskImport = (await readDocument()).layers.length;
+  await evaluate('(() => { const bytes=Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="),c=>c.charCodeAt(0)); const file=new File([bytes],"shape-mask-fixture.png",{type:"image/png"}); const dt=new DataTransfer();dt.items.add(file);const input=document.querySelector("#image-file-input");input.files=dt.files;input.dispatchEvent(new Event("change",{bubbles:true}));return true;})()');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length === ' + (beforeMaskImport + 1), 10000);
+  await click('[aria-label="Select shape-mask-fixture"]');
+  await waitFor('document.querySelector("#image-mask-panel").hidden === false');
+  await evaluate('(() => { const select=document.querySelector("#image-mask");select.value="heart";select.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer=>layer.name==="shape-mask-fixture"&&layer.image?.mask==="heart")');
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer=>layer.name==="shape-mask-fixture"&&layer.image?.mask==="heart")'), "shape mask is applied and persisted to the selected image layer");
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer=>layer.name==="shape-mask-fixture"&&layer.image?.mask==="none")');
+  await click("#redo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer=>layer.name==="shape-mask-fixture"&&layer.image?.mask==="heart")');
+  assert(await evaluate('document.querySelector("#image-mask").value==="heart"'), "shape mask participates in undo and redo");
+
+  await evaluate("window.confirm = () => true");
+  await click("#poster-templates");
+  await waitFor('document.querySelector("#poster-template-dialog").open === true');
+  await evaluate('(() => { document.querySelector("#poster-template-style").value="comic";document.querySelector("#poster-background-color").value="#ffffff";document.querySelector("#poster-accent-color").value="#ff2b6d";document.querySelector("#poster-title-value").value="E2E COMIC";document.querySelector("#poster-subtitle-value").value="SATURDAY · 20:00"; })()');
+  await click('#poster-template-form button[type="submit"]');
+  await waitFor('document.querySelector("#status").textContent === "Comic Cover template created"');
+  const posterDocument = await readDocument();
+  assert(posterDocument.width===1080&&posterDocument.height===1350, "poster template creates a 1080×1350 poster canvas");
+  assert(posterDocument.layers.length===3&&posterDocument.layers[0].name==="Poster background", "poster template creates a background layer and editable text layers");
+  assert(posterDocument.layers[0].image?.source?.startsWith("data:image/svg+xml;charset=utf-8,"), "poster background is a local editable image layer, not a remote asset");
+  assert(posterDocument.layers[1].text?.value==="E2E COMIC"&&posterDocument.layers[1].text?.outlineWidth>0, "comic poster headline is editable and includes a real text outline");
+  assert(posterDocument.layers[2].text?.value==="SATURDAY · 20:00", "poster subtitle remains editable");
+  await saveScreenshot("animeart-studio-poster-template.png");
+
   // T064: prove explicit-write failures preserve the protected payload and can be retried.
   const quotaPayload = JSON.stringify({
     version: 999, width: 320, height: 240,
