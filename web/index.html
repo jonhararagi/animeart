@@ -28,36 +28,14 @@
       <button id="redo" disabled>Redo</button>
       <button id="add-layer">+ Layer</button>
       <button id="add-text-layer">+ Text</button>
-      <button id="poster-templates">Poster templates</button>
       <button id="add-image-layer">+ Image / Reference</button>
-      <button id="crop-resize-image" disabled>Crop / Resize Image</button>
-      <button id="remove-background" disabled>Remove Background</button>
-      <button id="flip-image-horizontal" type="button" disabled title="Mirror selected image left to right">Flip H</button>
-      <button id="flip-image-vertical" type="button" disabled title="Mirror selected image top to bottom">Flip V</button>
       <button id="add-sample-character" title="Import the bundled CC0 1.0 character as a real image layer">+ CC0 Character Sample</button>
       <a class="asset-source-link" href="./assets/ASSET_SOURCES.md" target="_blank" rel="noopener">Sample art source &amp; license</a>
       <input id="image-file-input" type="file" accept="image/*" hidden>
       <button id="new-document">New</button>
-      <button id="recover-project">Recover local</button>
-      <button id="save">Save locally</button>
-      <button id="export-project">Export project file</button>
-      <button id="import-project">Open project file</button>
-      <input id="project-file-input" type="file" accept="application/json,.json" hidden>
-      <label class="export-format-control" for="export-format">Export format
-        <select id="export-format" aria-label="Export format">
-          <option value="png">PNG · transparent</option>
-          <option value="jpeg">JPEG · photo</option>
-          <option value="webp">WebP · compact</option>
-        </select>
-      </label>
-      <label id="export-quality-control" class="export-format-control" for="export-quality" hidden>Quality
-        <input id="export-quality" type="range" min="50" max="100" step="1" value="92">
-        <output id="export-quality-value">92%</output>
-      </label>
-      <label id="export-background-control" class="export-format-control" for="export-background" hidden>JPEG background
-        <input id="export-background" type="color" value="#ffffff">
-      </label>
-      <button id="export-png">Export image</button>
+      <button id="recover-project">Open / Recover</button>
+      <button id="save">Save</button>
+      <button id="export-png">Exportar PNG</button>
       <button id="clear">Clear</button>
       <span class="tool-group-label">Layer</span>
       <button data-transform="left" title="Move layer left">←</button>
@@ -75,7 +53,6 @@
     <aside class="layers" aria-label="Layers">
       <h2>Layers</h2>
       <ol id="layers"></ol>
-      <section id="image-mask-panel" class="image-mask-panel" aria-labelledby="image-mask-title" hidden><div class="panel-heading"><div><p class="eyebrow">NON-DESTRUCTIVE</p><h3 id="image-mask-title">Image shape cut</h3></div></div><label class="text-field" for="image-mask">Clip shape<select id="image-mask"><option value="none">Original rectangle</option><option value="circle">Circle / avatar</option><option value="rounded">Rounded card</option><option value="star">Star</option><option value="heart">Heart</option><option value="hexagon">Hexagon</option></select></label><p class="adjustment-note">The mask is editable and does not erase the original pixels.</p></section>
       <section class="adjustment-panel" aria-labelledby="adjustments-title">
         <div class="panel-heading">
           <div>
@@ -108,7 +85,7 @@
         </label>
         <label class="text-field" for="text-font-family">Font family
           <select id="text-font-family">
-            <option value="Arial">Arial</option><option value="Arial Black">Arial Black</option><option value="Impact">Impact</option><option value="Palatino Linotype">Palatino Linotype</option><option value="Lucida Console">Lucida Console</option>
+            <option value="Arial">Arial</option>
             <option value="Georgia">Georgia</option>
             <option value="Trebuchet MS">Trebuchet MS</option>
             <option value="Verdana">Verdana</option>
@@ -129,80 +106,13 @@
         <label class="text-field" for="text-font-size">Size <output id="text-font-size-value">48 px</output>
           <input id="text-font-size" type="range" min="8" max="240" step="1" value="48">
         </label>
-        <label class="text-field text-color-field" for="text-color">Fill color<input id="text-color" type="color" value="#172335"></label>
-<div class="text-style-presets" aria-label="Text style presets"><button type="button" data-text-style-preset="comic">Comic</button><button type="button" data-text-style-preset="poster">Poster</button><button type="button" data-text-style-preset="manga">Manga</button><button type="button" data-text-style-preset="neon">Neon</button></div>
-<div class="text-inline-controls"><label class="text-field" for="text-outline-color">Outline color<input id="text-outline-color" type="color" value="#ffffff"></label><label class="text-field" for="text-outline-width">Outline <output id="text-outline-width-value">0 px</output><input id="text-outline-width" type="range" min="0" max="24" value="0"></label></div>
-<div class="text-inline-controls"><label class="text-field" for="text-shadow-color">Shadow color<input id="text-shadow-color" type="color" value="#000000"></label><label class="text-field" for="text-shadow-blur">Shadow <output id="text-shadow-blur-value">0 px</output><input id="text-shadow-blur" type="range" min="0" max="48" value="0"></label></div>
+        <label class="text-field text-color-field" for="text-color">Color
+          <input id="text-color" type="color" value="#172335">
+        </label>
         <p class="adjustment-note">Text remains a native editable layer. Changes support undo/redo and are included in PNG export.</p>
       </section>
     </aside>
   </main>
-  <dialog id="poster-template-dialog" aria-labelledby="poster-template-title"><form id="poster-template-form" method="dialog" class="poster-template-form"><h2 id="poster-template-title">Create an editable poster</h2><p class="image-edit-note">Choose a clean color background and typography preset. Text stays editable; add your own photos or cut-out characters afterward.</p><label>Template<select id="poster-template-style"><option value="comic">Comic cover</option><option value="poster">Event / promo poster</option><option value="manga">Manga cover</option></select></label><label>Canvas size<select id="poster-size"><option value="poster">Poster · 1080 × 1350</option><option value="story">Story · 1080 × 1920</option><option value="square">Square · 1080 × 1080</option><option value="banner">Banner · 1920 × 1080</option></select></label><div class="poster-color-row"><label>Background<input id="poster-background-color" type="color" value="#171324"></label><label>Accent<input id="poster-accent-color" type="color" value="#ff2b6d"></label></div><label>Headline<input id="poster-title-value" maxlength="100" value="YOUR HEADLINE"></label><label>Subtitle / date / details<input id="poster-subtitle-value" maxlength="160" value="ADD YOUR DETAILS HERE"></label><div class="dialog-actions"><button type="button" id="cancel-poster-template">Cancel</button><button type="submit">Create poster</button></div></form></dialog>
-<dialog id="image-edit-dialog" aria-labelledby="image-edit-title">
-    <form id="image-edit-form" method="dialog">
-      <h2 id="image-edit-title">Crop / Resize Image</h2>
-      <p id="image-edit-source-size" class="image-edit-source-size">Select an image layer first.</p>
-      <section class="crop-preview-workspace" aria-label="Visual crop selection">
-        <canvas id="crop-preview" aria-label="Drag to select image crop"></canvas>
-        <p id="crop-preview-hint">Drag across the image to choose the crop area. Fine-tune pixel values below.</p>
-      </section>
-      <fieldset class="image-edit-mode">
-        <legend>Operation</legend>
-        <label><input type="radio" name="image-edit-mode" value="crop" checked> Crop pixels</label>
-        <label><input type="radio" name="image-edit-mode" value="resize"> Resize pixels</label>
-      </fieldset>
-      <section id="image-crop-fields" class="image-edit-fields">
-        <p>Drag directly on the image or enter exact pixel coordinates.</p>
-        <label class="image-crop-aspect-field" for="image-crop-aspect">Crop ratio
-          <select id="image-crop-aspect">
-            <option value="">Free selection</option>
-            <option value="1">Square · 1:1</option>
-            <option value="0.8">Portrait · 4:5</option>
-            <option value="1.25">Landscape · 5:4</option>
-            <option value="1.5">Photo · 3:2</option>
-            <option value="0.6666666667">Portrait · 2:3</option>
-            <option value="1.7777777778">Wide · 16:9</option>
-            <option value="0.5625">Story · 9:16</option>
-          </select>
-        </label>
-        <div class="image-edit-grid">
-          <label for="image-crop-x">Left (X)<input id="image-crop-x" type="number" min="0" step="1" value="0" required></label>
-          <label for="image-crop-y">Top (Y)<input id="image-crop-y" type="number" min="0" step="1" value="0" required></label>
-          <label for="image-crop-width">Width<input id="image-crop-width" type="number" min="1" step="1" required></label>
-          <label for="image-crop-height">Height<input id="image-crop-height" type="number" min="1" step="1" required></label>
-        </div>
-      </section>
-      <section id="image-resize-fields" class="image-edit-fields" hidden>
-        <p>Resizing re-samples the selected image. Transparent pixels are preserved.</p>
-        <div class="image-edit-grid">
-          <label for="image-resize-width">New width<input id="image-resize-width" type="number" min="1" max="8192" step="1" required></label>
-          <label for="image-resize-height">New height<input id="image-resize-height" type="number" min="1" max="8192" step="1" required></label>
-        </div>
-        <label class="image-edit-aspect" for="image-resize-keep-aspect"><input id="image-resize-keep-aspect" type="checkbox" checked> Keep aspect ratio and displayed size</label>
-      </section>
-      <p class="image-edit-note">Only the selected image layer changes. Undo and redo restore the previous pixels and transform.</p>
-      <div class="dialog-actions"><button type="button" id="cancel-image-edit">Cancel</button><button type="submit" id="apply-image-edit">Apply</button></div>
-    </form>
-  </dialog>
-
-  <dialog id="remove-background-dialog" aria-labelledby="remove-background-title">
-    <form id="remove-background-form" method="dialog">
-      <h2 id="remove-background-title">Remove image background</h2>
-      <p id="background-source-name" class="image-edit-source-size">Select an image layer first.</p>
-      <p class="image-edit-note">Choose a background color, then adjust tolerance and edge softness. Only pixels connected to the image edges are removed.</p>
-      <div class="background-removal-preview"><canvas id="background-preview" aria-label="Background removal preview"></canvas></div>
-      <div class="background-removal-controls">
-        <label>Background color <input id="background-color" type="color" value="#ffffff"></label>
-        <button type="button" id="background-pick-color">Pick color from image</button>
-        <label>Tolerance <output id="background-tolerance-value">36</output><input id="background-tolerance" type="range" min="0" max="180" value="36"></label>
-        <label>Edge softness <output id="background-feather-value">18</output><input id="background-feather" type="range" min="0" max="100" value="18"></label>
-        <label class="background-manual-toggle"><input id="background-manual-erase" type="checkbox"> Manual erase for detailed backgrounds</label>
-        <label>Erase brush <output id="background-erase-size-value">32 px</output><input id="background-erase-size" type="range" min="4" max="160" value="32"></label>
-      </div>
-      <p id="background-removal-status" class="image-edit-note" role="status" aria-live="polite">Preview stays local. Apply can be undone.</p>
-      <div class="dialog-actions"><button type="button" id="cancel-background-removal">Cancel</button><button type="submit" id="apply-background-removal">Apply to selected layer</button></div>
-    </form>
-  </dialog>
   <dialog id="project-dialog" aria-labelledby="project-dialog-title">
     <form id="project-form" method="dialog">
       <h2 id="project-dialog-title">New document</h2>
