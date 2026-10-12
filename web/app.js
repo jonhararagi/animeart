@@ -1,7 +1,8 @@
 import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
-import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerReference, setLayerVisibility, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerVisibility, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
@@ -12,6 +13,10 @@ const ctx = canvas.getContext("2d", { alpha: false });
 const status = document.querySelector("#status");
 const recoveryNotice = document.querySelector("#storage-recovery-notice");
 const layersEl = document.querySelector("#layers");
+const adjustmentLayerName = document.querySelector("#adjustment-layer-name");
+const layerAdjustmentControls = document.querySelector("#layer-adjustment-controls");
+const resetLayerAdjustmentsButton = document.querySelector("#reset-layer-adjustments");
+const adjustmentPresetButtons = [...document.querySelectorAll("[data-adjustment-preset]")];
 const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
 const imageFileInput = document.querySelector("#image-file-input");
@@ -35,6 +40,14 @@ const BRUSH_DEFAULTS = Object.freeze({ color: "#111318", size: 5, opacity: 1 });
 const MIN_BRUSH_SIZE = 1;
 const MAX_BRUSH_SIZE = 100;
 
+const ADJUSTMENT_CONTROL_DEFS = Object.freeze([
+  { key: "brightness", label: "Brightness", min: 0, max: 200, step: 1 },
+  { key: "contrast", label: "Contrast", min: 0, max: 200, step: 1 },
+  { key: "saturation", label: "Saturation", min: 0, max: 200, step: 1 },
+  { key: "hue", label: "Hue", min: -180, max: 180, step: 1 },
+  { key: "blur", label: "Blur", min: 0, max: 20, step: 0.1 }
+]);
+
 const state = {
   tool: "brush",
   brush: { ...BRUSH_DEFAULTS },
@@ -49,6 +62,7 @@ const state = {
   strokeBefore: null,
   transformInteraction: null,
   multiTransformInteraction: null,
+  adjustmentPreview: null,
   viewport: createViewport(),
   document: createDocument(),
   history: null,
@@ -146,6 +160,10 @@ function drawDocument({ context = ctx, document = state.document, center = canva
     if (!layer.visible) continue;
     const transform = transformForLayer(layer);
     context.save();
+    const previewAdjustments = state.adjustmentPreview?.layerId === layer.id
+      ? state.adjustmentPreview.values
+      : layer.adjustments;
+    context.filter = layerAdjustmentsToCanvasFilter(previewAdjustments);
     context.globalAlpha = layer.opacity;
     context.translate(transform.x, transform.y);
     context.translate(center.x, center.y);
@@ -415,7 +433,121 @@ function renderLayers() {
     li.append(selectButton, controls, lifecycle);
     layersEl.appendChild(li);
   });
+  renderLayerAdjustments();
 }
+
+function getWorkingLayerAdjustments(layer) {
+  if (state.adjustmentPreview?.layerId === layer?.id) return state.adjustmentPreview.values;
+  return normalizeLayerAdjustments(layer?.adjustments);
+}
+
+function formatAdjustmentValue(definition, value) {
+  if (definition.key === "blur") return Number(value).toFixed(1) + " px";
+  if (definition.key === "hue") return Math.round(Number(value)) + "°";
+  return Math.round(Number(value)) + "%";
+}
+
+function syncAdjustmentPresetButtons(values) {
+  adjustmentPresetButtons.forEach(button => {
+    const preset = LAYER_ADJUSTMENT_PRESETS.find(item => item.id === button.dataset.adjustmentPreset);
+    button.classList.toggle("active", Boolean(preset && areLayerAdjustmentsEqual(values, preset.values)));
+  });
+}
+
+function commitLayerAdjustments(layerId, values, message = "Image adjustments updated") {
+  const layer = state.document.layers.find(item => item.id === layerId);
+  const normalized = normalizeLayerAdjustments(values);
+  state.adjustmentPreview = null;
+  if (!layer || layer.locked || areLayerAdjustmentsEqual(layer.adjustments, normalized)) {
+    redraw();
+    renderLayerAdjustments();
+    return false;
+  }
+
+  const before = cloneDocument(state.document);
+  const next = setLayerAdjustments(state.document, layerId, normalized);
+  if (!next) {
+    redraw();
+    return false;
+  }
+  state.document = next;
+  state.history.record(before, next);
+  refreshDocument(message);
+  persistDocument();
+  return true;
+}
+
+function renderLayerAdjustments() {
+  if (!layerAdjustmentControls || !adjustmentLayerName || !resetLayerAdjustmentsButton) return;
+  const layer = selectedLayerExact();
+  const disabled = !layer || layer.locked;
+  const values = layer ? getWorkingLayerAdjustments(layer) : normalizeLayerAdjustments();
+  adjustmentLayerName.textContent = layer
+    ? layer.name + " · " + (layer.contentType === "image" ? (layer.isReference ? "Reference image" : "Image layer") : "Drawing layer")
+    : "Select a layer to edit";
+  resetLayerAdjustmentsButton.disabled = disabled;
+  adjustmentPresetButtons.forEach(button => { button.disabled = disabled; });
+  syncAdjustmentPresetButtons(values);
+  layerAdjustmentControls.replaceChildren();
+
+  for (const definition of ADJUSTMENT_CONTROL_DEFS) {
+    const label = document.createElement("label");
+    label.className = "adjustment-control";
+    label.htmlFor = "adjustment-" + definition.key;
+
+    const heading = document.createElement("span");
+    heading.className = "adjustment-control-heading";
+    const name = document.createElement("span");
+    name.textContent = definition.label;
+    const output = document.createElement("output");
+    output.textContent = formatAdjustmentValue(definition, values[definition.key]);
+    heading.append(name, output);
+
+    const input = document.createElement("input");
+    input.id = "adjustment-" + definition.key;
+    input.type = "range";
+    input.min = String(definition.min);
+    input.max = String(definition.max);
+    input.step = String(definition.step);
+    input.value = String(values[definition.key]);
+    input.disabled = disabled;
+    input.setAttribute("aria-label", definition.label + " for " + (layer?.name || "selected layer"));
+    input.addEventListener("input", () => {
+      if (!layer || layer.locked) return;
+      const nextValues = normalizeLayerAdjustments({
+        ...getWorkingLayerAdjustments(layer),
+        [definition.key]: Number(input.value)
+      });
+      state.adjustmentPreview = { layerId: layer.id, values: nextValues };
+      output.textContent = formatAdjustmentValue(definition, nextValues[definition.key]);
+      syncAdjustmentPresetButtons(nextValues);
+      redraw();
+    });
+    input.addEventListener("change", () => {
+      if (!layer || layer.locked) return;
+      const preview = state.adjustmentPreview;
+      if (preview?.layerId === layer.id) commitLayerAdjustments(layer.id, preview.values);
+    });
+
+    label.append(heading, input);
+    layerAdjustmentControls.appendChild(label);
+  }
+}
+
+resetLayerAdjustmentsButton.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (layer && !layer.locked) commitLayerAdjustments(layer.id, {});
+});
+
+adjustmentPresetButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    const layer = selectedLayerExact();
+    const preset = LAYER_ADJUSTMENT_PRESETS.find(item => item.id === button.dataset.adjustmentPreset);
+    if (layer && !layer.locked && preset) {
+      commitLayerAdjustments(layer.id, preset.values, preset.label + " preset applied");
+    }
+  });
+});
 
 function setStorageRecoveryPending(pending, message = "") {
   state.storageRecoveryPending = pending;
@@ -1225,6 +1357,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/history.mjs",
   "./domain/image-import.mjs",
   "./domain/image-input.mjs",
+  "./domain/layer-adjustments.mjs",
   "./domain/model.mjs",
   "./domain/png-export.mjs",
   "./domain/selection.mjs",
