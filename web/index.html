@@ -28,6 +28,7 @@
       <button id="redo" disabled>Redo</button>
       <button id="add-layer">+ Layer</button>
       <button id="add-text-layer">+ Text</button>
+      <button id="poster-templates">Poster templates</button>
       <button id="add-image-layer">+ Image / Reference</button>
       <button id="crop-resize-image" disabled>Crop / Resize Image</button>
       <button id="remove-background" disabled>Remove Background</button>
@@ -74,6 +75,7 @@
     <aside class="layers" aria-label="Layers">
       <h2>Layers</h2>
       <ol id="layers"></ol>
+      <section id="image-mask-panel" class="image-mask-panel" aria-labelledby="image-mask-title" hidden><div class="panel-heading"><div><p class="eyebrow">NON-DESTRUCTIVE</p><h3 id="image-mask-title">Image shape cut</h3></div></div><label class="text-field" for="image-mask">Clip shape<select id="image-mask"><option value="none">Original rectangle</option><option value="circle">Circle / avatar</option><option value="rounded">Rounded card</option><option value="star">Star</option><option value="heart">Heart</option><option value="hexagon">Hexagon</option></select></label><p class="adjustment-note">The mask is editable and does not erase the original pixels.</p></section>
       <section class="adjustment-panel" aria-labelledby="adjustments-title">
         <div class="panel-heading">
           <div>
@@ -106,7 +108,7 @@
         </label>
         <label class="text-field" for="text-font-family">Font family
           <select id="text-font-family">
-            <option value="Arial">Arial</option>
+            <option value="Arial">Arial</option><option value="Arial Black">Arial Black</option><option value="Impact">Impact</option><option value="Palatino Linotype">Palatino Linotype</option><option value="Lucida Console">Lucida Console</option>
             <option value="Georgia">Georgia</option>
             <option value="Trebuchet MS">Trebuchet MS</option>
             <option value="Verdana">Verdana</option>
@@ -127,14 +129,16 @@
         <label class="text-field" for="text-font-size">Size <output id="text-font-size-value">48 px</output>
           <input id="text-font-size" type="range" min="8" max="240" step="1" value="48">
         </label>
-        <label class="text-field text-color-field" for="text-color">Color
-          <input id="text-color" type="color" value="#172335">
-        </label>
+        <label class="text-field text-color-field" for="text-color">Fill color<input id="text-color" type="color" value="#172335"></label>
+<div class="text-style-presets" aria-label="Text style presets"><button type="button" data-text-style-preset="comic">Comic</button><button type="button" data-text-style-preset="poster">Poster</button><button type="button" data-text-style-preset="manga">Manga</button><button type="button" data-text-style-preset="neon">Neon</button></div>
+<div class="text-inline-controls"><label class="text-field" for="text-outline-color">Outline color<input id="text-outline-color" type="color" value="#ffffff"></label><label class="text-field" for="text-outline-width">Outline <output id="text-outline-width-value">0 px</output><input id="text-outline-width" type="range" min="0" max="24" value="0"></label></div>
+<div class="text-inline-controls"><label class="text-field" for="text-shadow-color">Shadow color<input id="text-shadow-color" type="color" value="#000000"></label><label class="text-field" for="text-shadow-blur">Shadow <output id="text-shadow-blur-value">0 px</output><input id="text-shadow-blur" type="range" min="0" max="48" value="0"></label></div>
         <p class="adjustment-note">Text remains a native editable layer. Changes support undo/redo and are included in PNG export.</p>
       </section>
     </aside>
   </main>
-  <dialog id="image-edit-dialog" aria-labelledby="image-edit-title">
+  <dialog id="poster-template-dialog" aria-labelledby="poster-template-title"><form id="poster-template-form" method="dialog" class="poster-template-form"><h2 id="poster-template-title">Create an editable poster</h2><p class="image-edit-note">Choose a clean color background and typography preset. Text stays editable; add your own photos or cut-out characters afterward.</p><label>Template<select id="poster-template-style"><option value="comic">Comic cover</option><option value="poster">Event / promo poster</option><option value="manga">Manga cover</option></select></label><label>Canvas size<select id="poster-size"><option value="poster">Poster · 1080 × 1350</option><option value="story">Story · 1080 × 1920</option><option value="square">Square · 1080 × 1080</option><option value="banner">Banner · 1920 × 1080</option></select></label><div class="poster-color-row"><label>Background<input id="poster-background-color" type="color" value="#171324"></label><label>Accent<input id="poster-accent-color" type="color" value="#ff2b6d"></label></div><label>Headline<input id="poster-title-value" maxlength="100" value="YOUR HEADLINE"></label><label>Subtitle / date / details<input id="poster-subtitle-value" maxlength="160" value="ADD YOUR DETAILS HERE"></label><div class="dialog-actions"><button type="button" id="cancel-poster-template">Cancel</button><button type="submit">Create poster</button></div></form></dialog>
+<dialog id="image-edit-dialog" aria-labelledby="image-edit-title">
     <form id="image-edit-form" method="dialog">
       <h2 id="image-edit-title">Crop / Resize Image</h2>
       <p id="image-edit-source-size" class="image-edit-source-size">Select an image layer first.</p>
