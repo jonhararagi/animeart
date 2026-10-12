@@ -1,6 +1,6 @@
 import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
-import { removeConnectedBackground } from "./domain/background-removal.mjs";
+import { applyEraseStrokes, removeConnectedBackground } from "./domain/background-removal.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy } from "./domain/viewport.mjs";
@@ -871,10 +871,9 @@ function drawBackgroundRemovalPreview() {
   const scale = Math.min(1, 900 / Math.max(source.width, source.height));
   const width = Math.max(1, Math.round(source.width * scale)), height = Math.max(1, Math.round(source.height * scale));
   const pixels = source.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, source.width, source.height);
-  const processed = removeConnectedBackground(pixels, { targetColor: backgroundColorInput.value, tolerance: Number(backgroundToleranceInput.value), feather: Number(backgroundFeatherInput.value) });
+  const processed = applyEraseStrokes(removeConnectedBackground(pixels, { targetColor: backgroundColorInput.value, tolerance: Number(backgroundToleranceInput.value), feather: Number(backgroundFeatherInput.value) }), backgroundManualStrokes);
   const output = document.createElement("canvas"); output.width = source.width; output.height = source.height;
   output.getContext("2d").putImageData(processed, 0, 0);
-  applyBackgroundManualStrokes(output, backgroundManualStrokes);
   backgroundPreviewCanvas.width = width; backgroundPreviewCanvas.height = height;
   const previewContext = backgroundPreviewCanvas.getContext("2d");
   previewContext.clearRect(0, 0, width, height); previewContext.drawImage(output, 0, 0, width, height);
@@ -987,7 +986,7 @@ backgroundRemovalForm.addEventListener("submit", event => {
   const applyButton = document.querySelector("#apply-background-removal"); applyButton.disabled = true;
   try {
     const sourcePixels = backgroundRemovalSourceCanvas.getContext("2d", { willReadFrequently: true }).getImageData(0,0,backgroundRemovalSourceCanvas.width,backgroundRemovalSourceCanvas.height);
-    const processed = removeConnectedBackground(sourcePixels, { targetColor: backgroundColorInput.value, tolerance: Number(backgroundToleranceInput.value), feather: Number(backgroundFeatherInput.value) });
+    const processed = applyEraseStrokes(removeConnectedBackground(sourcePixels, { targetColor: backgroundColorInput.value, tolerance: Number(backgroundToleranceInput.value), feather: Number(backgroundFeatherInput.value) }), backgroundManualStrokes);
     const output = document.createElement("canvas"); output.width = processed.width; output.height = processed.height; output.getContext("2d").putImageData(processed,0,0);
     const next = replaceImageLayer(state.document, layer.id, { source: output.toDataURL("image/png"), width: output.width, height: output.height });
     if (!next) throw new Error("Image output exceeds the current layer size limit. Resize the image and retry.");
