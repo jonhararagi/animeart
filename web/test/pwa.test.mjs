@@ -11,7 +11,7 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(html, /rel="manifest" href="\.\/manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\("\.\/service-worker\.js"\)/);
   assert.match(manifest, /"display": "standalone"/);
-  assert.match(worker, /animeart-web-shell-v8/);
+  assert.match(worker, /animeart-web-shell-v9/);
   assert.match(worker, /caches\.open/);
   assert.match(worker, /caches\.match/);
   assert.match(app, /layerAdjustmentsToCanvasFilter/);
@@ -19,6 +19,9 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(worker, /\.\/domain\/text-layer\.mjs/);
   assert.ok(worker.includes("./assets/cc0-detailed-anime-character.png.base64"));
   assert.ok(worker.includes("./assets/ASSET_SOURCES.md"));
+  assert.match(html, /id="remove-background-dialog"/);
+  assert.match(app, /removeConnectedBackground/);
+  assert.match(worker, /\.\/domain\/background-removal\.mjs/);
   assert.doesNotMatch(app + worker, /DocumentManager|LayerManager|CanvasManager|RendererManager|ViewportManager|HistoryManager|PersistenceManager/);
 });
 
@@ -77,5 +80,5 @@ test("canvas coordinate mapping is cached for offline rendering and editing", as
   assert.match(app, /documentFitScale/);
   assert.match(app, /screenViewportForDocument/);
   assert.match(worker, /\.\/domain\/canvas-space\.mjs/);
-  assert.match(worker, /animeart-web-shell-v8/);
+  assert.match(worker, /animeart-web-shell-v9/);
 });
