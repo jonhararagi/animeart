@@ -91,7 +91,7 @@ test("text edits participate in History and use the existing non-destructive PNG
   assert.match(app, /layer\.contentType === "text"/);
   assert.match(app, /context\.strokeText\(line, x, y\)/);
   assert.match(app, /context\.fillText\(line, x, y\)/);
-  assert.match(app, /id="add-meme-text"/);
+  assert.match(app, /document\.querySelector\("#add-meme-text"\)/);
   assert.match(app, /state\.history\.record\(before, next\)/);
   assert.match(app, /persistDocument\(\)/);
   assert.match(app, /renderDocumentToCanvas\(state\.document, exportCanvas/);
