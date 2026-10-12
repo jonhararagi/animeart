@@ -443,3 +443,13 @@ test("image crop and resize stay on the existing image-layer, history and persis
   assert.match(processing, /export async function resizeImageSource/);
   assert.match(worker, /animeart-web-shell-v8/);
 });
+
+
+test("Android WebView fallback clears adjustment controls without requiring replaceChildren", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /function clearElementChildren\\(element\\)/);
+  assert.match(js, /typeof element\\.replaceChildren === "function"/);
+  assert.match(js, /while \\(element\\.firstChild\\) element\\.removeChild\\(element\\.firstChild\\)/);
+  assert.match(js, /clearElementChildren\\(layerAdjustmentControls\\)/);
+  assert.doesNotMatch(js, /layerAdjustmentControls\\.replaceChildren\\(\\)/);
+});
