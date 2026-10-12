@@ -386,6 +386,7 @@ try {
   const resizedSample = (await readDocument()).layers.find(layer => layer.name === "battleworn_knight");
   assert(resizedSample?.image?.width === 472 && resizedSample?.image?.height === 472, "real browser resize re-samples the image while preserving its selected aspect ratio");
   assert(Math.abs(resizedSample?.transform?.scale - 2) < 0.001, "real browser resize keeps the image's displayed size when aspect ratio is locked");
+  assert(Math.abs(resizedSample?.transform?.x - 400) < 0.001 && Math.abs(resizedSample?.transform?.y - 300) < 0.001, "real browser resize preserves the image layer position in document pixels");
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944)', 10000);
 

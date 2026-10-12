@@ -217,7 +217,17 @@ export function replaceImageLayer(document, layerId, replacement, { cropOrigin =
     const scaleX = previousWidth / width, scaleY = previousHeight / height;
     if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY) ||
         Math.abs(scaleX - scaleY) > Math.max(scaleX, scaleY) * 0.002) return null;
-    layer.transform = { ...layer.transform, scale: layer.transform.scale * scaleX };
+    const previousScale = layer.transform.scale;
+    const nextScale = previousScale * scaleX;
+    const radians = layer.transform.rotation * Math.PI / 180;
+    const centerX = Number(next.width) / 2;
+    const centerY = Number(next.height) / 2;
+    layer.transform = {
+      ...layer.transform,
+      x: layer.transform.x + (nextScale - previousScale) * (centerX * Math.cos(radians) - centerY * Math.sin(radians)),
+      y: layer.transform.y + (nextScale - previousScale) * (centerX * Math.sin(radians) + centerY * Math.cos(radians)),
+      scale: nextScale
+    };
   }
   layer.image = { source: replacement.source, width, height };
   return next;

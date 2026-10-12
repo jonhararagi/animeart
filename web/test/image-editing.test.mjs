@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createDocument, createImageLayer } from "../domain/model.mjs";
 import { replaceImageLayer } from "../domain/document-operations.mjs";
+import { transformPoint } from "../domain/selection.mjs";
 import { cropImageSource, normalizeImageCrop, resizeImageSource, validateRasterDimensions } from "../domain/image-processing.mjs";
 
 function fakeEnvironment(width = 100, height = 80) {
@@ -76,4 +77,28 @@ test("resizing maintains display size when aspect ratio is unchanged and rejects
   const locked = structuredClone(document);
   locked.layers[0].locked = true;
   assert.equal(replaceImageLayer(locked, image.id, { source: "data:image/png;base64,resized", width: 200, height: 100 }), null);
+});
+
+
+test("aspect-locked resize preserves the image position under the document-center transform", () => {
+  const document = createDocument(800, 600);
+  const image = createImageLayer("Rotated photo", 100, 50, "data:image/png;base64,original");
+  image.transform = { x: 17, y: -13, scale: 1.5, rotation: 31 };
+  document.layers = [image];
+  const pivot = { x: document.width / 2, y: document.height / 2 };
+  const oldTransform = structuredClone(image.transform);
+  const oldOrigin = transformPoint({ x: 0, y: 0 }, oldTransform, pivot);
+  const oldCenter = transformPoint({ x: 50, y: 25 }, oldTransform, pivot);
+  const next = replaceImageLayer(document, image.id, {
+    source: "data:image/png;base64,resized", width: 200, height: 100
+  }, { preserveDisplaySize: true });
+  assert.ok(next);
+  const resized = next.layers[0];
+  const newOrigin = transformPoint({ x: 0, y: 0 }, resized.transform, pivot);
+  const newCenter = transformPoint({ x: 100, y: 50 }, resized.transform, pivot);
+  assert.ok(Math.abs(oldOrigin.x - newOrigin.x) < 1e-9);
+  assert.ok(Math.abs(oldOrigin.y - newOrigin.y) < 1e-9);
+  assert.ok(Math.abs(oldCenter.x - newCenter.x) < 1e-9);
+  assert.ok(Math.abs(oldCenter.y - newCenter.y) < 1e-9);
+  assert.equal(resized.transform.scale, 0.75);
 });
