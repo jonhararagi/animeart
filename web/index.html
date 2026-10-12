@@ -28,6 +28,7 @@
       <button id="redo" disabled>Redo</button>
       <button id="add-layer">+ Layer</button>
       <button id="add-text-layer">+ Text</button>
+      <button id="add-meme-text" title="Add top and bottom outlined Impact captions">+ Meme Text</button>
       <button id="add-image-layer">+ Image / Reference</button>
       <button id="crop-resize-image" disabled>Crop / Resize Image</button>
       <button id="flip-image-horizontal" type="button" disabled title="Mirror selected image left to right">Flip H</button>
@@ -110,6 +111,7 @@
             <option value="Trebuchet MS">Trebuchet MS</option>
             <option value="Verdana">Verdana</option>
             <option value="Courier New">Courier New</option>
+            <option value="Impact">Impact (Meme)</option>
             <option value="sans-serif">Sans serif</option>
             <option value="serif">Serif</option>
             <option value="monospace">Monospace</option>
@@ -126,8 +128,16 @@
         <label class="text-field" for="text-font-size">Size <output id="text-font-size-value">48 px</output>
           <input id="text-font-size" type="range" min="8" max="240" step="1" value="48">
         </label>
-        <label class="text-field text-color-field" for="text-color">Color
-          <input id="text-color" type="color" value="#172335">
+        <div class="text-inline-controls">
+          <label class="text-field text-color-field" for="text-color">Fill color
+            <input id="text-color" type="color" value="#172335">
+          </label>
+          <label class="text-field text-color-field" for="text-outline-color">Outline color
+            <input id="text-outline-color" type="color" value="#000000">
+          </label>
+        </div>
+        <label class="text-field" for="text-outline-width">Outline <output id="text-outline-width-value">0 px</output>
+          <input id="text-outline-width" type="range" min="0" max="24" step="1" value="0">
         </label>
         <p class="adjustment-note">Text remains a native editable layer. Changes support undo/redo and are included in PNG export.</p>
       </section>

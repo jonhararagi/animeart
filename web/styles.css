@@ -88,7 +88,7 @@ button:disabled { cursor: not-allowed; opacity: .42; }
 .asset-source-link { grid-column: 1 / -1; justify-self: start; padding: 0 4px; color: #8da4bd; font-size: .64rem; line-height: 1.4; text-underline-offset: 3px; }
 .asset-source-link:hover { color: #bfeefa; }
 .toolbar > #undo, .toolbar > #redo { grid-column: span 1; }
-.toolbar > #add-layer, .toolbar > #add-text-layer, .toolbar > #add-image-layer, .toolbar > #add-sample-character, .toolbar > #new-document, .toolbar > #recover-project,
+.toolbar > #add-layer, .toolbar > #add-text-layer, .toolbar > #add-meme-text, .toolbar > #add-image-layer, .toolbar > #add-sample-character, .toolbar > #new-document, .toolbar > #recover-project,
 .toolbar > #save, .toolbar > #export-png, .toolbar > #clear { grid-column: 1 / -1; text-align: left; padding-left: 12px; }
 .toolbar > [data-transform] { font-size: .9rem; min-height: 32px; }
 .brush-control { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px 12px; color: #b8c2d1; font-size: .74rem; }
