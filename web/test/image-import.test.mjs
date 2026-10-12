@@ -2,11 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   MAX_DOCUMENT_STORAGE_CHARS,
+  MAX_IMPORT_IMAGE_DIMENSION,
+  MAX_IMPORT_IMAGE_PIXELS,
   MAX_IMAGE_SOURCE_CHARS,
   MAX_IMPORT_FILE_BYTES,
   createImportedImageLayer,
   decodeImageSource,
   imageLayerName,
+  optimizeImageSource,
   importImageFile,
   persistDocumentSnapshot,
   readFileAsDataUrl,
@@ -43,7 +46,9 @@ class InvalidImage {
 }
 
 test("image import constants are explicit and conservative", () => {
-  assert.equal(MAX_IMPORT_FILE_BYTES, 1_500_000);
+  assert.equal(MAX_IMPORT_FILE_BYTES, 25_000_000);
+  assert.equal(MAX_IMPORT_IMAGE_DIMENSION, 8192);
+  assert.equal(MAX_IMPORT_IMAGE_PIXELS, 32_000_000);
   assert.equal(MAX_IMAGE_SOURCE_CHARS, 2_000_000);
   assert.equal(MAX_DOCUMENT_STORAGE_CHARS, 2_500_000);
 });
@@ -58,8 +63,8 @@ test("invalid non-image file is rejected before decode", () => {
   assert.throws(() => validateImageFile({ name: "notes.txt", type: "text/plain", size: 10 }), /not a supported image/);
 });
 
-test("oversized file is rejected before persistence", () => {
-  assert.throws(() => validateImageFile({ name: "large.png", type: "image/png", size: MAX_IMPORT_FILE_BYTES + 1 }), /too large/);
+test("files above the 25 MB safety ceiling are rejected before decoding", () => {
+  assert.throws(() => validateImageFile({ name: "large.png", type: "image/png", size: MAX_IMPORT_FILE_BYTES + 1 }), /25 MB/);
 });
 
 test("cancelled file selection is a no-op at the validation boundary", () => {
@@ -100,10 +105,10 @@ test("invalid dimensions are rejected", () => {
   assert.throws(() => createImportedImageLayer("bad.png", "data:image/png;base64,AA==", 0, 11), /invalid dimensions/);
 });
 
-test("image source over the application limit is rejected", () => {
+test("raw image source over the layer limit is rejected before it can corrupt project storage", () => {
   assert.throws(
     () => createImportedImageLayer("large.png", "x".repeat(MAX_IMAGE_SOURCE_CHARS + 1), 10, 10),
-    /localStorage import limit/
+    /local project storage limit/
   );
 });
 
@@ -242,4 +247,56 @@ test("import is one logical history operation and survives serialize/restore", a
   assert.deepEqual(restored.layers[1].transform, redone.layers[1].transform);
   assert.equal(restored.layers[1].visible, true);
   assert.equal(restored.layers[1].opacity, 1);
+});
+
+class LargeSourceReader {
+  readAsDataURL() {
+    this.result = "data:image/png;base64," + "A".repeat(MAX_IMAGE_SOURCE_CHARS + 100);
+    queueMicrotask(() => this.onload?.());
+  }
+}
+
+class OptimizationImage {
+  constructor() { this.naturalWidth = 4000; this.naturalHeight = 3000; }
+  set src(value) { this.value = value; queueMicrotask(() => this.onload?.()); }
+}
+
+function optimizationCanvas() {
+  return {
+    width: 0, height: 0,
+    getContext() {
+      return { imageSmoothingEnabled: false, imageSmoothingQuality: "low", clearRect() {}, drawImage() {} };
+    },
+    toDataURL(type) {
+      if (type === "image/webp") return "data:image/webp;base64," + "A".repeat(400);
+      return "data:image/png;base64," + "A".repeat(MAX_IMAGE_SOURCE_CHARS + 20);
+    }
+  };
+}
+
+test("large source images are optimized to WebP before they enter local project storage", async () => {
+  const result = await importImageFile(
+    { name: "phone-photo.jpg", type: "image/jpeg", size: 8_000_000 },
+    { Reader: LargeSourceReader, ImageCtor: OptimizationImage, documentObject: { createElement: optimizationCanvas } }
+  );
+  assert.equal(result.optimized, true);
+  assert.equal(result.layer.name, "phone-photo");
+  assert.ok(result.source.startsWith("data:image/webp;base64,"));
+  assert.ok(result.source.length <= MAX_IMAGE_SOURCE_CHARS);
+  assert.equal(result.layer.image.width, 4000);
+  assert.equal(result.layer.image.height, 3000);
+});
+
+test("large images are constrained to browser-safe raster dimensions while preserving display size", async () => {
+  class GiantImage extends OptimizationImage {
+    constructor() { super(); this.naturalWidth = 12000; this.naturalHeight = 9000; }
+  }
+  const result = await importImageFile(
+    { name: "giant.png", type: "image/png", size: 3_000_000 },
+    { Reader: LargeSourceReader, ImageCtor: GiantImage, documentObject: { createElement: optimizationCanvas } }
+  );
+  assert.ok(result.layer.image.width <= MAX_IMPORT_IMAGE_DIMENSION);
+  assert.ok(result.layer.image.height <= MAX_IMPORT_IMAGE_DIMENSION);
+  assert.ok(result.layer.image.width * result.layer.image.height <= MAX_IMPORT_IMAGE_PIXELS);
+  assert.ok(result.layer.transform.scale > 1);
 });
