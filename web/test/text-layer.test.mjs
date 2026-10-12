@@ -100,3 +100,11 @@ test("text edits participate in History and use the existing non-destructive PNG
   assert.equal(history.undo(changed).layers[1].text.value, "Before");
   assert.equal(history.redo(withText).layers[1].text.value, "After");
 });
+
+test("outlined and shadowed typography is normalized and validated", () => {
+  const layer = createTextLayer("Headline", { value: "COMIC!", fontFamily: "Impact", outlineColor: "#111111", outlineWidth: 6, shadowColor: "#ff00cc", shadowBlur: 14, shadowOffsetX: 3, shadowOffsetY: 4 });
+  assert.equal(isValidTextLayer(layer.text), true);
+  assert.equal(layer.text.outlineWidth, 6);
+  assert.equal(layer.text.shadowBlur, 14);
+  assert.equal(isValidTextLayer({ ...layer.text, outlineWidth: 99 }), false);
+});
