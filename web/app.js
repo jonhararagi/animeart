@@ -1200,7 +1200,7 @@ document.querySelector("#add-sample-character").addEventListener("click", async 
   try {
     const response = await fetch("./assets/cc0-detailed-anime-character.png.base64");
     if (!response.ok) throw new Error("CC0 sample asset is unavailable");
-    const encoded = (await response.text()).replace(/\\s+/g, "");
+    const encoded = (await response.text()).trim().replaceAll("\n", "").replaceAll("\r", "").replaceAll(" ", "");
     if (!encoded.startsWith("iVBOR")) throw new Error("CC0 sample asset is not a valid PNG payload");
     const binary = atob(encoded);
     const bytes = new Uint8Array(binary.length);
@@ -1512,13 +1512,15 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v2";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v3";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
   "./service-worker.js",
+  "./assets/cc0-detailed-anime-character.png.base64",
+  "./assets/ASSET_SOURCES.md",
   "./domain/document-operations.mjs",
   "./domain/history.mjs",
   "./domain/image-import.mjs",
