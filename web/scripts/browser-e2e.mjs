@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { extname, join, normalize, resolve } from "node:path";
 import { spawn } from "node:child_process";
@@ -179,6 +179,19 @@ const assert = (condition, message) => {
   console.log(`PASS: ${message}`);
 };
 
+const screenshotDir = join(ROOT, "e2e-artifacts");
+await mkdir(screenshotDir, { recursive: true });
+const saveScreenshot = async filename => {
+  const result = await cdp("Page.captureScreenshot", {
+    format: "png",
+    fromSurface: true,
+    captureBeyondViewport: false
+  });
+  if (!result?.data) throw new Error("Chromium did not return screenshot data");
+  await writeFile(join(screenshotDir, filename), Buffer.from(result.data, "base64"));
+  console.log(`E2E_SCREENSHOT: ${join("dist", "e2e-artifacts", filename)}`);
+};
+
 const selectorCenter = async selector => {
   const rect = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return null; el.scrollIntoView({ block: "center", inline: "center" }); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, width: r.width, height: r.height }; })()`);
   if (!rect) throw new Error(`Selector not found: ${selector}`);
@@ -239,6 +252,7 @@ try {
   assert((await evaluate('document.querySelector("#status").textContent'))?.includes("CANVAS READY"), "editor reports canvas/service-worker readiness");
 
   assert(await evaluate('document.querySelectorAll("#layers li").length === 1'), "initial editor state contains one drawing layer");
+  await saveScreenshot("animeart-studio-initial.png");
 
   await click("#new-document");
   await waitFor('document.querySelector("#project-dialog").open === true');
@@ -345,6 +359,7 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.id === ' + JSON.stringify(textLayerId) + ' && layer.contentType === "text" && layer.text?.value === "AnimeArt Studio")', 10000);
   assert(await evaluate('document.querySelector("#text-font-family").value === "Arial"'), "real browser exposes the selected text layer font controls");
   assert(await evaluate('window.__animeArtTextDrawCount > 0'), "real browser Canvas renderer paints editable text");
+  await saveScreenshot("animeart-studio-text-layer.png");
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(textLayerId) + ')?.text?.value === "Your text"', 10000);
   await click("#redo");
