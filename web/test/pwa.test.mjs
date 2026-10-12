@@ -11,11 +11,13 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(html, /rel="manifest" href="\.\/manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\("\.\/service-worker\.js"\)/);
   assert.match(manifest, /"display": "standalone"/);
-  assert.match(worker, /animeart-web-shell-v2/);
+  assert.match(worker, /animeart-web-shell-v3/);
   assert.match(worker, /caches\.open/);
   assert.match(worker, /caches\.match/);
   assert.match(app, /layerAdjustmentsToCanvasFilter/);
   assert.match(worker, /\.\/domain\/layer-adjustments\.mjs/);
   assert.match(worker, /\.\/domain\/text-layer\.mjs/);
+  assert.ok(worker.includes("./assets/cc0-detailed-anime-character.png.base64"));
+  assert.ok(worker.includes("./assets/ASSET_SOURCES.md"));
   assert.doesNotMatch(app + worker, /DocumentManager|LayerManager|CanvasManager|RendererManager|ViewportManager|HistoryManager|PersistenceManager/);
 });
