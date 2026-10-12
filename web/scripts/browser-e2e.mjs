@@ -350,6 +350,16 @@ try {
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "e2e-fixture" && layer.adjustments?.brightness === 125)'), "real browser persists the image adjustment in the existing project document");
 
 
+
+  const layersBeforeSample = (await readLayerSummary()).length;
+  await click("#add-sample-character");
+  await waitFor("JSON.parse(localStorage.getItem(\\\"animeart-web-document\\\") || \\\"{}\\\").layers?.length === " + (layersBeforeSample + 1), 15000);
+  const cc0Sample = (await readDocument()).layers.at(-1);
+  assert(cc0Sample?.contentType === "image" && cc0Sample?.name === "battleworn_knight", "real browser imports the bundled CC0 character as a native image layer");
+  assert(cc0Sample?.image?.width === 944 && cc0Sample?.image?.height === 944, "real browser decodes the verified CC0 PNG dimensions");
+  assert(cc0Sample?.image?.source?.startsWith("data:image/png;base64,"), "CC0 sample is embedded locally instead of uploaded to a server");
+  await saveScreenshot("animeart-studio-cc0-sample.png");
+
   await evaluate('window.__animeArtTextDrawCount = 0; const originalFillText = CanvasRenderingContext2D.prototype.fillText; CanvasRenderingContext2D.prototype.fillText = function(...args) { window.__animeArtTextDrawCount += 1; return originalFillText.apply(this, args); };');
   await click("#add-text-layer");
   const textLayerAfterCreate = (await readDocument()).layers.at(-1);
