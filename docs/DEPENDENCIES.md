@@ -26,3 +26,6 @@ Local Android validation (JDK 17 and Android SDK required):
 ./gradlew connectedDebugAndroidTest
 bash scripts/android-startup-smoke.sh
 ```
+
+
+Kotlin 2.3.0 no longer accepts `kotlinOptions.jvmTarget` in the Android module build script. The project uses `kotlin.compilerOptions.jvmTarget = JvmTarget.JVM_17` instead, preserving the existing Java/Kotlin bytecode target of 17.
