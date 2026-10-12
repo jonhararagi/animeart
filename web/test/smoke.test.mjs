@@ -31,7 +31,7 @@ test("T042 architecture uses existing Image Layer and forbids parallel reference
 
 test("web entrypoint exists and references the editor", async () => {
   const html = await readFile("index.html", "utf8");
-  assert.match(html, /AnimeArt Web/);
+  assert.match(html, /AnimeArt Studio \\| Image Editor/);
   assert.match(html, /app\.js/);
 });
 
@@ -39,6 +39,11 @@ test("web editor has canvas, local persistence, and history controls", async () 
   const html = await readFile("index.html", "utf8");
   const js = await readFile("app.js", "utf8");
   assert.match(js, /getContext/);
+  assert.match(html, /id="add-text-layer"/);
+  assert.match(html, /id="add-sample-character"/);
+  assert.match(js, /CC0 character sample added/);
+  assert.match(js, /createTextLayer/);
+  assert.match(js, /setLayerText/);
   assert.match(js, /localStorage/);
   assert.match(js, /layers/);
   assert.match(html, /id="undo"/);
@@ -54,13 +59,13 @@ test("web editor restores legacy projects through the domain boundary", async ()
   assert.match(js, /restoreDocument/);
 });
 
-test("web interaction keeps viewport, document coordinates and persistence boundaries explicit", async () => {
+test("web interaction maps document pixels to screen coordinates and keeps persistence explicit", async () => {
   const js = await readFile("app.js", "utf8");
-  assert.match(js, /screenToDocument\(screenPoint, state\.viewport/);
-  assert.match(js, /ctx\.translate\(center\.x \+ state\.viewport\.panX/);
-  assert.doesNotMatch(js, /canvas\.style\.transform/);
+  assert.match(js, /screenToDocumentPoint/);
+  assert.match(js, /documentFitScale/);
+  assert.match(js, /documentCenter\(state\.document\)/);
   assert.match(js, /persistDocumentSnapshot\(localStorage, "animeart-web-document", state\.document\)/);
-  assert.doesNotMatch(js, /JSON\.stringify\(\{[^}]*viewport/);
+  assert.doesNotMatch(js, /canvas\.style\.transform/);
   assert.match(js, /event\.pointerId !== state\.drawingPointerId/);
   assert.match(js, /state\.strokeBefore/);
 });
@@ -69,7 +74,7 @@ test("history integration is document-only and viewport navigation never records
   const js = await readFile("app.js", "utf8");
   assert.match(js, /state\.history\.record\(before, state\.document\)/);
   assert.match(js, /state\.viewport = panBy/);
-  assert.match(js, /setViewport\(zoomAt/);
+  assert.match(js, /setViewport\(zoomViewportAt/);
   assert.doesNotMatch(js, /history\.record\([^\n]*viewport/);
 });
 
@@ -86,7 +91,7 @@ test("layer transform integration uses the existing History boundary", async () 
 test("layer transform stays separate from Viewport", async () => {
   const js = await readFile("app.js", "utf8");
   assert.match(js, /state\.viewport = panBy/);
-  assert.match(js, /setViewport\(zoomAt/);
+  assert.match(js, /setViewport\(zoomViewportAt/);
   assert.match(js, /translateLayer/);
   assert.doesNotMatch(js, /translateLayer\([^\n]*state\.viewport/);
 });
@@ -115,8 +120,8 @@ test("visual transform drag previews until pointerup and pointercancel clears it
 
 test("selection remains on existing Screen/Document/Viewport boundaries", async () => {
   const js = await readFile("app.js", "utf8");
-  assert.match(js, /screenToDocument\(screenPoint, state\.viewport/);
-  assert.match(js, /selectionGeometry\(layer, state\.viewport/);
+  assert.match(js, /screenToDocumentPoint\(screenPoint, state\.document, state\.viewport/);
+  assert.match(js, /selectionGeometry\(layer, screenViewportForDocument\(state\.document/);
   assert.doesNotMatch(js, /canvas\.style\.transform/);
 });
 
@@ -219,20 +224,23 @@ test("brush control ranges are bounded and eraser remains a distinct existing to
 
 
 
-test("PNG export UI uses the existing document renderer and local download pipeline", async () => {
+test("multi-format export UI uses the existing document renderer and local download pipeline", async () => {
   const html = await readFile("index.html", "utf8");
   const js = await readFile("app.js", "utf8");
   const exporter = await readFile("domain/png-export.mjs", "utf8");
   assert.match(html, /id="export-png"/);
-  assert.match(html, /Exportar PNG/);
+  assert.match(html, /Export image/);
+  assert.match(html, /id="export-format"/);
   assert.match(js, /createPngExportCanvas/);
   assert.match(js, /renderDocumentToCanvas/);
-  assert.match(js, /drawDocument\(\{ context = ctx, document = state\.document, center = canvasCenter\(\)/);
-  assert.match(js, /canvasToPngBlob/);
-  assert.match(js, /downloadPngBlob\(blob, "animeart\.png"\)/);
+  assert.match(js, /drawDocument\(\{ context = ctx, document = state\.document, center = documentCenter\(document\)/);
+  assert.match(js, /canvasToImageBlob\(exportCanvas, format, quality\)/);
+  assert.match(js, /downloadImageBlob\(blob, "animeart\." \+ format, format\)/);
   assert.match(js, /await ensureExportImages\(state\.document\)/);
   assert.match(exporter, /getContext\("2d", \{ alpha: true \}\)/);
-  assert.match(exporter, /type: "image\/png"/);
+  assert.match(exporter, /png: "image\/png"/);
+  assert.match(exporter, /jpeg: "image\/jpeg"/);
+  assert.match(exporter, /webp: "image\/webp"/);
   assert.match(exporter, /anchor\.download/);
   assert.doesNotMatch(js, /ExportManager|PNGManager|ImageExportManager|RenderManager|CanvasManager|DocumentManager|ProjectManager|LayerManager/);
 });
@@ -417,3 +425,21 @@ test("T064 persistence writer inventory keeps the project key behind the existin
   assert.ok(editor && editor[1].includes('persistDocumentSnapshot(localStorage, "animeart-web-document", state.document)'), "ordinary document persistence delegates through the existing snapshot boundary");
 });
 
+
+
+test("image crop and resize stay on the existing image-layer, history and persistence boundary", async () => {
+  const [html, app, operations, processing, worker] = await Promise.all([
+    readFile("index.html", "utf8"), readFile("app.js", "utf8"),
+    readFile("domain/document-operations.mjs", "utf8"),
+    readFile("domain/image-processing.mjs", "utf8"), readFile("service-worker.js", "utf8")
+  ]);
+  assert.match(html, /id="crop-resize-image"/);
+  assert.match(html, /id="image-crop-fields"/);
+  assert.match(html, /id="image-resize-fields"/);
+  assert.match(app, /state\.history\.record\(before, next\)/);
+  assert.match(app, /refreshDocument\(mode === "crop" \? "Image cropped" : "Image resized"\)/);
+  assert.match(operations, /export function replaceImageLayer/);
+  assert.match(processing, /export async function cropImageSource/);
+  assert.match(processing, /export async function resizeImageSource/);
+  assert.match(worker, /animeart-web-shell-v8/);
+});

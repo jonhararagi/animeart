@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { extname, join, normalize, resolve } from "node:path";
 import { spawn } from "node:child_process";
@@ -179,6 +179,19 @@ const assert = (condition, message) => {
   console.log(`PASS: ${message}`);
 };
 
+const screenshotDir = join(ROOT, "e2e-artifacts");
+await mkdir(screenshotDir, { recursive: true });
+const saveScreenshot = async filename => {
+  const result = await cdp("Page.captureScreenshot", {
+    format: "png",
+    fromSurface: true,
+    captureBeyondViewport: false
+  });
+  if (!result?.data) throw new Error("Chromium did not return screenshot data");
+  await writeFile(join(screenshotDir, filename), Buffer.from(result.data, "base64"));
+  console.log(`E2E_SCREENSHOT: ${join("dist", "e2e-artifacts", filename)}`);
+};
+
 const selectorCenter = async selector => {
   const rect = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return null; el.scrollIntoView({ block: "center", inline: "center" }); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, width: r.width, height: r.height }; })()`);
   if (!rect) throw new Error(`Selector not found: ${selector}`);
@@ -232,13 +245,14 @@ try {
   await waitFor(`document.querySelector("#canvas") !== null`);
   await waitForServiceWorkerReadiness();
 
-  assert(await evaluate("document.title") === "AnimeArt Web", "real browser loaded the AnimeArt Web entrypoint");
+  assert(await evaluate("document.title") === "AnimeArt Studio | Image Editor", "real browser loaded the AnimeArt Studio entrypoint");
   const canvas = await selectorCenter("#canvas");
   assert(canvas.width > 0 && canvas.height > 0, "canvas exists and has usable layout dimensions");
   assert(await evaluate(`getComputedStyle(document.querySelector("#canvas")).visibility !== "hidden" && getComputedStyle(document.querySelector("#canvas")).display !== "none"`), "canvas is visible");
   assert((await evaluate('document.querySelector("#status").textContent'))?.includes("CANVAS READY"), "editor reports canvas/service-worker readiness");
 
   assert(await evaluate('document.querySelectorAll("#layers li").length === 1'), "initial editor state contains one drawing layer");
+  await saveScreenshot("animeart-studio-initial.png");
 
   await click("#new-document");
   await waitFor('document.querySelector("#project-dialog").open === true');
@@ -283,8 +297,8 @@ try {
   const dragLayer = beforeMulti.layers.find(layer => layer.id === multiBefore[0].id);
   const dragPoint = dragLayer?.strokes?.[0]?.points?.[0];
   assert(Boolean(dragPoint), "multi-selection has a real drawable hit point");
-  const canvasRect = await evaluate('(() => { const r = document.querySelector("#canvas").getBoundingClientRect(); return { left: r.left, top: r.top }; })()');
-  await mouseDrag({ x: canvasRect.left + dragPoint.x, y: canvasRect.top + dragPoint.y }, { x: canvasRect.left + dragPoint.x + 50, y: canvasRect.top + dragPoint.y });
+  const dragStartScreen = await evaluate('(() => { const canvas = document.querySelector("#canvas"); const rect = canvas.getBoundingClientRect(); const doc = JSON.parse(localStorage.getItem("animeart-web-document")); const layer = doc.layers.find(item => item.id === ' + JSON.stringify(multiBefore[0].id) + '); const point = layer?.strokes?.[0]?.points?.[0]; const fitScale = Math.min(rect.width / doc.width, rect.height / doc.height); return { x: rect.left + rect.width / 2 + (point.x - doc.width / 2) * fitScale, y: rect.top + rect.height / 2 + (point.y - doc.height / 2) * fitScale }; })()');
+  await mouseDrag(dragStartScreen, { x: dragStartScreen.x + 50, y: dragStartScreen.y });
   const afterMulti = await readDocument();
   const multiDeltas = multiBefore.map(item => ({
     id: item.id,
@@ -329,6 +343,88 @@ try {
   const importedLayer = afterImport.at(-1);
   assert(importedLayer?.contentType === "image", "real browser image import creates an image layer");
   assert(importedLayer?.name === "e2e-fixture", "real browser image import preserves the image layer name");
+  await click('[aria-label="Select e2e-fixture"]');
+  await evaluate('(() => { const slider = document.querySelector("#adjustment-brightness"); slider.value = "125"; slider.dispatchEvent(new Event("input", { bubbles: true })); slider.dispatchEvent(new Event("change", { bubbles: true })); })()');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "e2e-fixture" && layer.adjustments?.brightness === 125)', 10000);
+  assert(await evaluate('document.querySelector("#adjustment-brightness").value === "125"'), "real browser previews a non-destructive image adjustment");
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "e2e-fixture" && layer.adjustments?.brightness === 125)'), "real browser persists the image adjustment in the existing project document");
+
+
+
+  const layersBeforeSample = (await readLayerSummary()).length;
+  await click("#add-sample-character");
+  await waitFor("JSON.parse(localStorage.getItem(\"animeart-web-document\") || \"{}\").layers?.length === " + (layersBeforeSample + 1), 15000);
+  const cc0Sample = (await readDocument()).layers.at(-1);
+  assert(cc0Sample?.contentType === "image" && cc0Sample?.name === "battleworn_knight", "real browser imports the bundled CC0 character as a native image layer");
+  assert(cc0Sample?.image?.width === 944 && cc0Sample?.image?.height === 944, "real browser decodes the verified CC0 PNG dimensions");
+  assert(cc0Sample?.image?.source?.startsWith("data:image/png;base64,"), "CC0 sample is embedded locally instead of uploaded to a server");
+  await saveScreenshot("animeart-studio-cc0-sample.png");
+  assert(await evaluate('document.querySelector("#flip-image-horizontal").disabled === false && document.querySelector("#flip-image-vertical").disabled === false'), "image flip controls activate for an unlocked image layer");
+  await click("#flip-image-horizontal");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.flipX === true)', 10000);
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.flipX === false)', 10000);
+  await click("#redo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.flipX === true)', 10000);
+
+  // Exercise actual raster edits, history, flips and aspect preservation in Chromium.
+  await click("#crop-resize-image");
+  await waitFor('document.querySelector("#image-edit-dialog").open === true');
+  await waitFor('document.querySelector("#crop-preview").width > 1', 15000);
+  assert(await evaluate('document.querySelector("#image-crop-width").value === "944" && document.querySelector("#image-crop-height").value === "944"'), "crop dialog reads the selected image dimensions");
+  assert(await evaluate('document.querySelector("#crop-preview").height > 1'), "crop dialog renders an actual image preview");
+  const cropPreviewBounds = await evaluate('(() => { const r = document.querySelector("#crop-preview").getBoundingClientRect(); return { left:r.left, top:r.top, width:r.width, height:r.height }; })()');
+  await mouseDrag(
+    { x: cropPreviewBounds.left + cropPreviewBounds.width * 0.15, y: cropPreviewBounds.top + cropPreviewBounds.height * 0.15 },
+    { x: cropPreviewBounds.left + cropPreviewBounds.width * 0.42, y: cropPreviewBounds.top + cropPreviewBounds.height * 0.35 }
+  );
+  const drawnCrop = await evaluate('(() => ({ x:Number(document.querySelector("#image-crop-x").value), y:Number(document.querySelector("#image-crop-y").value), width:Number(document.querySelector("#image-crop-width").value), height:Number(document.querySelector("#image-crop-height").value) }))()');
+  assert(drawnCrop.width > 1 && drawnCrop.height > 1 && drawnCrop.x >= 0 && drawnCrop.y >= 0, "dragging the preview creates a real pixel crop selection");
+  await evaluate('(() => { const ratio = document.querySelector("#image-crop-aspect"); ratio.value = "0.8"; ratio.dispatchEvent(new Event("change", { bubbles: true })); })()');
+  assert(await evaluate('document.querySelector("#image-crop-width").value === "755" && document.querySelector("#image-crop-height").value === "944" && document.querySelector("#image-crop-x").value === "94"'), "4:5 aspect preset computes a centered crop within image bounds");
+  await evaluate('(() => { const ratio = document.querySelector("#image-crop-aspect"); ratio.value = ""; ratio.dispatchEvent(new Event("change", { bubbles: true })); })()');
+  await saveScreenshot("animeart-studio-crop-preview.png");
+  await evaluate('(() => { for (const [id,value] of [["#image-crop-x","5"],["#image-crop-y","7"],["#image-crop-width","400"],["#image-crop-height","500"]]) { const input=document.querySelector(id); input.value=value; input.dispatchEvent(new Event("input",{bubbles:true})); } })()');
+  await click("#apply-image-edit");
+  await waitFor('document.querySelector("#status").textContent === "Image cropped"', 15000);
+  let croppedSample = (await readDocument()).layers.find(layer => layer.name === "battleworn_knight");
+  assert(croppedSample?.image?.width === 400 && croppedSample?.image?.height === 500, "real browser crop changes image pixels to the exact crop dimensions");
+  assert(croppedSample?.image?.flipX === true, "real browser crop retains the image mirror setting");
+  assert(Math.abs(croppedSample?.transform?.x - 5) < 0.001 && Math.abs(croppedSample?.transform?.y - 7) < 0.001, "real browser crop compensates the image transform for the crop origin");
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944 && layer.image?.height === 944)', 10000);
+  await click("#redo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 400 && layer.image?.height === 500)', 10000);
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944 && layer.image?.height === 944)', 10000);
+
+  await click("#crop-resize-image");
+  await waitFor('document.querySelector("#image-edit-dialog").open === true');
+  await click('input[name="image-edit-mode"][value="resize"]');
+  await evaluate('(() => { document.querySelector("#image-resize-width").value = "472"; document.querySelector("#image-resize-width").dispatchEvent(new Event("input", { bubbles: true })); })()');
+  await click("#apply-image-edit");
+  await waitFor('document.querySelector("#status").textContent === "Image resized"', 15000);
+  const resizedSample = (await readDocument()).layers.find(layer => layer.name === "battleworn_knight");
+  assert(resizedSample?.image?.width === 472 && resizedSample?.image?.height === 472, "real browser resize re-samples the image while preserving its selected aspect ratio");
+  assert(Math.abs(resizedSample?.transform?.scale - 2) < 0.001, "real browser resize keeps the image's displayed size when aspect ratio is locked");
+  assert(Math.abs(resizedSample?.transform?.x - 400) < 0.001 && Math.abs(resizedSample?.transform?.y - 300) < 0.001, "real browser resize preserves the image layer position in document pixels");
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944)', 10000);
+
+  await evaluate('window.__animeArtTextDrawCount = 0; const originalFillText = CanvasRenderingContext2D.prototype.fillText; CanvasRenderingContext2D.prototype.fillText = function(...args) { window.__animeArtTextDrawCount += 1; return originalFillText.apply(this, args); };');
+  await click("#add-text-layer");
+  const textLayerAfterCreate = (await readDocument()).layers.at(-1);
+  assert(textLayerAfterCreate?.contentType === "text" && textLayerAfterCreate.text?.value === "Your text", "real browser creates an editable text layer");
+  const textLayerId = textLayerAfterCreate.id;
+  await evaluate('(() => { const el = document.querySelector("#text-content"); el.value = "AnimeArt Studio"; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); })()');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.id === ' + JSON.stringify(textLayerId) + ' && layer.contentType === "text" && layer.text?.value === "AnimeArt Studio")', 10000);
+  assert(await evaluate('document.querySelector("#text-font-family").value === "Arial"'), "real browser exposes the selected text layer font controls");
+  assert(await evaluate('window.__animeArtTextDrawCount > 0'), "real browser Canvas renderer paints editable text");
+  await saveScreenshot("animeart-studio-text-layer.png");
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(textLayerId) + ')?.text?.value === "Your text"', 10000);
+  await click("#redo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(textLayerId) + ')?.text?.value === "AnimeArt Studio"', 10000);
 
   await click("#export-png");
   await waitFor('document.querySelector("#status").textContent !== "Exporting PNG…"', 10000);

@@ -1,4 +1,5 @@
 import { documentToScreen } from "./viewport.mjs";
+import { estimateTextLayerBounds } from "./text-layer.mjs";
 
 export function layerLocalBounds(layer) {
   if (layer?.contentType === "image" && layer.image) {
@@ -8,6 +9,7 @@ export function layerLocalBounds(layer) {
       return { minX: 0, minY: 0, maxX: width, maxY: height };
     }
   }
+  if (layer?.contentType === "text" && layer.text) return estimateTextLayerBounds(layer.text);
 
   const points = [];
   let strokePadding = 0;

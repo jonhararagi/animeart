@@ -1,3 +1,6 @@
+import { isDefaultLayerAdjustments, isValidLayerAdjustments, normalizeLayerAdjustments } from "./layer-adjustments.mjs";
+import { isValidTextLayer, normalizeTextLayer } from "./text-layer.mjs";
+
 export const DOCUMENT_VERSION = 2;
 
 const DEFAULT_TRANSFORM = Object.freeze({ x: 0, y: 0, scale: 1, rotation: 0 });
@@ -83,8 +86,17 @@ export function createImageLayer(name = "Image Layer", width = 64, height = 64, 
   layer.image = {
     source: typeof source === "string" ? source : TEST_IMAGE_SOURCE,
     width: Number.isFinite(Number(width)) && Number(width) > 0 ? Number(width) : 64,
-    height: Number.isFinite(Number(height)) && Number(height) > 0 ? Number(height) : 64
+    height: Number.isFinite(Number(height)) && Number(height) > 0 ? Number(height) : 64,
+    flipX: false,
+    flipY: false
   };
+  return layer;
+}
+
+export function createTextLayer(name = "Text 1", text = {}) {
+  const layer = createLayer(name);
+  layer.contentType = "text";
+  layer.text = normalizeTextLayer(text);
   return layer;
 }
 
@@ -97,15 +109,16 @@ function normalizeImage(image) {
   const width = Number(image.width);
   const height = Number(image.height);
   if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return null;
-  return { source: image.source, width, height };
+  return { source: image.source, width, height, flipX: image.flipX === true, flipY: image.flipY === true };
 }
 
 function normalizeLayer(layer, index) {
-  const contentType = layer?.contentType === "image" ? "image" : "drawing";
+  const contentType = layer?.contentType === "image" || layer?.contentType === "text" ? layer.contentType : "drawing";
   const strokes = Array.isArray(layer?.strokes)
     ? layer.strokes.map(normalizeStroke).filter(Boolean)
     : [];
   const image = contentType === "image" ? normalizeImage(layer?.image) : null;
+  const text = contentType === "text" ? normalizeTextLayer(layer?.text) : null;
 
   return {
     id: layer?.id || createId(),
@@ -119,7 +132,9 @@ function normalizeLayer(layer, index) {
     contentType,
     isReference: contentType === "image" && layer?.isReference === true,
     strokes,
-    ...(image ? { image } : {})
+    ...(image ? { image } : {}),
+    ...(text ? { text } : {}),
+    ...(!isDefaultLayerAdjustments(layer?.adjustments) ? { adjustments: normalizeLayerAdjustments(layer.adjustments) } : {})
   };
 }
 
@@ -181,16 +196,18 @@ export function isValidDocument(document) {
             Number.isFinite(point.y)
           )
         );
-      if (!validCommon || !["drawing", "image"].includes(layer.contentType)) return false;
-      if (layer.contentType === "drawing") return !layer.image;
-      return Boolean(
-        layer.image &&
+      const validAdjustments = layer?.adjustments === undefined || isValidLayerAdjustments(layer.adjustments);
+      if (!validCommon || !validAdjustments || !["drawing", "image", "text"].includes(layer.contentType)) return false;
+      if (layer.contentType === "drawing") return !layer.image && !layer.text;
+      if (layer.contentType === "image") return Boolean(
+        layer.image && !layer.text &&
         typeof layer.image.source === "string" &&
         Number.isFinite(layer.image.width) &&
         layer.image.width > 0 &&
         Number.isFinite(layer.image.height) &&
         layer.image.height > 0
       );
+      return Boolean(layer.text && isValidTextLayer(layer.text) && !layer.image && layer.strokes.length === 0);
     })
   );
 }

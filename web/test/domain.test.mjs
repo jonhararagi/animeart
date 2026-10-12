@@ -143,7 +143,7 @@ test("T042 locked reference retains lock semantics and cannot be transformed", a
 test("domain creates a deterministic Image Layer with minimal image content", () => {
   const layer = createImageLayer("Reference", 120, 80, TEST_IMAGE_SOURCE);
   assert.equal(layer.contentType, "image");
-  assert.deepEqual(layer.image, { source: TEST_IMAGE_SOURCE, width: 120, height: 80 });
+  assert.deepEqual(layer.image, { source: TEST_IMAGE_SOURCE, width: 120, height: 80, flipX: false, flipY: false });
   assert.deepEqual(layer.strokes, []);
   assert.equal(layer.visible, true);
   assert.equal(layer.locked, false);
@@ -167,7 +167,7 @@ test("domain normalizes and validates Image Layer content", () => {
     }]
   });
   assert.equal(document.layers[0].contentType, "image");
-  assert.deepEqual(document.layers[0].image, { source: TEST_IMAGE_SOURCE, width: 120, height: 80 });
+  assert.deepEqual(document.layers[0].image, { source: TEST_IMAGE_SOURCE, width: 120, height: 80, flipX: false, flipY: false });
   assert.equal(isValidDocument(document), true);
 });
 
@@ -378,8 +378,8 @@ test("PNG export pipeline creates exact document dimensions and preserves transp
   assert.deepEqual(calls.slice(0, 4), [
     ["clearRect", 0, 0, 1200, 900],
     ["save"],
-    ["translate", 600, 450],
-    ["render", 600, 450]
+    ["render", 600, 450],
+    ["restore"]
   ]);
 
   const blob = await canvasToPngBlob({

@@ -1,4 +1,6 @@
 import { normalizeDocument, normalizeTransform } from "./model.mjs";
+import { isDefaultLayerAdjustments, normalizeLayerAdjustments } from "./layer-adjustments.mjs";
+import { normalizeTextLayer } from "./text-layer.mjs";
 
 function cloneDocument(document) {
   const cloned = normalizeDocument(JSON.parse(JSON.stringify(document)));
@@ -119,6 +121,38 @@ export function setLayerReference(document, layerId, isReference) {
   return next;
 }
 
+export function flipImageLayer(document, layerId, axis) {
+  if (!["horizontal", "vertical"].includes(axis)) return null;
+  const next = cloneDocument(document);
+  const layer = next.layers.find(item => item.id === layerId);
+  if (!layer || layer.locked || layer.contentType !== "image" || !layer.image) return null;
+  if (axis === "horizontal") layer.image.flipX = !layer.image.flipX;
+  else layer.image.flipY = !layer.image.flipY;
+  return next;
+}
+
+export function setLayerAdjustments(document, layerId, adjustments) {
+  const next = cloneDocument(document);
+  const layer = next.layers.find(item => item.id === layerId);
+  if (!layer || !adjustments || typeof adjustments !== "object" || Array.isArray(adjustments)) return null;
+  const normalized = normalizeLayerAdjustments(adjustments);
+  if (isDefaultLayerAdjustments(normalized)) {
+    delete layer.adjustments;
+  } else {
+    layer.adjustments = normalized;
+  }
+  return next;
+}
+
+export function setLayerText(document, layerId, textPatch) {
+  if (!textPatch || typeof textPatch !== "object" || Array.isArray(textPatch)) return null;
+  const next = cloneDocument(document);
+  const layer = next.layers.find(item => item.id === layerId);
+  if (!layer || layer.contentType !== "text") return null;
+  layer.text = normalizeTextLayer({ ...layer.text, ...textPatch });
+  return next;
+}
+
 export function setLayerOpacity(document, layerId, opacity) {
   const next = cloneDocument(document);
   const layer = next.layers.find(item => item.id === layerId);
@@ -165,5 +199,46 @@ export function reorderLayer(document, layerId, direction) {
   const targetIndex = direction === "up" ? index + 1 : index - 1;
   if (targetIndex < 0 || targetIndex >= next.layers.length) return null;
   [next.layers[index], next.layers[targetIndex]] = [next.layers[targetIndex], next.layers[index]];
+  return next;
+}
+
+
+export function replaceImageLayer(document, layerId, replacement, { cropOrigin = null, preserveDisplaySize = false } = {}) {
+  if (!replacement || typeof replacement.source !== "string" || !replacement.source || replacement.source.length > 2_000_000) return null;
+  const width = Number(replacement.width), height = Number(replacement.height);
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 ||
+      width > 8192 || height > 8192 || width * height > 32_000_000) return null;
+  const next = cloneDocument(document);
+  const layer = next.layers.find(item => item.id === layerId);
+  if (!layer || layer.locked || layer.contentType !== "image" || !layer.image) return null;
+
+  const previousWidth = layer.image.width, previousHeight = layer.image.height;
+  if (cropOrigin !== null) {
+    const x = Number(cropOrigin.x), y = Number(cropOrigin.y);
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 ||
+        x + width > previousWidth || y + height > previousHeight) return null;
+    const radians = layer.transform.rotation * Math.PI / 180, scale = layer.transform.scale;
+    layer.transform = {
+      ...layer.transform,
+      x: layer.transform.x + scale * (x * Math.cos(radians) - y * Math.sin(radians)),
+      y: layer.transform.y + scale * (x * Math.sin(radians) + y * Math.cos(radians))
+    };
+  } else if (preserveDisplaySize) {
+    const scaleX = previousWidth / width, scaleY = previousHeight / height;
+    if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY) ||
+        Math.abs(scaleX - scaleY) > Math.max(scaleX, scaleY) * 0.002) return null;
+    const previousScale = layer.transform.scale;
+    const nextScale = previousScale * scaleX;
+    const radians = layer.transform.rotation * Math.PI / 180;
+    const centerX = Number(next.width) / 2;
+    const centerY = Number(next.height) / 2;
+    layer.transform = {
+      ...layer.transform,
+      x: layer.transform.x + (nextScale - previousScale) * (centerX * Math.cos(radians) - centerY * Math.sin(radians)),
+      y: layer.transform.y + (nextScale - previousScale) * (centerX * Math.sin(radians) + centerY * Math.cos(radians)),
+      scale: nextScale
+    };
+  }
+  layer.image = { source: replacement.source, width, height, flipX: layer.image.flipX === true, flipY: layer.image.flipY === true };
   return next;
 }

@@ -1,24 +1,74 @@
-import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
+import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
+import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
+import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
-import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
-import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerLocked, setLayerOpacity, setLayerReference, setLayerVisibility, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { createViewport, panBy } from "./domain/viewport.mjs";
+import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocumentPoint, screenViewportForDocument, zoomViewportAt } from "./domain/canvas-space.mjs";
+import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, flipImageLayer, replaceImageLayer, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
+import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
-import { canvasToPngBlob, createPngExportCanvas, downloadPngBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
+import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
 const status = document.querySelector("#status");
 const recoveryNotice = document.querySelector("#storage-recovery-notice");
 const layersEl = document.querySelector("#layers");
+const adjustmentLayerName = document.querySelector("#adjustment-layer-name");
+const layerAdjustmentControls = document.querySelector("#layer-adjustment-controls");
+const resetLayerAdjustmentsButton = document.querySelector("#reset-layer-adjustments");
+const adjustmentPresetButtons = [...document.querySelectorAll("[data-adjustment-preset]")];
+const textPanel = document.querySelector("#text-panel");
+const textContentInput = document.querySelector("#text-content");
+const textFontSizeInput = document.querySelector("#text-font-size");
+const textFontSizeValue = document.querySelector("#text-font-size-value");
+const textFontFamilyInput = document.querySelector("#text-font-family");
+const textFontWeightInput = document.querySelector("#text-font-weight");
+const textColorInput = document.querySelector("#text-color");
+const textAlignInput = document.querySelector("#text-align");
+const textLayerName = document.querySelector("#text-layer-name");
 const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
 const imageFileInput = document.querySelector("#image-file-input");
+const cropResizeButton = document.querySelector("#crop-resize-image");
+const flipImageHorizontalButton = document.querySelector("#flip-image-horizontal");
+const flipImageVerticalButton = document.querySelector("#flip-image-vertical");
+const imageEditDialog = document.querySelector("#image-edit-dialog");
+const imageEditForm = document.querySelector("#image-edit-form");
+const imageEditSourceSize = document.querySelector("#image-edit-source-size");
+const imageCropFields = document.querySelector("#image-crop-fields");
+const imageResizeFields = document.querySelector("#image-resize-fields");
+const imageCropX = document.querySelector("#image-crop-x");
+const imageCropY = document.querySelector("#image-crop-y");
+const imageCropWidth = document.querySelector("#image-crop-width");
+const imageCropHeight = document.querySelector("#image-crop-height");
+const cropPreviewCanvas = document.querySelector("#crop-preview");
+const cropPreviewHint = document.querySelector("#crop-preview-hint");
+const cropAspectInput = document.querySelector("#image-crop-aspect");
+const imageResizeWidth = document.querySelector("#image-resize-width");
+const imageResizeHeight = document.querySelector("#image-resize-height");
+const imageResizeKeepAspect = document.querySelector("#image-resize-keep-aspect");
+let imageEditLayerId = null;
+let imageEditOriginalSize = null;
+let imageEditOriginalFlip = { flipX: false, flipY: false };
+let imageEditPreviewImage = null;
+let cropPreviewDrag = null;
 const newDocumentButton = document.querySelector("#new-document");
 const recoverButton = document.querySelector("#recover-project");
+const exportProjectButton = document.querySelector("#export-project");
+const importProjectButton = document.querySelector("#import-project");
+const projectFileInput = document.querySelector("#project-file-input");
 const saveButton = document.querySelector("#save");
 const exportPngButton = document.querySelector("#export-png");
+const exportFormatInput = document.querySelector("#export-format");
+const exportQualityControl = document.querySelector("#export-quality-control");
+const exportQualityInput = document.querySelector("#export-quality");
+const exportQualityValue = document.querySelector("#export-quality-value");
+const exportBackgroundControl = document.querySelector("#export-background-control");
+const exportBackgroundInput = document.querySelector("#export-background");
 const projectDialog = document.querySelector("#project-dialog");
 const projectForm = document.querySelector("#project-form");
 const widthInput = document.querySelector("#document-width");
@@ -35,6 +85,14 @@ const BRUSH_DEFAULTS = Object.freeze({ color: "#111318", size: 5, opacity: 1 });
 const MIN_BRUSH_SIZE = 1;
 const MAX_BRUSH_SIZE = 100;
 
+const ADJUSTMENT_CONTROL_DEFS = Object.freeze([
+  { key: "brightness", label: "Brightness", min: 0, max: 200, step: 1 },
+  { key: "contrast", label: "Contrast", min: 0, max: 200, step: 1 },
+  { key: "saturation", label: "Saturation", min: 0, max: 200, step: 1 },
+  { key: "hue", label: "Hue", min: -180, max: 180, step: 1 },
+  { key: "blur", label: "Blur", min: 0, max: 20, step: 0.1 }
+]);
+
 const state = {
   tool: "brush",
   brush: { ...BRUSH_DEFAULTS },
@@ -49,6 +107,8 @@ const state = {
   strokeBefore: null,
   transformInteraction: null,
   multiTransformInteraction: null,
+  adjustmentPreview: null,
+  textPreview: null,
   viewport: createViewport(),
   document: createDocument(),
   history: null,
@@ -90,6 +150,11 @@ function canvasCenter() {
   return { x: rect.width / 2, y: rect.height / 2 };
 }
 
+function canvasSize() {
+  const rect = canvas.getBoundingClientRect();
+  return { width: rect.width, height: rect.height };
+}
+
 function resizeCanvas() {
   const rect = canvas.getBoundingClientRect();
   const dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -99,9 +164,11 @@ function resizeCanvas() {
 }
 
 function applyViewport() {
-  const center = canvasCenter();
-  ctx.translate(center.x + state.viewport.panX, center.y + state.viewport.panY);
-  ctx.scale(state.viewport.zoom, state.viewport.zoom);
+  const screenCenter = canvasCenter();
+  const center = documentCenter(state.document);
+  const scale = documentFitScale(state.document, canvasSize()) * state.viewport.zoom;
+  ctx.translate(screenCenter.x + state.viewport.panX, screenCenter.y + state.viewport.panY);
+  ctx.scale(scale, scale);
   ctx.translate(-center.x, -center.y);
 }
 
@@ -137,15 +204,32 @@ function drawImageLayer(layer, context = ctx) {
     imageCache.set(layer.image.source, image);
   }
   if (image.complete && image.naturalWidth > 0) {
+    context.save();
+    if (layer.image.flipX) {
+      context.translate(layer.image.width, 0);
+      context.scale(-1, 1);
+    }
+    if (layer.image.flipY) {
+      context.translate(0, layer.image.height);
+      context.scale(1, -1);
+    }
     context.drawImage(image, 0, 0, layer.image.width, layer.image.height);
+    context.restore();
   }
 }
 
-function drawDocument({ context = ctx, document = state.document, center = canvasCenter(), transformForLayer = layerTransformForRender } = {}) {
+function drawDocument({ context = ctx, document = state.document, center = documentCenter(document), transformForLayer = layerTransformForRender } = {}) {
   for (const layer of document.layers) {
     if (!layer.visible) continue;
     const transform = transformForLayer(layer);
     context.save();
+    const previewAdjustments = state.adjustmentPreview?.layerId === layer.id
+      ? state.adjustmentPreview.values
+      : layer.adjustments;
+    const previewText = state.textPreview?.layerId === layer.id
+      ? state.textPreview.values
+      : layer.text;
+    context.filter = layerAdjustmentsToCanvasFilter(previewAdjustments);
     context.globalAlpha = layer.opacity;
     context.translate(transform.x, transform.y);
     context.translate(center.x, center.y);
@@ -155,6 +239,18 @@ function drawDocument({ context = ctx, document = state.document, center = canva
 
     if (layer.contentType === "image") {
       drawImageLayer(layer, context);
+    } else if (layer.contentType === "text" && previewText) {
+      context.fillStyle = previewText.color;
+      context.textAlign = previewText.align;
+      context.textBaseline = "alphabetic";
+      const safeFamily = TEXT_FONT_FAMILIES.includes(previewText.fontFamily) ? previewText.fontFamily : "Arial";
+      const genericFamily = ["sans-serif", "serif", "monospace"].includes(safeFamily);
+      const fontFamily = genericFamily ? safeFamily : '"' + safeFamily.replace(/["\\]/g, "") + '"';
+      context.font = `${previewText.fontWeight} ${previewText.fontSize}px ${fontFamily}`;
+      const lineHeight = previewText.fontSize * 1.2;
+      previewText.value.split("\n").forEach((line, index) => {
+        context.fillText(line, previewText.x, previewText.y + index * lineHeight);
+      });
     } else {
       for (const stroke of layer.strokes) {
         if (stroke.points.length < 2) continue;
@@ -179,16 +275,13 @@ function drawSelectionOverlay() {
     const geometry = multiSelectionGeometry(selectedLayers.map(layer => ({
       ...layer,
       transform: layerTransformForRender(layer)
-    })), canvasCenter());
+    })), documentCenter(state.document));
     if (geometry) {
-      const corners = geometry.corners.map(point => {
-        return { x: (point.x - canvasCenter().x) * state.viewport.zoom + canvasCenter().x + state.viewport.panX,
-          y: (point.y - canvasCenter().y) * state.viewport.zoom + canvasCenter().y + state.viewport.panY };
-      });
+      const viewportSize = canvasSize();
+      const corners = geometry.corners.map(point => documentToScreenPoint(point, state.document, state.viewport, viewportSize));
       const groupGeometry = {
         corners,
-        center: { x: (geometry.center.x - canvasCenter().x) * state.viewport.zoom + canvasCenter().x + state.viewport.panX,
-          y: (geometry.center.y - canvasCenter().y) * state.viewport.zoom + canvasCenter().y + state.viewport.panY }
+        center: documentToScreenPoint(geometry.center, state.document, state.viewport, viewportSize)
       };
       ctx.save();
       ctx.setLineDash([6, 4]);
@@ -234,7 +327,7 @@ function drawSelectionOverlay() {
             y: layer.transform.y + state.multiTransformInteraction.previewDelta.y
           }
         : null;
-    const geometry = selectionGeometry(layer, state.viewport, canvasCenter(), previewTransform);
+    const geometry = selectionGeometry(layer, screenViewportForDocument(state.document, state.viewport, canvasSize()), documentCenter(state.document), previewTransform);
     if (!geometry) continue;
     ctx.save();
     ctx.lineWidth = layer.id === state.selectedLayerId ? 1.5 : 1;
@@ -278,7 +371,12 @@ function redraw() {
   ctx.fillRect(0, 0, rect.width, rect.height);
   ctx.save();
   applyViewport();
-  drawDocument({ context: ctx, document: state.document, center: canvasCenter() });
+  if (state.document.width > 0 && state.document.height > 0) {
+    ctx.beginPath();
+    ctx.rect(0, 0, state.document.width, state.document.height);
+    ctx.clip();
+  }
+  drawDocument({ context: ctx, document: state.document, center: documentCenter(state.document) });
   ctx.restore();
   drawSelectionOverlay();
 }
@@ -286,7 +384,7 @@ function redraw() {
 function pointFromEvent(event) {
   const rect = canvas.getBoundingClientRect();
   const screenPoint = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-  return createStrokePoint(screenToDocument(screenPoint, state.viewport, canvasCenter()));
+  return createStrokePoint(screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize()));
 }
 
 function screenPointFromEvent(event) {
@@ -304,7 +402,7 @@ function renderLayers() {
     const selectButton = document.createElement("button");
     selectButton.type = "button";
     selectButton.className = "layer-select";
-    selectButton.textContent = layer.name + (layer.contentType === "image" ? (layer.isReference ? " [Reference]" : " [Image]") : "");
+    selectButton.textContent = layer.name + (layer.contentType === "image" ? (layer.isReference ? " [Reference]" : " [Image]") : layer.contentType === "text" ? " [Text]" : "");
     selectButton.setAttribute("aria-label", "Select " + layer.name);
     selectButton.addEventListener("click", event => {
       if (event.shiftKey) {
@@ -415,7 +513,540 @@ function renderLayers() {
     li.append(selectButton, controls, lifecycle);
     layersEl.appendChild(li);
   });
+  renderLayerAdjustments();
+  renderLayerText();
+  refreshImageEditButton();
 }
+
+function cropPreviewClamp(value, maximum) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  return Math.min(maximum, Math.max(0, number));
+}
+
+function cropPreviewPoint(event) {
+  if (!imageEditOriginalSize) return null;
+  const bounds = cropPreviewCanvas.getBoundingClientRect();
+  if (bounds.width <= 0 || bounds.height <= 0) return null;
+  return {
+    x: Math.round(cropPreviewClamp((event.clientX - bounds.left) / bounds.width * imageEditOriginalSize.width, imageEditOriginalSize.width)),
+    y: Math.round(cropPreviewClamp((event.clientY - bounds.top) / bounds.height * imageEditOriginalSize.height, imageEditOriginalSize.height))
+  };
+}
+
+function updateCropInputs(rectangle) {
+  imageCropX.value = String(rectangle.x);
+  imageCropY.value = String(rectangle.y);
+  imageCropWidth.value = String(rectangle.width);
+  imageCropHeight.value = String(rectangle.height);
+}
+
+function drawCropPreview() {
+  if (!cropPreviewCanvas || !imageEditPreviewImage?.complete ||
+      imageEditPreviewImage.naturalWidth < 1 || !imageEditOriginalSize) return;
+  const sourceWidth = imageEditOriginalSize.width;
+  const sourceHeight = imageEditOriginalSize.height;
+  const previewScale = Math.min(1, 720 / sourceWidth, 420 / sourceHeight);
+  const width = Math.max(1, Math.round(sourceWidth * previewScale));
+  const height = Math.max(1, Math.round(sourceHeight * previewScale));
+  if (cropPreviewCanvas.width !== width) cropPreviewCanvas.width = width;
+  if (cropPreviewCanvas.height !== height) cropPreviewCanvas.height = height;
+  const context = cropPreviewCanvas.getContext("2d");
+  if (!context) return;
+  context.clearRect(0, 0, width, height);
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.save();
+  if (imageEditOriginalFlip.flipX) {
+    context.translate(width, 0);
+    context.scale(-1, 1);
+  }
+  if (imageEditOriginalFlip.flipY) {
+    context.translate(0, height);
+    context.scale(1, -1);
+  }
+  context.drawImage(imageEditPreviewImage, 0, 0, width, height);
+  context.restore();
+  if (currentImageEditMode() !== "crop") return;
+
+  const left = cropPreviewClamp(imageCropX.value, sourceWidth) / sourceWidth * width;
+  const top = cropPreviewClamp(imageCropY.value, sourceHeight) / sourceHeight * height;
+  const right = cropPreviewClamp(Number(imageCropX.value) + Number(imageCropWidth.value), sourceWidth) / sourceWidth * width;
+  const bottom = cropPreviewClamp(Number(imageCropY.value) + Number(imageCropHeight.value), sourceHeight) / sourceHeight * height;
+  context.fillStyle = "rgba(5, 9, 15, 0.62)";
+  context.fillRect(0, 0, width, Math.max(0, top));
+  context.fillRect(0, bottom, width, Math.max(0, height - bottom));
+  context.fillRect(0, top, Math.max(0, left), Math.max(0, bottom - top));
+  context.fillRect(right, top, Math.max(0, width - right), Math.max(0, bottom - top));
+
+  if (right - left < 1 || bottom - top < 1) return;
+  context.strokeStyle = "#f5fbff";
+  context.lineWidth = 2;
+  context.strokeRect(left + 1, top + 1, Math.max(0, right - left - 2), Math.max(0, bottom - top - 2));
+  context.strokeStyle = "rgba(255,255,255,0.58)";
+  context.lineWidth = 1;
+  for (const fraction of [1 / 3, 2 / 3]) {
+    context.beginPath();
+    context.moveTo(left + (right - left) * fraction, top);
+    context.lineTo(left + (right - left) * fraction, bottom);
+    context.moveTo(left, top + (bottom - top) * fraction);
+    context.lineTo(right, top + (bottom - top) * fraction);
+    context.stroke();
+  }
+}
+
+function applyCropAspectPreset() {
+  if (!imageEditOriginalSize) return;
+  const ratio = Number(cropAspectInput.value);
+  if (!Number.isFinite(ratio) || ratio <= 0) {
+    drawCropPreview();
+    return;
+  }
+  const sourceWidth = imageEditOriginalSize.width;
+  const sourceHeight = imageEditOriginalSize.height;
+  let width = sourceWidth;
+  let height = sourceHeight;
+  if (sourceWidth / sourceHeight > ratio) width = Math.max(1, Math.floor(sourceHeight * ratio));
+  else height = Math.max(1, Math.floor(sourceWidth / ratio));
+  updateCropInputs({
+    x: Math.floor((sourceWidth - width) / 2),
+    y: Math.floor((sourceHeight - height) / 2),
+    width,
+    height
+  });
+  drawCropPreview();
+}
+
+function cropDragRectangle(start, current) {
+  const sourceWidth = imageEditOriginalSize.width;
+  const sourceHeight = imageEditOriginalSize.height;
+  const dx = current.x - start.x;
+  const dy = current.y - start.y;
+  let width = Math.abs(dx);
+  let height = Math.abs(dy);
+  const ratio = Number(cropAspectInput.value);
+  const fixedRatio = Number.isFinite(ratio) && ratio > 0;
+  if (fixedRatio) {
+    if (width === 0 && height === 0) {
+      width = 1;
+      height = 1 / ratio;
+    } else if (width > height * ratio) {
+      height = width / ratio;
+    } else {
+      width = height * ratio;
+    }
+    const maxWidth = dx < 0 ? start.x : sourceWidth - start.x;
+    const maxHeight = dy < 0 ? start.y : sourceHeight - start.y;
+    const factor = Math.min(1, maxWidth / Math.max(width, 1), maxHeight / Math.max(height, 1));
+    width *= factor;
+    height *= factor;
+  }
+  width = Math.max(1, Math.floor(width));
+  height = Math.max(1, Math.floor(height));
+  if (fixedRatio) {
+    if (width / height > ratio) width = Math.max(1, Math.floor(height * ratio));
+    else height = Math.max(1, Math.floor(width / ratio));
+  }
+  width = Math.min(width, sourceWidth);
+  height = Math.min(height, sourceHeight);
+  const x = Math.max(0, Math.min(sourceWidth - width, dx < 0 ? start.x - width : start.x));
+  const y = Math.max(0, Math.min(sourceHeight - height, dy < 0 ? start.y - height : start.y));
+  return { x, y, width, height };
+}
+
+function loadCropPreview(source) {
+  imageEditPreviewImage = new Image();
+  imageEditPreviewImage.onload = () => {
+    if (cropPreviewHint) cropPreviewHint.textContent = "Drag on the image to choose a crop. The exact pixel rectangle is editable below.";
+    drawCropPreview();
+  };
+  imageEditPreviewImage.onerror = () => {
+    if (cropPreviewHint) cropPreviewHint.textContent = "Preview unavailable. The pixel fields can still be used.";
+  };
+  imageEditPreviewImage.src = source;
+}
+
+function refreshImageEditButton() {
+  if (!cropResizeButton) return;
+  const layer = selectedLayerExact();
+  const editableImage = Boolean(layer && layer.contentType === "image" && layer.image && !layer.locked);
+  cropResizeButton.disabled = !editableImage;
+  cropResizeButton.title = editableImage ? "Crop or resize the selected image layer" : "Select an unlocked image layer to crop or resize";
+  for (const button of [flipImageHorizontalButton, flipImageVerticalButton]) {
+    if (!button) continue;
+    button.disabled = !editableImage;
+    button.title = editableImage ? "Mirror selected image " + (button === flipImageHorizontalButton ? "left to right" : "top to bottom") : "Select an unlocked image layer first";
+  }
+}
+
+function currentImageEditMode() {
+  return document.querySelector('input[name="image-edit-mode"]:checked')?.value === "resize" ? "resize" : "crop";
+}
+
+function syncImageEditMode() {
+  const resize = currentImageEditMode() === "resize";
+  imageCropFields.hidden = resize;
+  imageResizeFields.hidden = !resize;
+  document.querySelector("#apply-image-edit").textContent = resize ? "Resize image" : "Crop image";
+  drawCropPreview();
+}
+
+function syncAspectRatioFromWidth() {
+  if (!imageResizeKeepAspect.checked || !imageEditOriginalSize) return;
+  const width = Number(imageResizeWidth.value);
+  if (Number.isInteger(width) && width > 0) imageResizeHeight.value = String(Math.max(1, Math.round(width * imageEditOriginalSize.height / imageEditOriginalSize.width)));
+}
+
+function syncAspectRatioFromHeight() {
+  if (!imageResizeKeepAspect.checked || !imageEditOriginalSize) return;
+  const height = Number(imageResizeHeight.value);
+  if (Number.isInteger(height) && height > 0) imageResizeWidth.value = String(Math.max(1, Math.round(height * imageEditOriginalSize.width / imageEditOriginalSize.height)));
+}
+
+function toggleSelectedImageFlip(axis) {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) {
+    status.textContent = "Select an unlocked image layer to flip";
+    return;
+  }
+  const before = cloneDocument(state.document);
+  const next = flipImageLayer(state.document, layer.id, axis);
+  if (!next) {
+    status.textContent = "Image flip was rejected";
+    return;
+  }
+  state.document = next;
+  state.history.record(before, next);
+  refreshDocument(axis === "horizontal" ? "Image flipped horizontally" : "Image flipped vertically");
+  persistDocument();
+}
+
+flipImageHorizontalButton.addEventListener("click", () => toggleSelectedImageFlip("horizontal"));
+flipImageVerticalButton.addEventListener("click", () => toggleSelectedImageFlip("vertical"));
+
+cropResizeButton.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) {
+    status.textContent = "Select an unlocked image layer before cropping or resizing";
+    return;
+  }
+  imageEditLayerId = layer.id;
+  imageEditOriginalSize = { width: layer.image.width, height: layer.image.height };
+  imageEditOriginalFlip = { flipX: layer.image.flipX === true, flipY: layer.image.flipY === true };
+  imageEditSourceSize.textContent = layer.name + " · " + layer.image.width + " × " + layer.image.height + " px";
+  imageCropX.value = "0"; imageCropY.value = "0";
+  imageCropWidth.value = String(layer.image.width); imageCropHeight.value = String(layer.image.height);
+  imageResizeWidth.value = String(layer.image.width); imageResizeHeight.value = String(layer.image.height);
+  imageResizeKeepAspect.checked = true;
+  cropAspectInput.value = "";
+  document.querySelector('input[name="image-edit-mode"][value="crop"]').checked = true;
+  loadCropPreview(layer.image.source);
+  syncImageEditMode();
+  imageEditDialog.showModal();
+  drawCropPreview();
+});
+
+document.querySelector("#cancel-image-edit").addEventListener("click", () => imageEditDialog.close());
+imageEditDialog.addEventListener("close", () => {
+  cropPreviewDrag = null;
+  if (imageEditPreviewImage) {
+    imageEditPreviewImage.onload = null;
+    imageEditPreviewImage.onerror = null;
+  }
+  imageEditPreviewImage = null;
+});
+document.querySelectorAll('input[name="image-edit-mode"]').forEach(input => input.addEventListener("change", syncImageEditMode));
+imageResizeWidth.addEventListener("input", syncAspectRatioFromWidth);
+imageResizeHeight.addEventListener("input", syncAspectRatioFromHeight);
+cropAspectInput.addEventListener("change", applyCropAspectPreset);
+for (const input of [imageCropX, imageCropY, imageCropWidth, imageCropHeight]) {
+  input.addEventListener("input", drawCropPreview);
+}
+
+cropPreviewCanvas.addEventListener("pointerdown", event => {
+  if (currentImageEditMode() !== "crop" || !imageEditPreviewImage || !imageEditOriginalSize) return;
+  const point = cropPreviewPoint(event);
+  if (!point) return;
+  event.preventDefault();
+  cropPreviewDrag = { pointerId: event.pointerId, start: point };
+  cropPreviewCanvas.setPointerCapture(event.pointerId);
+  updateCropInputs({ x: point.x, y: point.y, width: 1, height: 1 });
+  drawCropPreview();
+});
+cropPreviewCanvas.addEventListener("pointermove", event => {
+  if (!cropPreviewDrag || cropPreviewDrag.pointerId !== event.pointerId) return;
+  const point = cropPreviewPoint(event);
+  if (!point) return;
+  updateCropInputs(cropDragRectangle(cropPreviewDrag.start, point));
+  drawCropPreview();
+});
+function finishCropPreviewDrag(event) {
+  if (!cropPreviewDrag || cropPreviewDrag.pointerId !== event.pointerId) return;
+  cropPreviewDrag = null;
+  if (cropPreviewCanvas.hasPointerCapture(event.pointerId)) cropPreviewCanvas.releasePointerCapture(event.pointerId);
+}
+cropPreviewCanvas.addEventListener("pointerup", finishCropPreviewDrag);
+cropPreviewCanvas.addEventListener("pointercancel", finishCropPreviewDrag);
+
+imageEditForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  const layer = state.document.layers.find(item => item.id === imageEditLayerId);
+  if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) {
+    status.textContent = "The selected image layer is no longer available";
+    imageEditDialog.close();
+    return;
+  }
+  if (state.storageRecoveryPending) {
+    status.textContent = "Saved project is protected. Choose Save to replace it explicitly.";
+    return;
+  }
+  const applyButton = document.querySelector("#apply-image-edit");
+  const mode = currentImageEditMode();
+  applyButton.disabled = true;
+  try {
+    let replacement, options = {};
+    if (mode === "crop") {
+      const x = Number(imageCropX.value), y = Number(imageCropY.value);
+      const width = Number(imageCropWidth.value), height = Number(imageCropHeight.value);
+      const sourceX = layer.image.flipX ? layer.image.width - x - width : x;
+      const sourceY = layer.image.flipY ? layer.image.height - y - height : y;
+      replacement = await cropImageSource(layer.image.source, { x: sourceX, y: sourceY, width, height });
+      // Layer offset uses the visible crop origin; raster crop uses source pixel coordinates.
+      options = { cropOrigin: { x, y } };
+    } else {
+      const width = Number(imageResizeWidth.value);
+      let height = Number(imageResizeHeight.value);
+      if (imageResizeKeepAspect.checked && imageEditOriginalSize) {
+        height = Math.max(1, Math.round(width * imageEditOriginalSize.height / imageEditOriginalSize.width));
+        imageResizeHeight.value = String(height);
+      }
+      replacement = await resizeImageSource(layer.image.source, width, height);
+      options = { preserveDisplaySize: imageResizeKeepAspect.checked };
+    }
+    const before = cloneDocument(state.document);
+    const next = replaceImageLayer(state.document, layer.id, replacement, options);
+    if (!next) throw new Error("Image edit was rejected. Check the dimensions and selected layer.");
+    state.document = next;
+    setSelection([layer.id], layer.id);
+    state.history.record(before, next);
+    state.adjustmentPreview = null;
+    refreshDocument(mode === "crop" ? "Image cropped" : "Image resized");
+    persistDocument();
+    status.textContent = mode === "crop" ? "Image cropped" : "Image resized";
+    imageEditDialog.close();
+  } catch (error) {
+    status.textContent = error?.message || "Image edit failed";
+  } finally {
+    applyButton.disabled = false;
+  }
+});
+
+function getWorkingLayerAdjustments(layer) {
+  if (state.adjustmentPreview?.layerId === layer?.id) return state.adjustmentPreview.values;
+  return normalizeLayerAdjustments(layer?.adjustments);
+}
+
+function formatAdjustmentValue(definition, value) {
+  if (definition.key === "blur") return Number(value).toFixed(1) + " px";
+  if (definition.key === "hue") return Math.round(Number(value)) + "°";
+  return Math.round(Number(value)) + "%";
+}
+
+function syncAdjustmentPresetButtons(values) {
+  adjustmentPresetButtons.forEach(button => {
+    const preset = LAYER_ADJUSTMENT_PRESETS.find(item => item.id === button.dataset.adjustmentPreset);
+    button.classList.toggle("active", Boolean(preset && areLayerAdjustmentsEqual(values, preset.values)));
+  });
+}
+
+function commitLayerAdjustments(layerId, values, message = "Image adjustments updated") {
+  const layer = state.document.layers.find(item => item.id === layerId);
+  const normalized = normalizeLayerAdjustments(values);
+  state.adjustmentPreview = null;
+  if (!layer || layer.locked || areLayerAdjustmentsEqual(layer.adjustments, normalized)) {
+    redraw();
+    renderLayerAdjustments();
+    return false;
+  }
+
+  const before = cloneDocument(state.document);
+  const next = setLayerAdjustments(state.document, layerId, normalized);
+  if (!next) {
+    redraw();
+    return false;
+  }
+  state.document = next;
+  state.history.record(before, next);
+  refreshDocument(message);
+  persistDocument();
+  return true;
+}
+
+function renderLayerAdjustments() {
+  if (!layerAdjustmentControls || !adjustmentLayerName || !resetLayerAdjustmentsButton) return;
+  const layer = selectedLayerExact();
+  const disabled = !layer || layer.locked;
+  const values = layer ? getWorkingLayerAdjustments(layer) : normalizeLayerAdjustments();
+  adjustmentLayerName.textContent = layer
+    ? layer.name + " · " + (layer.contentType === "image" ? (layer.isReference ? "Reference image" : "Image layer") : layer.contentType === "text" ? "Text layer" : "Drawing layer")
+    : "Select a layer to edit";
+  resetLayerAdjustmentsButton.disabled = disabled;
+  adjustmentPresetButtons.forEach(button => { button.disabled = disabled; });
+  syncAdjustmentPresetButtons(values);
+  layerAdjustmentControls.replaceChildren();
+
+  for (const definition of ADJUSTMENT_CONTROL_DEFS) {
+    const label = document.createElement("label");
+    label.className = "adjustment-control";
+    label.htmlFor = "adjustment-" + definition.key;
+
+    const heading = document.createElement("span");
+    heading.className = "adjustment-control-heading";
+    const name = document.createElement("span");
+    name.textContent = definition.label;
+    const output = document.createElement("output");
+    output.textContent = formatAdjustmentValue(definition, values[definition.key]);
+    heading.append(name, output);
+
+    const input = document.createElement("input");
+    input.id = "adjustment-" + definition.key;
+    input.type = "range";
+    input.min = String(definition.min);
+    input.max = String(definition.max);
+    input.step = String(definition.step);
+    input.value = String(values[definition.key]);
+    input.disabled = disabled;
+    input.setAttribute("aria-label", definition.label + " for " + (layer?.name || "selected layer"));
+    input.addEventListener("input", () => {
+      if (!layer || layer.locked) return;
+      const nextValues = normalizeLayerAdjustments({
+        ...getWorkingLayerAdjustments(layer),
+        [definition.key]: Number(input.value)
+      });
+      state.adjustmentPreview = { layerId: layer.id, values: nextValues };
+      output.textContent = formatAdjustmentValue(definition, nextValues[definition.key]);
+      syncAdjustmentPresetButtons(nextValues);
+      redraw();
+    });
+    input.addEventListener("change", () => {
+      if (!layer || layer.locked) return;
+      const preview = state.adjustmentPreview;
+      if (preview?.layerId === layer.id) commitLayerAdjustments(layer.id, preview.values);
+    });
+
+    label.append(heading, input);
+    layerAdjustmentControls.appendChild(label);
+  }
+}
+
+resetLayerAdjustmentsButton.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (layer && !layer.locked) commitLayerAdjustments(layer.id, {});
+});
+
+adjustmentPresetButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    const layer = selectedLayerExact();
+    const preset = LAYER_ADJUSTMENT_PRESETS.find(item => item.id === button.dataset.adjustmentPreset);
+    if (layer && !layer.locked && preset) {
+      commitLayerAdjustments(layer.id, preset.values, preset.label + " preset applied");
+    }
+  });
+});
+
+function getWorkingLayerText(layer) {
+  if (state.textPreview?.layerId === layer?.id) return state.textPreview.values;
+  return normalizeTextLayer(layer?.text);
+}
+
+function renderLayerText() {
+  if (!textPanel) return;
+  const layer = selectedLayerExact();
+  const isText = layer?.contentType === "text";
+  textPanel.hidden = !isText;
+  if (!isText) {
+    state.textPreview = null;
+    return;
+  }
+
+  const values = getWorkingLayerText(layer);
+  const disabled = layer.locked;
+  textLayerName.textContent = layer.name;
+  textContentInput.value = values.value;
+  textFontSizeInput.value = String(values.fontSize);
+  textFontSizeValue.textContent = values.fontSize + " px";
+  textFontFamilyInput.value = values.fontFamily;
+  textFontWeightInput.value = values.fontWeight;
+  textColorInput.value = values.color;
+  textAlignInput.value = values.align;
+  for (const input of [textContentInput, textFontSizeInput, textFontFamilyInput, textFontWeightInput, textColorInput, textAlignInput]) {
+    input.disabled = disabled;
+  }
+  textFontSizeInput.setAttribute("aria-label", "Font size for " + layer.name);
+  textContentInput.setAttribute("aria-label", "Text content for " + layer.name);
+}
+
+function updateTextPreview(patch) {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "text" || layer.locked) return;
+  state.textPreview = {
+    layerId: layer.id,
+    values: normalizeTextLayer({ ...getWorkingLayerText(layer), ...patch })
+  };
+  redraw();
+}
+
+function commitLayerText(layerId, textValues, message = "Text style updated") {
+  const layer = state.document.layers.find(item => item.id === layerId);
+  const normalized = normalizeTextLayer(textValues);
+  state.textPreview = null;
+  if (!layer || layer.contentType !== "text" || layer.locked || JSON.stringify(layer.text) === JSON.stringify(normalized)) {
+    redraw();
+    renderLayerText();
+    return false;
+  }
+
+  const before = cloneDocument(state.document);
+  const next = setLayerText(state.document, layerId, normalized);
+  if (!next) {
+    redraw();
+    return false;
+  }
+  state.document = next;
+  state.history.record(before, next);
+  refreshDocument(message);
+  persistDocument();
+  return true;
+}
+
+function commitTextPreview(message = "Text style updated") {
+  const preview = state.textPreview;
+  if (!preview) return false;
+  return commitLayerText(preview.layerId, preview.values, message);
+}
+
+textContentInput.addEventListener("input", () => updateTextPreview({ value: textContentInput.value }));
+textContentInput.addEventListener("change", () => commitTextPreview("Text content updated"));
+textFontSizeInput.addEventListener("input", () => {
+  const fontSize = Number(textFontSizeInput.value);
+  textFontSizeValue.textContent = fontSize + " px";
+  updateTextPreview({ fontSize });
+});
+textFontSizeInput.addEventListener("change", () => commitTextPreview("Text size updated"));
+textFontFamilyInput.addEventListener("change", () => {
+  updateTextPreview({ fontFamily: textFontFamilyInput.value });
+  commitTextPreview("Text font updated");
+});
+textFontWeightInput.addEventListener("change", () => {
+  updateTextPreview({ fontWeight: textFontWeightInput.value });
+  commitTextPreview("Text weight updated");
+});
+textColorInput.addEventListener("input", () => updateTextPreview({ color: textColorInput.value }));
+textColorInput.addEventListener("change", () => commitTextPreview("Text color updated"));
+textAlignInput.addEventListener("change", () => {
+  updateTextPreview({ align: textAlignInput.value });
+  commitTextPreview("Text alignment updated");
+});
 
 function setStorageRecoveryPending(pending, message = "") {
   state.storageRecoveryPending = pending;
@@ -526,7 +1157,7 @@ function beginTransformInteraction(type, event, handle = null) {
   const layer = selectedLayerExact();
   if (!layer || layer.locked) return false;
   const screenPoint = screenPointFromEvent(event);
-  const documentPoint = screenToDocument(screenPoint, state.viewport, canvasCenter());
+  const documentPoint = screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize());
   state.transformPointerId = event.pointerId;
   state.transformInteraction = {
     type,
@@ -536,7 +1167,7 @@ function beginTransformInteraction(type, event, handle = null) {
     startDocument: documentPoint,
     beforeTransform: { ...layer.transform },
     previewTransform: { ...layer.transform },
-    pivot: canvasCenter()
+    pivot: documentCenter(state.document)
   };
   canvas.setPointerCapture(event.pointerId);
   return true;
@@ -578,7 +1209,7 @@ function updateTransformPreview(event) {
   const interaction = state.transformInteraction;
   if (!interaction || event.pointerId !== interaction.pointerId) return;
   const currentScreen = screenPointFromEvent(event);
-  const currentDocument = screenToDocument(currentScreen, state.viewport, canvasCenter());
+  const currentDocument = screenToDocumentPoint(currentScreen, state.document, state.viewport, canvasSize());
   const pivot = interaction.pivot;
   const preview = { ...interaction.previewTransform };
   if (interaction.type === "move") {
@@ -609,22 +1240,16 @@ function updateTransformPreview(event) {
 function beginSelectionInteraction(event) {
   const screenPoint = screenPointFromEvent(event);
   const selected = selectedLayerExact();
-  const selectedGeometry = selected ? selectionGeometry(selected, state.viewport, canvasCenter()) : null;
+  const selectedGeometry = selected ? selectionGeometry(selected, screenViewportForDocument(state.document, state.viewport, canvasSize()), documentCenter(state.document)) : null;
   const selectedHit = hitTestHandle(screenPoint, selectedGeometry, HANDLE_RADIUS);
   if (state.selectedLayerIds.length > 1) {
     const layers = selectedLayersExact();
-    const documentPoint = screenToDocument(screenPoint, state.viewport, canvasCenter());
-    const groupDocumentGeometry = multiSelectionGeometry(layers, canvasCenter());
+    const documentPoint = screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize());
+    const groupDocumentGeometry = multiSelectionGeometry(layers, documentCenter(state.document));
     const groupScreenGeometry = groupDocumentGeometry ? {
       ...groupDocumentGeometry,
-      corners: groupDocumentGeometry.corners.map(point => ({
-        x: (point.x - canvasCenter().x) * state.viewport.zoom + canvasCenter().x + state.viewport.panX,
-        y: (point.y - canvasCenter().y) * state.viewport.zoom + canvasCenter().y + state.viewport.panY
-      })),
-      center: {
-        x: (groupDocumentGeometry.center.x - canvasCenter().x) * state.viewport.zoom + canvasCenter().x + state.viewport.panX,
-        y: (groupDocumentGeometry.center.y - canvasCenter().y) * state.viewport.zoom + canvasCenter().y + state.viewport.panY
-      }
+      corners: groupDocumentGeometry.corners.map(point => documentToScreenPoint(point, state.document, state.viewport, canvasSize())),
+      center: documentToScreenPoint(groupDocumentGeometry.center, state.document, state.viewport, canvasSize())
     } : null;
     if (groupScreenGeometry) {
       const topMid = { x: (groupScreenGeometry.corners[0].x + groupScreenGeometry.corners[1].x) / 2, y: (groupScreenGeometry.corners[0].y + groupScreenGeometry.corners[1].y) / 2 };
@@ -648,7 +1273,7 @@ function beginSelectionInteraction(event) {
     const hitSelectedLayer = [...state.document.layers].reverse().find(layer =>
       layer.visible &&
       state.selectedLayerIds.includes(layer.id) &&
-      hitTestLayer(layer, documentPoint, canvasCenter())
+      hitTestLayer(layer, documentPoint, documentCenter(state.document))
     );
     if (hitSelectedLayer && layers.every(layer => !layer.locked)) {
       state.selectedLayerId = hitSelectedLayer.id;
@@ -667,10 +1292,10 @@ function beginSelectionInteraction(event) {
   }
   if (selectedHit?.startsWith("scale-")) return beginTransformInteraction("scale", event, selectedHit);
   if (selectedHit === "rotate") return beginTransformInteraction("rotate", event);
-  const documentPoint = screenToDocument(screenPoint, state.viewport, canvasCenter());
+  const documentPoint = screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize());
   for (const layer of [...state.document.layers].reverse()) {
     if (!layer.visible) continue;
-    if (hitTestLayer(layer, documentPoint, canvasCenter())) {
+    if (hitTestLayer(layer, documentPoint, documentCenter(state.document))) {
       if (event.shiftKey) toggleSelection(layer.id);
       else setSelection([layer.id], layer.id);
       renderLayers();
@@ -722,16 +1347,16 @@ canvas.addEventListener("pointermove", event => {
   }
   if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
     const interaction = state.multiTransformInteraction;
-    const current = screenToDocument(screenPointFromEvent(event), state.viewport, canvasCenter());
+    const current = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
     const layers = selectedLayersExact();
     if (interaction.type === "move") {
       const start = interaction.startDocument;
       interaction.previewDelta = { x: current.x - start.x, y: current.y - start.y };
     } else if (interaction.type === "scale") {
-      const transforms = groupScaleTransforms(layers, canvasCenter(), interaction.handle, current);
+      const transforms = groupScaleTransforms(layers, documentCenter(state.document), interaction.handle, current);
       if (transforms) interaction.previewTransforms = new Map(transforms.map(item => [item.id, item.transform]));
     } else if (interaction.type === "rotate") {
-      const transforms = groupRotationTransforms(layers, canvasCenter(), current, interaction.startDocument);
+      const transforms = groupRotationTransforms(layers, documentCenter(state.document), current, interaction.startDocument);
       if (transforms) interaction.previewTransforms = new Map(transforms.map(item => [item.id, item.transform]));
     }
     redraw();
@@ -837,7 +1462,7 @@ canvas.addEventListener("wheel", event => {
   const factor = event.deltaY < 0 ? 1.1 : 1 / 1.1;
   const nextZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, currentZoom * factor));
   if (nextZoom === currentZoom) return;
-  setViewport(zoomAt(state.viewport, nextZoom, screenPointFromEvent(event), canvasCenter()));
+  setViewport(zoomViewportAt(state.viewport, nextZoom, screenPointFromEvent(event), state.document, canvasSize()));
 }, { passive: false });
 
 function setBrushColor(value) {
@@ -914,6 +1539,51 @@ document.querySelector("#add-layer").addEventListener("click", () => {
   state.history.record(before, next);
   refreshDocument();
   persistDocument();
+});
+
+document.querySelector("#add-text-layer").addEventListener("click", () => {
+  const index = state.document.layers.filter(layer => layer.contentType === "text").length + 1;
+  const width = Math.max(300, state.document.width || canvas.width || 300);
+  const height = Math.max(180, state.document.height || canvas.height || 180);
+  const layer = createTextLayer("Text " + index, {
+    value: "Your text",
+    x: Math.round(width * 0.12),
+    y: Math.round(height * 0.5),
+    fontSize: Math.max(24, Math.min(64, Math.round(height * 0.1))),
+    fontFamily: "Arial",
+    fontWeight: "bold",
+    color: "#172335",
+    align: "left"
+  });
+  const before = cloneDocument(state.document);
+  const next = addLayer(state.document, layer);
+  if (!next) return;
+  state.document = next;
+  state.textPreview = null;
+  setSelection([layer.id], layer.id);
+  state.history.record(before, next);
+  refreshDocument("Text layer added");
+  persistDocument();
+});
+
+document.querySelector("#add-sample-character").addEventListener("click", async event => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    const response = await fetch("./assets/cc0-detailed-anime-character.png.base64");
+    if (!response.ok) throw new Error("CC0 sample asset is unavailable");
+    const encoded = (await response.text()).trim().replaceAll("\n", "").replaceAll("\r", "").replaceAll(" ", "");
+    if (!encoded.startsWith("iVBOR")) throw new Error("CC0 sample asset is not a valid PNG payload");
+    const binary = atob(encoded);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    const file = new File([bytes], "battleworn_knight.png", { type: "image/png" });
+    await importImageIntoEditor(file, "CC0 character sample added");
+  } catch (error) {
+    status.textContent = error?.message || "Could not load CC0 character sample";
+  } finally {
+    button.disabled = false;
+  }
 });
 
 async function importImageIntoEditor(file, message = "Image imported") {
@@ -1021,7 +1691,7 @@ document.querySelectorAll("[data-transform]").forEach(button => {
 
 document.querySelector("#clear").addEventListener("click", () => {
   const layer = selectedLayer();
-  if (!layer || layer.locked || layer.contentType === "image" || layer.strokes.length === 0) return;
+  if (!layer || layer.locked || layer.contentType !== "drawing" || layer.strokes.length === 0) return;
   const before = cloneDocument(state.document);
   const next = clearLayer(state.document, layer.id);
   if (!next) return;
@@ -1108,20 +1778,91 @@ recoverButton.addEventListener("click", () => {
   restoreStoredProject();
 });
 
+exportProjectButton.addEventListener("click", () => {
+  try {
+    const serialized = serializeProjectFile(state.document);
+    const blob = new Blob([serialized], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "animeart-project.json";
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    status.textContent = "Project file exported";
+  } catch (error) {
+    status.textContent = error?.message || "Could not export project file";
+  }
+});
+
+importProjectButton.addEventListener("click", () => projectFileInput.click());
+
+projectFileInput.addEventListener("change", async () => {
+  const file = projectFileInput.files?.[0];
+  if (!file) return;
+  if (file.size > 2_500_000) {
+    status.textContent = "Project file exceeds the 2.5 MB local-project limit";
+    projectFileInput.value = "";
+    return;
+  }
+  if (state.dirty && !window.confirm("Discard unsaved changes and open this project file?")) {
+    projectFileInput.value = "";
+    return;
+  }
+  try {
+    const imported = parseProjectFile(await file.text());
+    persistDocumentSnapshot(localStorage, "animeart-web-document", imported);
+    state.document = imported;
+    state.history.reset(imported);
+    const activeLayerId = imported.layers.at(-1)?.id || null;
+    setSelection(activeLayerId ? [activeLayerId] : [], activeLayerId);
+    state.viewport = createViewport();
+    state.transformInteraction = null;
+    state.multiTransformInteraction = null;
+    state.adjustmentPreview = null;
+    state.textPreview = null;
+    state.drawing = false;
+    state.strokeBefore = null;
+    state.dirty = false;
+    setStorageRecoveryPending(false);
+    refreshDocument("Project file opened");
+  } catch (error) {
+    status.textContent = error?.message || "Project file could not be opened";
+  } finally {
+    projectFileInput.value = "";
+  }
+});
+
 saveButton.addEventListener("click", () => {
   persistDocument({ markSaved: true });
 });
+
+function syncExportFormatControls() {
+  const format = exportFormatInput.value;
+  const lossy = format === "jpeg" || format === "webp";
+  exportQualityControl.hidden = !lossy;
+  exportBackgroundControl.hidden = format !== "jpeg";
+  exportPngButton.textContent = "Export " + format.toUpperCase();
+  exportQualityValue.value = exportQualityInput.value + "%";
+  exportQualityValue.textContent = exportQualityInput.value + "%";
+}
 
 async function exportPng() {
   const documentBefore = JSON.stringify(state.document);
   const historyBeforeUndo = state.history.canUndo();
   const historyBeforeRedo = state.history.canRedo();
   exportPngButton.disabled = true;
-  status.textContent = "Exporting PNG…";
+  const format = exportFormatInput.value;
+  status.textContent = "Exporting " + format.toUpperCase() + "…";
   try {
     await ensureExportImages(state.document);
     const exportCanvas = createPngExportCanvas(state.document);
     renderDocumentToCanvas(state.document, exportCanvas, ({ context, document, center }) => {
+      if (format === "jpeg") {
+        context.save();
+        context.fillStyle = exportBackgroundInput.value || "#ffffff";
+        context.fillRect(0, 0, document.width, document.height);
+        context.restore();
+      }
       drawDocument({
         context,
         document,
@@ -1129,14 +1870,15 @@ async function exportPng() {
         transformForLayer: layer => layer.transform
       });
     });
-    const blob = await canvasToPngBlob(exportCanvas);
-    downloadPngBlob(blob, "animeart.png");
+    const quality = Number(exportQualityInput.value) / 100;
+    const blob = await canvasToImageBlob(exportCanvas, format, quality);
+    downloadImageBlob(blob, "animeart." + format, format);
     if (JSON.stringify(state.document) !== documentBefore ||
         state.history.canUndo() !== historyBeforeUndo ||
         state.history.canRedo() !== historyBeforeRedo) {
       throw new Error("PNG export modified editor state");
     }
-    status.textContent = "PNG exported";
+    status.textContent = format.toUpperCase() + " exported";
   } catch (error) {
     status.textContent = error?.message || "PNG export failed";
   } finally {
@@ -1145,6 +1887,9 @@ async function exportPng() {
 }
 
 exportPngButton.addEventListener("click", exportPng);
+exportFormatInput.addEventListener("change", syncExportFormatControls);
+exportQualityInput.addEventListener("input", syncExportFormatControls);
+syncExportFormatControls();
 
 function ensureExportImages(document) {
   const pending = document.layers
@@ -1214,18 +1959,24 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v1";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v8";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
   "./app.js",
   "./manifest.webmanifest",
   "./service-worker.js",
+  "./assets/cc0-detailed-anime-character.png.base64",
+  "./assets/ASSET_SOURCES.md",
   "./domain/document-operations.mjs",
   "./domain/history.mjs",
   "./domain/image-import.mjs",
   "./domain/image-input.mjs",
+  "./domain/image-processing.mjs",
+  "./domain/canvas-space.mjs",
+  "./domain/layer-adjustments.mjs",
   "./domain/model.mjs",
+  "./domain/text-layer.mjs",
   "./domain/png-export.mjs",
   "./domain/selection.mjs",
   "./domain/viewport.mjs"
