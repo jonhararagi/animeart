@@ -27,7 +27,7 @@ class MainActivityWebViewRotationTest {
                 """(() => document.title === "AnimeArt Studio | Image Editor" &&
                     !!document.querySelector("#crop-resize-image") &&
                     !!document.querySelector("#flip-image-horizontal") &&
-                    !!document.querySelector("#export-webp"))()"""
+                    !!document.querySelector("#export-format") && !!document.querySelector("#export-png"))()"""
             )
             assertEquals("true", currentEditorLoaded)
         }
