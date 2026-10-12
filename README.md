@@ -39,17 +39,3 @@ gradle test
 ```
 
 The GitHub Actions workflows validate the Web build and real Chromium interactions, and independently validate the Android foundation.
-
-## Keyboard shortcuts
-
-| Shortcut | Action |
-| --- | --- |
-| `Ctrl/Cmd + Z` | Undo |
-| `Ctrl/Cmd + Y` | Redo |
-| `Ctrl/Cmd + S` | Save locally |
-| `Ctrl/Cmd + E` | Export image using the selected format |
-| `Ctrl/Cmd + O` | Open a project file |
-| `Ctrl/Cmd + Shift + N` | Start a new document |
-| `Delete` / `Backspace` | Delete selected layer(s), keeping at least one layer |
-
-Shortcuts are ignored while a dialog is open. Undo/redo and destructive layer shortcuts do not intercept typing inside form controls.

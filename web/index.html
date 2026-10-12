@@ -29,13 +29,33 @@
       <button id="add-layer">+ Layer</button>
       <button id="add-text-layer">+ Text</button>
       <button id="add-image-layer">+ Image / Reference</button>
+      <button id="crop-resize-image" disabled>Crop / Resize Image</button>
+      <button id="flip-image-horizontal" type="button" disabled title="Mirror selected image left to right">Flip H</button>
+      <button id="flip-image-vertical" type="button" disabled title="Mirror selected image top to bottom">Flip V</button>
       <button id="add-sample-character" title="Import the bundled CC0 1.0 character as a real image layer">+ CC0 Character Sample</button>
       <a class="asset-source-link" href="./assets/ASSET_SOURCES.md" target="_blank" rel="noopener">Sample art source &amp; license</a>
       <input id="image-file-input" type="file" accept="image/*" hidden>
       <button id="new-document">New</button>
-      <button id="recover-project">Open / Recover</button>
-      <button id="save">Save</button>
-      <button id="export-png">Exportar PNG</button>
+      <button id="recover-project">Recover local</button>
+      <button id="save">Save locally</button>
+      <button id="export-project">Export project file</button>
+      <button id="import-project">Open project file</button>
+      <input id="project-file-input" type="file" accept="application/json,.json" hidden>
+      <label class="export-format-control" for="export-format">Export format
+        <select id="export-format" aria-label="Export format">
+          <option value="png">PNG · transparent</option>
+          <option value="jpeg">JPEG · photo</option>
+          <option value="webp">WebP · compact</option>
+        </select>
+      </label>
+      <label id="export-quality-control" class="export-format-control" for="export-quality" hidden>Quality
+        <input id="export-quality" type="range" min="50" max="100" step="1" value="92">
+        <output id="export-quality-value">92%</output>
+      </label>
+      <label id="export-background-control" class="export-format-control" for="export-background" hidden>JPEG background
+        <input id="export-background" type="color" value="#ffffff">
+      </label>
+      <button id="export-png">Export image</button>
       <button id="clear">Clear</button>
       <span class="tool-group-label">Layer</span>
       <button data-transform="left" title="Move layer left">←</button>
@@ -113,6 +133,52 @@
       </section>
     </aside>
   </main>
+  <dialog id="image-edit-dialog" aria-labelledby="image-edit-title">
+    <form id="image-edit-form" method="dialog">
+      <h2 id="image-edit-title">Crop / Resize Image</h2>
+      <p id="image-edit-source-size" class="image-edit-source-size">Select an image layer first.</p>
+      <section class="crop-preview-workspace" aria-label="Visual crop selection">
+        <canvas id="crop-preview" aria-label="Drag to select image crop"></canvas>
+        <p id="crop-preview-hint">Drag across the image to choose the crop area. Fine-tune pixel values below.</p>
+      </section>
+      <fieldset class="image-edit-mode">
+        <legend>Operation</legend>
+        <label><input type="radio" name="image-edit-mode" value="crop" checked> Crop pixels</label>
+        <label><input type="radio" name="image-edit-mode" value="resize"> Resize pixels</label>
+      </fieldset>
+      <section id="image-crop-fields" class="image-edit-fields">
+        <p>Drag directly on the image or enter exact pixel coordinates.</p>
+        <label class="image-crop-aspect-field" for="image-crop-aspect">Crop ratio
+          <select id="image-crop-aspect">
+            <option value="">Free selection</option>
+            <option value="1">Square · 1:1</option>
+            <option value="0.8">Portrait · 4:5</option>
+            <option value="1.25">Landscape · 5:4</option>
+            <option value="1.5">Photo · 3:2</option>
+            <option value="0.6666666667">Portrait · 2:3</option>
+            <option value="1.7777777778">Wide · 16:9</option>
+            <option value="0.5625">Story · 9:16</option>
+          </select>
+        </label>
+        <div class="image-edit-grid">
+          <label for="image-crop-x">Left (X)<input id="image-crop-x" type="number" min="0" step="1" value="0" required></label>
+          <label for="image-crop-y">Top (Y)<input id="image-crop-y" type="number" min="0" step="1" value="0" required></label>
+          <label for="image-crop-width">Width<input id="image-crop-width" type="number" min="1" step="1" required></label>
+          <label for="image-crop-height">Height<input id="image-crop-height" type="number" min="1" step="1" required></label>
+        </div>
+      </section>
+      <section id="image-resize-fields" class="image-edit-fields" hidden>
+        <p>Resizing re-samples the selected image. Transparent pixels are preserved.</p>
+        <div class="image-edit-grid">
+          <label for="image-resize-width">New width<input id="image-resize-width" type="number" min="1" max="8192" step="1" required></label>
+          <label for="image-resize-height">New height<input id="image-resize-height" type="number" min="1" max="8192" step="1" required></label>
+        </div>
+        <label class="image-edit-aspect" for="image-resize-keep-aspect"><input id="image-resize-keep-aspect" type="checkbox" checked> Keep aspect ratio and displayed size</label>
+      </section>
+      <p class="image-edit-note">Only the selected image layer changes. Undo and redo restore the previous pixels and transform.</p>
+      <div class="dialog-actions"><button type="button" id="cancel-image-edit">Cancel</button><button type="submit" id="apply-image-edit">Apply</button></div>
+    </form>
+  </dialog>
   <dialog id="project-dialog" aria-labelledby="project-dialog-title">
     <form id="project-form" method="dialog">
       <h2 id="project-dialog-title">New document</h2>
