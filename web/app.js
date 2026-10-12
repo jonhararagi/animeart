@@ -1602,7 +1602,7 @@ async function importImageIntoEditor(file, message = "Image imported") {
     state.document = result.document;
     setSelection([result.layer.id], result.layer.id);
     state.dirty = true;
-    refreshDocument(message);
+    refreshDocument(result.optimized ? `${message} (optimized locally)` : message);
     return true;
   } catch (error) {
     status.textContent = error?.message || "Image import failed";
