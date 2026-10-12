@@ -1,6 +1,6 @@
 # AnimeArt
 
-AnimeArt is a local-first **image editor**, inspired by everyday editors such as Picsart. It is not an AI image generator. The active delivery target is the Web editor; the Android application remains a separate Kotlin/Compose foundation.
+AnimeArt is a local-first **image editor**, inspired by everyday editors such as Picsart. It is not an AI image generator. The Web editor is the single source of truth, and the Android app embeds that editor in a WebView.
 
 ## Web editing tools
 
@@ -45,4 +45,6 @@ gradle assembleDebug
 gradle test
 ```
 
-The GitHub Actions workflows validate the Web build and real Chromium interactions, and independently validate the Android foundation.
+The Android Gradle `preBuild` task synchronizes the current `web/` editor into `app/src/main/assets/web/` before packaging. This prevents the APK from silently shipping an older copy. Android CI checks that crop, text and image-adjustment controls are actually present inside the built APK.
+
+A small APK is not inherently incomplete: this app does not bundle Picsart's large sticker catalogs, downloadable templates, proprietary filters, cloud content or AI models. App size is not a feature-completeness metric. The important parity check is that the Android APK contains the same editor code and tools as the Web build.
