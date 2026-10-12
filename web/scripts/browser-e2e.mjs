@@ -353,7 +353,7 @@ try {
 
   const layersBeforeSample = (await readLayerSummary()).length;
   await click("#add-sample-character");
-  await waitFor("JSON.parse(localStorage.getItem(\\\"animeart-web-document\\\") || \\\"{}\\\").layers?.length === " + (layersBeforeSample + 1), 15000);
+  await waitFor("JSON.parse(localStorage.getItem(\"animeart-web-document\") || \"{}\").layers?.length === " + (layersBeforeSample + 1), 15000);
   const cc0Sample = (await readDocument()).layers.at(-1);
   assert(cc0Sample?.contentType === "image" && cc0Sample?.name === "battleworn_knight", "real browser imports the bundled CC0 character as a native image layer");
   assert(cc0Sample?.image?.width === 944 && cc0Sample?.image?.height === 944, "real browser decodes the verified CC0 PNG dimensions");
