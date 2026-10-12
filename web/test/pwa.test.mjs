@@ -11,7 +11,7 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(html, /rel="manifest" href="\.\/manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\("\.\/service-worker\.js"\)/);
   assert.match(manifest, /"display": "standalone"/);
-  assert.match(worker, /animeart-web-shell-v8/);
+  assert.match(worker, /animeart-web-shell-v9/);
   assert.match(worker, /caches\.open/);
   assert.match(worker, /caches\.match/);
   assert.match(app, /layerAdjustmentsToCanvasFilter/);
@@ -77,5 +77,14 @@ test("canvas coordinate mapping is cached for offline rendering and editing", as
   assert.match(app, /documentFitScale/);
   assert.match(app, /screenViewportForDocument/);
   assert.match(worker, /\.\/domain\/canvas-space\.mjs/);
-  assert.match(worker, /animeart-web-shell-v8/);
+  assert.match(worker, /animeart-web-shell-v9/);
+});
+
+
+test("quick edit recipe engine is part of the offline editor shell", async () => {
+  const worker = await readFile("service-worker.js", "utf8");
+  const app = await readFile("app.js", "utf8");
+  assert.match(worker, /animeart-web-shell-v9/);
+  assert.ok(worker.includes("./domain/quick-edit-recipes.mjs"));
+  assert.match(app, /applyQuickEditRecipe/);
 });

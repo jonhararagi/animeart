@@ -92,6 +92,24 @@
         <div id="layer-adjustment-controls" class="adjustment-controls" aria-live="polite"></div>
         <p class="adjustment-note">Effects stay editable, are saved with the project and are included in PNG export.</p>
       </section>
+
+      <section class="quick-recipe-panel" aria-labelledby="quick-recipes-title">
+        <div class="panel-heading"><div><p class="eyebrow">ONE-CLICK EDITS</p><h3 id="quick-recipes-title">Quick edit recipes</h3></div></div>
+        <p class="quick-recipe-note">Apply a look to selected image layers. Recipes stay editable and support undo/redo.</p>
+        <div class="quick-recipe-grid" aria-label="Quick edit shortcuts">
+          <button type="button" data-quick-recipe="anime-pop" title="Ctrl+Alt+1">Anime Pop <kbd>1</kbd></button>
+          <button type="button" data-quick-recipe="cinematic" title="Ctrl+Alt+2">Cinematic <kbd>2</kbd></button>
+          <button type="button" data-quick-recipe="manga-ink" title="Ctrl+Alt+3">Manga Ink <kbd>3</kbd></button>
+          <button type="button" data-quick-recipe="soft-dream" title="Ctrl+Alt+4">Soft Dream <kbd>4</kbd></button>
+          <button type="button" data-quick-recipe="mystic-violet" title="Ctrl+Alt+5">Mystic Violet <kbd>5</kbd></button>
+          <button type="button" data-quick-recipe="golden-hour" title="Ctrl+Alt+6">Golden Hour <kbd>6</kbd></button>
+          <button type="button" data-quick-recipe="ice-blue" title="Ctrl+Alt+7">Ice Blue <kbd>7</kbd></button>
+          <button type="button" data-quick-recipe="xray-glasses" class="quick-recipe-featured" title="Ctrl+Alt+8">X-Ray Glasses <kbd>8</kbd></button>
+        </div>
+        <p class="quick-recipe-note">X-Ray: select 3 image layers in stack order, bottom to top: character, transparent X-ray lens overlay, transparent glasses frame. Use transparent PNGs and align them first.</p>
+        <p id="quick-recipe-status" class="quick-recipe-status" role="status" aria-live="polite">Select image layers, then choose a recipe.</p>
+      </section>
+
       <section id="text-panel" class="text-panel" aria-labelledby="text-title" hidden>
         <div class="panel-heading">
           <div>

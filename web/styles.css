@@ -297,3 +297,16 @@ canvas {
   padding: 10px;
   font: inherit;
 }
+
+
+.quick-recipe-panel{margin-top:18px;padding-top:17px;border-top:1px solid #2a3546}
+.quick-recipe-panel h3{margin:0;font-size:.92rem}
+.quick-recipe-note{margin:9px 0;color:#8494aa;font-size:.64rem;line-height:1.55}
+.quick-recipe-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.quick-recipe-grid button{display:flex;align-items:center;justify-content:space-between;gap:5px;min-height:34px;padding:6px 7px;text-align:left;font-size:.64rem}
+.quick-recipe-grid button:hover{border-color:#3b7d8e;background:#162b36}
+.quick-recipe-grid button kbd{flex:0 0 auto;color:#8ba2b9;font:.58rem ui-monospace,SFMono-Regular,Consolas,monospace}
+.quick-recipe-grid .quick-recipe-featured{grid-column:1/-1;border-color:#39798a;background:#142b36;color:#c7f6ff}
+.quick-recipe-status{margin:8px 0 0;min-height:1.5em;color:#91c7d2;font-size:.64rem;line-height:1.5;overflow-wrap:anywhere}
+.quick-recipe-status[data-state="error"]{color:#ffb6a0}
+@media(max-width:620px){.quick-recipe-grid button{font-size:.62rem}.quick-recipe-grid button kbd{display:none}}

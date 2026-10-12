@@ -6,6 +6,7 @@ import { createViewport, panBy } from "./domain/viewport.mjs";
 import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocumentPoint, screenViewportForDocument, zoomViewportAt } from "./domain/canvas-space.mjs";
 import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, flipImageLayer, replaceImageLayer, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
+import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
@@ -952,6 +953,42 @@ adjustmentPresetButtons.forEach(button => {
       commitLayerAdjustments(layer.id, preset.values, preset.label + " preset applied");
     }
   });
+});
+
+
+const quickRecipeButtons=[...document.querySelectorAll("[data-quick-recipe]")];
+const quickRecipeStatus=document.querySelector("#quick-recipe-status");
+function runQuickEditRecipe(recipeId){
+ if(!quickRecipeStatus)return false;
+ try{
+  const result=applyQuickEditRecipe(state.document,recipeId,state.selectedLayerIds);
+  const before=cloneDocument(state.document);
+  state.document=result.document;
+  state.history.record(before,state.document);
+  refreshDocument(result.message);
+  persistDocument();
+  quickRecipeStatus.textContent=result.message;
+  quickRecipeStatus.dataset.state="ready";
+  return true;
+ }catch(error){
+  quickRecipeStatus.textContent=error.message||"Could not apply the quick-edit recipe.";
+  quickRecipeStatus.dataset.state="error";
+  status.textContent="Quick edit needs attention";
+  return false;
+ }
+}
+quickRecipeButtons.forEach(button=>button.addEventListener("click",()=>runQuickEditRecipe(button.dataset.quickRecipe)));
+document.addEventListener("keydown",event=>{
+ const target=event.target;
+ const editingText=target instanceof HTMLElement&&(target.isContentEditable||["INPUT","TEXTAREA","SELECT"].includes(target.tagName));
+ if(editingText||document.querySelector("dialog[open]"))return;
+ if(!(event.ctrlKey||event.metaKey)||!event.altKey||event.shiftKey)return;
+ const number=Number(event.key);
+ if(!Number.isInteger(number)||number<1||number>8)return;
+ const recipe=QUICK_EDIT_RECIPES[number-1];
+ if(!recipe)return;
+ event.preventDefault();
+ runQuickEditRecipe(recipe.id);
 });
 
 function getWorkingLayerText(layer) {
@@ -1959,7 +1996,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v8";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v9";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -1975,6 +2012,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/image-processing.mjs",
   "./domain/canvas-space.mjs",
   "./domain/layer-adjustments.mjs",
+  "./domain/quick-edit-recipes.mjs",
   "./domain/model.mjs",
   "./domain/text-layer.mjs",
   "./domain/png-export.mjs",
