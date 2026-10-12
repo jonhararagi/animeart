@@ -7,7 +7,7 @@ import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs"
 import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
-import { canvasToPngBlob, createPngExportCanvas, downloadPngBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
+import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d", { alpha: false });
@@ -34,6 +34,12 @@ const newDocumentButton = document.querySelector("#new-document");
 const recoverButton = document.querySelector("#recover-project");
 const saveButton = document.querySelector("#save");
 const exportPngButton = document.querySelector("#export-png");
+const exportFormatInput = document.querySelector("#export-format");
+const exportQualityControl = document.querySelector("#export-quality-control");
+const exportQualityInput = document.querySelector("#export-quality");
+const exportQualityValue = document.querySelector("#export-quality-value");
+const exportBackgroundControl = document.querySelector("#export-background-control");
+const exportBackgroundInput = document.querySelector("#export-background");
 const projectDialog = document.querySelector("#project-dialog");
 const projectForm = document.querySelector("#project-form");
 const widthInput = document.querySelector("#document-width");
@@ -1410,16 +1416,32 @@ saveButton.addEventListener("click", () => {
   persistDocument({ markSaved: true });
 });
 
+function syncExportFormatControls() {
+  const format = exportFormatInput.value;
+  const lossy = format === "jpeg" || format === "webp";
+  exportQualityControl.hidden = !lossy;
+  exportBackgroundControl.hidden = format !== "jpeg";
+  exportPngButton.textContent = "Export " + format.toUpperCase();
+  exportQualityValue.value = exportQualityInput.value + "%";
+  exportQualityValue.textContent = exportQualityInput.value + "%";
+}
+
 async function exportPng() {
   const documentBefore = JSON.stringify(state.document);
   const historyBeforeUndo = state.history.canUndo();
   const historyBeforeRedo = state.history.canRedo();
   exportPngButton.disabled = true;
-  status.textContent = "Exporting PNG…";
+  const format = exportFormatInput.value;\n  status.textContent = "Exporting " + format.toUpperCase() + "…";
   try {
     await ensureExportImages(state.document);
     const exportCanvas = createPngExportCanvas(state.document);
     renderDocumentToCanvas(state.document, exportCanvas, ({ context, document, center }) => {
+      if (format === "jpeg") {
+        context.save();
+        context.fillStyle = exportBackgroundInput.value || "#ffffff";
+        context.fillRect(-center.x, -center.y, document.width, document.height);
+        context.restore();
+      }
       drawDocument({
         context,
         document,
@@ -1427,14 +1449,15 @@ async function exportPng() {
         transformForLayer: layer => layer.transform
       });
     });
-    const blob = await canvasToPngBlob(exportCanvas);
-    downloadPngBlob(blob, "animeart.png");
+    const quality = Number(exportQualityInput.value) / 100;
+    const blob = await canvasToImageBlob(exportCanvas, format, quality);
+    downloadImageBlob(blob, "animeart." + format, format);
     if (JSON.stringify(state.document) !== documentBefore ||
         state.history.canUndo() !== historyBeforeUndo ||
         state.history.canRedo() !== historyBeforeRedo) {
       throw new Error("PNG export modified editor state");
     }
-    status.textContent = "PNG exported";
+    status.textContent = format.toUpperCase() + " exported";
   } catch (error) {
     status.textContent = error?.message || "PNG export failed";
   } finally {
@@ -1443,6 +1466,9 @@ async function exportPng() {
 }
 
 exportPngButton.addEventListener("click", exportPng);
+exportFormatInput.addEventListener("change", syncExportFormatControls);
+exportQualityInput.addEventListener("input", syncExportFormatControls);
+syncExportFormatControls();
 
 function ensureExportImages(document) {
   const pending = document.layers

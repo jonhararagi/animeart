@@ -35,7 +35,21 @@
       <button id="new-document">New</button>
       <button id="recover-project">Open / Recover</button>
       <button id="save">Save</button>
-      <button id="export-png">Exportar PNG</button>
+      <label class="export-format-control" for="export-format">Export format
+        <select id="export-format" aria-label="Export format">
+          <option value="png">PNG · transparent</option>
+          <option value="jpeg">JPEG · photo</option>
+          <option value="webp">WebP · compact</option>
+        </select>
+      </label>
+      <label id="export-quality-control" class="export-format-control" for="export-quality" hidden>Quality
+        <input id="export-quality" type="range" min="50" max="100" step="1" value="92">
+        <output id="export-quality-value">92%</output>
+      </label>
+      <label id="export-background-control" class="export-format-control" for="export-background" hidden>JPEG background
+        <input id="export-background" type="color" value="#ffffff">
+      </label>
+      <button id="export-png">Export image</button>
       <button id="clear">Clear</button>
       <span class="tool-group-label">Layer</span>
       <button data-transform="left" title="Move layer left">←</button>

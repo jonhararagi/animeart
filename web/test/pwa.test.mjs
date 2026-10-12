@@ -11,7 +11,7 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(html, /rel="manifest" href="\.\/manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\("\.\/service-worker\.js"\)/);
   assert.match(manifest, /"display": "standalone"/);
-  assert.match(worker, /animeart-web-shell-v3/);
+  assert.match(worker, /animeart-web-shell-v4/);
   assert.match(worker, /caches\.open/);
   assert.match(worker, /caches\.match/);
   assert.match(app, /layerAdjustmentsToCanvasFilter/);
@@ -20,4 +20,21 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.ok(worker.includes("./assets/cc0-detailed-anime-character.png.base64"));
   assert.ok(worker.includes("./assets/ASSET_SOURCES.md"));
   assert.doesNotMatch(app + worker, /DocumentManager|LayerManager|CanvasManager|RendererManager|ViewportManager|HistoryManager|PersistenceManager/);
+});
+
+
+test("export toolbar offers PNG, JPEG and WebP with quality and JPEG background controls", async () => {
+  const html = await readFile("index.html", "utf8");
+  const app = await readFile("app.js", "utf8");
+  const exporter = await readFile("domain/png-export.mjs", "utf8");
+  assert.match(html, /id="export-format"/);
+  assert.match(html, /value="png"/);
+  assert.match(html, /value="jpeg"/);
+  assert.match(html, /value="webp"/);
+  assert.match(html, /id="export-quality"/);
+  assert.match(html, /id="export-background"/);
+  assert.match(app, /canvasToImageBlob\(exportCanvas, format, quality\)/);
+  assert.match(app, /format === "jpeg"/);
+  assert.match(exporter, /export function canvasToImageBlob/);
+  assert.match(exporter, /export function downloadImageBlob/);
 });

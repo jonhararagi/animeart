@@ -1,0 +1,42 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { canvasToImageBlob, downloadImageBlob, createPngExportCanvas } from "../domain/png-export.mjs";
+
+test("export canvas rejects invalid document dimensions", () => {
+  assert.throws(() => createPngExportCanvas({ width: 0, height: 10 }, { createElement() {} }), /dimensions/i);
+});
+
+test("image encoder chooses requested format and bounds lossy quality", async () => {
+  const calls = [];
+  const canvas = {
+    toBlob(callback, type, quality) {
+      calls.push({ type, quality });
+      callback(new Blob(["image"], { type }));
+    }
+  };
+  const jpeg = await canvasToImageBlob(canvas, "jpeg", 1.4);
+  assert.equal(jpeg.type, "image/jpeg");
+  assert.deepEqual(calls[0], { type: "image/jpeg", quality: 1 });
+  const webp = await canvasToImageBlob(canvas, "webp", 0.1);
+  assert.equal(webp.type, "image/webp");
+  assert.deepEqual(calls[1], { type: "image/webp", quality: 0.5 });
+  const png = await canvasToImageBlob(canvas, "png");
+  assert.equal(png.type, "image/png");
+  assert.equal(calls[2].quality, undefined);
+});
+
+test("image encoder rejects unsupported formats and browsers that silently fall back to PNG", async () => {
+  await assert.rejects(() => canvasToImageBlob({}, "bmp"), /Unsupported export format/i);
+  await assert.rejects(() => canvasToImageBlob({
+    toBlob(callback) { callback(new Blob(["png"], { type: "image/png" })); }
+  }, "webp"), /does not support WEBP/i);
+});
+
+test("download names match the selected format", () => {
+  let clicked = false;
+  const documentObject = { createElement() { return { click() { clicked = true; } }; } };
+  const urlObject = { createObjectURL() { return "blob:test"; }, revokeObjectURL() {} };
+  const result = downloadImageBlob(new Blob(["jpeg"], { type: "image/jpeg" }), "my-art.png", "jpeg", urlObject, documentObject);
+  assert.equal(result.filename, "my-art.jpeg");
+  assert.equal(clicked, true);
+});
