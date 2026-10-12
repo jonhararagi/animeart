@@ -1194,6 +1194,26 @@ document.querySelector("#add-text-layer").addEventListener("click", () => {
   persistDocument();
 });
 
+document.querySelector("#add-sample-character").addEventListener("click", async event => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    const response = await fetch("./assets/cc0-detailed-anime-character.png.base64");
+    if (!response.ok) throw new Error("CC0 sample asset is unavailable");
+    const encoded = (await response.text()).replace(/\\s+/g, "");
+    if (!encoded.startsWith("iVBOR")) throw new Error("CC0 sample asset is not a valid PNG payload");
+    const binary = atob(encoded);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    const file = new File([bytes], "battleworn_knight.png", { type: "image/png" });
+    await importImageIntoEditor(file, "CC0 character sample added");
+  } catch (error) {
+    status.textContent = error?.message || "Could not load CC0 character sample";
+  } finally {
+    button.disabled = false;
+  }
+});
+
 async function importImageIntoEditor(file, message = "Image imported") {
   if (!file) return false;
   try {
