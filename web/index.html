@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#111318">
+  <meta name="theme-color" content="#0b0e14">
   <link rel="manifest" href="./manifest.webmanifest">
-  <title>AnimeArt Web</title>
+  <title>AnimeArt Studio | Image Editor</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -50,6 +50,25 @@
     <aside class="layers" aria-label="Layers">
       <h2>Layers</h2>
       <ol id="layers"></ol>
+      <section class="adjustment-panel" aria-labelledby="adjustments-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">NON-DESTRUCTIVE</p>
+            <h3 id="adjustments-title">Image adjustments</h3>
+          </div>
+          <button id="reset-layer-adjustments" class="quiet-button" type="button" disabled>Reset</button>
+        </div>
+        <p id="adjustment-layer-name" class="adjustment-layer-name">Select a layer to edit</p>
+        <div class="adjustment-presets" aria-label="Adjustment presets">
+          <button type="button" data-adjustment-preset="original" class="preset-button active">Original</button>
+          <button type="button" data-adjustment-preset="anime" class="preset-button">Anime</button>
+          <button type="button" data-adjustment-preset="cinematic" class="preset-button">Cinematic</button>
+          <button type="button" data-adjustment-preset="manga" class="preset-button">Manga</button>
+          <button type="button" data-adjustment-preset="dream" class="preset-button">Dream</button>
+        </div>
+        <div id="layer-adjustment-controls" class="adjustment-controls" aria-live="polite"></div>
+        <p class="adjustment-note">Effects stay editable, are saved with the project and are included in PNG export.</p>
+      </section>
     </aside>
   </main>
   <dialog id="project-dialog" aria-labelledby="project-dialog-title">
