@@ -256,7 +256,7 @@ function drawDocument({ context = ctx, document = state.document, center = docum
       context.font = `${previewText.fontWeight} ${previewText.fontSize}px ${fontFamily}`;
       const lineHeight=previewText.fontSize*1.2;context.lineJoin="round";context.miterLimit=2;
       context.shadowColor=previewText.shadowBlur>0?previewText.shadowColor:"transparent";context.shadowBlur=previewText.shadowBlur;context.shadowOffsetX=previewText.shadowOffsetX;context.shadowOffsetY=previewText.shadowOffsetY;
-      previewText.value.split("\n").forEach((line,index)=>{const y=previewText.y+index*lineHeight;if(previewText.outlineWidth>0){context.strokeStyle=previewText.outlineColor;context.lineWidth=previewText.outlineWidth*2;context.strokeText(line,previewText.x,y);}context.fillText(line,previewText.x,y);});
+      previewText.value.split("\n").forEach((line,index)=>{const y=previewText.y+index*lineHeight;if(previewText.outlineWidth>0){context.strokeStyle=previewText.outlineColor;context.lineWidth=previewText.outlineWidth*2;context.strokeText(line,previewText.x,y);}context.fillText(line, previewText.x, previewText.y + index * lineHeight);});
     } else {
       for (const stroke of layer.strokes) {
         if (stroke.points.length < 2) continue;
