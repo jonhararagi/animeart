@@ -329,6 +329,11 @@ try {
   const importedLayer = afterImport.at(-1);
   assert(importedLayer?.contentType === "image", "real browser image import creates an image layer");
   assert(importedLayer?.name === "e2e-fixture", "real browser image import preserves the image layer name");
+  await click('[aria-label="Select e2e-fixture"]');
+  await evaluate('(() => { const slider = document.querySelector("#adjustment-brightness"); slider.value = "125"; slider.dispatchEvent(new Event("input", { bubbles: true })); slider.dispatchEvent(new Event("change", { bubbles: true })); })()');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "e2e-fixture" && layer.adjustments?.brightness === 125)', 10000);
+  assert(await evaluate('document.querySelector("#adjustment-brightness").value === "125"'), "real browser previews a non-destructive image adjustment");
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "e2e-fixture" && layer.adjustments?.brightness === 125)'), "real browser persists the image adjustment in the existing project document");
 
   await click("#export-png");
   await waitFor('document.querySelector("#status").textContent !== "Exporting PNG…"', 10000);
