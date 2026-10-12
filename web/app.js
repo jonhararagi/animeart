@@ -1,8 +1,9 @@
-import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "./domain/model.mjs";
+import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
-import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerVisibility, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
+import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
@@ -17,6 +18,15 @@ const adjustmentLayerName = document.querySelector("#adjustment-layer-name");
 const layerAdjustmentControls = document.querySelector("#layer-adjustment-controls");
 const resetLayerAdjustmentsButton = document.querySelector("#reset-layer-adjustments");
 const adjustmentPresetButtons = [...document.querySelectorAll("[data-adjustment-preset]")];
+const textPanel = document.querySelector("#text-panel");
+const textContentInput = document.querySelector("#text-content");
+const textFontSizeInput = document.querySelector("#text-font-size");
+const textFontSizeValue = document.querySelector("#text-font-size-value");
+const textFontFamilyInput = document.querySelector("#text-font-family");
+const textFontWeightInput = document.querySelector("#text-font-weight");
+const textColorInput = document.querySelector("#text-color");
+const textAlignInput = document.querySelector("#text-align");
+const textLayerName = document.querySelector("#text-layer-name");
 const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
 const imageFileInput = document.querySelector("#image-file-input");
@@ -63,6 +73,7 @@ const state = {
   transformInteraction: null,
   multiTransformInteraction: null,
   adjustmentPreview: null,
+  textPreview: null,
   viewport: createViewport(),
   document: createDocument(),
   history: null,
@@ -163,6 +174,9 @@ function drawDocument({ context = ctx, document = state.document, center = canva
     const previewAdjustments = state.adjustmentPreview?.layerId === layer.id
       ? state.adjustmentPreview.values
       : layer.adjustments;
+    const previewText = state.textPreview?.layerId === layer.id
+      ? state.textPreview.values
+      : layer.text;
     context.filter = layerAdjustmentsToCanvasFilter(previewAdjustments);
     context.globalAlpha = layer.opacity;
     context.translate(transform.x, transform.y);
@@ -173,6 +187,18 @@ function drawDocument({ context = ctx, document = state.document, center = canva
 
     if (layer.contentType === "image") {
       drawImageLayer(layer, context);
+    } else if (layer.contentType === "text" && previewText) {
+      context.fillStyle = previewText.color;
+      context.textAlign = previewText.align;
+      context.textBaseline = "alphabetic";
+      const safeFamily = TEXT_FONT_FAMILIES.includes(previewText.fontFamily) ? previewText.fontFamily : "Arial";
+      const genericFamily = ["sans-serif", "serif", "monospace"].includes(safeFamily);
+      const fontFamily = genericFamily ? safeFamily : '"' + safeFamily.replace(/["\\]/g, "") + '"';
+      context.font = `${previewText.fontWeight} ${previewText.fontSize}px ${fontFamily}`;
+      const lineHeight = previewText.fontSize * 1.2;
+      previewText.value.split("\n").forEach((line, index) => {
+        context.fillText(line, previewText.x, previewText.y + index * lineHeight);
+      });
     } else {
       for (const stroke of layer.strokes) {
         if (stroke.points.length < 2) continue;
@@ -322,7 +348,7 @@ function renderLayers() {
     const selectButton = document.createElement("button");
     selectButton.type = "button";
     selectButton.className = "layer-select";
-    selectButton.textContent = layer.name + (layer.contentType === "image" ? (layer.isReference ? " [Reference]" : " [Image]") : "");
+    selectButton.textContent = layer.name + (layer.contentType === "image" ? (layer.isReference ? " [Reference]" : " [Image]") : layer.contentType === "text" ? " [Text]" : "");
     selectButton.setAttribute("aria-label", "Select " + layer.name);
     selectButton.addEventListener("click", event => {
       if (event.shiftKey) {
@@ -434,6 +460,7 @@ function renderLayers() {
     layersEl.appendChild(li);
   });
   renderLayerAdjustments();
+  renderLayerText();
 }
 
 function getWorkingLayerAdjustments(layer) {
@@ -483,7 +510,7 @@ function renderLayerAdjustments() {
   const disabled = !layer || layer.locked;
   const values = layer ? getWorkingLayerAdjustments(layer) : normalizeLayerAdjustments();
   adjustmentLayerName.textContent = layer
-    ? layer.name + " · " + (layer.contentType === "image" ? (layer.isReference ? "Reference image" : "Image layer") : "Drawing layer")
+    ? layer.name + " · " + (layer.contentType === "image" ? (layer.isReference ? "Reference image" : "Image layer") : layer.contentType === "text" ? "Text layer" : "Drawing layer")
     : "Select a layer to edit";
   resetLayerAdjustmentsButton.disabled = disabled;
   adjustmentPresetButtons.forEach(button => { button.disabled = disabled; });
@@ -547,6 +574,100 @@ adjustmentPresetButtons.forEach(button => {
       commitLayerAdjustments(layer.id, preset.values, preset.label + " preset applied");
     }
   });
+});
+
+function getWorkingLayerText(layer) {
+  if (state.textPreview?.layerId === layer?.id) return state.textPreview.values;
+  return normalizeTextLayer(layer?.text);
+}
+
+function renderLayerText() {
+  if (!textPanel) return;
+  const layer = selectedLayerExact();
+  const isText = layer?.contentType === "text";
+  textPanel.hidden = !isText;
+  if (!isText) {
+    state.textPreview = null;
+    return;
+  }
+
+  const values = getWorkingLayerText(layer);
+  const disabled = layer.locked;
+  textLayerName.textContent = layer.name;
+  textContentInput.value = values.value;
+  textFontSizeInput.value = String(values.fontSize);
+  textFontSizeValue.textContent = values.fontSize + " px";
+  textFontFamilyInput.value = values.fontFamily;
+  textFontWeightInput.value = values.fontWeight;
+  textColorInput.value = values.color;
+  textAlignInput.value = values.align;
+  for (const input of [textContentInput, textFontSizeInput, textFontFamilyInput, textFontWeightInput, textColorInput, textAlignInput]) {
+    input.disabled = disabled;
+  }
+  textFontSizeInput.setAttribute("aria-label", "Font size for " + layer.name);
+  textContentInput.setAttribute("aria-label", "Text content for " + layer.name);
+}
+
+function updateTextPreview(patch) {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "text" || layer.locked) return;
+  state.textPreview = {
+    layerId: layer.id,
+    values: normalizeTextLayer({ ...getWorkingLayerText(layer), ...patch })
+  };
+  redraw();
+}
+
+function commitLayerText(layerId, textValues, message = "Text style updated") {
+  const layer = state.document.layers.find(item => item.id === layerId);
+  const normalized = normalizeTextLayer(textValues);
+  state.textPreview = null;
+  if (!layer || layer.contentType !== "text" || layer.locked || JSON.stringify(layer.text) === JSON.stringify(normalized)) {
+    redraw();
+    renderLayerText();
+    return false;
+  }
+
+  const before = cloneDocument(state.document);
+  const next = setLayerText(state.document, layerId, normalized);
+  if (!next) {
+    redraw();
+    return false;
+  }
+  state.document = next;
+  state.history.record(before, next);
+  refreshDocument(message);
+  persistDocument();
+  return true;
+}
+
+function commitTextPreview(message = "Text style updated") {
+  const preview = state.textPreview;
+  if (!preview) return false;
+  return commitLayerText(preview.layerId, preview.values, message);
+}
+
+textContentInput.addEventListener("input", () => updateTextPreview({ value: textContentInput.value }));
+textContentInput.addEventListener("change", () => commitTextPreview("Text content updated"));
+textFontSizeInput.addEventListener("input", () => {
+  const fontSize = Number(textFontSizeInput.value);
+  textFontSizeValue.textContent = fontSize + " px";
+  updateTextPreview({ fontSize });
+});
+textFontSizeInput.addEventListener("change", () => commitTextPreview("Text size updated"));
+textFontFamilyInput.addEventListener("change", () => {
+  updateTextPreview({ fontFamily: textFontFamilyInput.value });
+  commitTextPreview("Text font updated");
+});
+textFontWeightInput.addEventListener("change", () => {
+  updateTextPreview({ fontWeight: textFontWeightInput.value });
+  commitTextPreview("Text weight updated");
+});
+textColorInput.addEventListener("input", () => updateTextPreview({ color: textColorInput.value }));
+textColorInput.addEventListener("change", () => commitTextPreview("Text color updated"));
+textAlignInput.addEventListener("change", () => {
+  updateTextPreview({ align: textAlignInput.value });
+  commitTextPreview("Text alignment updated");
 });
 
 function setStorageRecoveryPending(pending, message = "") {
@@ -1048,6 +1169,31 @@ document.querySelector("#add-layer").addEventListener("click", () => {
   persistDocument();
 });
 
+document.querySelector("#add-text-layer").addEventListener("click", () => {
+  const index = state.document.layers.filter(layer => layer.contentType === "text").length + 1;
+  const width = Math.max(300, state.document.width || canvas.width || 300);
+  const height = Math.max(180, state.document.height || canvas.height || 180);
+  const layer = createTextLayer("Text " + index, {
+    value: "Your text",
+    x: Math.round(width * 0.12),
+    y: Math.round(height * 0.5),
+    fontSize: Math.max(24, Math.min(64, Math.round(height * 0.1))),
+    fontFamily: "Arial",
+    fontWeight: "bold",
+    color: "#172335",
+    align: "left"
+  });
+  const before = cloneDocument(state.document);
+  const next = addLayer(state.document, layer);
+  if (!next) return;
+  state.document = next;
+  state.textPreview = null;
+  setSelection([layer.id], layer.id);
+  state.history.record(before, next);
+  refreshDocument("Text layer added");
+  persistDocument();
+});
+
 async function importImageIntoEditor(file, message = "Image imported") {
   if (!file) return false;
   try {
@@ -1153,7 +1299,7 @@ document.querySelectorAll("[data-transform]").forEach(button => {
 
 document.querySelector("#clear").addEventListener("click", () => {
   const layer = selectedLayer();
-  if (!layer || layer.locked || layer.contentType === "image" || layer.strokes.length === 0) return;
+  if (!layer || layer.locked || layer.contentType !== "drawing" || layer.strokes.length === 0) return;
   const before = cloneDocument(state.document);
   const next = clearLayer(state.document, layer.id);
   if (!next) return;
@@ -1359,6 +1505,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/image-input.mjs",
   "./domain/layer-adjustments.mjs",
   "./domain/model.mjs",
+  "./domain/text-layer.mjs",
   "./domain/png-export.mjs",
   "./domain/selection.mjs",
   "./domain/viewport.mjs"
