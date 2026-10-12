@@ -135,13 +135,29 @@
     <form id="image-edit-form" method="dialog">
       <h2 id="image-edit-title">Crop / Resize Image</h2>
       <p id="image-edit-source-size" class="image-edit-source-size">Select an image layer first.</p>
+      <section class="crop-preview-workspace" aria-label="Visual crop selection">
+        <canvas id="crop-preview" aria-label="Drag to select image crop"></canvas>
+        <p id="crop-preview-hint">Drag across the image to choose the crop area. Fine-tune pixel values below.</p>
+      </section>
       <fieldset class="image-edit-mode">
         <legend>Operation</legend>
         <label><input type="radio" name="image-edit-mode" value="crop" checked> Crop pixels</label>
         <label><input type="radio" name="image-edit-mode" value="resize"> Resize pixels</label>
       </fieldset>
       <section id="image-crop-fields" class="image-edit-fields">
-        <p>Crop coordinates are measured from the top-left of the selected image.</p>
+        <p>Drag directly on the image or enter exact pixel coordinates.</p>
+        <label class="image-crop-aspect-field" for="image-crop-aspect">Crop ratio
+          <select id="image-crop-aspect">
+            <option value="">Free selection</option>
+            <option value="1">Square · 1:1</option>
+            <option value="0.8">Portrait · 4:5</option>
+            <option value="1.25">Landscape · 5:4</option>
+            <option value="1.5">Photo · 3:2</option>
+            <option value="0.6666666667">Portrait · 2:3</option>
+            <option value="1.7777777778">Wide · 16:9</option>
+            <option value="0.5625">Story · 9:16</option>
+          </select>
+        </label>
         <div class="image-edit-grid">
           <label for="image-crop-x">Left (X)<input id="image-crop-x" type="number" min="0" step="1" value="0" required></label>
           <label for="image-crop-y">Top (Y)<input id="image-crop-y" type="number" min="0" step="1" value="0" required></label>

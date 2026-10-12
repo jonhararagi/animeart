@@ -43,11 +43,16 @@ const imageCropX = document.querySelector("#image-crop-x");
 const imageCropY = document.querySelector("#image-crop-y");
 const imageCropWidth = document.querySelector("#image-crop-width");
 const imageCropHeight = document.querySelector("#image-crop-height");
+const cropPreviewCanvas = document.querySelector("#crop-preview");
+const cropPreviewHint = document.querySelector("#crop-preview-hint");
+const cropAspectInput = document.querySelector("#image-crop-aspect");
 const imageResizeWidth = document.querySelector("#image-resize-width");
 const imageResizeHeight = document.querySelector("#image-resize-height");
 const imageResizeKeepAspect = document.querySelector("#image-resize-keep-aspect");
 let imageEditLayerId = null;
 let imageEditOriginalSize = null;
+let imageEditPreviewImage = null;
+let cropPreviewDrag = null;
 const newDocumentButton = document.querySelector("#new-document");
 const recoverButton = document.querySelector("#recover-project");
 const exportProjectButton = document.querySelector("#export-project");
@@ -500,6 +505,144 @@ function renderLayers() {
   refreshImageEditButton();
 }
 
+function cropPreviewClamp(value, maximum) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  return Math.min(maximum, Math.max(0, number));
+}
+
+function cropPreviewPoint(event) {
+  if (!imageEditOriginalSize) return null;
+  const bounds = cropPreviewCanvas.getBoundingClientRect();
+  if (bounds.width <= 0 || bounds.height <= 0) return null;
+  return {
+    x: Math.round(cropPreviewClamp((event.clientX - bounds.left) / bounds.width * imageEditOriginalSize.width, imageEditOriginalSize.width)),
+    y: Math.round(cropPreviewClamp((event.clientY - bounds.top) / bounds.height * imageEditOriginalSize.height, imageEditOriginalSize.height))
+  };
+}
+
+function updateCropInputs(rectangle) {
+  imageCropX.value = String(rectangle.x);
+  imageCropY.value = String(rectangle.y);
+  imageCropWidth.value = String(rectangle.width);
+  imageCropHeight.value = String(rectangle.height);
+}
+
+function drawCropPreview() {
+  if (!cropPreviewCanvas || !imageEditPreviewImage?.complete ||
+      imageEditPreviewImage.naturalWidth < 1 || !imageEditOriginalSize) return;
+  const sourceWidth = imageEditOriginalSize.width;
+  const sourceHeight = imageEditOriginalSize.height;
+  const previewScale = Math.min(1, 720 / sourceWidth, 420 / sourceHeight);
+  const width = Math.max(1, Math.round(sourceWidth * previewScale));
+  const height = Math.max(1, Math.round(sourceHeight * previewScale));
+  if (cropPreviewCanvas.width !== width) cropPreviewCanvas.width = width;
+  if (cropPreviewCanvas.height !== height) cropPreviewCanvas.height = height;
+  const context = cropPreviewCanvas.getContext("2d");
+  if (!context) return;
+  context.clearRect(0, 0, width, height);
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(imageEditPreviewImage, 0, 0, width, height);
+  if (currentImageEditMode() !== "crop") return;
+
+  const left = cropPreviewClamp(imageCropX.value, sourceWidth) / sourceWidth * width;
+  const top = cropPreviewClamp(imageCropY.value, sourceHeight) / sourceHeight * height;
+  const right = cropPreviewClamp(Number(imageCropX.value) + Number(imageCropWidth.value), sourceWidth) / sourceWidth * width;
+  const bottom = cropPreviewClamp(Number(imageCropY.value) + Number(imageCropHeight.value), sourceHeight) / sourceHeight * height;
+  context.fillStyle = "rgba(5, 9, 15, 0.62)";
+  context.fillRect(0, 0, width, Math.max(0, top));
+  context.fillRect(0, bottom, width, Math.max(0, height - bottom));
+  context.fillRect(0, top, Math.max(0, left), Math.max(0, bottom - top));
+  context.fillRect(right, top, Math.max(0, width - right), Math.max(0, bottom - top));
+
+  if (right - left < 1 || bottom - top < 1) return;
+  context.strokeStyle = "#f5fbff";
+  context.lineWidth = 2;
+  context.strokeRect(left + 1, top + 1, Math.max(0, right - left - 2), Math.max(0, bottom - top - 2));
+  context.strokeStyle = "rgba(255,255,255,0.58)";
+  context.lineWidth = 1;
+  for (const fraction of [1 / 3, 2 / 3]) {
+    context.beginPath();
+    context.moveTo(left + (right - left) * fraction, top);
+    context.lineTo(left + (right - left) * fraction, bottom);
+    context.moveTo(left, top + (bottom - top) * fraction);
+    context.lineTo(right, top + (bottom - top) * fraction);
+    context.stroke();
+  }
+}
+
+function applyCropAspectPreset() {
+  if (!imageEditOriginalSize) return;
+  const ratio = Number(cropAspectInput.value);
+  if (!Number.isFinite(ratio) || ratio <= 0) {
+    drawCropPreview();
+    return;
+  }
+  const sourceWidth = imageEditOriginalSize.width;
+  const sourceHeight = imageEditOriginalSize.height;
+  let width = sourceWidth;
+  let height = sourceHeight;
+  if (sourceWidth / sourceHeight > ratio) width = Math.max(1, Math.floor(sourceHeight * ratio));
+  else height = Math.max(1, Math.floor(sourceWidth / ratio));
+  updateCropInputs({
+    x: Math.floor((sourceWidth - width) / 2),
+    y: Math.floor((sourceHeight - height) / 2),
+    width,
+    height
+  });
+  drawCropPreview();
+}
+
+function cropDragRectangle(start, current) {
+  const sourceWidth = imageEditOriginalSize.width;
+  const sourceHeight = imageEditOriginalSize.height;
+  const dx = current.x - start.x;
+  const dy = current.y - start.y;
+  let width = Math.abs(dx);
+  let height = Math.abs(dy);
+  const ratio = Number(cropAspectInput.value);
+  const fixedRatio = Number.isFinite(ratio) && ratio > 0;
+  if (fixedRatio) {
+    if (width === 0 && height === 0) {
+      width = 1;
+      height = 1 / ratio;
+    } else if (width > height * ratio) {
+      height = width / ratio;
+    } else {
+      width = height * ratio;
+    }
+    const maxWidth = dx < 0 ? start.x : sourceWidth - start.x;
+    const maxHeight = dy < 0 ? start.y : sourceHeight - start.y;
+    const factor = Math.min(1, maxWidth / Math.max(width, 1), maxHeight / Math.max(height, 1));
+    width *= factor;
+    height *= factor;
+  }
+  width = Math.max(1, Math.floor(width));
+  height = Math.max(1, Math.floor(height));
+  if (fixedRatio) {
+    if (width / height > ratio) width = Math.max(1, Math.floor(height * ratio));
+    else height = Math.max(1, Math.floor(width / ratio));
+  }
+  width = Math.min(width, sourceWidth);
+  height = Math.min(height, sourceHeight);
+  const x = Math.max(0, Math.min(sourceWidth - width, dx < 0 ? start.x - width : start.x));
+  const y = Math.max(0, Math.min(sourceHeight - height, dy < 0 ? start.y - height : start.y));
+  return { x, y, width, height };
+}
+
+function loadCropPreview(source) {
+  imageEditPreviewImage = new Image();
+  imageEditPreviewImage.onload = () => {
+    if (cropPreviewHint) cropPreviewHint.textContent = "Drag on the image to choose a crop. The exact pixel rectangle is editable below.";
+    drawCropPreview();
+  };
+  imageEditPreviewImage.onerror = () => {
+    if (cropPreviewHint) cropPreviewHint.textContent = "Preview unavailable. The pixel fields can still be used.";
+  };
+  imageEditPreviewImage.src = source;
+}
+
 function refreshImageEditButton() {
   if (!cropResizeButton) return;
   const layer = selectedLayerExact();
@@ -517,6 +660,7 @@ function syncImageEditMode() {
   imageCropFields.hidden = resize;
   imageResizeFields.hidden = !resize;
   document.querySelector("#apply-image-edit").textContent = resize ? "Resize image" : "Crop image";
+  drawCropPreview();
 }
 
 function syncAspectRatioFromWidth() {
@@ -544,15 +688,55 @@ cropResizeButton.addEventListener("click", () => {
   imageCropWidth.value = String(layer.image.width); imageCropHeight.value = String(layer.image.height);
   imageResizeWidth.value = String(layer.image.width); imageResizeHeight.value = String(layer.image.height);
   imageResizeKeepAspect.checked = true;
+  cropAspectInput.value = "";
   document.querySelector('input[name="image-edit-mode"][value="crop"]').checked = true;
+  loadCropPreview(layer.image.source);
   syncImageEditMode();
   imageEditDialog.showModal();
+  drawCropPreview();
 });
 
 document.querySelector("#cancel-image-edit").addEventListener("click", () => imageEditDialog.close());
+imageEditDialog.addEventListener("close", () => {
+  cropPreviewDrag = null;
+  if (imageEditPreviewImage) {
+    imageEditPreviewImage.onload = null;
+    imageEditPreviewImage.onerror = null;
+  }
+  imageEditPreviewImage = null;
+});
 document.querySelectorAll('input[name="image-edit-mode"]').forEach(input => input.addEventListener("change", syncImageEditMode));
 imageResizeWidth.addEventListener("input", syncAspectRatioFromWidth);
 imageResizeHeight.addEventListener("input", syncAspectRatioFromHeight);
+cropAspectInput.addEventListener("change", applyCropAspectPreset);
+for (const input of [imageCropX, imageCropY, imageCropWidth, imageCropHeight]) {
+  input.addEventListener("input", drawCropPreview);
+}
+
+cropPreviewCanvas.addEventListener("pointerdown", event => {
+  if (currentImageEditMode() !== "crop" || !imageEditPreviewImage || !imageEditOriginalSize) return;
+  const point = cropPreviewPoint(event);
+  if (!point) return;
+  event.preventDefault();
+  cropPreviewDrag = { pointerId: event.pointerId, start: point };
+  cropPreviewCanvas.setPointerCapture(event.pointerId);
+  updateCropInputs({ x: point.x, y: point.y, width: 1, height: 1 });
+  drawCropPreview();
+});
+cropPreviewCanvas.addEventListener("pointermove", event => {
+  if (!cropPreviewDrag || cropPreviewDrag.pointerId !== event.pointerId) return;
+  const point = cropPreviewPoint(event);
+  if (!point) return;
+  updateCropInputs(cropDragRectangle(cropPreviewDrag.start, point));
+  drawCropPreview();
+});
+function finishCropPreviewDrag(event) {
+  if (!cropPreviewDrag || cropPreviewDrag.pointerId !== event.pointerId) return;
+  cropPreviewDrag = null;
+  if (cropPreviewCanvas.hasPointerCapture(event.pointerId)) cropPreviewCanvas.releasePointerCapture(event.pointerId);
+}
+cropPreviewCanvas.addEventListener("pointerup", finishCropPreviewDrag);
+cropPreviewCanvas.addEventListener("pointercancel", finishCropPreviewDrag);
 
 imageEditForm.addEventListener("submit", async event => {
   event.preventDefault();
@@ -1722,7 +1906,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v7";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v8";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",

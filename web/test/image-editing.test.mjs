@@ -102,3 +102,17 @@ test("aspect-locked resize preserves the image position under the document-cente
   assert.ok(Math.abs(oldCenter.y - newCenter.y) < 1e-9);
   assert.equal(resized.transform.scale, 0.75);
 });
+
+
+test("crop editor provides direct visual selection and common photo aspect ratios", async () => {
+  const html = await readFile("index.html", "utf8");
+  const app = await readFile("app.js", "utf8");
+  assert.match(html, /id="crop-preview"/);
+  assert.match(html, /id="image-crop-aspect"/);
+  assert.match(html, /value="0\.8"/);
+  assert.match(html, /value="1\.7777777778"/);
+  assert.match(app, /cropPreviewCanvas\.addEventListener\("pointerdown"/);
+  assert.match(app, /cropPreviewCanvas\.addEventListener\("pointermove"/);
+  assert.match(app, /function applyCropAspectPreset/);
+  assert.match(app, /function drawCropPreview/);
+});

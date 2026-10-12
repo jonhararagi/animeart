@@ -363,8 +363,21 @@ try {
   // Exercise actual raster edits, history and aspect preservation in Chromium.
   await click("#crop-resize-image");
   await waitFor('document.querySelector("#image-edit-dialog").open === true');
+  await waitFor('document.querySelector("#crop-preview").width > 1', 15000);
   assert(await evaluate('document.querySelector("#image-crop-width").value === "944" && document.querySelector("#image-crop-height").value === "944"'), "crop dialog reads the selected image dimensions");
-  await evaluate('(() => { document.querySelector("#image-crop-x").value = "5"; document.querySelector("#image-crop-y").value = "7"; document.querySelector("#image-crop-width").value = "400"; document.querySelector("#image-crop-height").value = "500"; })()');
+  assert(await evaluate('document.querySelector("#crop-preview").height > 1'), "crop dialog renders an actual image preview");
+  const cropPreviewBounds = await evaluate('(() => { const r = document.querySelector("#crop-preview").getBoundingClientRect(); return { left:r.left, top:r.top, width:r.width, height:r.height }; })()');
+  await mouseDrag(
+    { x: cropPreviewBounds.left + cropPreviewBounds.width * 0.15, y: cropPreviewBounds.top + cropPreviewBounds.height * 0.15 },
+    { x: cropPreviewBounds.left + cropPreviewBounds.width * 0.42, y: cropPreviewBounds.top + cropPreviewBounds.height * 0.35 }
+  );
+  const drawnCrop = await evaluate('(() => ({ x:Number(document.querySelector("#image-crop-x").value), y:Number(document.querySelector("#image-crop-y").value), width:Number(document.querySelector("#image-crop-width").value), height:Number(document.querySelector("#image-crop-height").value) }))()');
+  assert(drawnCrop.width > 1 && drawnCrop.height > 1 && drawnCrop.x >= 0 && drawnCrop.y >= 0, "dragging the preview creates a real pixel crop selection");
+  await evaluate('(() => { const ratio = document.querySelector("#image-crop-aspect"); ratio.value = "0.8"; ratio.dispatchEvent(new Event("change", { bubbles: true })); })()');
+  assert(await evaluate('document.querySelector("#image-crop-width").value === "755" && document.querySelector("#image-crop-height").value === "944" && document.querySelector("#image-crop-x").value === "94"'), "4:5 aspect preset computes a centered crop within image bounds");
+  await evaluate('(() => { const ratio = document.querySelector("#image-crop-aspect"); ratio.value = ""; ratio.dispatchEvent(new Event("change", { bubbles: true })); })()');
+  await saveScreenshot("animeart-studio-crop-preview.png");
+  await evaluate('(() => { for (const [id,value] of [["#image-crop-x","5"],["#image-crop-y","7"],["#image-crop-width","400"],["#image-crop-height","500"]]) { const input=document.querySelector(id); input.value=value; input.dispatchEvent(new Event("input",{bubbles:true})); } })()');
   await click("#apply-image-edit");
   await waitFor('document.querySelector("#status").textContent === "Image cropped"', 15000);
   let croppedSample = (await readDocument()).layers.find(layer => layer.name === "battleworn_knight");
