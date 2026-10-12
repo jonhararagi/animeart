@@ -911,28 +911,6 @@ backgroundManualEraseInput.addEventListener("change", () => {
   drawBackgroundRemovalPreview();
 });
 backgroundEraseSizeInput.addEventListener("input", drawBackgroundRemovalPreview);
-function applyBackgroundManualStrokes(canvasElement, strokes) {
-  if (!strokes.length) return;
-  const context = canvasElement.getContext("2d");
-  context.save();
-  context.globalCompositeOperation = "destination-out";
-  context.lineCap = "round";
-  context.lineJoin = "round";
-  for (const stroke of strokes) {
-    if (!stroke.points.length) continue;
-    context.beginPath();
-    context.arc(stroke.points[0].x, stroke.points[0].y, stroke.size / 2, 0, Math.PI * 2);
-    context.fill();
-    if (stroke.points.length > 1) {
-      context.beginPath();
-      context.moveTo(stroke.points[0].x, stroke.points[0].y);
-      for (const point of stroke.points.slice(1)) context.lineTo(point.x, point.y);
-      context.lineWidth = stroke.size;
-      context.stroke();
-    }
-  }
-  context.restore();
-}
 function backgroundPreviewPoint(event) {
   const rect = backgroundPreviewCanvas.getBoundingClientRect();
   if (!rect.width || !rect.height || !backgroundRemovalSourceCanvas) return null;
