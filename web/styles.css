@@ -313,3 +313,7 @@ canvas {
 .background-removal-controls output { color: #8bd9e8; }
 #background-pick-color { align-self: end; }
 @media (max-width: 620px) { .toolbar > #remove-background { grid-column: span 2; text-align: center; padding: 7px 4px; } #remove-background-dialog { padding: 14px; } .background-removal-controls { grid-template-columns: minmax(0,1fr); } }
+
+.background-manual-toggle { grid-column: 1 / -1; display: flex !important; align-items: center; gap: 9px !important; padding: 10px; border: 1px solid #344155; border-radius: 8px; background: #101722; }
+.background-manual-toggle input { accent-color: var(--accent-strong); }
+#background-preview { touch-action: none; }
