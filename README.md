@@ -5,7 +5,7 @@ AnimeArt is a local-first **image editor**, inspired by everyday editors such as
 ## Web editing tools
 
 - Create documents with explicit pixel dimensions.
-- Import images from the file picker, drag-and-drop, and clipboard paste.
+- Import images up to 25 MB from the file picker, drag-and-drop, and clipboard paste. Large sources are optimized locally to fit the browser project-storage budget; raster imports are capped at 8192 px per side and 32 megapixels.
 - Draw with brush and eraser; configure color, size and opacity.
 - Manage layers: create, select, rename, duplicate, delete, reorder, hide, lock and set opacity.
 - Move, scale, rotate and mirror image layers horizontally or vertically.
