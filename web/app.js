@@ -90,6 +90,8 @@ const ADJUSTMENT_CONTROL_DEFS = Object.freeze([
   { key: "contrast", label: "Contrast", min: 0, max: 200, step: 1 },
   { key: "saturation", label: "Saturation", min: 0, max: 200, step: 1 },
   { key: "hue", label: "Hue", min: -180, max: 180, step: 1 },
+  { key: "temperature", label: "Warm / Cool", min: -100, max: 100, step: 1 },
+  { key: "tint", label: "Color Cast", min: -100, max: 100, step: 1 },
   { key: "blur", label: "Blur", min: 0, max: 20, step: 0.1 }
 ]);
 

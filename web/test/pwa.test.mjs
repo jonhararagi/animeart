@@ -106,3 +106,12 @@ test("mystic brush palette selects real brush colors without creating image asse
   assert.match(html, /data-brush-color="#ff4fd8"/);
   assert.match(app, /setBrushColor\(button\.dataset\.brushColor\)/);
 });
+
+test("color temperature and tint controls are exposed in the adjustment inspector", async () => {
+  const app = await readFile("app.js", "utf8");
+  const adjustments = await readFile("domain/layer-adjustments.mjs", "utf8");
+  assert.match(app, /key: "temperature", label: "Warm \/ Cool"/);
+  assert.match(app, /key: "tint", label: "Color Cast"/);
+  assert.match(adjustments, /sepia\(/);
+  assert.match(adjustments, /hue-rotate\(/);
+});
