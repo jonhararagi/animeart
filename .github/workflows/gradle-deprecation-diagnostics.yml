@@ -1,0 +1,119 @@
+name: Gradle Deprecation Diagnostics
+
+on:
+  push:
+    branches: ["gradle-maint-003-deprecation-diagnostics"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostics:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout diagnostic HEAD
+        uses: actions/checkout@v7
+        with:
+          ref: gradle-maint-003-deprecation-diagnostics
+          path: head
+
+      - name: Checkout GRADLE-MAINT-002 base
+        uses: actions/checkout@v7
+        with:
+          ref: c8b1c7994fba9960de94a27b77027dca84c9f424
+          path: baseline
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle 8.14.5 for baseline comparison and cache
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.14.5"
+
+      - name: Record environment and source revisions
+        shell: bash
+        run: |
+          mkdir -p diagnostic-logs
+          {
+            echo "Diagnostic HEAD:"
+            git -C head rev-parse HEAD
+            echo "Baseline:"
+            git -C baseline rev-parse HEAD
+            echo "Java:"
+            java -version
+            echo "Gradle available for baseline:"
+            gradle --version
+            echo "Wrapper version for diagnostic HEAD:"
+            cd head && ./gradlew --version
+          } 2>&1 | tee diagnostic-logs/environment.log
+
+      - name: Run HEAD tasks with all Gradle warnings
+        shell: bash
+        run: |
+          set +e
+          cd head
+          for task in assembleDebug test lintDebug; do
+            log="../diagnostic-logs/head-${task}.log"
+            mkdir -p ../diagnostic-logs
+            echo "=== HEAD task: ${task} ===" | tee "$log"
+            set -o pipefail
+            ./gradlew "$task" --warning-mode all --console=plain 2>&1 | tee -a "$log"
+            rc=${PIPESTATUS[0]}
+            printf '%s\n' "$rc" > "../diagnostic-logs/head-${task}.exit-code"
+            echo "EXIT_CODE=${rc}" | tee -a "$log"
+            set +o pipefail
+          done
+          exit 0
+
+      - name: Run baseline tasks with Gradle 8.14.5 and all warnings
+        shell: bash
+        run: |
+          set +e
+          cd baseline
+          for task in assembleDebug test lintDebug; do
+            log="../diagnostic-logs/baseline-${task}.log"
+            mkdir -p ../diagnostic-logs
+            echo "=== BASELINE task: ${task} ===" | tee "$log"
+            set -o pipefail
+            gradle "$task" --warning-mode all --console=plain 2>&1 | tee -a "$log"
+            rc=${PIPESTATUS[0]}
+            printf '%s\n' "$rc" > "../diagnostic-logs/baseline-${task}.exit-code"
+            echo "EXIT_CODE=${rc}" | tee -a "$log"
+            set +o pipefail
+          done
+          exit 0
+
+      - name: Upload complete diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gradle-deprecation-diagnostics-${{ github.sha }}
+          path: diagnostic-logs/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Summarize task exit codes
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Gradle deprecation diagnostic results"
+            echo
+            echo "| Revision | Task | Exit code |"
+            echo "|---|---|---:|"
+            for revision in head baseline; do
+              for task in assembleDebug test lintDebug; do
+                code="not-run"
+                if [[ -f "diagnostic-logs/${revision}-${task}.exit-code" ]]; then
+                  code="$(cat "diagnostic-logs/${revision}-${task}.exit-code")"
+                fi
+                echo "| ${revision} | ${task} | ${code} |"
+              done
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
