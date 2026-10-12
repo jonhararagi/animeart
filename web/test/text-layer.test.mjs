@@ -24,7 +24,13 @@ test("text layer normalizes bounded typography and rejects unsafe font or color 
     fontFamily: "Arial",
     fontWeight: "bold",
     color: "#172335",
-    align: "left"
+    align: "left",
+    outlineColor: "#ffffff",
+    outlineWidth: 0,
+    shadowColor: "#000000",
+    shadowBlur: 0,
+    shadowOffsetX: 0,
+    shadowOffsetY: 0
   });
   assert.equal(isValidTextLayer(normalizeTextLayer({ value: "AnimeArt", fontSize: 36 })), true);
   assert.equal(isValidTextLayer({ ...normalizeTextLayer(), color: "red" }), false);
