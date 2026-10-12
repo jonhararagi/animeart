@@ -20,13 +20,20 @@ AnimeArt is a local-first **image editor**, inspired by everyday editors such as
 
 The editor uses the existing Document, Layer, Canvas renderer, History, storage and export boundaries. Images and projects remain in the browser unless the user explicitly exports them. No remote image-generation service is part of the editor workflow.
 
-## Build and test
-
-Web:
+## Run the Web editor
 
 ```sh
 cd web
 npm install
+npm run dev
+```
+
+Open **http://127.0.0.1:4173/**. The local server serves the editor directly from the source folder; it does not upload your images or projects anywhere. Set `PORT` to use another port.
+
+## Build and test
+
+```sh
+cd web
 npm run build
 npm test
 ```
