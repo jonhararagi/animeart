@@ -39,9 +39,14 @@ Web:
     npm run build
     npm test
 
-Android:
+Android (Java 17 required; the checked-in Gradle Wrapper pins Gradle 8.14.5 and verifies the official distribution SHA-256):
 
-    gradle assembleDebug
-    gradle test
+    ./gradlew --version
+    ./gradlew assembleDebug
+    ./gradlew test
+    ./gradlew lintDebug
+    ./gradlew connectedDebugAndroidTest
+
+The Wrapper downloads its pinned Gradle distribution on first use; a global Gradle installation is not required. On Windows, use `gradlew.bat` with the same task names.
 
 See `docs/CONTINUITY.md` for the authoritative project handoff and CI evidence.
