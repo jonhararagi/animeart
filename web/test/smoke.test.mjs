@@ -447,9 +447,9 @@ test("image crop and resize stay on the existing image-layer, history and persis
 
 test("Android WebView fallback clears adjustment controls without requiring replaceChildren", async () => {
   const js = await readFile("app.js", "utf8");
-  assert.match(js, /function clearElementChildren\\(element\\)/);
-  assert.match(js, /typeof element\\.replaceChildren === "function"/);
-  assert.match(js, /while \\(element\\.firstChild\\) element\\.removeChild\\(element\\.firstChild\\)/);
-  assert.match(js, /clearElementChildren\\(layerAdjustmentControls\\)/);
-  assert.doesNotMatch(js, /layerAdjustmentControls\\.replaceChildren\\(\\)/);
+  assert.ok(js.includes("function clearElementChildren(element)"));
+  assert.ok(js.includes('typeof element.replaceChildren === "function"'));
+  assert.ok(js.includes("while (element.firstChild) element.removeChild(element.firstChild)"));
+  assert.ok(js.includes("clearElementChildren(layerAdjustmentControls)"));
+  assert.ok(!js.includes("layerAdjustmentControls.replaceChildren()"));
 });
