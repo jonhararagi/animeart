@@ -40,6 +40,8 @@ test("web editor has canvas, local persistence, and history controls", async () 
   const js = await readFile("app.js", "utf8");
   assert.match(js, /getContext/);
   assert.match(html, /id="add-text-layer"/);
+  assert.match(html, /id="add-sample-character"/);
+  assert.match(js, /CC0 character sample added/);
   assert.match(js, /createTextLayer/);
   assert.match(js, /setLayerText/);
   assert.match(js, /localStorage/);
