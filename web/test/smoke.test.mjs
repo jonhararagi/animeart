@@ -120,8 +120,8 @@ test("visual transform drag previews until pointerup and pointercancel clears it
 
 test("selection remains on existing Screen/Document/Viewport boundaries", async () => {
   const js = await readFile("app.js", "utf8");
-  assert.match(js, /screenToDocument\(screenPoint, state\.viewport/);
-  assert.match(js, /selectionGeometry\(layer, state\.viewport/);
+  assert.match(js, /screenToDocumentPoint\(screenPoint, state\.document, state\.viewport/);
+  assert.match(js, /selectionGeometry\(layer, screenViewportForDocument\(state\.document/);
   assert.doesNotMatch(js, /canvas\.style\.transform/);
 });
 
@@ -233,7 +233,7 @@ test("multi-format export UI uses the existing document renderer and local downl
   assert.match(html, /id="export-format"/);
   assert.match(js, /createPngExportCanvas/);
   assert.match(js, /renderDocumentToCanvas/);
-  assert.match(js, /drawDocument\(\{ context = ctx, document = state\.document, center = canvasCenter\(\)/);
+  assert.match(js, /drawDocument\(\{ context = ctx, document = state\.document, center = documentCenter\(document\)/);
   assert.match(js, /canvasToImageBlob\(exportCanvas, format, quality\)/);
   assert.match(js, /downloadImageBlob\(blob, "animeart\." \+ format, format\)/);
   assert.match(js, /await ensureExportImages\(state\.document\)/);
@@ -441,5 +441,5 @@ test("image crop and resize stay on the existing image-layer, history and persis
   assert.match(operations, /export function replaceImageLayer/);
   assert.match(processing, /export async function cropImageSource/);
   assert.match(processing, /export async function resizeImageSource/);
-  assert.match(worker, /animeart-web-shell-v6/);
+  assert.match(worker, /animeart-web-shell-v7/);
 });
