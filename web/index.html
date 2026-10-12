@@ -27,6 +27,7 @@
       <button id="undo" disabled>Undo</button>
       <button id="redo" disabled>Redo</button>
       <button id="add-layer">+ Layer</button>
+      <button id="add-text-layer">+ Text</button>
       <button id="add-image-layer">+ Image / Reference</button>
       <input id="image-file-input" type="file" accept="image/*" hidden>
       <button id="new-document">New</button>
@@ -68,6 +69,45 @@
         </div>
         <div id="layer-adjustment-controls" class="adjustment-controls" aria-live="polite"></div>
         <p class="adjustment-note">Effects stay editable, are saved with the project and are included in PNG export.</p>
+      </section>
+      <section id="text-panel" class="text-panel" aria-labelledby="text-title" hidden>
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">EDITABLE TYPOGRAPHY</p>
+            <h3 id="text-title">Text properties</h3>
+          </div>
+        </div>
+        <p id="text-layer-name" class="adjustment-layer-name">Select a text layer to edit</p>
+        <label class="text-field" for="text-content">Content
+          <textarea id="text-content" rows="3" maxlength="500" spellcheck="false"></textarea>
+        </label>
+        <label class="text-field" for="text-font-family">Font family
+          <select id="text-font-family">
+            <option value="Arial">Arial</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Trebuchet MS">Trebuchet MS</option>
+            <option value="Verdana">Verdana</option>
+            <option value="Courier New">Courier New</option>
+            <option value="sans-serif">Sans serif</option>
+            <option value="serif">Serif</option>
+            <option value="monospace">Monospace</option>
+          </select>
+        </label>
+        <div class="text-inline-controls">
+          <label class="text-field" for="text-font-weight">Weight
+            <select id="text-font-weight"><option value="normal">Regular</option><option value="bold">Bold</option></select>
+          </label>
+          <label class="text-field" for="text-align">Align
+            <select id="text-align"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select>
+          </label>
+        </div>
+        <label class="text-field" for="text-font-size">Size <output id="text-font-size-value">48 px</output>
+          <input id="text-font-size" type="range" min="8" max="240" step="1" value="48">
+        </label>
+        <label class="text-field text-color-field" for="text-color">Color
+          <input id="text-color" type="color" value="#172335">
+        </label>
+        <p class="adjustment-note">Text remains a native editable layer. Changes support undo/redo and are included in PNG export.</p>
       </section>
     </aside>
   </main>
