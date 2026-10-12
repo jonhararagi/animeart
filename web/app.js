@@ -1,8 +1,9 @@
 import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
+import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy, screenToDocument, zoomAt } from "./domain/viewport.mjs";
-import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, replaceImageLayer, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
@@ -31,6 +32,21 @@ const textLayerName = document.querySelector("#text-layer-name");
 const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
 const imageFileInput = document.querySelector("#image-file-input");
+const cropResizeButton = document.querySelector("#crop-resize-image");
+const imageEditDialog = document.querySelector("#image-edit-dialog");
+const imageEditForm = document.querySelector("#image-edit-form");
+const imageEditSourceSize = document.querySelector("#image-edit-source-size");
+const imageCropFields = document.querySelector("#image-crop-fields");
+const imageResizeFields = document.querySelector("#image-resize-fields");
+const imageCropX = document.querySelector("#image-crop-x");
+const imageCropY = document.querySelector("#image-crop-y");
+const imageCropWidth = document.querySelector("#image-crop-width");
+const imageCropHeight = document.querySelector("#image-crop-height");
+const imageResizeWidth = document.querySelector("#image-resize-width");
+const imageResizeHeight = document.querySelector("#image-resize-height");
+const imageResizeKeepAspect = document.querySelector("#image-resize-keep-aspect");
+let imageEditLayerId = null;
+let imageEditOriginalSize = null;
 const newDocumentButton = document.querySelector("#new-document");
 const recoverButton = document.querySelector("#recover-project");
 const exportProjectButton = document.querySelector("#export-project");
@@ -471,7 +487,112 @@ function renderLayers() {
   });
   renderLayerAdjustments();
   renderLayerText();
+  refreshImageEditButton();
 }
+
+function refreshImageEditButton() {
+  if (!cropResizeButton) return;
+  const layer = selectedLayerExact();
+  const editableImage = Boolean(layer && layer.contentType === "image" && layer.image && !layer.locked);
+  cropResizeButton.disabled = !editableImage;
+  cropResizeButton.title = editableImage ? "Crop or resize the selected image layer" : "Select an unlocked image layer to crop or resize";
+}
+
+function currentImageEditMode() {
+  return document.querySelector('input[name="image-edit-mode"]:checked')?.value === "resize" ? "resize" : "crop";
+}
+
+function syncImageEditMode() {
+  const resize = currentImageEditMode() === "resize";
+  imageCropFields.hidden = resize;
+  imageResizeFields.hidden = !resize;
+  document.querySelector("#apply-image-edit").textContent = resize ? "Resize image" : "Crop image";
+}
+
+function syncAspectRatioFromWidth() {
+  if (!imageResizeKeepAspect.checked || !imageEditOriginalSize) return;
+  const width = Number(imageResizeWidth.value);
+  if (Number.isInteger(width) && width > 0) imageResizeHeight.value = String(Math.max(1, Math.round(width * imageEditOriginalSize.height / imageEditOriginalSize.width)));
+}
+
+function syncAspectRatioFromHeight() {
+  if (!imageResizeKeepAspect.checked || !imageEditOriginalSize) return;
+  const height = Number(imageResizeHeight.value);
+  if (Number.isInteger(height) && height > 0) imageResizeWidth.value = String(Math.max(1, Math.round(height * imageEditOriginalSize.width / imageEditOriginalSize.height)));
+}
+
+cropResizeButton.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) {
+    status.textContent = "Select an unlocked image layer before cropping or resizing";
+    return;
+  }
+  imageEditLayerId = layer.id;
+  imageEditOriginalSize = { width: layer.image.width, height: layer.image.height };
+  imageEditSourceSize.textContent = layer.name + " · " + layer.image.width + " × " + layer.image.height + " px";
+  imageCropX.value = "0"; imageCropY.value = "0";
+  imageCropWidth.value = String(layer.image.width); imageCropHeight.value = String(layer.image.height);
+  imageResizeWidth.value = String(layer.image.width); imageResizeHeight.value = String(layer.image.height);
+  imageResizeKeepAspect.checked = true;
+  document.querySelector('input[name="image-edit-mode"][value="crop"]').checked = true;
+  syncImageEditMode();
+  imageEditDialog.showModal();
+});
+
+document.querySelector("#cancel-image-edit").addEventListener("click", () => imageEditDialog.close());
+document.querySelectorAll('input[name="image-edit-mode"]').forEach(input => input.addEventListener("change", syncImageEditMode));
+imageResizeWidth.addEventListener("input", syncAspectRatioFromWidth);
+imageResizeHeight.addEventListener("input", syncAspectRatioFromHeight);
+
+imageEditForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  const layer = state.document.layers.find(item => item.id === imageEditLayerId);
+  if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) {
+    status.textContent = "The selected image layer is no longer available";
+    imageEditDialog.close();
+    return;
+  }
+  if (state.storageRecoveryPending) {
+    status.textContent = "Saved project is protected. Choose Save to replace it explicitly.";
+    return;
+  }
+  const applyButton = document.querySelector("#apply-image-edit");
+  const mode = currentImageEditMode();
+  applyButton.disabled = true;
+  try {
+    let replacement, options = {};
+    if (mode === "crop") {
+      const x = Number(imageCropX.value), y = Number(imageCropY.value);
+      const width = Number(imageCropWidth.value), height = Number(imageCropHeight.value);
+      replacement = await cropImageSource(layer.image.source, { x, y, width, height });
+      options = { cropOrigin: { x, y } };
+    } else {
+      const width = Number(imageResizeWidth.value);
+      let height = Number(imageResizeHeight.value);
+      if (imageResizeKeepAspect.checked && imageEditOriginalSize) {
+        height = Math.max(1, Math.round(width * imageEditOriginalSize.height / imageEditOriginalSize.width));
+        imageResizeHeight.value = String(height);
+      }
+      replacement = await resizeImageSource(layer.image.source, width, height);
+      options = { preserveDisplaySize: imageResizeKeepAspect.checked };
+    }
+    const before = cloneDocument(state.document);
+    const next = replaceImageLayer(state.document, layer.id, replacement, options);
+    if (!next) throw new Error("Image edit was rejected. Check the dimensions and selected layer.");
+    state.document = next;
+    setSelection([layer.id], layer.id);
+    state.history.record(before, next);
+    state.adjustmentPreview = null;
+    refreshDocument(mode === "crop" ? "Image cropped" : "Image resized");
+    persistDocument();
+    status.textContent = mode === "crop" ? "Image cropped" : "Image resized";
+    imageEditDialog.close();
+  } catch (error) {
+    status.textContent = error?.message || "Image edit failed";
+  } finally {
+    applyButton.disabled = false;
+  }
+});
 
 function getWorkingLayerAdjustments(layer) {
   if (state.adjustmentPreview?.layerId === layer?.id) return state.adjustmentPreview.values;
@@ -1597,7 +1718,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v5";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v6";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -1610,6 +1731,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/history.mjs",
   "./domain/image-import.mjs",
   "./domain/image-input.mjs",
+  "./domain/image-processing.mjs",
   "./domain/layer-adjustments.mjs",
   "./domain/model.mjs",
   "./domain/text-layer.mjs",

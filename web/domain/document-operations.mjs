@@ -191,3 +191,34 @@ export function reorderLayer(document, layerId, direction) {
   [next.layers[index], next.layers[targetIndex]] = [next.layers[targetIndex], next.layers[index]];
   return next;
 }
+
+
+export function replaceImageLayer(document, layerId, replacement, { cropOrigin = null, preserveDisplaySize = false } = {}) {
+  if (!replacement || typeof replacement.source !== "string" || !replacement.source || replacement.source.length > 2_000_000) return null;
+  const width = Number(replacement.width), height = Number(replacement.height);
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 ||
+      width > 8192 || height > 8192 || width * height > 32_000_000) return null;
+  const next = cloneDocument(document);
+  const layer = next.layers.find(item => item.id === layerId);
+  if (!layer || layer.locked || layer.contentType !== "image" || !layer.image) return null;
+
+  const previousWidth = layer.image.width, previousHeight = layer.image.height;
+  if (cropOrigin !== null) {
+    const x = Number(cropOrigin.x), y = Number(cropOrigin.y);
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 ||
+        x + width > previousWidth || y + height > previousHeight) return null;
+    const radians = layer.transform.rotation * Math.PI / 180, scale = layer.transform.scale;
+    layer.transform = {
+      ...layer.transform,
+      x: layer.transform.x + scale * (x * Math.cos(radians) - y * Math.sin(radians)),
+      y: layer.transform.y + scale * (x * Math.sin(radians) + y * Math.cos(radians))
+    };
+  } else if (preserveDisplaySize) {
+    const scaleX = previousWidth / width, scaleY = previousHeight / height;
+    if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY) ||
+        Math.abs(scaleX - scaleY) > Math.max(scaleX, scaleY) * 0.002) return null;
+    layer.transform = { ...layer.transform, scale: layer.transform.scale * scaleX };
+  }
+  layer.image = { source: replacement.source, width, height };
+  return next;
+}

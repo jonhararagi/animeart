@@ -29,6 +29,7 @@
       <button id="add-layer">+ Layer</button>
       <button id="add-text-layer">+ Text</button>
       <button id="add-image-layer">+ Image / Reference</button>
+      <button id="crop-resize-image" disabled>Crop / Resize Image</button>
       <button id="add-sample-character" title="Import the bundled CC0 1.0 character as a real image layer">+ CC0 Character Sample</button>
       <a class="asset-source-link" href="./assets/ASSET_SOURCES.md" target="_blank" rel="noopener">Sample art source &amp; license</a>
       <input id="image-file-input" type="file" accept="image/*" hidden>
@@ -130,6 +131,36 @@
       </section>
     </aside>
   </main>
+  <dialog id="image-edit-dialog" aria-labelledby="image-edit-title">
+    <form id="image-edit-form" method="dialog">
+      <h2 id="image-edit-title">Crop / Resize Image</h2>
+      <p id="image-edit-source-size" class="image-edit-source-size">Select an image layer first.</p>
+      <fieldset class="image-edit-mode">
+        <legend>Operation</legend>
+        <label><input type="radio" name="image-edit-mode" value="crop" checked> Crop pixels</label>
+        <label><input type="radio" name="image-edit-mode" value="resize"> Resize pixels</label>
+      </fieldset>
+      <section id="image-crop-fields" class="image-edit-fields">
+        <p>Crop coordinates are measured from the top-left of the selected image.</p>
+        <div class="image-edit-grid">
+          <label for="image-crop-x">Left (X)<input id="image-crop-x" type="number" min="0" step="1" value="0" required></label>
+          <label for="image-crop-y">Top (Y)<input id="image-crop-y" type="number" min="0" step="1" value="0" required></label>
+          <label for="image-crop-width">Width<input id="image-crop-width" type="number" min="1" step="1" required></label>
+          <label for="image-crop-height">Height<input id="image-crop-height" type="number" min="1" step="1" required></label>
+        </div>
+      </section>
+      <section id="image-resize-fields" class="image-edit-fields" hidden>
+        <p>Resizing re-samples the selected image. Transparent pixels are preserved.</p>
+        <div class="image-edit-grid">
+          <label for="image-resize-width">New width<input id="image-resize-width" type="number" min="1" max="8192" step="1" required></label>
+          <label for="image-resize-height">New height<input id="image-resize-height" type="number" min="1" max="8192" step="1" required></label>
+        </div>
+        <label class="image-edit-aspect" for="image-resize-keep-aspect"><input id="image-resize-keep-aspect" type="checkbox" checked> Keep aspect ratio and displayed size</label>
+      </section>
+      <p class="image-edit-note">Only the selected image layer changes. Undo and redo restore the previous pixels and transform.</p>
+      <div class="dialog-actions"><button type="button" id="cancel-image-edit">Cancel</button><button type="submit" id="apply-image-edit">Apply</button></div>
+    </form>
+  </dialog>
   <dialog id="project-dialog" aria-labelledby="project-dialog-title">
     <form id="project-form" method="dialog">
       <h2 id="project-dialog-title">New document</h2>

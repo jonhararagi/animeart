@@ -425,3 +425,21 @@ test("T064 persistence writer inventory keeps the project key behind the existin
   assert.ok(editor && editor[1].includes('persistDocumentSnapshot(localStorage, "animeart-web-document", state.document)'), "ordinary document persistence delegates through the existing snapshot boundary");
 });
 
+
+
+test("image crop and resize stay on the existing image-layer, history and persistence boundary", async () => {
+  const [html, app, operations, processing, worker] = await Promise.all([
+    readFile("index.html", "utf8"), readFile("app.js", "utf8"),
+    readFile("domain/document-operations.mjs", "utf8"),
+    readFile("domain/image-processing.mjs", "utf8"), readFile("service-worker.js", "utf8")
+  ]);
+  assert.match(html, /id="crop-resize-image"/);
+  assert.match(html, /id="image-crop-fields"/);
+  assert.match(html, /id="image-resize-fields"/);
+  assert.match(app, /state\.history\.record\(before, next\)/);
+  assert.match(app, /refreshDocument\(mode === "crop" \? "Image cropped" : "Image resized"\)/);
+  assert.match(operations, /export function replaceImageLayer/);
+  assert.match(processing, /export async function cropImageSource/);
+  assert.match(processing, /export async function resizeImageSource/);
+  assert.match(worker, /animeart-web-shell-v6/);
+});

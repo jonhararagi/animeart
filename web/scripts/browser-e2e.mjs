@@ -360,6 +360,35 @@ try {
   assert(cc0Sample?.image?.source?.startsWith("data:image/png;base64,"), "CC0 sample is embedded locally instead of uploaded to a server");
   await saveScreenshot("animeart-studio-cc0-sample.png");
 
+  // Exercise actual raster edits, history and aspect preservation in Chromium.
+  await click("#crop-resize-image");
+  await waitFor('document.querySelector("#image-edit-dialog").open === true');
+  assert(await evaluate('document.querySelector("#image-crop-width").value === "944" && document.querySelector("#image-crop-height").value === "944"'), "crop dialog reads the selected image dimensions");
+  await evaluate('(() => { document.querySelector("#image-crop-x").value = "5"; document.querySelector("#image-crop-y").value = "7"; document.querySelector("#image-crop-width").value = "400"; document.querySelector("#image-crop-height").value = "500"; })()');
+  await click("#apply-image-edit");
+  await waitFor('document.querySelector("#status").textContent === "Image cropped"', 15000);
+  let croppedSample = (await readDocument()).layers.find(layer => layer.name === "battleworn_knight");
+  assert(croppedSample?.image?.width === 400 && croppedSample?.image?.height === 500, "real browser crop changes image pixels to the exact crop dimensions");
+  assert(Math.abs(croppedSample?.transform?.x - 5) < 0.001 && Math.abs(croppedSample?.transform?.y - 7) < 0.001, "real browser crop compensates the image transform for the crop origin");
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944 && layer.image?.height === 944)', 10000);
+  await click("#redo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 400 && layer.image?.height === 500)', 10000);
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944 && layer.image?.height === 944)', 10000);
+
+  await click("#crop-resize-image");
+  await waitFor('document.querySelector("#image-edit-dialog").open === true');
+  await click('input[name="image-edit-mode"][value="resize"]');
+  await evaluate('(() => { document.querySelector("#image-resize-width").value = "472"; document.querySelector("#image-resize-width").dispatchEvent(new Event("input", { bubbles: true })); })()');
+  await click("#apply-image-edit");
+  await waitFor('document.querySelector("#status").textContent === "Image resized"', 15000);
+  const resizedSample = (await readDocument()).layers.find(layer => layer.name === "battleworn_knight");
+  assert(resizedSample?.image?.width === 472 && resizedSample?.image?.height === 472, "real browser resize re-samples the image while preserving its selected aspect ratio");
+  assert(Math.abs(resizedSample?.transform?.scale - 2) < 0.001, "real browser resize keeps the image's displayed size when aspect ratio is locked");
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944)', 10000);
+
   await evaluate('window.__animeArtTextDrawCount = 0; const originalFillText = CanvasRenderingContext2D.prototype.fillText; CanvasRenderingContext2D.prototype.fillText = function(...args) { window.__animeArtTextDrawCount += 1; return originalFillText.apply(this, args); };');
   await click("#add-text-layer");
   const textLayerAfterCreate = (await readDocument()).layers.at(-1);
