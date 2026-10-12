@@ -33,3 +33,31 @@ export function removeConnectedBackground(imageData,{targetColor="#ffffff",toler
   }
   return {width,height,data};
 }
+export function applyEraseStrokes(imageData, strokes = []) {
+  const width=Number(imageData?.width),height=Number(imageData?.height),source=imageData?.data;
+  if(!Number.isInteger(width)||!Number.isInteger(height)||width<1||height<1||width*height>MAX_PIXELS||!source||source.length!==width*height*4)
+    throw new TypeError("Manual erase requires valid image pixels up to 16 megapixels");
+  const data=new Uint8ClampedArray(source);
+  for(const stroke of Array.isArray(strokes)?strokes:[]) {
+    const size=Number(stroke?.size),points=Array.isArray(stroke?.points)?stroke.points:[];
+    if(!Number.isFinite(size)||size<=0||points.length===0)continue;
+    const radius=size/2;
+    const eraseCircle=(point)=>{
+      const minX=Math.max(0,Math.floor(point.x-radius)),maxX=Math.min(width-1,Math.ceil(point.x+radius));
+      const minY=Math.max(0,Math.floor(point.y-radius)),maxY=Math.min(height-1,Math.ceil(point.y+radius));
+      for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++){
+        const dx=x+0.5-point.x,dy=y+0.5-point.y;
+        if(dx*dx+dy*dy<=radius*radius)data[(y*width+x)*4+3]=0;
+      }
+    };
+    if(points.length===1){eraseCircle(points[0]);continue;}
+    for(let index=1;index<points.length;index++){
+      const a=points[index-1],b=points[index],distance=Math.hypot(b.x-a.x,b.y-a.y);
+      const steps=Math.max(1,Math.ceil(distance/Math.max(1,radius*0.5)));
+      for(let step=0;step<=steps;step++){
+        const t=step/steps;eraseCircle({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});
+      }
+    }
+  }
+  return {width,height,data};
+}
