@@ -200,7 +200,7 @@ canvas {
   .toolbar { grid-column: 1; grid-row: 1; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 10px; border-right: 0; border-bottom: 1px solid #232d3c; }
   .toolbar > .tool-group-label { grid-column: 1 / -1; }
   .toolbar > .brush-control { grid-column: span 2; }
-  .toolbar > #add-layer, .toolbar > #add-text-layer, .toolbar > #add-image-layer, .toolbar > #add-sample-character, .toolbar > #new-document, .toolbar > #recover-project,
+  .toolbar > #add-layer, .toolbar > #add-text-layer, .toolbar > #add-meme-text, .toolbar > #add-image-layer, .toolbar > #add-sample-character, .toolbar > #new-document, .toolbar > #recover-project,
   .toolbar > #save, .toolbar > #export-png, .toolbar > #clear { grid-column: span 2; text-align: center; padding: 7px 4px; }
   .toolbar > #flip-image-horizontal, .toolbar > #flip-image-vertical { grid-column: span 2; text-align: center; padding: 7px 4px; }
   .toolbar > [data-transform] { grid-column: span 1; }
