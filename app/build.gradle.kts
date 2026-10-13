@@ -5,6 +5,9 @@ plugins {
 }
 
 android {
+    // Do not package the retired WebView editor assets into the native APK.
+    sourceSets.getByName("main").assets.setSrcDirs(listOf("src/main/nativeAssets"))
+
     namespace = "com.jonhararagi.animeart"
     compileSdk = 35
 
@@ -43,7 +46,6 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
-    implementation("androidx.webkit:webkit:1.15.0")
 
     testImplementation("junit:junit:4.13.2")
 
