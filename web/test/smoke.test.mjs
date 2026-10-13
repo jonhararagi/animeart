@@ -477,8 +477,8 @@ test("mobile dock actions call history directly and keep the active drawing tool
   const [html, js, css] = await Promise.all([
     readFile("index.html", "utf8"), readFile("app.js", "utf8"), readFile("styles.css", "utf8")
   ]);
-  assert.match(html, /data-tool="brush" aria-pressed="true">Brush/);
-  assert.match(html, /data-touch-action="more" aria-expanded="false">Tools/);
+  assert.match(html, /data-tool="brush" aria-pressed="true">🖌 Brush/);
+  assert.match(html, /data-touch-action="more" aria-expanded="false">⋯ Tools/);
   assert.match(js, /if \(action === "undo"\) \{ undo\(\); return; \}/);
   assert.match(js, /if \(action === "redo"\) \{ redo\(\); return; \}/);
   assert.match(css, /Mobile editor controls: fixed canvas/);
