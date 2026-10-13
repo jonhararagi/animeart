@@ -48,3 +48,19 @@ test("touching a different image selects it before the next edit to avoid changi
  assert.match(app, /setSelection\(\[hitImage\.id\], hitImage\.id\)/);
  assert.match(app, /Imagen seleccionada\. Volvé a tocar para usar/);
 });
+
+
+test("AA-UX-DELETE-001 exposes a functional selected-image removal action separate from pixel erasing", async () => {
+ const [html, app, css] = await Promise.all([
+  readFile("index.html", "utf8"), readFile("app.js", "utf8"), readFile("styles.css", "utf8")
+ ]);
+ assert.ok(html.includes('id="remove-selected-image"'));
+ assert.ok(html.includes('id="quick-remove-image"'));
+ assert.match(app, /function removeSelectedImage\(\)/);
+ assert.match(app, /deleteLayer\(sourceDocument, layer\.id\)/);
+ assert.match(app, /state\.history\.record\(before, next\)/);
+ assert.match(app, /Primero tocá la imagen que querés quitar/);
+ assert.match(app, /removeSelectedImageButton\?\.addEventListener\("click"/);
+ assert.match(app, /function updateRemoveImageControl\(\)/);
+ assert.match(css, /#remove-selected-image[\s\S]*?width: 46px/);
+});
