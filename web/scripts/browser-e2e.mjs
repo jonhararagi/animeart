@@ -368,6 +368,8 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.flipX === true)', 10000);
 
   // Exercise actual raster edits, history, flips and aspect preservation in Chromium.
+  const beforeCropDocument = await readDocument();
+  const beforeCropSample = beforeCropDocument.layers.find(layer => layer.name === "battleworn_knight");
   await click("#crop-resize-image");
   await waitFor('document.querySelector("#image-edit-dialog").open === true');
   await waitFor('document.querySelector("#crop-preview").width > 1', 15000);
@@ -390,7 +392,7 @@ try {
   let croppedSample = (await readDocument()).layers.find(layer => layer.name === "battleworn_knight");
   assert(croppedSample?.image?.width === 400 && croppedSample?.image?.height === 500, "real browser crop changes image pixels to the exact crop dimensions");
   assert(croppedSample?.image?.flipX === true, "real browser crop retains the image mirror setting");
-  assert(Math.abs(croppedSample?.transform?.x - 5 * croppedSample?.transform?.scale) < 0.001 && Math.abs(croppedSample?.transform?.y - 7 * croppedSample?.transform?.scale) < 0.001, "real browser crop compensates the image transform for the crop origin at the fitted image scale");
+  assert(Math.abs(croppedSample?.transform?.x - (beforeCropSample.transform.x + 5 * beforeCropSample.transform.scale)) < 0.001 && Math.abs(croppedSample?.transform?.y - (beforeCropSample.transform.y + 7 * beforeCropSample.transform.scale)) < 0.001, "real browser crop compensates the image transform for the crop origin at the fitted and centered image transform");
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944 && layer.image?.height === 944)', 10000);
   await click("#redo");
