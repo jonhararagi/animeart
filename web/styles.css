@@ -124,6 +124,12 @@ canvas {
 .layers li { display: grid; gap: 7px; padding: 9px; border: 1px solid #293447; border-radius: 11px; background: #141b26; }
 .layers li[data-selected="true"] { border-color: #39879b; background: #162b35; box-shadow: inset 0 0 0 1px rgb(104 213 237 / 8%); }
 .layer-select { width: 100%; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; border-color: transparent; font-size: .76rem; font-weight: 650; }
+.layer-select { display: flex; align-items: center; gap: 8px; text-align: left; }
+.layer-thumbnail { flex: 0 0 52px; width: 52px; height: 38px; display: grid; place-items: center; overflow: hidden; border: 1px solid #354155; border-radius: 6px; background-color: #151b26; background-image: linear-gradient(45deg, #202a39 25%, transparent 25%), linear-gradient(-45deg, #202a39 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #202a39 75%), linear-gradient(-45deg, transparent 75%, #202a39 75%); background-size: 10px 10px; background-position: 0 0, 0 5px, 5px -5px, -5px 0; }
+.layer-thumbnail img, .layer-thumbnail canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
+.layer-thumbnail-text { color: #bcecf6; font-weight: 800; font-size: 1rem; }
+.layer-name { min-width: 0; overflow-wrap: anywhere; }
+
 .layer-controls { display: grid; grid-template-columns: 32px 32px minmax(0, 1fr); align-items: center; gap: 5px; }
 .layer-toggle { min-height: 29px; padding: 3px 4px; font-size: .78rem; }
 .layer-opacity { min-width: 0; width: 100%; accent-color: var(--accent-strong); }
