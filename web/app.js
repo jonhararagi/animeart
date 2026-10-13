@@ -21,7 +21,7 @@ import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLa
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
-const ctx = canvas.getContext("2d", { alpha: false });
+const ctx = canvas.getContext("2d", { alpha: true });
 const status = document.querySelector("#status");
 const recoveryNotice = document.querySelector("#storage-recovery-notice");
 const layersEl = document.querySelector("#layers");
@@ -177,6 +177,26 @@ function setSelection(layerIds, anchorId = null) {
   state.selectedLayerId = anchorId && normalized.includes(anchorId)
     ? anchorId
     : normalized[normalized.length - 1] || null;
+  updateSelectionIndicator();
+}
+
+function updateSelectionIndicator() {
+  const indicator = document.querySelector("#selection-indicator");
+  if (!indicator) return;
+  const layer = selectedLayerExact();
+  if (!layer) {
+    indicator.dataset.kind = "none";
+    indicator.textContent = "🖼️ Seleccioná una imagen para editar";
+    indicator.title = "Tocá una imagen o elegí una capa en el panel Capas.";
+  } else if (layer.contentType === "image") {
+    indicator.dataset.kind = "image";
+    indicator.textContent = "🖼️ Imagen seleccionada: " + layer.name;
+    indicator.title = "Imagen seleccionada. Podés moverla, transformarla o quitarle el fondo.";
+  } else {
+    indicator.dataset.kind = "layer";
+    indicator.textContent = "🗂️ Capa seleccionada: " + layer.name + " (no es una imagen)";
+    indicator.title = "Seleccioná una capa de imagen para quitar el fondo. El borrador actúa sobre la capa activa.";
+  }
 }
 
 function toggleSelection(layerId) {
@@ -477,8 +497,7 @@ function redraw() {
   const rect = canvas.getBoundingClientRect();
   const dpr = Math.max(1, window.devicePixelRatio || 1);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, rect.width, rect.height);
+  ctx.clearRect(0, 0, rect.width, rect.height);
   ctx.save();
   applyViewport();
   if (state.document.width > 0 && state.document.height > 0) {
@@ -2247,8 +2266,22 @@ function runEditGoal(goal) {
   showGoalHelp(goal);
   const actions = {
     crop: () => cropResizeButton.click(),
-    background: () => removeBackgroundButton.click(),
-    erase: () => document.querySelector('.toolbar [data-tool="eraser"]')?.click(),
+    background: () => {
+      const layer = selectedLayerExact();
+      if (!layer || layer.contentType !== "image" || !layer.image) {
+        status.textContent = "Seleccioná primero una capa de imagen en el lienzo o en Capas para quitar el fondo.";
+        document.querySelector("#selection-indicator")?.focus?.();
+        return;
+      }
+      removeBackgroundButton.click();
+    },
+    erase: () => {
+      if (!selectedLayerExact()) {
+        status.textContent = "Primero tocá una imagen o elegí una capa en Capas. Después usá Borrar.";
+        return;
+      }
+      document.querySelector('.toolbar [data-tool="eraser"]')?.click();
+    },
     censor: () => document.querySelector('.toolbar [data-tool="censor-light"]')?.click(),
     draw: () => document.querySelector('.toolbar [data-tool="brush"]')?.click(),
     text: () => document.querySelector("#add-text-layer").click(),
@@ -2965,6 +2998,41 @@ async function exportPng() {
 }
 
 exportPngButton.addEventListener("click", exportPng);
+const transparencyButton = document.querySelector("#view-transparency");
+const canvasWrapElement = document.querySelector(".canvas-wrap");
+const backgroundModeButtons = [...document.querySelectorAll("[data-canvas-background]")];
+function setCanvasBackground(mode) {
+  canvasWrapElement.dataset.background = mode;
+  backgroundModeButtons.forEach(button => {
+    const active = button.dataset.canvasBackground === mode;
+    button.setAttribute("aria-pressed", String(active));
+  });
+  if (transparencyButton) {
+    transparencyButton.setAttribute("aria-pressed", String(mode === "checkerboard"));
+    transparencyButton.textContent = mode === "checkerboard" ? "✓ Viendo transparencia" : "Ver transparencia";
+  }
+  status.textContent = mode === "checkerboard"
+    ? "Los cuadritos representan píxeles transparentes; no se exportan. El blanco dentro del dibujo sigue siendo opaco."
+    : "Fondo de vista cambiado. Esta opción solo cambia la vista, no los píxeles de la imagen.";
+}
+transparencyButton?.addEventListener("click", () => setCanvasBackground(canvasWrapElement.dataset.background === "checkerboard" ? "white" : "checkerboard"));
+backgroundModeButtons.forEach(button => button.addEventListener("click", () => setCanvasBackground(button.dataset.canvasBackground)));
+document.querySelector("#quick-remove-background")?.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image) {
+    status.textContent = "Seleccioná una imagen antes de quitar el fondo.";
+    return;
+  }
+  removeBackgroundButton.click();
+});
+document.querySelector("#quick-recover")?.addEventListener("click", () => undoButton.click());
+document.querySelector("#export-transparent-png")?.addEventListener("click", () => {
+  exportFormatInput.value = "png";
+  syncExportFormatControls();
+  exportPngButton.click();
+});
+updateSelectionIndicator();
+setCanvasBackground("checkerboard");
 exportFormatInput.addEventListener("change", syncExportFormatControls);
 exportQualityInput.addEventListener("input", syncExportFormatControls);
 syncExportFormatControls();
