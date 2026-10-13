@@ -3041,3 +3041,20 @@ SAFETY:
 - La exportación PNG continúa utilizando el canvas independiente con contexto alfa. La verificación automatizada comprueba los contratos del canvas y los controles; la validación visual en teléfono y la inspección de un PNG real exportado siguen pendientes de CI/E2E y prueba manual.
 
 **No declarado todavía:** PASS integral de los ocho criterios de aceptación. Las pruebas automatizadas y la compilación Android deben concluir sobre el SHA final de esta rama antes de cerrar la tarea.
+
+
+---
+
+## AA-UX-DELETE-001 — X funcional para quitar la imagen seleccionada
+
+**Fecha:** 2026-10-13  
+**Rama:** `aa-ux-delete-001`  
+**Base:** PR #71, SHA `383e2a36bc31d59df3fe70b135611d233a074a14`.
+
+- Añade una X táctil de 46 px junto a la esquina superior derecha de la imagen seleccionada; solo aparece para una capa de imagen seleccionada y se oculta durante la vista previa de transparencia.
+- La X y la acción visible `Quitar imagen` comparten una operación de borrado de capa no destructiva para píxeles, registrada en el historial existente. `Deshacer` restaura la imagen eliminada.
+- La operación valida el ID de la capa seleccionada, distingue capas bloqueadas y mantiene el lienzo válido si la imagen era la única capa.
+- El borrador de píxeles sigue siendo una herramienta separada; la X no pinta ni borra píxeles.
+- Se añade E2E real en Chromium con dos importaciones de imagen: identifica la primera mediante etiqueta, verifica que la X elimina su ID exacto, comprueba que la segunda permanece, deshace, exporta PNG y decodifica el canal alfa para demostrar que existen píxeles con alfa menor que 255.
+- Estado: pendiente de Web CI, Chromium E2E y Android CI sobre el SHA final. No se declara PASS antes de revisar los resultados.
+- Sin cambios directos a `main`, sin fusiones ni cierres de PR.
