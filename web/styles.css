@@ -597,3 +597,23 @@ canvas {
   .transparency-shortcuts #export-transparent-png { grid-column: 1 / -1; }
   .transparency-note { bottom: 104px; font-size: .65rem; }
 }
+
+
+/* AA-UX-DELETE-001: a real, touch-sized action bound to the selected image layer. */
+#remove-selected-image {
+  position: absolute; z-index: 6; display: inline-flex; align-items: center; justify-content: center;
+  width: 46px; height: 46px; min-height: 46px; padding: 0; border: 2px solid #fff;
+  border-radius: 50%; background: #d72f52; color: #fff; font-size: 30px; font-weight: 900;
+  line-height: 1; box-shadow: 0 3px 14px #0009; cursor: pointer; touch-action: manipulation;
+}
+#remove-selected-image span {
+  position: absolute; top: calc(100% + 4px); right: 0; white-space: nowrap; padding: 4px 7px;
+  border-radius: 6px; background: #111827ed; color: #fff; font-size: 11px; font-weight: 800;
+}
+#remove-selected-image[hidden] { display: none; }
+#remove-selected-image:disabled { opacity: .45; cursor: not-allowed; }
+#quick-remove-image { border-color: #b93658; }
+@media (max-width: 620px) {
+  #remove-selected-image { width: 50px; height: 50px; min-height: 50px; font-size: 32px; }
+  #remove-selected-image span { font-size: 12px; }
+}
