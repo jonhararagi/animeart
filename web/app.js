@@ -132,6 +132,7 @@ let touchGesture = null;
 const state = {
   tool: "brush",
   brush: { ...BRUSH_DEFAULTS },
+  censorCursorPoint: null,
   drawing: false,
   panning: false,
   selectedLayerId: null,
@@ -488,6 +489,16 @@ function redraw() {
   drawDocument({ context: ctx, document: state.document, center: documentCenter(state.document) });
   ctx.restore();
   drawSelectionOverlay();
+  if (state.tool === "censor-light" && state.censorCursorPoint) {
+    const point = documentToScreenPoint(state.censorCursorPoint, state.document, state.viewport, canvasSize());
+    const radius = Number(document.querySelector("#censor-light-size").value) * state.viewport.zoom / 2;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(point.x, point.y, Math.max(2, radius), 0, Math.PI * 2);
+    ctx.strokeStyle = "#111318"; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.arc(point.x, point.y, Math.max(2, radius), 0, Math.PI * 2);
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.restore();
+  }
 }
 
 function pointFromEvent(event) {
@@ -1826,6 +1837,10 @@ canvas.addEventListener("pointerdown", event => {
 });
 
 canvas.addEventListener("pointermove", event => {
+  if (!state.drawing && state.tool === "censor-light") {
+    state.censorCursorPoint = pointFromEvent(event);
+    redraw();
+  }
   if (event.pointerType === "touch" && activeTouchPointers.has(event.pointerId)) {
     activeTouchPointers.set(event.pointerId, { ...screenPointFromEvent(event), pointerId: event.pointerId });
     if (touchGesture && updateTouchGesture()) return;
@@ -1954,6 +1969,11 @@ canvas.addEventListener("pointerup", event => {
     refreshHistoryControls();
     renderLayers();
   }
+});
+
+canvas.addEventListener("pointerleave", () => {
+  state.censorCursorPoint = null;
+  if (state.tool === "censor-light") redraw();
 });
 
 canvas.addEventListener("pointercancel", event => {
