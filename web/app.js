@@ -21,6 +21,7 @@ import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLa
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
+const removeSelectedImageButton = document.querySelector("#remove-selected-image");
 const ctx = canvas.getContext("2d", { alpha: true });
 const status = document.querySelector("#status");
 const recoveryNotice = document.querySelector("#storage-recovery-notice");
@@ -197,6 +198,16 @@ function updateSelectionIndicator() {
     indicator.textContent = "🗂️ Capa seleccionada: " + layer.name + " (no es una imagen)";
     indicator.title = "Seleccioná una capa de imagen para quitar el fondo. El borrador actúa sobre la capa activa.";
   }
+}
+
+function updateRemoveImageControl() {
+  if (!removeSelectedImageButton) return;
+  const layer = selectedLayerExact();
+  const validImage = Boolean(layer && layer.contentType === "image" && layer.image);
+  removeSelectedImageButton.hidden = !validImage || document.querySelector("#view-transparency")?.getAttribute("aria-pressed") === "true";
+  removeSelectedImageButton.disabled = !validImage || Boolean(layer?.locked);
+  removeSelectedImageButton.setAttribute("aria-label", validImage ? "Quitar imagen seleccionada: " + layer.name : "Quitar imagen");
+  removeSelectedImageButton.title = layer?.locked ? "Desbloqueá la imagen para quitarla" : "Quitar solo esta imagen. Podés deshacer.";
 }
 
 function toggleSelection(layerId) {
@@ -508,6 +519,7 @@ function redraw() {
   drawDocument({ context: ctx, document: state.document, center: documentCenter(state.document) });
   ctx.restore();
   if (!transparencyPreview) drawSelectionOverlay();
+  updateRemoveImageControl();
   if (!transparencyPreview && state.tool === "censor-light" && state.censorCursorPoint) {
     const point = documentToScreenPoint(state.censorCursorPoint, state.document, state.viewport, canvasSize());
     const radius = Number(document.querySelector("#censor-light-size").value) * state.viewport.zoom / 2;
@@ -1394,6 +1406,41 @@ function applyLayerOperation(operation, message, { allowLocked = false } = {}) {
   state.history.record(before, next);
   refreshDocument(message);
   persistDocument();
+}
+
+function removeSelectedImage() {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image) {
+    status.textContent = "Primero tocá la imagen que querés quitar";
+    return false;
+  }
+  if (layer.locked) {
+    status.textContent = "Desbloqueá la imagen antes de quitarla";
+    return false;
+  }
+
+  const before = cloneDocument(state.document);
+  let sourceDocument = state.document;
+  if (sourceDocument.layers.length <= 1) {
+    const placeholder = createLayer("Capa vacía");
+    sourceDocument = addLayer(sourceDocument, placeholder);
+    if (!sourceDocument) {
+      status.textContent = "No se pudo preparar el lienzo para quitar la imagen";
+      return false;
+    }
+  }
+  const next = deleteLayer(sourceDocument, layer.id);
+  if (!next) {
+    status.textContent = "No se pudo quitar la imagen seleccionada";
+    return false;
+  }
+  state.document = next;
+  const nextSelection = [...next.layers].reverse().find(item => item.contentType === "image") || next.layers.at(-1) || null;
+  setSelection(nextSelection ? [nextSelection.id] : [], nextSelection?.id || null);
+  state.history.record(before, next);
+  refreshDocument("Imagen quitada: " + layer.name + ". Podés deshacer.");
+  persistDocument();
+  return true;
 }
 
 function applyMultiLayerMove(deltaX, deltaY, message = "Layers moved") {
@@ -3035,8 +3082,15 @@ transparencyButton?.addEventListener("click", () => {
     ? "Vista previa de transparencia: los controles de selección no se incluyen en el PNG. El patrón no se exporta."
     : "Volviste al modo de edición. Los cuadritos solo representan transparencia.";
   redraw();
+  updateRemoveImageControl();
 });
 backgroundModeButtons.forEach(button => button.addEventListener("click", () => setCanvasBackground(button.dataset.canvasBackground)));
+removeSelectedImageButton?.addEventListener("click", event => {
+  event.preventDefault();
+  event.stopPropagation();
+  removeSelectedImage();
+});
+document.querySelector("#quick-remove-image")?.addEventListener("click", () => removeSelectedImage());
 document.querySelector("#quick-remove-background")?.addEventListener("click", () => {
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "image" || !layer.image) {
