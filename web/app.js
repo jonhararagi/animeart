@@ -507,8 +507,8 @@ function redraw() {
   }
   drawDocument({ context: ctx, document: state.document, center: documentCenter(state.document) });
   ctx.restore();
-  drawSelectionOverlay();
-  if (state.tool === "censor-light" && state.censorCursorPoint) {
+  if (!transparencyPreview) drawSelectionOverlay();
+  if (!transparencyPreview && state.tool === "censor-light" && state.censorCursorPoint) {
     const point = documentToScreenPoint(state.censorCursorPoint, state.document, state.viewport, canvasSize());
     const radius = Number(document.querySelector("#censor-light-size").value) * state.viewport.zoom / 2;
     ctx.save();
@@ -3016,21 +3016,26 @@ exportPngButton.addEventListener("click", exportPng);
 const transparencyButton = document.querySelector("#view-transparency");
 const canvasWrapElement = document.querySelector(".canvas-wrap");
 const backgroundModeButtons = [...document.querySelectorAll("[data-canvas-background]")];
+let transparencyPreview = false;
 function setCanvasBackground(mode) {
   canvasWrapElement.dataset.background = mode;
   backgroundModeButtons.forEach(button => {
     const active = button.dataset.canvasBackground === mode;
     button.setAttribute("aria-pressed", String(active));
   });
-  if (transparencyButton) {
-    transparencyButton.setAttribute("aria-pressed", String(mode === "checkerboard"));
-    transparencyButton.textContent = mode === "checkerboard" ? "✓ Viendo transparencia" : "Ver transparencia";
-  }
   status.textContent = mode === "checkerboard"
     ? "Los cuadritos representan píxeles transparentes; no se exportan. El blanco dentro del dibujo sigue siendo opaco."
     : "Fondo de vista cambiado. Esta opción solo cambia la vista, no los píxeles de la imagen.";
 }
-transparencyButton?.addEventListener("click", () => setCanvasBackground(canvasWrapElement.dataset.background === "checkerboard" ? "white" : "checkerboard"));
+transparencyButton?.addEventListener("click", () => {
+  transparencyPreview = !transparencyPreview;
+  transparencyButton.setAttribute("aria-pressed", String(transparencyPreview));
+  transparencyButton.textContent = transparencyPreview ? "Salir de vista previa" : "Ver transparencia";
+  status.textContent = transparencyPreview
+    ? "Vista previa de transparencia: los controles de selección no se incluyen en el PNG. El patrón no se exporta."
+    : "Volviste al modo de edición. Los cuadritos solo representan transparencia.";
+  redraw();
+});
 backgroundModeButtons.forEach(button => button.addEventListener("click", () => setCanvasBackground(button.dataset.canvasBackground)));
 document.querySelector("#quick-remove-background")?.addEventListener("click", () => {
   const layer = selectedLayerExact();
@@ -3048,6 +3053,10 @@ document.querySelector("#export-transparent-png")?.addEventListener("click", () 
 });
 updateSelectionIndicator();
 setCanvasBackground("checkerboard");
+if (transparencyButton) {
+  transparencyButton.setAttribute("aria-pressed", "false");
+  transparencyButton.textContent = "Ver transparencia";
+}
 exportFormatInput.addEventListener("change", syncExportFormatControls);
 exportQualityInput.addEventListener("input", syncExportFormatControls);
 syncExportFormatControls();
