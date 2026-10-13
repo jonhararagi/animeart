@@ -496,13 +496,48 @@ test("editor appearance supports custom accent, workspace color and local wallpa
   assert.match(html, /id="appearance-wallpaper-file"/);
   assert.match(html, /data-touch-action="appearance"/);
   assert.match(app, /initializeAppearanceSettings\(\)/);
-  assert.match(app, /animeart-web-shell-v16/);
-  assert.match(worker, /animeart-web-shell-v16/);
+  assert.match(app, /animeart-web-shell-v17/);
+  assert.match(worker, /animeart-web-shell-v17/);
   assert.match(worker, /\.\/appearance-settings\.js/);
   assert.match(appearance, /animeart-editor-appearance-v1/);
   assert.match(appearance, /MAX_WALLPAPER_BYTES = 2 \* 1024 \* 1024/);
   assert.match(appearance, /--editor-workspace/);
   assert.match(styles, /Picsart-inspired mobile-first editor polish/);
+});
+
+test("background-removal profiles are local, reusable and wired to the existing apply pipeline", async () => {
+  const [html, app, profiles, tests] = await Promise.all([
+    readFile("index.html", "utf8"), readFile("app.js", "utf8"),
+    readFile("domain/background-removal-profiles.mjs", "utf8"),
+    readFile("test/background-removal-profiles.test.mjs", "utf8")
+  ]);
+  assert.match(html, /id="background-removal-profile"/);
+  assert.match(html, /id="save-background-profile"/);
+  assert.match(html, /id="delete-background-profile"/);
+  assert.match(app, /applyBackgroundRemovalProfile/);
+  assert.match(app, /const automatic = removeConnectedBackground\(session\.original, currentBackgroundRemovalSettings\(\)\)/);
+  assert.match(app, /applyEraseStrokes\(automatic, session\.strokes\)/);
+  assert.match(profiles, /BACKGROUND_PROFILE_STORAGE_KEY/);
+  assert.match(profiles, /anime-ink/);
+  assert.match(profiles, /flat-color/);
+  assert.match(profiles, /transparent-png/);
+  assert.match(profiles, /id: "photo"/);
+  assert.match(tests, /saves, restores, updates and deletes a custom local profile/);
+});
+
+test("Android native export bridge and browser fallback are wired to the canonical editor", async () => {
+  const [app, activity, worker] = await Promise.all([
+    readFile("app.js", "utf8"),
+    readFile("../app/src/main/java/com/jonhararagi/animeart/MainActivity.kt", "utf8"),
+    readFile("service-worker.js", "utf8")
+  ]);
+  assert.match(app, /async function saveBlobToDevice\(blob, filename, imageFormat = null\)/);
+  assert.match(app, /nativeBridge\.saveFile\(btoa\(binary\)/);
+  assert.match(app, /downloadImageBlob\(blob, filename, imageFormat\)/);
+  assert.ok(activity.includes("NativeExportBridge"));
+  assert.ok(activity.includes("Intent.ACTION_CREATE_DOCUMENT"));
+  assert.match(worker, /\.\/domain\/background-removal-profiles\.mjs/);
+  assert.match(worker, /animeart-web-shell-v17/);
 });
 
 test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size layer thumbnails", async () => {
@@ -522,5 +557,5 @@ test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size la
   assert.match(css, /\.layer-thumbnail \{ flex: 0 0 56px; width: 56px; height: 56px/);
   assert.match(css, /\.layers #layers \.layer-select \{ min-height: 60px/);
   assert.match(removal, /seedPoints=\[\]/);
-  assert.match(worker, /animeart-web-shell-v16/);
+  assert.match(worker, /animeart-web-shell-v17/);
 });
