@@ -1,5 +1,10 @@
 package com.jonhararagi.animeart.ui
 
+import android.content.Intent
+import android.graphics.BitmapFactory
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
@@ -20,6 +25,9 @@ import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke as DrawStroke
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -30,6 +38,8 @@ import com.jonhararagi.animeart.editor.LayerTransformMath
 import com.jonhararagi.animeart.editor.ViewportTransform
 import com.jonhararagi.animeart.persistence.ProjectPersistence
 import kotlin.math.max
+import kotlin.math.roundToInt
+import kotlin.math.ceil
 
 @Composable
 fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
@@ -38,9 +48,28 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
     val editor = remember { DrawingEditor(EditorState(document = initialDocument)) }
     var tick by remember { mutableIntStateOf(0) }
     var renameText by remember { mutableStateOf("") }
+    var statusMessage by remember { mutableStateOf("Listo para editar") }
     fun refresh() { tick++ }
 
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            val displayName = uri.lastPathSegment?.substringAfterLast('/')?.take(48)?.ifBlank { null } ?: "Imagen"
+            editor.addImageLayer(uri.toString(), displayName)
+            statusMessage = "Imagen añadida como capa"
+            refresh()
+        }
+    }
+
     val state = editor.state
+    val imageBitmaps = remember(state.document.layers) {
+        state.document.layers.mapNotNull { layer ->
+            val image = layer.content as? LayerContent.Image ?: return@mapNotNull null
+            image.uri to loadEditorImage(context, image.uri)
+        }.filter { it.second != null }.associate { it.first to it.second!! }
+    }
 
     val selectedLayer = state.document.layers.firstOrNull { it.id == state.selectedLayerId }
 
@@ -50,11 +79,15 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("AnimeArt — Día 3", style = MaterialTheme.typography.titleMedium)
+            Column(Modifier.weight(1f)) {
+                Text("AnimeArt", style = MaterialTheme.typography.titleLarge)
+                Text(statusMessage, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Row {
+                TextButton(onClick = { imagePicker.launch(arrayOf("image/*")) }) { Text("+ Imagen") }
                 TextButton(onClick = { editor.undo(); refresh() }, enabled = editor.canUndo()) { Text("↶") }
                 TextButton(onClick = { editor.redo(); refresh() }, enabled = editor.canRedo()) { Text("↷") }
-                TextButton(onClick = { persistence.save("default", editor.state.document) }) { Text("Guardar") }
+                TextButton(onClick = { persistence.save("default", editor.state.document); statusMessage = "Proyecto guardado" }) { Text("Guardar") }
             }
         }
 
@@ -219,16 +252,40 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
                     size = Size(1080f, 1080f)
                 )
                 state.document.layers.filter { it.visible }.forEach { layer ->
-                    val drawing = layer.content as? LayerContent.Drawing ?: return@forEach
-                    val pivot = LayerTransformMath.contentPivot(layer.content)
+                    val drawing = layer.content as? LayerContent.Drawing
+                    val imageContent = layer.content as? LayerContent.Image
+                    val image = imageContent?.let { imageBitmaps[it.uri] }
+                    if (drawing == null && image == null) return@forEach
+                    val pivot = if (image != null) center else LayerTransformMath.contentPivot(layer.content)
                     withTransform({
                         translate(layer.transform.translationX, layer.transform.translationY)
                         rotate(layer.transform.rotation, pivot = pivot)
                         scale(layer.transform.scale, layer.transform.scale, pivot = pivot)
                     }) {
-                        drawing.strokes.forEach { stroke -> drawStroke(stroke, layer.opacity) }
-                        if (layer.id == state.selectedLayerId && state.activeTool == EditorTool.SELECT) {
-                            drawSelectionOverlay(drawing)
+                        if (image != null) {
+                            val fit = minOf(900f / image.width, 900f / image.height, 1f)
+                            val width = (image.width * fit).roundToInt().coerceAtLeast(1)
+                            val height = (image.height * fit).roundToInt().coerceAtLeast(1)
+                            drawImage(
+                                image = image,
+                                dstOffset = IntOffset((center.x - width / 2f).roundToInt(), (center.y - height / 2f).roundToInt()),
+                                dstSize = IntSize(width, height),
+                                alpha = layer.opacity
+                            )
+                            if (layer.id == state.selectedLayerId && state.activeTool == EditorTool.SELECT) {
+                                drawRect(
+                                    Color(0xFF52C7E8),
+                                    topLeft = Offset(center.x - width / 2f, center.y - height / 2f),
+                                    size = Size(width.toFloat(), height.toFloat()),
+                                    style = DrawStroke(width = 2f)
+                                )
+                            }
+                        }
+                        drawing?.let {
+                            it.strokes.forEach { stroke -> drawStroke(stroke, layer.opacity) }
+                            if (layer.id == state.selectedLayerId && state.activeTool == EditorTool.SELECT) {
+                                drawSelectionOverlay(it)
+                            }
                         }
                     }
                 }
@@ -253,8 +310,8 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             Text("Zoom " + (state.viewport.scale * 100).toInt() + "%")
-            Text("Capa: " + (selectedLayer?.name ?: "—"))
-            Text(if (state.activeTool == EditorTool.SELECT) "1 dedo = mover · 2 dedos = mover/escala/rotación" else "2 dedos = zoom/pan")
+            Text("Capas: " + state.document.layers.size)
+            Text(if (state.activeTool == EditorTool.SELECT) "1 dedo mueve · 2 dedos escala/gira" else "2 dedos = zoom y desplazamiento")
         }
     }
     @Suppress("UNUSED_VARIABLE") val forceRecompose = tick
@@ -356,3 +413,16 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSelectionOverla
         style = DrawStroke(width = 2f)
     )
 }
+
+
+private fun loadEditorImage(context: android.content.Context, rawUri: String): ImageBitmap? = runCatching {
+    val uri = Uri.parse(rawUri)
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+    var sample = 1
+    while (bounds.outWidth / sample > 2048 || bounds.outHeight / sample > 2048) sample *= 2
+    val options = BitmapFactory.Options().apply { inSampleSize = sample.coerceAtLeast(1) }
+    context.contentResolver.openInputStream(uri)?.use { stream ->
+        BitmapFactory.decodeStream(stream, null, options)?.asImageBitmap()
+    }
+}.getOrNull()
