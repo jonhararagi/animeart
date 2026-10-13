@@ -144,12 +144,12 @@ if ! wait_for_log_marker 'ANIMEART_OFFLINE_NETWORK webViewBlockNetworkLoads=true
   exit 1
 fi
 
-if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-shell-v8","cachedCount":19,"requiredCount":19,"missing":[],"canvas":true' 30; then
-  echo "Offline reload no demostró Service Worker ACTIVE + Cache 13/13 + JavaScript + Canvas. Logcat:"
+if ! wait_for_log_marker "$ready_marker" 30; then
+  echo "Offline reload no demostró Service Worker ACTIVE + caché completa + JavaScript + Canvas. Cache esperado=$cache_name, recursos=$shell_count/$required_count. Logcat:"
   adb logcat -d -t 1200 || true
   exit 1
 fi
-echo 'ANIMEART_OFFLINE_DIAGNOSTIC registered=true active=true cache=animeart-web-shell-v8 cachedCount=19 requiredCount=19 missing=[] canvas=true phase=offline-recovery'
+echo "ANIMEART_OFFLINE_DIAGNOSTIC registered=true active=true cache=$cache_name cachedCount=$shell_count requiredCount=$required_count missing=[] canvas=true phase=offline-recovery"
 
 
 if adb logcat -d -t 800 | grep -q 'FATAL EXCEPTION'; then
