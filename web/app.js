@@ -1829,10 +1829,11 @@ canvas.addEventListener("pointerdown", event => {
   state.drawingPointerId = event.pointerId;
   state.strokeBefore = cloneDocument(state.document);
   canvas.setPointerCapture(event.pointerId);
-  layer.strokes.push(createStroke(state.tool, state.brush.size, [pointFromEvent(event)], state.brush.color, state.brush.opacity, {
-    hardness: state.brush.hardness,
-    effect: state.brush.effect,
-    glow: state.tool === "censor-light" ? Number(document.querySelector("#censor-light-glow").value) : 0
+  const censor = state.tool === "censor-light";
+  layer.strokes.push(createStroke(state.tool, censor ? Number(censorInputs.size.value) : state.brush.size, [pointFromEvent(event)], censor ? censorInputs.color.value : state.brush.color, censor ? Number(censorInputs.opacity.value) / 100 : state.brush.opacity, {
+    hardness: censor ? 100 - Number(censorInputs.softness.value) : state.brush.hardness,
+    effect: censor ? "normal" : state.brush.effect,
+    glow: censor ? Number(censorInputs.glow.value) : 0
   }));
 });
 
