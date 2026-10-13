@@ -11,7 +11,7 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(html, /rel="manifest" href="\.\/manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\("\.\/service-worker\.js"\)/);
   assert.match(manifest, /"display": "standalone"/);
-  assert.match(worker, /animeart-web-shell-v14/);
+  assert.match(worker, /animeart-web-shell-v15/);
   assert.match(worker, /caches\.open/);
   assert.match(worker, /caches\.match/);
   assert.match(app, /layerAdjustmentsToCanvasFilter/);
@@ -114,4 +114,19 @@ test("mobile touch gestures use bounded two-finger pan/zoom and the offline shel
   assert.match(worker, /\.\/domain\/touch-gestures\.mjs/);
   assert.match(css, /#canvas \{ touch-action: none; \}/);
   assert.match(html, /class="mobile-touch-dock"/);
+});
+
+test("mobile editor reserves the viewport for the canvas and uses a two-row touch dock", async () => {
+  const html = await readFile("index.html", "utf8");
+  const css = await readFile("styles.css", "utf8");
+  const app = await readFile("app.js", "utf8");
+  assert.match(html, /name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/);
+  assert.match(html, /class="mobile-touch-dock"/);
+  assert.match(css, /Phone-first editing workspace: keep the canvas visible/);
+  assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
+  assert.match(css, /grid-template-rows: repeat\(2, minmax\(42px, auto\)\)/);
+  assert.match(css, /padding: 0 0 calc\(103px \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(css, /touch-action: none/);
+  assert.match(app, /distanceBetweenTouches/);
+  assert.match(app, /updatePinchPanViewport/);
 });
