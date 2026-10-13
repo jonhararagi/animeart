@@ -1,5 +1,5 @@
 const STORAGE_KEY = "animeart-editor-appearance-v1";
-const DEFAULTS = Object.freeze({ accent: "#a855f7", workspace: "#111318", wallpaper: "", wallpaperName: "" });
+const DEFAULTS = Object.freeze({ accent: "#a855f7", workspace: "#111318", wallpaper: "", wallpaperName: "", editingHelpEnabled: true });
 const MAX_WALLPAPER_BYTES = 2 * 1024 * 1024;
 const COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
@@ -13,7 +13,8 @@ function readSettings() {
       accent: validColor(value.accent, DEFAULTS.accent),
       workspace: validColor(value.workspace, DEFAULTS.workspace),
       wallpaper: typeof value.wallpaper === "string" && /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/i.test(value.wallpaper) ? value.wallpaper : "",
-      wallpaperName: typeof value.wallpaperName === "string" ? value.wallpaperName.slice(0, 180) : ""
+      wallpaperName: typeof value.wallpaperName === "string" ? value.wallpaperName.slice(0, 180) : "",
+      editingHelpEnabled: value.editingHelpEnabled !== false
     };
   } catch {
     return { ...DEFAULTS };
@@ -43,6 +44,20 @@ function applySettings(settings) {
   root.dataset.editorAccent = settings.accent;
   root.dataset.editorWorkspace = settings.workspace;
 }
+export function getEditingHelpPreference() {
+  return readSettings().editingHelpEnabled !== false;
+}
+export function setEditingHelpPreference(enabled) {
+  try {
+    const settings = readSettings();
+    settings.editingHelpEnabled = Boolean(enabled);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
