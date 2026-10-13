@@ -41,19 +41,33 @@ export function normalizeStrokeOpacity(opacity) {
   return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1;
 }
 
-export function createStroke(tool = "brush", size = 5, points = [], color = "#111318", opacity = 1) {
+export function normalizeStrokeHardness(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.min(100, Math.max(0, numeric)) : 100;
+}
+
+export function normalizeStrokeEffect(value) {
+  return ["normal", "soft", "glow", "neon"].includes(value) ? value : "normal";
+}
+
+export function createStroke(tool = "brush", size = 5, points = [], color = "#111318", opacity = 1, options = {}) {
   return {
     tool,
     size: Number.isFinite(Number(size)) && Number(size) > 0 ? Number(size) : 5,
     color: normalizeStrokeColor(color),
     opacity: normalizeStrokeOpacity(opacity),
+    hardness: normalizeStrokeHardness(options?.hardness),
+    effect: normalizeStrokeEffect(options?.effect),
     points: points.map(normalizeStrokePoint).filter(Boolean)
   };
 }
 
 export function normalizeStroke(stroke) {
   if (!stroke || !Array.isArray(stroke.points)) return null;
-  return createStroke(stroke.tool || "brush", stroke.size, stroke.points, stroke.color, stroke.opacity);
+  return createStroke(stroke.tool || "brush", stroke.size, stroke.points, stroke.color, stroke.opacity, {
+    hardness: stroke.hardness,
+    effect: stroke.effect
+  });
 }
 
 export function normalizeTransform(transform) {
@@ -191,6 +205,8 @@ export function isValidDocument(document) {
           typeof stroke.tool === "string" &&
           Number.isFinite(stroke.size) &&
           stroke.size > 0 &&
+          (stroke.hardness === undefined || (Number.isFinite(stroke.hardness) && stroke.hardness >= 0 && stroke.hardness <= 100)) &&
+          (stroke.effect === undefined || ["normal", "soft", "glow", "neon"].includes(stroke.effect)) &&
           Array.isArray(stroke.points) &&
           stroke.points.every(point =>
             point &&
