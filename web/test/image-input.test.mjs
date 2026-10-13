@@ -206,7 +206,7 @@ test("invalid drop never reaches the import transaction", () => {
 test("invalid clipboard image is rejected by the existing import validator", async () => {
   const before = createDocument();
   const history = new DocumentHistory(before);
-  const pasted = clipboardImageFile([{ type: "image/png", getAsFile: () => file("bad.png", "image/png", 1_500_001) }]);
+  const pasted = clipboardImageFile([{ type: "image/png", getAsFile: () => file("bad.png", "image/png", 25_000_001) }]);
   await assert.rejects(
     () => applyImageFileImport(pasted, {
       document: before,
@@ -215,7 +215,7 @@ test("invalid clipboard image is rejected by the existing import validator", asy
       Reader: FakeReader,
       ImageCtor: FakeImage
     }),
-    /too large/
+    /25 MB/
   );
   assert.equal(history.size(), 0);
   assert.equal(before.layers.length, 1);
