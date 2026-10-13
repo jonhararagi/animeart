@@ -85,12 +85,20 @@ wait_for_log_marker() {
   return 1
 }
 
-if ! wait_for_log_marker '"registered":true,"active":true,"cache":"animeart-web-shell-v8","cachedCount":19,"requiredCount":19,"missing":[],"canvas":true' 30; then
-  echo "No se demostró SW ACTIVE + CACHE 13/13 antes de offline. Logcat:"
+cache_name="$(sed -n 's/^const CACHE_NAME = "\(animeart-web-shell-v[0-9][0-9]*\)";/\1/p' web/service-worker.js | head -n 1)"
+shell_count="$(sed -n '/^const APP_SHELL = \[/,/^\];/p' web/service-worker.js | grep -c '"\./')"
+required_count="$(sed -n '/^const OFFLINE_REQUIRED_RESOURCES = \[/,/^\];/p' web/app.js | grep -c '"\./')"
+if [ -z "$cache_name" ] || [ "$shell_count" -lt 1 ] || [ "$required_count" -lt 1 ]; then
+  echo "Could not derive the current offline cache contract from canonical web sources."
+  exit 1
+fi
+ready_marker="\"registered\":true,\"active\":true,\"cache\":\"$cache_name\",\"cachedCount\":$shell_count,\"requiredCount\":$required_count,\"missing\":[],\"canvas\":true"
+if ! wait_for_log_marker "$ready_marker" 30; then
+  echo "No se demostró SW ACTIVE + CACHE $shell_count/$required_count antes de offline. Cache esperado=$cache_name. Logcat:"
   adb logcat -d -t 800 || true
   exit 1
 fi
-echo 'ANIMEART_OFFLINE_DIAGNOSTIC registered=true active=true cache=animeart-web-shell-v8 cachedCount=19 requiredCount=19 missing=[] canvas=true phase=online-ready'
+echo "ANIMEART_OFFLINE_DIAGNOSTIC registered=true active=true cache=$cache_name cachedCount=$shell_count requiredCount=$required_count missing=[] canvas=true phase=online-ready"
 
 echo "NETWORK OFF will be enforced by Android emulator airplane mode + WebView offline mode"
 adb shell cmd connectivity airplane-mode enable || true
