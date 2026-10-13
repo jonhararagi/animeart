@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   MAX_DOCUMENT_STORAGE_CHARS,
+  fitImportedImageScale,
   MAX_IMPORT_IMAGE_DIMENSION,
   MAX_IMPORT_IMAGE_PIXELS,
   MAX_IMAGE_SOURCE_CHARS,
@@ -299,4 +300,14 @@ test("large images are constrained to browser-safe raster dimensions while prese
   assert.ok(result.layer.image.height <= MAX_IMPORT_IMAGE_DIMENSION);
   assert.ok(result.layer.image.width * result.layer.image.height <= MAX_IMPORT_IMAGE_PIXELS);
   assert.ok(result.layer.transform.scale > 1);
+});
+
+test("imported image display scale fits the same canvas bounds regardless of source resolution", () => {
+  const square = fitImportedImageScale(520, 520, 1080, 1350);
+  const portrait = fitImportedImageScale(3200, 32000, 1080, 1350);
+  assert.ok(Math.abs(square * 520 - 907.2) < 0.001);
+  assert.ok(Math.abs(portrait * 32000 - 1134) < 0.001);
+  assert.ok(square > 1, "ordinary phone images are enlarged to a useful canvas size");
+  assert.ok(portrait < 1, "oversized images are fitted without changing source pixel dimensions");
+  assert.throws(() => fitImportedImageScale(0, 20, 1080, 1350), /fit dimensions/i);
 });
