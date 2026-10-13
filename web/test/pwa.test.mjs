@@ -87,7 +87,7 @@ test("canvas coordinate mapping is cached for offline rendering and editing", as
   assert.match(app, /documentFitScale/);
   assert.match(app, /screenViewportForDocument/);
   assert.match(worker, /\.\/domain\/canvas-space\.mjs/);
-  assert.match(worker, /animeart-web-shell-v12/);
+  assert.match(worker, /animeart-web-shell-v13/);
 });
 
  
