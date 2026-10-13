@@ -420,7 +420,7 @@ try {
   assert(/^#[0-9a-f]{6}$/i.test(sampledSourceColor), "real browser samples an actual opaque pixel for selective recolor");
   await click("#apply-recolor");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source !== window.__animeArtOriginalRecolorSource', 15000);
-  assert(await evaluate('document.querySelector("#status").textContent.includes("Color range replaced")'), "real browser applies selective recolor through the image layer");
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.width === 944'), "real browser applies selective recolor without changing image dimensions");
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source === window.__animeArtOriginalRecolorSource', 10000);
   await click("#redo");
