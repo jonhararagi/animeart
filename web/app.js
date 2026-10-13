@@ -1,6 +1,7 @@
 import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
 import { initializeAssetLibrary } from "./asset-library.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
+import { replaceColorRange } from "./domain/color-replacement.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy } from "./domain/viewport.mjs";
@@ -48,6 +49,12 @@ const redoButton = document.querySelector("#redo");
 const imageFileInput = document.querySelector("#image-file-input");
 const cropResizeButton = document.querySelector("#crop-resize-image");
 const removeBackgroundButton = document.querySelector("#remove-background");
+const recolorButton = document.querySelector("#recolor-image");
+const recolorDialog = document.querySelector("#recolor-dialog");
+const recolorCanvas = document.querySelector("#recolor-preview");
+const recolorContext = recolorCanvas?.getContext("2d", { willReadFrequently: true });
+let recolorSession = null;
+let recolorSampleMode = false;
 const backgroundRemovalDialog = document.querySelector("#background-removal-dialog");
 const backgroundRemovalCanvas = document.querySelector("#background-removal-preview");
 const backgroundRemovalContext = backgroundRemovalCanvas?.getContext("2d", { willReadFrequently: true });
@@ -100,8 +107,9 @@ const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
 const HANDLE_RADIUS = 10;
 const imageCache = new Map();
+const drawingLayerRasterCache = new WeakMap();
 
-const BRUSH_DEFAULTS = Object.freeze({ color: "#111318", size: 5, opacity: 1 });
+const BRUSH_DEFAULTS = Object.freeze({ color: "#111318", size: 5, opacity: 1, hardness: 100, effect: "normal" });
 const MIN_BRUSH_SIZE = 1;
 const MAX_BRUSH_SIZE = 100;
 
@@ -245,6 +253,64 @@ function drawImageLayer(layer, context = ctx) {
   }
 }
 
+
+function drawStrokeCollection(context, strokes, baseOpacity = 1) {
+  for (const stroke of strokes || []) {
+    if (!Array.isArray(stroke.points) || stroke.points.length < 2) continue;
+    const erasing = stroke.tool === "eraser";
+    const effect = erasing ? "normal" : (stroke.effect || "normal");
+    context.save();
+    context.globalCompositeOperation = erasing ? "destination-out" : "source-over";
+    context.globalAlpha = baseOpacity * (Number.isFinite(Number(stroke.opacity)) ? Math.max(0, Math.min(1, Number(stroke.opacity))) : 1);
+    context.beginPath();
+    context.moveTo(stroke.points[0].x, stroke.points[0].y);
+    for (const point of stroke.points.slice(1)) context.lineTo(point.x, point.y);
+    context.lineWidth = stroke.size;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.strokeStyle = erasing ? "#000000" : stroke.color;
+    context.shadowColor = erasing || effect === "normal" ? "transparent" : stroke.color;
+    context.shadowBlur = effect === "neon" ? stroke.size * 1.8
+      : effect === "glow" ? stroke.size * 1.2
+        : effect === "soft" ? stroke.size * 0.7
+          : stroke.size * (1 - Math.min(100, Math.max(0, Number(stroke.hardness ?? 100))) / 100) * 0.45;
+    context.stroke();
+    if (effect === "neon" && !erasing) {
+      context.shadowBlur = 0;
+      context.strokeStyle = "#ffffff";
+      context.lineWidth = Math.max(1, stroke.size * 0.32);
+      context.globalAlpha = baseOpacity * Math.max(0, Math.min(1, Number(stroke.opacity) || 0));
+      context.globalCompositeOperation = "source-over";
+      context.stroke();
+    }
+    context.restore();
+  }
+}
+
+function drawDrawingLayer(layer, context, documentModel) {
+  const hasEraser = (layer.strokes || []).some(stroke => stroke.tool === "eraser");
+  if (!hasEraser) {
+    drawStrokeCollection(context, layer.strokes, layer.opacity);
+    return;
+  }
+  const width = Math.max(1, Math.ceil(Number(documentModel.width) || 512));
+  const height = Math.max(1, Math.ceil(Number(documentModel.height) || 512));
+  const editingThisLayer = state.drawing && layer.id === state.selectedLayerId;
+  let raster = editingThisLayer ? null : drawingLayerRasterCache.get(layer);
+  if (raster && (raster.width !== width || raster.height !== height)) raster = null;
+  if (editingThisLayer) drawingLayerRasterCache.delete(layer);
+  if (!raster) {
+    raster = document.createElement("canvas");
+    raster.width = width;
+    raster.height = height;
+    const rasterContext = raster.getContext("2d");
+    if (!rasterContext) return;
+    drawStrokeCollection(rasterContext, layer.strokes, 1);
+    if (!editingThisLayer) drawingLayerRasterCache.set(layer, raster);
+  }
+  context.drawImage(raster, 0, 0, width, height);
+}
+
 function drawDocument({ context = ctx, document = state.document, center = documentCenter(document), transformForLayer = layerTransformForRender } = {}) {
   for (const layer of document.layers) {
     if (!layer.visible) continue;
@@ -291,18 +357,7 @@ function drawDocument({ context = ctx, document = state.document, center = docum
         context.fillText(line, x, y);
       });
     } else {
-      for (const stroke of layer.strokes) {
-        if (stroke.points.length < 2) continue;
-        context.beginPath();
-        context.moveTo(stroke.points[0].x, stroke.points[0].y);
-        for (const point of stroke.points.slice(1)) context.lineTo(point.x, point.y);
-        context.lineWidth = stroke.size;
-        context.lineCap = "round";
-        context.lineJoin = "round";
-        context.globalAlpha = layer.opacity * (stroke.tool === "eraser" ? 1 : stroke.opacity);
-        context.strokeStyle = stroke.tool === "eraser" ? "#ffffff" : stroke.color;
-        context.stroke();
-      }
+      drawDrawingLayer(layer, context, document);
     }
     context.restore();
   }
@@ -431,6 +486,48 @@ function screenPointFromEvent(event) {
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 
+function createLayerThumbnail(layer) {
+  const thumbnail = document.createElement("span");
+  thumbnail.className = "layer-thumbnail";
+  thumbnail.setAttribute("aria-hidden", "true");
+  if (layer.contentType === "image" && layer.image?.source) {
+    const image = document.createElement("img");
+    image.alt = "";
+    image.src = layer.image.source;
+    thumbnail.appendChild(image);
+  } else if (layer.contentType === "text") {
+    thumbnail.classList.add("layer-thumbnail-text");
+    thumbnail.textContent = "Tt";
+  } else {
+    const preview = document.createElement("canvas");
+    preview.width = 52;
+    preview.height = 36;
+    const previewContext = preview.getContext("2d");
+    const width = Math.max(1, Number(state.document.width) || 512);
+    const height = Math.max(1, Number(state.document.height) || 512);
+    if (previewContext) {
+      const scale = Math.min(preview.width / width, preview.height / height);
+      previewContext.translate((preview.width - width * scale) / 2, (preview.height - height * scale) / 2);
+      previewContext.scale(scale, scale);
+      for (const stroke of layer.strokes || []) {
+        if (stroke.points.length < 2) continue;
+        previewContext.beginPath();
+        previewContext.moveTo(stroke.points[0].x, stroke.points[0].y);
+        for (const point of stroke.points.slice(1)) previewContext.lineTo(point.x, point.y);
+        previewContext.lineWidth = Math.max(1 / scale, stroke.size);
+        previewContext.lineCap = "round";
+        previewContext.lineJoin = "round";
+        previewContext.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
+        previewContext.strokeStyle = stroke.tool === "eraser" ? "#000000" : stroke.color;
+        previewContext.globalAlpha = stroke.opacity ?? 1;
+        previewContext.stroke();
+      }
+    }
+    thumbnail.appendChild(preview);
+  }
+  return thumbnail;
+}
+
 function renderLayers() {
   while (layersEl.firstChild) layersEl.removeChild(layersEl.firstChild);
   [...state.document.layers].reverse().forEach(layer => {
@@ -441,7 +538,10 @@ function renderLayers() {
     const selectButton = document.createElement("button");
     selectButton.type = "button";
     selectButton.className = "layer-select";
-    selectButton.textContent = layer.name + (layer.contentType === "image" ? (layer.isReference ? " [Reference]" : " [Image]") : layer.contentType === "text" ? " [Text]" : "");
+    const layerName = document.createElement("span");
+    layerName.className = "layer-name";
+    layerName.textContent = layer.name + (layer.contentType === "image" ? (layer.isReference ? " [Reference]" : " [Image]") : layer.contentType === "text" ? " [Text]" : "");
+    selectButton.append(createLayerThumbnail(layer), layerName);
     selectButton.setAttribute("aria-label", "Select " + layer.name);
     selectButton.addEventListener("click", event => {
       if (event.shiftKey) {
@@ -712,6 +812,7 @@ function refreshImageEditButton() {
   const editableImage = Boolean(layer && layer.contentType === "image" && layer.image && !layer.locked);
   cropResizeButton.disabled = !editableImage;
   if (removeBackgroundButton) removeBackgroundButton.disabled = !editableImage;
+  if (recolorButton) recolorButton.disabled = !editableImage;
   cropResizeButton.title = editableImage ? "Crop or resize the selected image layer" : "Select an unlocked image layer to crop or resize";
   for (const button of [flipImageHorizontalButton, flipImageVerticalButton]) {
     if (!button) continue;
@@ -923,6 +1024,15 @@ function commitLayerAdjustments(layerId, values, message = "Image adjustments up
   return true;
 }
 
+function clearElementChildren(element) {
+  if (!element) return;
+  if (typeof element.replaceChildren === "function") {
+    element.replaceChildren();
+    return;
+  }
+  while (element.firstChild) element.removeChild(element.firstChild);
+}
+
 function renderLayerAdjustments() {
   if (!layerAdjustmentControls || !adjustmentLayerName || !resetLayerAdjustmentsButton) return;
   const layer = selectedLayerExact();
@@ -934,7 +1044,7 @@ function renderLayerAdjustments() {
   resetLayerAdjustmentsButton.disabled = disabled;
   adjustmentPresetButtons.forEach(button => { button.disabled = disabled; });
   syncAdjustmentPresetButtons(values);
-  layerAdjustmentControls.replaceChildren();
+  clearElementChildren(layerAdjustmentControls);
 
   for (const definition of ADJUSTMENT_CONTROL_DEFS) {
     const label = document.createElement("label");
@@ -1511,7 +1621,7 @@ canvas.addEventListener("pointerdown", event => {
   state.drawingPointerId = event.pointerId;
   state.strokeBefore = cloneDocument(state.document);
   canvas.setPointerCapture(event.pointerId);
-  layer.strokes.push(createStroke(state.tool, state.brush.size, [pointFromEvent(event)], state.brush.color, state.brush.opacity));
+  layer.strokes.push(createStroke(state.tool, state.brush.size, [pointFromEvent(event)], state.brush.color, state.brush.opacity, { hardness: state.brush.hardness, effect: state.brush.effect }));
 });
 
 canvas.addEventListener("pointermove", event => {
@@ -1613,6 +1723,7 @@ canvas.addEventListener("pointerup", event => {
     state.history.record(before, state.document);
     persistDocument();
     refreshHistoryControls();
+    renderLayers();
   }
 });
 
@@ -1677,11 +1788,27 @@ function setBrushOpacity(value) {
   return true;
 }
 
+function setBrushHardness(value) {
+  const hardness = Number(value);
+  if (!Number.isFinite(hardness)) return false;
+  state.brush.hardness = Math.min(100, Math.max(0, hardness));
+  return true;
+}
+
+function setBrushEffect(value) {
+  if (!["normal", "soft", "glow", "neon"].includes(value)) return false;
+  state.brush.effect = value;
+  return true;
+}
+
 const brushColorInput = document.querySelector("#brush-color");
 const brushSizeInput = document.querySelector("#brush-size");
 const brushSizeValue = document.querySelector("#brush-size-value");
 const brushOpacityInput = document.querySelector("#brush-opacity");
 const brushOpacityValue = document.querySelector("#brush-opacity-value");
+const brushHardnessInput = document.querySelector("#brush-hardness");
+const brushHardnessValue = document.querySelector("#brush-hardness-value");
+const brushEffectInput = document.querySelector("#brush-effect");
 
 brushColorInput.addEventListener("input", event => {
   if (setBrushColor(event.currentTarget.value)) redraw();
@@ -1697,12 +1824,25 @@ brushOpacityInput.addEventListener("input", event => {
   brushOpacityValue.textContent = Math.round(state.brush.opacity * 100) + "%";
 });
 
+brushHardnessInput.addEventListener("input", event => {
+  if (!setBrushHardness(event.currentTarget.value)) return;
+  brushHardnessValue.textContent = Math.round(state.brush.hardness) + "%";
+});
+
+brushEffectInput.addEventListener("change", event => {
+  if (!setBrushEffect(event.currentTarget.value)) return;
+  status.textContent = "Brush effect: " + brushEffectInput.selectedOptions[0].textContent;
+});
+
 function syncBrushControls() {
   brushColorInput.value = state.brush.color;
   brushSizeInput.value = String(state.brush.size);
   brushSizeValue.textContent = String(state.brush.size);
   brushOpacityInput.value = String(Math.round(state.brush.opacity * 100));
   brushOpacityValue.textContent = Math.round(state.brush.opacity * 100) + "%";
+  brushHardnessInput.value = String(Math.round(state.brush.hardness));
+  brushHardnessValue.textContent = Math.round(state.brush.hardness) + "%";
+  brushEffectInput.value = state.brush.effect;
 }
 
 
@@ -1879,7 +2019,10 @@ function renderBackgroundRemovalPreview(recompute = false) {
       session.automatic = removeConnectedBackground(session.original, {
         targetColor: document.querySelector("#background-removal-color").value,
         tolerance: Number(document.querySelector("#background-removal-tolerance").value),
-        feather: Number(document.querySelector("#background-removal-feather").value)
+        feather: Number(document.querySelector("#background-removal-feather").value),
+        edgeSensitivity: Number(document.querySelector("#background-removal-edge-sensitivity").value),
+        protectLineArt: document.querySelector("#background-removal-protect-line-art").checked,
+        decontaminate: document.querySelector("#background-removal-decontaminate").checked
       });
     }
     const result = applyEraseStrokes(session.automatic, session.strokes);
@@ -1921,6 +2064,10 @@ async function openBackgroundRemoval() {
     document.querySelector("#background-removal-tolerance-value").textContent = "36";
     document.querySelector("#background-removal-feather").value = "18";
     document.querySelector("#background-removal-feather-value").textContent = "18";
+    document.querySelector("#background-removal-edge-sensitivity").value = "42";
+    document.querySelector("#background-removal-edge-sensitivity-value").textContent = "42";
+    document.querySelector("#background-removal-protect-line-art").checked = true;
+    document.querySelector("#background-removal-decontaminate").checked = true;
     document.querySelector("#background-removal-brush-size").value = "28";
     document.querySelector("#background-removal-brush-size-value").textContent = "28 px";
     backgroundRemovalDialog.showModal();
@@ -1940,11 +2087,11 @@ document.querySelector("#sample-background-color").addEventListener("click", () 
   document.querySelector("#background-removal-manual").checked = false;
   document.querySelector("#background-removal-status").textContent = "Click a background pixel in the image preview to sample its color.";
 });
-for (const id of ["background-removal-color", "background-removal-tolerance", "background-removal-feather"]) {
+for (const id of ["background-removal-color", "background-removal-tolerance", "background-removal-feather", "background-removal-edge-sensitivity", "background-removal-protect-line-art", "background-removal-decontaminate"]) {
   document.querySelector("#" + id).addEventListener("input", () => {
     const input = document.querySelector("#" + id);
     const output = document.querySelector("#" + id + "-value");
-    if (output) output.textContent = input.value;
+    if (output) output.textContent = input.type === "checkbox" ? (input.checked ? "On" : "Off") : input.value;
     renderBackgroundRemovalPreview(true);
   });
 }
@@ -2001,11 +2148,14 @@ document.querySelector("#apply-background-removal").addEventListener("click", as
     return;
   }
   try {
-    const automatic = session.automatic || removeConnectedBackground(session.original, {
-      targetColor: document.querySelector("#background-removal-color").value,
-      tolerance: Number(document.querySelector("#background-removal-tolerance").value),
-      feather: Number(document.querySelector("#background-removal-feather").value)
-    });
+removeConnectedBackground(session.original, {
+        targetColor: document.querySelector("#background-removal-color").value,
+        tolerance: Number(document.querySelector("#background-removal-tolerance").value),
+        feather: Number(document.querySelector("#background-removal-feather").value),
+        edgeSensitivity: Number(document.querySelector("#background-removal-edge-sensitivity").value),
+        protectLineArt: document.querySelector("#background-removal-protect-line-art").checked,
+        decontaminate: document.querySelector("#background-removal-decontaminate").checked
+      });
     const result = applyEraseStrokes(automatic, session.strokes);
     backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
     const source = backgroundRemovalCanvas.toDataURL("image/webp", 0.88);
@@ -2025,6 +2175,44 @@ document.querySelector("#apply-background-removal").addEventListener("click", as
   } catch (error) {
     document.querySelector("#background-removal-status").textContent = error.message || "Could not apply transparency";
   }
+});
+
+
+function pixelHex(data, offset) { return "#" + [data[offset],data[offset+1],data[offset+2]].map(v=>v.toString(16).padStart(2,"0")).join(""); }
+function renderRecolorPreview() {
+ const s=recolorSession;if(!s||!recolorContext)return;
+ try { const result=s.sourceColor?replaceColorRange(s.original,{sourceColor:s.sourceColor,targetColor:document.querySelector("#recolor-target-color").value,tolerance:Number(document.querySelector("#recolor-tolerance").value),softness:Number(document.querySelector("#recolor-softness").value),preserveShading:document.querySelector("#recolor-preserve-shading").checked}):s.original;
+ recolorContext.putImageData(new ImageData(result.data,result.width,result.height),0,0);
+ document.querySelector("#recolor-tolerance-value").textContent=document.querySelector("#recolor-tolerance").value;
+ document.querySelector("#recolor-softness-value").textContent=document.querySelector("#recolor-softness").value;
+ document.querySelector("#recolor-status").textContent=s.sourceColor?"Preview: source color range selected. Shading and alpha are preserved.":"Choose “Sample source color” and tap the color to replace.";
+ } catch(error){document.querySelector("#recolor-status").textContent=error.message||"Preview failed";}
+}
+async function openRecolorTool() {
+ const layer=selectedLayerExact();if(!layer||layer.contentType!=="image"||!layer.image||layer.locked)return;
+ try {
+  if(layer.image.width*layer.image.height>16000000)throw new RangeError("Color replacement is limited to 16 megapixels. Resize the image first.");
+  const image=await new Promise((resolve,reject)=>{const cached=imageCache.get(layer.image.source);if(cached&&cached.complete&&cached.naturalWidth>0){resolve(cached);return;}const candidate=cached||new Image();candidate.onload=()=>resolve(candidate);candidate.onerror=()=>reject(new Error("Could not decode the selected image"));candidate.src=layer.image.source;imageCache.set(layer.image.source,candidate);});
+  const width=layer.image.width,height=layer.image.height;recolorCanvas.width=width;recolorCanvas.height=height;recolorContext.clearRect(0,0,width,height);recolorContext.drawImage(image,0,0,width,height);
+  recolorSession={layerId:layer.id,source:layer.image.source,original:recolorContext.getImageData(0,0,width,height),sourceColor:null};recolorSampleMode=false;
+  document.querySelector("#recolor-source-color").value="#806050";document.querySelector("#recolor-target-color").value="#c76cf2";document.querySelector("#recolor-tolerance").value="36";document.querySelector("#recolor-softness").value="28";document.querySelector("#recolor-preserve-shading").checked=true;
+  recolorDialog.showModal();renderRecolorPreview();
+ } catch(error){status.textContent=error.message||"Could not open color replacement";}
+}
+if(recolorButton)recolorButton.addEventListener("click",openRecolorTool);
+function closeRecolorTool(){recolorDialog.close();recolorSession=null;recolorSampleMode=false;}
+document.querySelector("#cancel-recolor").addEventListener("click",closeRecolorTool);
+document.querySelector("#cancel-recolor-bottom").addEventListener("click",closeRecolorTool);
+document.querySelector("#sample-recolor-source").addEventListener("click",()=>{recolorSampleMode=true;document.querySelector("#recolor-status").textContent="Tap the source color in the image preview.";});
+recolorCanvas.addEventListener("click",event=>{const s=recolorSession;if(!s||!recolorSampleMode)return;const r=recolorCanvas.getBoundingClientRect(),x=Math.max(0,Math.min(recolorCanvas.width-1,Math.floor((event.clientX-r.left)*recolorCanvas.width/r.width))),y=Math.max(0,Math.min(recolorCanvas.height-1,Math.floor((event.clientY-r.top)*recolorCanvas.height/r.height))),o=(y*recolorCanvas.width+x)*4;s.sourceColor=pixelHex(s.original.data,o);document.querySelector("#recolor-source-color").value=s.sourceColor;recolorSampleMode=false;renderRecolorPreview();});
+for(const id of ["recolor-target-color","recolor-tolerance","recolor-softness","recolor-preserve-shading"]){document.querySelector("#"+id).addEventListener("input",renderRecolorPreview);document.querySelector("#"+id).addEventListener("change",renderRecolorPreview);}
+document.querySelector("#apply-recolor").addEventListener("click",async()=>{
+ const s=recolorSession,layer=s&&state.document.layers.find(item=>item.id===s.layerId);
+ if(!s||!layer||layer.locked||layer.contentType!=="image"||layer.image?.source!==s.source){document.querySelector("#recolor-status").textContent="Selected layer changed. Close and reopen the tool.";return;}
+ if(!s.sourceColor){document.querySelector("#recolor-status").textContent="Sample a source color before applying.";return;}
+ const button=document.querySelector("#apply-recolor");button.disabled=true;
+ try {const result=replaceColorRange(s.original,{sourceColor:s.sourceColor,targetColor:document.querySelector("#recolor-target-color").value,tolerance:Number(document.querySelector("#recolor-tolerance").value),softness:Number(document.querySelector("#recolor-softness").value),preserveShading:document.querySelector("#recolor-preserve-shading").checked});recolorContext.putImageData(new ImageData(result.data,result.width,result.height),0,0);const optimized=await optimizeImageSource(recolorCanvas.toDataURL("image/webp",0.88));const before=cloneDocument(state.document),next=replaceImageLayer(state.document,layer.id,{source:optimized.source,width:optimized.width,height:optimized.height},{preserveDisplaySize:true});if(!next)throw new Error("Recolored image exceeds the document limit. Resize it and try again.");imageCache.delete(s.source);state.document=next;state.history.record(before,next);state.dirty=true;refreshDocument("Color range replaced · shading preserved");persistDocument();closeRecolorTool();
+ } catch(error){document.querySelector("#recolor-status").textContent=error.message||"Could not apply recolor";} finally{button.disabled=false;}
 });
 
 async function importImageIntoEditor(file, message = "Image imported") {
@@ -2406,7 +2594,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v13";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v14";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -2422,6 +2610,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/image-import.mjs",
   "./domain/image-input.mjs",
   "./domain/image-processing.mjs",
+  "./domain/color-replacement.mjs",
   "./domain/canvas-space.mjs",
   "./domain/layer-adjustments.mjs",
   "./domain/quick-edit-recipes.mjs",

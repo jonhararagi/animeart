@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { applyEraseStrokes, removeConnectedBackground } from "../domain/background-removal.mjs";
 const make=(w,h,pixels)=>({width:w,height:h,data:new Uint8ClampedArray(pixels.flatMap(p=>[...p,255]))});
+const alpha=(image,i)=>image.data[i*4+3];
 test("removes edge-connected background while preserving enclosed same-color pixels",()=>{
  const white=[255,255,255],red=[220,25,30],pixels=[white,white,white,white,white,white,red,red,red,white,white,red,white,red,white,white,red,red,red,white,white,white,white,white,white];
  const result=removeConnectedBackground(make(5,5,pixels),{targetColor:"#ffffff",tolerance:0,feather:0}),alpha=i=>result.data[i*4+3];
@@ -28,3 +29,5 @@ test("manual cutout strokes erase alpha without painting white pixels",()=>{
  assert.deepEqual([...result.data.slice((1*3+1)*4,(1*3+1)*4+3)],[30,60,90]);
  assert.equal(imageData.data[(1*3+1)*4+3],255);
 });
+
+test("edge-aware mode protects strong ink boundaries and decontaminates soft fringe",()=>{const white=[255,255,255],ink=[225,225,225],warm=[220,150,80],input=make(5,3,[white,white,ink,warm,warm,white,white,ink,warm,warm,white,white,ink,warm,warm]),out=removeConnectedBackground(input,{tolerance:0,feather:50,edgeSensitivity:24,protectLineArt:true,decontaminate:true});assert.equal(alpha(out,0),0);assert.equal(alpha(out,2),255);assert.equal(alpha(out,3),255);});
