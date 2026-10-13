@@ -1,12 +1,10 @@
 package com.jonhararagi.animeart
 
-import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.view.ViewGroup
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -20,7 +18,7 @@ class AndroidFileAccessTest {
                 val content = activity.findViewById<ViewGroup>(android.R.id.content)
                 val webView = content.getChildAt(0) as WebView
 
-                assertNotNull(webView.webChromeClient)
+                assertTrue(webView.settings.javaScriptEnabled)
                 assertTrue(webView.settings.allowContentAccess)
                 assertFalse(webView.settings.allowFileAccess)
 
