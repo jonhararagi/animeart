@@ -1821,6 +1821,21 @@ canvas.addEventListener("pointerdown", event => {
     status.textContent = "🪄 Tap the background color to make that connected region transparent";
     return;
   }
+  const pointerDocumentPoint = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
+  const hitImage = [...state.document.layers].reverse().find(candidate =>
+    candidate.visible && candidate.contentType === "image" && candidate.image &&
+    hitTestLayer(candidate, pointerDocumentPoint, documentCenter(state.document))
+  );
+  if (hitImage && hitImage.id !== state.selectedLayerId &&
+      ["brush", "eraser", "censor-light"].includes(state.tool)) {
+    setSelection([hitImage.id], hitImage.id);
+    renderLayers();
+    redraw();
+    status.textContent = "🖼️ Imagen seleccionada. Volvé a tocar para usar " +
+      (state.tool === "eraser" ? "Borrar" : state.tool === "censor-light" ? "Luz de censura" : "Dibujar") +
+      " sobre la capa correcta.";
+    return;
+  }
   let layer = selectedLayer();
   if (!layer || layer.locked) return;
   if (state.tool === "eraser" && layer.contentType === "image") {
