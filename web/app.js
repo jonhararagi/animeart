@@ -2095,6 +2095,22 @@ brushEffectInput.addEventListener("change", event => {
   status.textContent = "Brush effect: " + brushEffectInput.selectedOptions[0].textContent;
 });
 
+const censorInputs = {
+  color: document.querySelector("#censor-light-color"),
+  size: document.querySelector("#censor-light-size"),
+  opacity: document.querySelector("#censor-light-opacity"),
+  softness: document.querySelector("#censor-light-softness"),
+  glow: document.querySelector("#censor-light-glow")
+};
+for (const [key, input] of Object.entries(censorInputs)) {
+  input.addEventListener("input", () => {
+    const output = document.querySelector("#censor-light-" + key + "-value");
+    output.textContent = key === "size" ? input.value + " px" : input.value + "%";
+    if (state.tool === "censor-light") redraw();
+  });
+}
+
+
 function syncBrushControls() {
   brushColorInput.value = state.brush.color;
   brushSizeInput.value = String(state.brush.size);
