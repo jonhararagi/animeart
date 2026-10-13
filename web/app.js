@@ -1485,7 +1485,7 @@ function endTouchPointer(event) {
 
 canvas.addEventListener("pointerdown", event => {
   if (event.pointerType === "touch") {
-    activeTouchPointers.set(event.pointerId, screenPointFromEvent(event));
+    activeTouchPointers.set(event.pointerId, { ...screenPointFromEvent(event), pointerId: event.pointerId });
     if (activeTouchPointers.size >= 2 && beginTouchGesture()) return;
   }
   if (state.tool === "pan") {
@@ -1516,7 +1516,7 @@ canvas.addEventListener("pointerdown", event => {
 
 canvas.addEventListener("pointermove", event => {
   if (event.pointerType === "touch" && activeTouchPointers.has(event.pointerId)) {
-    activeTouchPointers.set(event.pointerId, screenPointFromEvent(event));
+    activeTouchPointers.set(event.pointerId, { ...screenPointFromEvent(event), pointerId: event.pointerId });
     if (touchGesture && updateTouchGesture()) return;
   }
   if (state.panning && event.pointerId === state.panPointerId) {
@@ -1558,7 +1558,7 @@ canvas.addEventListener("pointermove", event => {
 
 canvas.addEventListener("pointerup", event => {
   if (event.pointerType === "touch" && activeTouchPointers.has(event.pointerId)) {
-    activeTouchPointers.set(event.pointerId, screenPointFromEvent(event));
+    activeTouchPointers.set(event.pointerId, { ...screenPointFromEvent(event), pointerId: event.pointerId });
     if (touchGesture) { endTouchPointer(event); return; }
     activeTouchPointers.delete(event.pointerId);
   }
