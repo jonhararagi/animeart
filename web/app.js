@@ -1672,8 +1672,8 @@ async function finishMagicErase(interaction) {
     state.document = next;
     state.history.record(before, next);
     state.dirty = true;
-    refreshDocument("🪄 Magic Eraser removed the tapped color region · Undo restores it");
     persistDocument();
+    refreshDocument("🪄 Magic Eraser removed the tapped color region · Undo restores it");
   } catch (error) {
     status.textContent = error?.message || "Magic Eraser failed";
   }
@@ -1738,8 +1738,8 @@ async function finishImageErase(interaction) {
   state.document = next;
   state.history.record(before, next);
   state.dirty = true;
-  refreshDocument("Image pixels erased · Undo can restore them");
   persistDocument();
+  refreshDocument("🧽 Image pixels erased · Undo can restore them");
 }
 
 canvas.addEventListener("pointerdown", event => {
