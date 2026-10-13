@@ -398,6 +398,8 @@ try {
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944 && layer.image?.height === 944)', 10000);
 
+  const beforeResizeDocument = await readDocument();
+  const beforeResizeSample = beforeResizeDocument.layers.find(layer => layer.name === "battleworn_knight");
   await click("#crop-resize-image");
   await waitFor('document.querySelector("#image-edit-dialog").open === true');
   await click('input[name="image-edit-mode"][value="resize"]');
@@ -406,8 +408,11 @@ try {
   await waitFor('document.querySelector("#status").textContent === "Image resized"', 15000);
   const resizedSample = (await readDocument()).layers.find(layer => layer.name === "battleworn_knight");
   assert(resizedSample?.image?.width === 472 && resizedSample?.image?.height === 472, "real browser resize re-samples the image while preserving its selected aspect ratio");
-  assert(Math.abs(resizedSample?.transform?.scale - 2) < 0.001, "real browser resize keeps the image's displayed size when aspect ratio is locked");
-  assert(Math.abs(resizedSample?.transform?.x - 400) < 0.001 && Math.abs(resizedSample?.transform?.y - 300) < 0.001, "real browser resize preserves the image layer position in document pixels");
+  const expectedResizeScale = beforeResizeSample.transform.scale * 2;
+  assert(Math.abs(resizedSample?.transform?.scale - expectedResizeScale) < 0.001, "real browser resize keeps the image's displayed size when aspect ratio is locked");
+  const expectedResizeX = beforeResizeSample.transform.x + (expectedResizeScale - beforeResizeSample.transform.scale) * beforeResizeDocument.width / 2;
+  const expectedResizeY = beforeResizeSample.transform.y + (expectedResizeScale - beforeResizeSample.transform.scale) * beforeResizeDocument.height / 2;
+  assert(Math.abs(resizedSample?.transform?.x - expectedResizeX) < 0.001 && Math.abs(resizedSample?.transform?.y - expectedResizeY) < 0.001, "real browser resize preserves the image layer position in document space");
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944)', 10000);
 
