@@ -5,6 +5,7 @@ import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mj
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy } from "./domain/viewport.mjs";
 import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocumentPoint, screenViewportForDocument, zoomViewportAt } from "./domain/canvas-space.mjs";
+import { distanceBetweenTouches, midpointBetweenTouches, updatePinchPanViewport } from "./domain/touch-gestures.mjs";
 import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
@@ -113,6 +114,9 @@ const ADJUSTMENT_CONTROL_DEFS = Object.freeze([
   { key: "tint", label: "Color Cast", min: -100, max: 100, step: 1 },
   { key: "blur", label: "Blur", min: 0, max: 20, step: 0.1 }
 ]);
+
+const activeTouchPointers = new Map();
+let touchGesture = null;
 
 const state = {
   tool: "brush",
@@ -1403,7 +1407,86 @@ function beginSelectionInteraction(event) {
   redraw();
 }
 
+function beginTouchGesture() {
+  const points = [...activeTouchPointers.values()].slice(0, 2);
+  if (points.length < 2) return false;
+  const first = points[0];
+  const second = points[1];
+  const startDistance = distanceBetweenTouches(first, second);
+  if (startDistance < 1) return false;
+
+  if (state.drawing && state.strokeBefore) state.document = state.strokeBefore;
+  state.drawing = false;
+  state.drawingPointerId = null;
+  state.strokeBefore = null;
+  state.panning = false;
+  state.panPointerId = null;
+  state.lastPanPoint = null;
+  if (state.transformInteraction) finishTransformInteraction(true);
+  state.multiTransformInteraction = null;
+
+  touchGesture = {
+    pointerIds: [first.pointerId, second.pointerId],
+    startDistance,
+    startMidpoint: midpointBetweenTouches(first, second),
+    startViewport: { ...state.viewport }
+  };
+  for (const point of points) {
+    try { canvas.setPointerCapture(point.pointerId); } catch {}
+  }
+  redraw();
+  status.textContent = "Two-finger gesture: move to pan, pinch to zoom";
+  return true;
+}
+
+function updateTouchGesture() {
+  if (!touchGesture) return false;
+  const first = activeTouchPointers.get(touchGesture.pointerIds[0]);
+  const second = activeTouchPointers.get(touchGesture.pointerIds[1]);
+  if (!first || !second) return false;
+  const currentDistance = distanceBetweenTouches(first, second);
+  const currentMidpoint = midpointBetweenTouches(first, second);
+  state.viewport = updatePinchPanViewport({
+    startViewport: touchGesture.startViewport,
+    startDistance: touchGesture.startDistance,
+    currentDistance,
+    startMidpoint: touchGesture.startMidpoint,
+    currentMidpoint,
+    documentModel: state.document,
+    viewportSize: canvasSize(),
+    minZoom: MIN_ZOOM,
+    maxZoom: MAX_ZOOM
+  });
+  redraw();
+  return true;
+}
+
+function endTouchPointer(event) {
+  if (event.pointerType !== "touch") return false;
+  activeTouchPointers.delete(event.pointerId);
+  if (touchGesture) {
+    touchGesture = null;
+    state.drawing = false;
+    state.drawingPointerId = null;
+    state.strokeBefore = null;
+    state.panning = false;
+    state.panPointerId = null;
+    state.lastPanPoint = null;
+    state.transformInteraction = null;
+    state.transformPointerId = null;
+    state.multiTransformInteraction = null;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    redraw();
+    return true;
+  }
+  return false;
+}
+
 canvas.addEventListener("pointerdown", event => {
+  if (event.pointerType === "touch") {
+    activeTouchPointers.set(event.pointerId, screenPointFromEvent(event));
+    if (activeTouchPointers.size >= 2 && beginTouchGesture()) return;
+  }
   if (state.tool === "pan") {
     state.transformInteraction = null;
     state.transformPointerId = null;
@@ -1431,6 +1514,10 @@ canvas.addEventListener("pointerdown", event => {
 });
 
 canvas.addEventListener("pointermove", event => {
+  if (event.pointerType === "touch" && activeTouchPointers.has(event.pointerId)) {
+    activeTouchPointers.set(event.pointerId, screenPointFromEvent(event));
+    if (touchGesture && updateTouchGesture()) return;
+  }
   if (state.panning && event.pointerId === state.panPointerId) {
     const current = screenPointFromEvent(event);
     const previous = state.lastPanPoint;
@@ -1469,6 +1556,11 @@ canvas.addEventListener("pointermove", event => {
 });
 
 canvas.addEventListener("pointerup", event => {
+  if (event.pointerType === "touch" && activeTouchPointers.has(event.pointerId)) {
+    activeTouchPointers.set(event.pointerId, screenPointFromEvent(event));
+    if (touchGesture) { endTouchPointer(event); return; }
+    activeTouchPointers.delete(event.pointerId);
+  }
   if (state.panning && event.pointerId === state.panPointerId) {
     state.panning = false;
     state.panPointerId = null;
@@ -1524,6 +1616,10 @@ canvas.addEventListener("pointerup", event => {
 });
 
 canvas.addEventListener("pointercancel", event => {
+  if (event.pointerType === "touch" && activeTouchPointers.has(event.pointerId)) {
+    if (touchGesture) { endTouchPointer(event); return; }
+    activeTouchPointers.delete(event.pointerId);
+  }
   if (event.pointerId === state.panPointerId) {
     state.panning = false;
     state.panPointerId = null;

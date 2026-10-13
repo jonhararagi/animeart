@@ -433,3 +433,14 @@ canvas {
 #background-removal-status{margin:0;color:#9bb1c8;font-size:.7rem;line-height:1.5}
 #apply-background-removal{border-color:#31a6b8;background:#173944}
 @media(max-width:760px){.background-removal-shell{padding:12px}.background-removal-workspace{grid-template-columns:minmax(0,1fr)}.background-removal-preview-wrap{min-height:220px}#background-removal-preview{max-height:42vh}.background-removal-header h2{font-size:1rem}}
+
+/* Mobile editing: the canvas owns touch input so drawing and two-finger gestures remain deterministic. */
+.canvas-wrap, #canvas { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#canvas { touch-action: none; }
+@media (max-width: 760px) {
+  .canvas-wrap { overscroll-behavior: contain; }
+  .mobile-touch-dock { -webkit-overflow-scrolling: touch; }
+  .mobile-touch-dock button, .toolbar button, .layers button, input, select, textarea {
+    touch-action: manipulation;
+  }
+}
