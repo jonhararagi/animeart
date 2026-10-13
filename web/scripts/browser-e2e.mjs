@@ -687,6 +687,23 @@ try {
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "startup read failure remains in protected recovery state");
 
   assert(await evaluate('document.documentElement.dataset.serviceWorkerActive === "true"'), "real browser service worker is active");
+
+  // Real-browser Magic Eraser regression: tapping the connected background makes it transparent.
+  const beforeMagicLayerCount = (await readDocument()).layers.length;
+  await evaluate('(async () => { const source=document.createElement("canvas");source.width=64;source.height=64;const context=source.getContext("2d");context.fillStyle="#ffffff";context.fillRect(0,0,64,64);context.fillStyle="#d21e23";context.fillRect(2,2,10,10);const blob=await new Promise(resolve=>source.toBlob(resolve,"image/png"));const file=new File([blob],"magic-tap-fixture.png",{type:"image/png"});const transfer=new DataTransfer();transfer.items.add(file);const input=document.querySelector("#image-file-input");input.files=transfer.files;input.dispatchEvent(new Event("change",{bubbles:true}));return true;})()');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length === ' + (beforeMagicLayerCount + 1), 10000);
+  await click('[aria-label="Select magic-tap-fixture"]');
+  await click('[data-tool="magic-eraser"]');
+  await click("#canvas");
+  await waitFor('document.querySelector("#status").textContent.includes("Magic Eraser removed the tapped color region")', 10000);
+  const magicPixels = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture");return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>{const canvas=document.createElement("canvas");canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;const context=canvas.getContext("2d",{willReadFrequently:true});context.drawImage(image,0,0);const pixels=context.getImageData(0,0,canvas.width,canvas.height).data;resolve({width:canvas.width,height:canvas.height,backgroundAlpha:pixels[(32*canvas.width+32)*4+3],subjectAlpha:pixels[(4*canvas.width+4)*4+3]});};image.onerror=()=>reject(new Error("Magic Eraser result did not decode"));image.src=layer.image.source;});})()');
+  assert(magicPixels.width===64&&magicPixels.height===64, "Magic Eraser keeps source dimensions");
+  assert(magicPixels.backgroundAlpha===0, "tap-seeded Magic Eraser removes the tapped connected background to transparency");
+  assert(magicPixels.subjectAlpha===255, "Magic Eraser protects the differently colored subject");
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer=>layer.name==="magic-tap-fixture"&&layer.image?.source)',10000);
+  assert(await evaluate('document.querySelector("[data-tool=magic-eraser]").classList.contains("active")'), "Magic Eraser remains visibly selected after undo");
+
   // Mobile regression: use Chromium's real touch input path, not synthetic MouseEvents.
   await cdp("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 2 });
   const touchCanvas = await selectorCenter("#canvas");
