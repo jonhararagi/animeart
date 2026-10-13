@@ -218,6 +218,19 @@
       <div class="background-removal-workspace">
         <div class="background-removal-preview-wrap"><canvas id="background-removal-preview" aria-label="Background removal preview"></canvas></div>
         <div class="background-removal-controls">
+          <section class="background-profile-controls" aria-label="Local processing profiles">
+            <label class="text-field" for="background-removal-profile">Processing profile
+              <select id="background-removal-profile"></select>
+            </label>
+            <label class="text-field" for="background-removal-profile-name">Save current settings as
+              <input id="background-removal-profile-name" type="text" maxlength="60" value="My profile" autocomplete="off">
+            </label>
+            <div class="background-removal-actions">
+              <button id="save-background-profile" type="button">Save profile</button>
+              <button id="delete-background-profile" type="button" disabled>Delete custom profile</button>
+            </div>
+            <p class="profile-help">Profiles stay on this device. They save processing parameters, not a trained AI model.</p>
+          </section>
           <label class="text-field" for="background-removal-color">Background color
             <input id="background-removal-color" type="color" value="#ffffff">
           </label>
