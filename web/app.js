@@ -276,7 +276,7 @@ function drawStrokeCollection(context, strokes, baseOpacity = 1) {
     context.lineCap = "round";
     context.lineJoin = "round";
     context.strokeStyle = erasing ? "#000000" : stroke.color;
-    context.shadowColor = erasing || effect === "normal" ? "transparent" : stroke.color;
+    context.shadowColor = erasing || (effect === "normal" && !censorLight) ? "transparent" : stroke.color;
     context.shadowBlur = censorLight
       ? stroke.size * Math.max(Math.min(100, Math.max(0, Number(stroke.glow ?? 0))), 100 - Math.min(100, Math.max(0, Number(stroke.hardness ?? 100)))) / 100 * 1.2
       : effect === "neon" ? stroke.size * 1.8
