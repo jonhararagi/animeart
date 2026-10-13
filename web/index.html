@@ -473,6 +473,18 @@
       </div>
     </form>
   </dialog>
+  <script>
+    if (location.protocol === "file:") {
+      document.addEventListener("DOMContentLoaded", () => {
+        const notice = document.createElement("section");
+        notice.id = "local-file-protocol-warning";
+        notice.setAttribute("role", "alert");
+        notice.style.cssText = "position:fixed;z-index:99999;inset:12px 12px auto;padding:18px 20px;border:2px solid #ffbd69;border-radius:12px;background:#241b12;color:#fff2dd;box-shadow:0 12px 48px #000b;font:16px/1.55 system-ui,sans-serif";
+        notice.innerHTML = "<strong style='display:block;font-size:20px;margin-bottom:8px'>AnimeArt no se puede ejecutar abriendo este archivo directamente.</strong><p style='margin:0 0 8px'>El navegador bloquea los módulos JavaScript en direcciones <code>file://</code>. Por eso los botones no responden.</p><p style='margin:0 0 8px'>En Windows, abre la carpeta completa del proyecto y ejecuta <code>START_ANIMEART.bat</code>. Se abrirá el editor en <a href='http://127.0.0.1:4173/' style='color:#7ee7ff'>http://127.0.0.1:4173/</a>.</p><p style='margin:0'>Si descargaste solo la carpeta <code>web</code>, instala Node.js 22+ y ejecuta <code>START_ANIMEART.bat</code> dentro de esa carpeta, o abre una terminal ahí y usa <code>node scripts\\serve.mjs</code>.</p>";
+        document.body.prepend(notice);
+      });
+    }
+  </script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
