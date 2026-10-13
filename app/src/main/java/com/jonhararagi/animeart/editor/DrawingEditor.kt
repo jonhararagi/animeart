@@ -76,9 +76,15 @@ class DrawingEditor(initial: EditorState = EditorState()) {
     }
 
     fun beginStroke(point: Offset) {
-        val layerId = state.selectedLayerId ?: return
-        val layer = state.document.layers.firstOrNull { it.id == layerId } ?: return
+        var layerId = state.selectedLayerId ?: return
+        var layer = state.document.layers.firstOrNull { it.id == layerId } ?: return
         if (!layer.visible || layer.locked || state.activeTool !in listOf(EditorTool.DRAW, EditorTool.ERASE)) return
+        // Never replace an imported image with strokes. Create a transparent paint layer above it.
+        if (layer.content !is LayerContent.Drawing) {
+            createLayer("Paint")
+            layerId = state.selectedLayerId ?: return
+            layer = state.document.layers.firstOrNull { it.id == layerId } ?: return
+        }
         activeLayerId = layerId
         val localPoint = LayerTransformMath.inverse(point, layer.transform, LayerTransformMath.contentPivot(layer.content))
         activeStroke = Stroke(
