@@ -18,6 +18,20 @@ class DocumentReducerTest {
         assertEquals(renamed.layers.last().id, afterDeletingFirst.layers.single().id)
     }
 
+    @Test fun addImageLayer_preservesUriAsEditableImageContent() {
+        val initial = CanvasDocument()
+        val uri = "content://com.example.gallery/document/image%3A42"
+        val updated = DocumentReducer.addImageLayer(initial, "Character", uri)
+        assertEquals(2, updated.layers.size)
+        val image = updated.layers.last()
+        assertEquals("Character", image.name)
+        assertEquals(LayerContent.Image(uri), image.content)
+        val (duplicated, copyId) = DocumentReducer.duplicateLayer(updated, image.id)
+        val copy = duplicated.layers.first { it.id == copyId }
+        assertEquals(LayerContent.Image(uri), copy.content)
+        assertNotEquals(image.id, copy.id)
+    }
+
     @Test fun visibilityLockAndOpacity() {
         val initial = CanvasDocument()
         val id = initial.layers.first().id
