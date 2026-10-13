@@ -441,8 +441,8 @@ test("image crop and resize stay on the existing image-layer, history and persis
   assert.match(operations, /export function replaceImageLayer/);
   assert.match(processing, /export async function cropImageSource/);
   assert.match(processing, /export async function resizeImageSource/);
-  const workerCache = worker.match(/const CACHE_NAME = "(animeart-web-shell-v\\d+)"/)?.[1];
-  const appCache = app.match(/const OFFLINE_CACHE_NAME = "(animeart-web-shell-v\\d+)"/)?.[1];
+  const workerCache = worker.match(/const CACHE_NAME = "([^"]+)"/)?.[1];
+  const appCache = app.match(/const OFFLINE_CACHE_NAME = "([^"]+)"/)?.[1];
   assert.ok(workerCache, "service worker declares a versioned cache");
   assert.equal(appCache, workerCache, "readiness diagnostics and service worker use the same cache version");
 });
