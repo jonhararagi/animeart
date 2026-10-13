@@ -2948,28 +2948,38 @@ recoverButton.addEventListener("click", () => {
 
 async function saveBlobToDevice(blob, filename, imageFormat = null) {
   if (!(blob instanceof Blob) || blob.size < 1) throw new Error("There is no file data to export");
-  const nativeBridge = window.AnimeArtNative;
+  const nativeBridge = globalThis.AnimeArtNative;
   if (nativeBridge && typeof nativeBridge.saveFile === "function") {
+    if (blob.size > 50 * 1024 * 1024) throw new Error("Android export limit is 50 MB");
     const bytes = new Uint8Array(await blob.arrayBuffer());
     let binary = "";
     const chunkSize = 0x8000;
     for (let offset = 0; offset < bytes.length; offset += chunkSize) {
       binary += String.fromCharCode(...bytes.subarray(offset, Math.min(bytes.length, offset + chunkSize)));
     }
-    const mimeType = blob.type || (imageFormat ? "image/" + imageFormat : "application/json");
+    const mimeType = blob.type || (imageFormat === "jpeg" ? "image/jpeg" : imageFormat === "webp" ? "image/webp" : imageFormat === "png" ? "image/png" : "application/json");
     nativeBridge.saveFile(btoa(binary), mimeType, filename);
-    status.textContent = "Opening Android Save As…";
-    return;
+    return "native";
   }
-  downloadImageBlob(blob, filename, imageFormat);
+  if (imageFormat) {
+    downloadImageBlob(blob, filename, imageFormat);
+    return "browser";
+  }
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return "browser";
 }
 
 exportProjectButton.addEventListener("click", async () => {
   try {
     const serialized = serializeProjectFile(state.document);
     const blob = new Blob([serialized], { type: "application/json;charset=utf-8" });
-    await saveBlobToDevice(blob, "animeart-project.json");
-    if (!window.AnimeArtNative) status.textContent = "Project file exported";
+    const destination = await saveBlobToDevice(blob, "animeart-project.json");
+    status.textContent = destination === "native" ? "Choose where to save the project file" : "Project file exported";
   } catch (error) {
     status.textContent = error?.message || "Could not export project file";
   }
@@ -3058,13 +3068,13 @@ async function exportPng() {
     });
     const quality = Number(exportQualityInput.value) / 100;
     const blob = await canvasToImageBlob(exportCanvas, format, quality);
-    await saveBlobToDevice(blob, "animeart." + format, format);
+    const destination = await saveBlobToDevice(blob, "animeart." + format, format);
     if (JSON.stringify(state.document) !== documentBefore ||
         state.history.canUndo() !== historyBeforeUndo ||
         state.history.canRedo() !== historyBeforeRedo) {
       throw new Error("PNG export modified editor state");
     }
-    status.textContent = format.toUpperCase() + " exported";
+    status.textContent = destination === "native" ? "Choose where to save the image" : format.toUpperCase() + " exported";
   } catch (error) {
     status.textContent = error?.message || "PNG export failed";
   } finally {
