@@ -3152,3 +3152,13 @@ Corrección de inventario durante la integración: aunque la sincronización de 
 - PR #41, #43, #44 y #46 siguen abiertos como deuda de recuperación/persistencia; PR #50 y #51 siguen separados como mantenimiento de Gradle.
 
 **Límite de validación:** los workflows verdes validan el SHA exacto de la entrega antes del merge y utilizan emulador para Android. No equivalen a una nueva prueba visual manual en el teléfono del usuario. La observación reportada de problemas estéticos y de botones en el móvil sigue siendo feedback de producto para una iteración visual dedicada; no se debe declarar que quedó resuelta únicamente por CI.
+
+
+## AA-APK-DELIVERY-002 — APK publicada y PR abiertos limpiados (2026-10-13)
+
+- APK descargada del artefacto oficial `animeart-debug-apk` del Android CI run `38476886635`, construido sobre el HEAD validado `de5cd1033c43b79072d812507489350dda705383`, que corresponde al código de la entrega consolidada fusionada en main.
+- Artefacto original: https://github.com/jonhararagi/animeart/actions/runs/38476886635
+- Archivo extraído para entrega: `animeart-debug.apk`; SHA-256 `542c459a4f141f2d40748ffda5f2d55762964fb3b39a6711d9c78ce9c5ddde34`.
+- Se cerraron los PR restantes #41, #43, #44, #46, #50, #51 y #68 a petición del usuario, dejando un comentario explícito sobre qué no se integró. Las ramas remotas se conservan, no se borraron.
+- Comprobación posterior: no quedan PR abiertos en el repositorio.
+- **Importante:** cerrar PR no equivale a integrar sus cambios. #41/#43/#44/#46 (recuperación/almacenamiento), #50/#51 (mantenimiento Gradle) y #68 (editor nativo alternativo) no están incluidos en esta APK. La APK contiene la entrega consolidada #72; no se declara que incluya cambios de ramas no fusionadas.
