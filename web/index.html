@@ -130,8 +130,24 @@
         </div>
       </details>
     </aside>
-    <section class="canvas-wrap">
-      <canvas id="canvas" aria-label="AnimeArt canvas"></canvas>
+    <section class="canvas-wrap" data-background="checkerboard" aria-label="Área de edición">
+      <div class="canvas-tools" aria-label="Vista y transparencia">
+        <strong id="selection-indicator" tabindex="-1" data-kind="none" role="status" aria-live="polite">🖼️ Seleccioná una imagen para editar</strong>
+        <div class="canvas-view-actions">
+          <button id="view-transparency" type="button" aria-pressed="true">✓ Viendo transparencia</button>
+          <button type="button" data-canvas-background="white" aria-pressed="false">Fondo blanco</button>
+          <button type="button" data-canvas-background="black" aria-pressed="false">Fondo negro</button>
+          <button type="button" data-canvas-background="gray" aria-pressed="false">Fondo gris</button>
+          <button type="button" data-canvas-background="checkerboard" aria-pressed="true">Cuadritos</button>
+        </div>
+      </div>
+      <div class="transparency-shortcuts" aria-label="Acciones rápidas de transparencia">
+        <button type="button" id="quick-remove-background">🪄 Quitar fondo</button>
+        <button type="button" id="quick-recover" title="Deshacer el último cambio">↶ Recuperar</button>
+        <button type="button" id="export-transparent-png">⬇ Exportar PNG transparente</button>
+      </div>
+      <canvas id="canvas" aria-label="Lienzo de edición. Seleccioná una capa para modificarla."></canvas>
+      <p class="transparency-note" id="transparency-note">Los cuadritos indican transparencia. No aparecerán en el PNG. El fondo blanco de una imagen importada sigue siendo opaco hasta quitarlo.</p>
     </section>
     <aside class="layers" aria-label="Layers">
       <h2>Layers</h2>
