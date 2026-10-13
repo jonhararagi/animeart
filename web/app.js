@@ -446,6 +446,47 @@ function screenPointFromEvent(event) {
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 
+function createLayerThumbnail(layer) {
+  const thumbnail = document.createElement("span");
+  thumbnail.className = "layer-thumbnail";
+  thumbnail.setAttribute("aria-hidden", "true");
+  if (layer.contentType === "image" && layer.image?.source) {
+    const image = document.createElement("img");
+    image.alt = "";
+    image.src = layer.image.source;
+    thumbnail.appendChild(image);
+  } else if (layer.contentType === "text") {
+    thumbnail.classList.add("layer-thumbnail-text");
+    thumbnail.textContent = "Tt";
+  } else {
+    const preview = document.createElement("canvas");
+    preview.width = 52;
+    preview.height = 36;
+    const previewContext = preview.getContext("2d");
+    const width = Math.max(1, Number(state.document.width) || 512);
+    const height = Math.max(1, Number(state.document.height) || 512);
+    if (previewContext) {
+      const scale = Math.min(preview.width / width, preview.height / height);
+      previewContext.translate((preview.width - width * scale) / 2, (preview.height - height * scale) / 2);
+      previewContext.scale(scale, scale);
+      for (const stroke of layer.strokes || []) {
+        if (stroke.points.length < 2) continue;
+        previewContext.beginPath();
+        previewContext.moveTo(stroke.points[0].x, stroke.points[0].y);
+        for (const point of stroke.points.slice(1)) previewContext.lineTo(point.x, point.y);
+        previewContext.lineWidth = Math.max(1 / scale, stroke.size);
+        previewContext.lineCap = "round";
+        previewContext.lineJoin = "round";
+        previewContext.strokeStyle = stroke.tool === "eraser" ? "#ffffff" : stroke.color;
+        previewContext.globalAlpha = stroke.tool === "eraser" ? 1 : stroke.opacity;
+        previewContext.stroke();
+      }
+    }
+    thumbnail.appendChild(preview);
+  }
+  return thumbnail;
+}
+
 function renderLayers() {
   while (layersEl.firstChild) layersEl.removeChild(layersEl.firstChild);
   [...state.document.layers].reverse().forEach(layer => {
@@ -456,7 +497,10 @@ function renderLayers() {
     const selectButton = document.createElement("button");
     selectButton.type = "button";
     selectButton.className = "layer-select";
-    selectButton.textContent = layer.name + (layer.contentType === "image" ? (layer.isReference ? " [Reference]" : " [Image]") : layer.contentType === "text" ? " [Text]" : "");
+    const layerName = document.createElement("span");
+    layerName.className = "layer-name";
+    layerName.textContent = layer.name + (layer.contentType === "image" ? (layer.isReference ? " [Reference]" : " [Image]") : layer.contentType === "text" ? " [Text]" : "");
+    selectButton.append(createLayerThumbnail(layer), layerName);
     selectButton.setAttribute("aria-label", "Select " + layer.name);
     selectButton.addEventListener("click", event => {
       if (event.shiftKey) {
