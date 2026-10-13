@@ -1458,6 +1458,7 @@ function updateTouchGesture() {
     maxZoom: MAX_ZOOM
   });
   redraw();
+  status.textContent = "Touch zoom " + Math.round(state.viewport.zoom * 100) + "%";
   return true;
 }
 

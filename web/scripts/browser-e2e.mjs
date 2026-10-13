@@ -666,6 +666,28 @@ try {
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "startup read failure remains in protected recovery state");
 
   assert(await evaluate('document.documentElement.dataset.serviceWorkerActive === "true"'), "real browser service worker is active");
+  // Mobile regression: use Chromium's real touch input path, not synthetic MouseEvents.
+  await cdp("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 2 });
+  const touchCanvas = await selectorCenter("#canvas");
+  const touchStart = [
+    { id: 1, x: touchCanvas.x - 42, y: touchCanvas.y - 8 },
+    { id: 2, x: touchCanvas.x + 42, y: touchCanvas.y + 8 }
+  ];
+  await cdp("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: touchStart.map(point => ({ ...point, radiusX: 3, radiusY: 3, force: 1 }))
+  });
+  await cdp("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: [
+      { id: 1, x: touchCanvas.x - 78, y: touchCanvas.y + 2, radiusX: 3, radiusY: 3, force: 1 },
+      { id: 2, x: touchCanvas.x + 98, y: touchCanvas.y + 28, radiusX: 3, radiusY: 3, force: 1 }
+    ]
+  });
+  assert((await evaluate('document.querySelector("#status").textContent')).startsWith("Touch zoom "),
+    "two-finger touchscreen input updates the real editor viewport zoom");
+  await cdp("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp("Emulation.setTouchEmulationEnabled", { enabled: false });
   assert(await evaluate('document.documentElement.dataset.cacheReady === "true"'), "real browser service worker cache contains the required offline shell");
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {
