@@ -10,7 +10,7 @@ import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToC
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
 import { removeConnectedBackground, applyEraseStrokes } from "./domain/background-removal.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
-import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
+import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
@@ -1896,7 +1896,7 @@ function finishBackgroundRemovalStroke(event) {
 }
 backgroundRemovalCanvas.addEventListener("pointerup", finishBackgroundRemovalStroke);
 backgroundRemovalCanvas.addEventListener("pointercancel", finishBackgroundRemovalStroke);
-document.querySelector("#apply-background-removal").addEventListener("click", () => {
+document.querySelector("#apply-background-removal").addEventListener("click", async () => {
   const session = backgroundRemovalSession;
   const layer = session && state.document.layers.find(item => item.id === session.layerId);
   if (!session || !layer || layer.locked || layer.contentType !== "image" || layer.image?.source !== session.source) {
@@ -1911,9 +1911,10 @@ document.querySelector("#apply-background-removal").addEventListener("click", ()
     });
     const result = applyEraseStrokes(automatic, session.strokes);
     backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
-    const source = backgroundRemovalCanvas.toDataURL("image/webp", 0.92);
+    const source = backgroundRemovalCanvas.toDataURL("image/webp", 0.88);
+    const optimized = await optimizeImageSource(source);
     const before = cloneDocument(state.document);
-    const next = replaceImageLayer(state.document, layer.id, { source, width: result.width, height: result.height });
+    const next = replaceImageLayer(state.document, layer.id, { source: optimized.source, width: optimized.width, height: optimized.height }, { preserveDisplaySize: true });
     if (!next) throw new Error("The edited image exceeds the document's image limit. Resize it and try again.");
     imageCache.delete(session.source);
     state.document = next;
