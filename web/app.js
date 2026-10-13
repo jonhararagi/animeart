@@ -2233,7 +2233,7 @@ function showGoalHelp(goal) {
   document.querySelector("#editing-help-copy").textContent = item[1];
   const list = document.querySelector("#editing-help-steps");
   list.replaceChildren();
-  item[1].split(/(?<=\\.)\\s+/).filter(Boolean).forEach(step => {
+  item[1].split(/(?<=\.)\s+/).filter(Boolean).forEach(step => {
     const li = document.createElement("li");
     li.textContent = step;
     list.append(li);
