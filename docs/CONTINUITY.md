@@ -3012,3 +3012,15 @@ LIMITATIONS:
 
 SAFETY:
 - Main was not edited directly. No merge, PR closure, retarget or rebase was performed.
+
+
+## AA-PICART-MODE-001 · Beginner panel and Luz de censura · 2026-10-13
+
+- Added a compact **Editar fácilmente** panel with ten goal shortcuts and local preference for contextual help. The goal buttons route to existing crop, background removal, eraser, brush, text, adjustment, layers, undo and export functions.
+- Added a collapsible **Más herramientas** group so advanced controls do not occupy the primary task panel.
+- Added the **Luz de censura** drawing tool on the canonical editor. It writes to an independent drawing layer, uses document-coordinate diameter, supports color, opacity, edge softness, adjustable glow and four parameter presets. Single-point taps render as a covered dot; undo/redo use the existing document history.
+- Raster export is flattened by the existing image export pipeline. When a visible censor stroke exists, export is blocked until the user confirms **Censura permanente al exportar**. The saved project remains editable, so users should retain it separately from the final flattened image.
+- Fixed painting over a selected image to select the newly created transparent drawing layer before appending the stroke.
+- Added unit/smoke tests for censor stroke model values, primary goal controls and their connection to the canonical editor.
+- Validation must be checked on the final HEAD. The initial workflows triggered by this change were Web CI run #508 and Android CI run #607; neither was complete at the time this note was written.
+- Known limits: no semantic AI segmentation; the local background remover remains a connected-color/edge heuristic. Softness and glow are canvas visual effects, not semantic edge reconstruction. Android native save and WebView packaging must pass the final workflow before release claims.
