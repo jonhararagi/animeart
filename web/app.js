@@ -1770,6 +1770,11 @@ canvas.addEventListener("pointerdown", event => {
       status.textContent = "Select an unlocked image layer, then tap the background to erase it";
       return;
     }
+    const documentPoint = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
+    if (!hitTestLayer(imageLayer, documentPoint, documentCenter(state.document))) {
+      status.textContent = "Tap inside the selected image to erase a background region";
+      return;
+    }
     state.magicEraseInteraction = { pointerId: event.pointerId, layerId: imageLayer.id, point: imageErasePoint(event, imageLayer), startScreen: screenPointFromEvent(event), moved: false };
     canvas.setPointerCapture(event.pointerId);
     status.textContent = "🪄 Tap the background color to make that connected region transparent";
@@ -2129,7 +2134,10 @@ document.querySelectorAll(".tool").forEach(button => {
     }
     if (state.tool !== "select" && state.transformInteraction) finishTransformInteraction(true);
     state.magicEraseInteraction = null;
-    document.querySelectorAll(".tool").forEach(b => b.classList.toggle("active", b === button));
+    document.querySelectorAll(".tool").forEach(b => {
+      b.classList.toggle("active", b === button);
+      if (b.hasAttribute("aria-pressed")) b.setAttribute("aria-pressed", String(b === button));
+    });
     mobileDock?.querySelectorAll('[data-touch-action="tool"]').forEach(item => item.setAttribute("aria-pressed", String(item.dataset.tool === state.tool)));
     redraw();
   });
