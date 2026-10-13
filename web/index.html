@@ -40,6 +40,7 @@
       <button id="poster-templates" type="button">Poster templates</button>
       <button id="add-image-layer" title="Import images up to 25 MB. Large images are optimized locally for project storage.">+ Image / Reference</button>
       <button id="crop-resize-image" disabled>Crop / Resize Image</button>
+      <button id="remove-background" type="button" disabled>Remove Background</button>
       <button id="flip-image-horizontal" type="button" disabled title="Mirror selected image left to right">Flip H</button>
       <button id="flip-image-vertical" type="button" disabled title="Mirror selected image top to bottom">Flip V</button>
       <button id="add-sample-character" title="Import the bundled CC0 1.0 character as a real image layer">+ CC0 Character Sample</button>
@@ -188,6 +189,36 @@
     <button type="button" data-touch-action="more" aria-expanded="false">More</button>
     <button type="button" data-touch-action="export">Export</button>
   </nav>
+  <dialog id="background-removal-dialog" aria-labelledby="background-removal-title">
+    <section class="background-removal-shell">
+      <header class="background-removal-header">
+        <div><p class="eyebrow">PIXEL EDITING · LOCAL ONLY</p><h2 id="background-removal-title">Remove Background</h2><p>Remove a flat-color background or refine the result with the manual erase brush.</p></div>
+        <button id="cancel-background-removal" type="button">Cancel</button>
+      </header>
+      <div class="background-removal-workspace">
+        <div class="background-removal-preview-wrap"><canvas id="background-removal-preview" aria-label="Background removal preview"></canvas></div>
+        <div class="background-removal-controls">
+          <label class="text-field" for="background-removal-color">Background color
+            <input id="background-removal-color" type="color" value="#ffffff">
+          </label>
+          <button id="sample-background-color" type="button">Sample color from preview</button>
+          <label class="text-field" for="background-removal-tolerance">Color tolerance <output id="background-removal-tolerance-value">36</output>
+            <input id="background-removal-tolerance" type="range" min="0" max="160" value="36">
+          </label>
+          <label class="text-field" for="background-removal-feather">Edge softness <output id="background-removal-feather-value">18</output>
+            <input id="background-removal-feather" type="range" min="0" max="100" value="18">
+          </label>
+          <label class="text-field" for="background-removal-brush-size">Erase brush <output id="background-removal-brush-size-value">28 px</output>
+            <input id="background-removal-brush-size" type="range" min="2" max="180" value="28">
+          </label>
+          <label class="background-removal-toggle"><input id="background-removal-manual" type="checkbox"> Manual erase mode</label>
+          <div class="background-removal-actions"><button id="undo-background-erase" type="button" disabled>Undo erase stroke</button><button id="clear-background-erase" type="button">Clear erase strokes</button></div>
+          <p id="background-removal-status" role="status" aria-live="polite">Click “Sample color” then choose the background color in the preview.</p>
+          <button id="apply-background-removal" type="button">Apply transparency to layer</button>
+        </div>
+      </div>
+    </section>
+  </dialog>
   <dialog id="image-edit-dialog"
   <dialog id="poster-template-dialog" aria-labelledby="poster-template-title">
     <form id="poster-template-form" method="dialog">
