@@ -10,7 +10,7 @@ AnimeArt is a local-first **image editor and compositor**, inspired by everyday 
 - Manage layers: create, select, rename, duplicate, delete, reorder, hide, lock and set opacity.
 - Use masks and a true transparent-alpha eraser on drawing layers.
 - Draw with configurable color, size, opacity and hardness; use normal brush, soft airbrush, glow and neon effects.
-- Remove connected backgrounds locally with edge/line-art protection, feathering, fringe cleanup and manual erase strokes.
+- Remove connected backgrounds locally with edge/line-art protection, feathering, fringe cleanup and manual erase strokes. Save, reuse and delete local processing profiles for anime ink, flat-color illustration, transparent PNGs and photography; profiles store parameters only and do not train an AI model.
 - Select a source color in an image and recolor that range, preserving shading, highlights, texture and alpha.
 - Adjust brightness, contrast, saturation, hue, temperature, tint and blur non-destructively, with Original, Anime, Cinematic, Manga and Dream presets.
 - Add editable multiline text with font family, weight, size, color, alignment, outline and shadow.
