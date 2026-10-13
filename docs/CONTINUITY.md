@@ -2992,6 +2992,8 @@ IMPLEMENTED IN THIS CONTINUATION:
 - Connected profile selection/save/delete to the existing background-removal dialog. Profiles save target color, tolerance, connected-region mode, line-art protection, feathering and fringe cleanup parameters on the device.
 - Updated README to document the behavior and explicitly distinguish parameter presets from a trained AI model.
 - Repaired the apply action in `web/app.js`: the previous handler computed no `automatic` result before passing it to manual erase. It now computes the automatic connected-region matte from the current controls before applying manual correction strokes, then continues through the existing layer replacement/history/persistence path.
+- Integrated the useful mobile repairs already represented by the PR #70 diff on this line: image erasing uses inverse layer transforms and alpha pixels with Undo/history; painting over an image creates a separate transparent drawing layer; text defaults to a visible white fill with dark outline; PNG/JPEG/WebP and project JSON export route through Android's native Save As bridge with browser-download fallback.
+- Bumped the offline shell to v17, precached `background-removal-profiles.mjs`, and added it to the offline-readiness resource contract so installed PWA/WebView builds refresh the new module.
 - No server-side image processing, paid API, second editor, or parallel history was introduced.
 
 VALIDATION:
