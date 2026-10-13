@@ -1024,6 +1024,15 @@ function commitLayerAdjustments(layerId, values, message = "Image adjustments up
   return true;
 }
 
+function clearElementChildren(element) {
+  if (!element) return;
+  if (typeof element.replaceChildren === "function") {
+    element.replaceChildren();
+    return;
+  }
+  while (element.firstChild) element.removeChild(element.firstChild);
+}
+
 function renderLayerAdjustments() {
   if (!layerAdjustmentControls || !adjustmentLayerName || !resetLayerAdjustmentsButton) return;
   const layer = selectedLayerExact();
@@ -1035,7 +1044,7 @@ function renderLayerAdjustments() {
   resetLayerAdjustmentsButton.disabled = disabled;
   adjustmentPresetButtons.forEach(button => { button.disabled = disabled; });
   syncAdjustmentPresetButtons(values);
-  layerAdjustmentControls.replaceChildren();
+  clearElementChildren(layerAdjustmentControls);
 
   for (const definition of ADJUSTMENT_CONTROL_DEFS) {
     const label = document.createElement("label");
