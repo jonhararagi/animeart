@@ -390,7 +390,7 @@ try {
   let croppedSample = (await readDocument()).layers.find(layer => layer.name === "battleworn_knight");
   assert(croppedSample?.image?.width === 400 && croppedSample?.image?.height === 500, "real browser crop changes image pixels to the exact crop dimensions");
   assert(croppedSample?.image?.flipX === true, "real browser crop retains the image mirror setting");
-  assert(Math.abs(croppedSample?.transform?.x - 5) < 0.001 && Math.abs(croppedSample?.transform?.y - 7) < 0.001, "real browser crop compensates the image transform for the crop origin");
+  assert(Math.abs(croppedSample?.transform?.x - 5 * croppedSample?.transform?.scale) < 0.001 && Math.abs(croppedSample?.transform?.y - 7 * croppedSample?.transform?.scale) < 0.001, "real browser crop compensates the image transform for the crop origin at the fitted image scale");
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944 && layer.image?.height === 944)', 10000);
   await click("#redo");
