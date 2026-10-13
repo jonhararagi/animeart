@@ -94,7 +94,7 @@ test("canvas coordinate mapping is cached for offline rendering and editing", as
   assert.match(app, /documentFitScale/);
   assert.match(app, /screenViewportForDocument/);
   assert.match(worker, /\.\/domain\/canvas-space\.mjs/);
-  assert.match(worker, /animeart-web-shell-v14/);
+  assert.match(worker, /animeart-web-shell-v15/);
 });
 
  
@@ -110,7 +110,7 @@ test("mobile touch gestures use bounded two-finger pan/zoom and the offline shel
   assert.match(app, /pointercancel/);
   assert.match(gestures, /updatePinchPanViewport/);
   assert.match(gestures, /Math\.min\(maxZoom, Math\.max\(minZoom/);
-  assert.match(worker, /animeart-web-shell-v14/);
+  assert.match(worker, /animeart-web-shell-v15/);
   assert.match(worker, /\.\/domain\/touch-gestures\.mjs/);
   assert.match(css, /#canvas \{ touch-action: none; \}/);
   assert.match(html, /class="mobile-touch-dock"/);
