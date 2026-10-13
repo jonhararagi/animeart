@@ -2429,7 +2429,8 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/text-layer.mjs",
   "./domain/png-export.mjs",
   "./domain/selection.mjs",
-  "./domain/viewport.mjs"
+  "./domain/viewport.mjs",
+  "./domain/touch-gestures.mjs"
 ];
 
 async function reportServiceWorkerReadiness() {

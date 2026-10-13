@@ -22,6 +22,8 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.ok(worker.includes("./asset-library.js"));
   assert.ok(worker.includes("./domain/asset-library.mjs"));
   assert.ok(worker.includes("./domain/quick-edit-recipes.mjs"));
+  assert.ok(worker.includes("./domain/touch-gestures.mjs"));
+  assert.ok(app.includes('"./domain/touch-gestures.mjs"'));
   assert.ok(worker.includes("./domain/background-removal.mjs"));
   assert.match(html, /id="remove-background"/);
   assert.match(html, /id="background-removal-dialog"/);
