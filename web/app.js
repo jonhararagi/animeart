@@ -2158,6 +2158,53 @@ document.querySelectorAll(".tool").forEach(button => {
   });
 });
 
+
+const helpGoals = {
+  crop: ["Recortar", "Selecciona una imagen, abre Crop / Resize Image, ajusta el marco y pulsa Aplicar."],
+  background: ["Quitar fondo", "Selecciona una imagen, toca una zona del fondo, ajusta la tolerancia, protege los contornos y pulsa Aplicar."],
+  erase: ["Borrar", "Elige Borrar y arrastra sobre la zona. Deshacer recupera lo borrado."],
+  censor: ["Luz de censura", "Elige Luz de censura, ajusta tamaño y color y arrastra sobre la zona. Para cubrirla por completo usa opacidad al 100%."],
+  draw: ["Dibujar", "Elige un color y arrastra sobre la imagen para pintar en una capa separada."],
+  text: ["Texto", "Pulsa Texto, escribe en el inspector y ajusta el estilo. La capa de texto sigue editable."],
+  color: ["Mejorar color", "Selecciona una imagen y ajusta brillo, contraste o saturación en Image adjustments."],
+  layers: ["Capas", "Toca una capa para seleccionarla. Cambia el orden, visibilidad y opacidad con los controles disponibles."],
+  undo: ["Deshacer", "Pulsa Deshacer para volver un paso atrás. Rehacer recupera el cambio."],
+  export: ["Guardar / Exportar", "Guardar localmente conserva el proyecto editable. Exportar imagen crea una imagen compuesta."]
+};
+function showGoalHelp(goal) {
+  const item = helpGoals[goal] || ["Ayúdame a editar", "Importa una imagen y elige la tarea que quieras realizar."];
+  document.querySelector("#editing-help-title").textContent = item[0];
+  document.querySelector("#editing-help-copy").textContent = item[1];
+  document.querySelector("#editing-help-steps").hidden = true;
+  document.querySelector("#editing-help-card").hidden = !document.querySelector("#editing-help-enabled").checked;
+}
+function runEditGoal(goal) {
+  showGoalHelp(goal);
+  const actions = {
+    crop: () => cropResizeButton.click(),
+    background: () => removeBackgroundButton.click(),
+    erase: () => document.querySelector('.toolbar [data-tool="eraser"]')?.click(),
+    censor: () => document.querySelector('.toolbar [data-tool="censor-light"]')?.click(),
+    draw: () => document.querySelector('.toolbar [data-tool="brush"]')?.click(),
+    text: () => document.querySelector("#add-text-layer").click(),
+    color: () => document.querySelector("#adjustments-title").scrollIntoView({block:"nearest"}),
+    layers: () => document.querySelector("#layers").scrollIntoView({block:"nearest"}),
+    undo: () => undoButton.click(),
+    export: () => exportPngButton.click()
+  };
+  actions[goal]?.();
+}
+document.querySelectorAll("[data-edit-goal]").forEach(button => button.addEventListener("click", () => runEditGoal(button.dataset.editGoal)));
+document.querySelector("#show-edit-example").addEventListener("click", () => showGoalHelp(state.tool === "censor-light" ? "censor" : "crop"));
+document.querySelector("#show-edit-example-action").addEventListener("click", () => runEditGoal(state.tool === "censor-light" ? "censor" : "background"));
+document.querySelector("#close-editing-help").addEventListener("click", () => { document.querySelector("#editing-help-card").hidden = true; });
+const helpToggle = document.querySelector("#editing-help-enabled");
+try { helpToggle.checked = localStorage.getItem("animeart.editing-help-enabled") !== "false"; } catch {}
+helpToggle.addEventListener("change", () => {
+  try { localStorage.setItem("animeart.editing-help-enabled", String(helpToggle.checked)); } catch {}
+  document.querySelector("#editing-help-card").hidden = !helpToggle.checked;
+});
+
 undoButton.addEventListener("click", undo);
 redoButton.addEventListener("click", redo);
 
