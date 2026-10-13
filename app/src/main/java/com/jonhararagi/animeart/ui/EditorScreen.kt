@@ -13,6 +13,8 @@ import androidx.compose.foundation.gestures.calculateRotation
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,7 +22,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.graphicsLayer
@@ -40,7 +41,6 @@ import com.jonhararagi.animeart.editor.ViewportTransform
 import com.jonhararagi.animeart.persistence.ProjectPersistence
 import kotlin.math.max
 import kotlin.math.roundToInt
-import kotlin.math.ceil
 
 @Composable
 fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
@@ -66,11 +66,9 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
     }
 
     val state = editor.state
-    val imageBitmaps = remember(state.document.layers) {
-        state.document.layers.mapNotNull { layer ->
-            val image = layer.content as? LayerContent.Image ?: return@mapNotNull null
-            image.uri to loadEditorImage(context, image.uri)
-        }.filter { it.second != null }.associate { it.first to it.second!! }
+    val imageUris = state.document.layers.mapNotNull { (it.content as? LayerContent.Image)?.uri }.distinct()
+    val imageBitmaps = remember(imageUris) {
+        imageUris.mapNotNull { uri -> loadEditorImage(context, uri)?.let { uri to it } }.toMap()
     }
 
     val selectedLayer = state.document.layers.firstOrNull { it.id == state.selectedLayerId }
@@ -95,7 +93,7 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
         }
 
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             FilterChip(
