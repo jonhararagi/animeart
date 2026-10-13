@@ -3024,3 +3024,20 @@ SAFETY:
 - Added unit/smoke tests for censor stroke model values, primary goal controls and their connection to the canonical editor.
 - Validation must be checked on the final HEAD. The initial workflows triggered by this change were Web CI run #508 and Android CI run #607; neither was complete at the time this note was written.
 - Known limits: no semantic AI segmentation; the local background remover remains a connected-color/edge heuristic. Softness and glow are canvas visual effects, not semantic edge reconstruction. Android native save and WebView packaging must pass the final workflow before release claims.
+
+
+---
+
+## AA-UX-TRANSPARENCY-001 — selección y transparencia explícitas
+
+**Rama de trabajo:** `aa-ux-transparency-001`
+**Base de implementación:** PR #69, SHA previo `58c1324e22856ce58ef73e341fb5d7ffb3d47b01`.
+**Estado:** implementación inicial preparada para validación CI; no fusionada.
+
+- El canvas visible usa contexto con alfa y limpia su bitmap en lugar de rellenarlo de blanco. El blanco que forme parte de una imagen sigue siendo opaco.
+- El patrón de cuadritos y los fondos blanco/negro/gris son estilos de visualización en CSS, fuera del renderer de exportación. No se dibujan en el PNG.
+- Se muestra texto persistente para distinguir una imagen seleccionada de una capa de dibujo u otro tipo de capa.
+- Se agregaron accesos rápidos para quitar fondo, recuperar mediante Deshacer y exportar PNG, además de un control para ver la transparencia.
+- La exportación PNG continúa utilizando el canvas independiente con contexto alfa. La verificación automatizada comprueba los contratos del canvas y los controles; la validación visual en teléfono y la inspección de un PNG real exportado siguen pendientes de CI/E2E y prueba manual.
+
+**No declarado todavía:** PASS integral de los ocho criterios de aceptación. Las pruebas automatizadas y la compilación Android deben concluir sobre el SHA final de esta rama antes de cerrar la tarea.
