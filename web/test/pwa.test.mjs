@@ -11,7 +11,7 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(html, /rel="manifest" href="\.\/manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\("\.\/service-worker\.js"\)/);
   assert.match(manifest, /"display": "standalone"/);
-  assert.match(worker, /animeart-web-shell-v8/);
+  assert.match(worker, /animeart-web-shell-v14/);
   assert.match(worker, /caches\.open/);
   assert.match(worker, /caches\.match/);
   assert.match(app, /layerAdjustmentsToCanvasFilter/);
@@ -19,6 +19,23 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(worker, /\.\/domain\/text-layer\.mjs/);
   assert.ok(worker.includes("./assets/cc0-detailed-anime-character.png.base64"));
   assert.ok(worker.includes("./assets/ASSET_SOURCES.md"));
+  assert.ok(worker.includes("./asset-library.js"));
+  assert.ok(worker.includes("./domain/asset-library.mjs"));
+  assert.ok(worker.includes("./domain/quick-edit-recipes.mjs"));
+  assert.ok(worker.includes("./domain/touch-gestures.mjs"));
+  assert.ok(app.includes('"./domain/touch-gestures.mjs"'));
+  assert.ok(worker.includes("./domain/background-removal.mjs"));
+  assert.ok(worker.includes("./domain/color-replacement.mjs"));
+  assert.match(html, /id="recolor-image"/);
+  assert.match(html, /id="recolor-dialog"/);
+  assert.match(app, /replaceColorRange/);
+  assert.match(app, /preserveShading:\s*document\.querySelector\("#recolor-preserve-shading"\)\.checked/);
+  assert.match(html, /id="remove-background"/);
+  assert.match(html, /id="background-removal-dialog"/);
+  assert.match(html, /id="poster-template-dialog"/);
+  assert.match(html, /class="mobile-touch-dock"/);
+  assert.match(app, /removeConnectedBackground/);
+  assert.match(html, /id="open-asset-library"/);
   assert.doesNotMatch(app + worker, /DocumentManager|LayerManager|CanvasManager|RendererManager|ViewportManager|HistoryManager|PersistenceManager/);
 });
 
@@ -77,5 +94,24 @@ test("canvas coordinate mapping is cached for offline rendering and editing", as
   assert.match(app, /documentFitScale/);
   assert.match(app, /screenViewportForDocument/);
   assert.match(worker, /\.\/domain\/canvas-space\.mjs/);
-  assert.match(worker, /animeart-web-shell-v8/);
+  assert.match(worker, /animeart-web-shell-v14/);
+});
+
+ 
+test("mobile touch gestures use bounded two-finger pan/zoom and the offline shell caches their module", async () => {
+  const [app, html, css, worker, gestures] = await Promise.all([
+    readFile("app.js", "utf8"), readFile("index.html", "utf8"),
+    readFile("styles.css", "utf8"), readFile("service-worker.js", "utf8"),
+    readFile("domain/touch-gestures.mjs", "utf8")
+  ]);
+  assert.match(app, /activeTouchPointers/);
+  assert.match(app, /beginTouchGesture/);
+  assert.match(app, /updateTouchGesture/);
+  assert.match(app, /pointercancel/);
+  assert.match(gestures, /updatePinchPanViewport/);
+  assert.match(gestures, /Math\.min\(maxZoom, Math\.max\(minZoom/);
+  assert.match(worker, /animeart-web-shell-v14/);
+  assert.match(worker, /\.\/domain\/touch-gestures\.mjs/);
+  assert.match(css, /#canvas \{ touch-action: none; \}/);
+  assert.match(html, /class="mobile-touch-dock"/);
 });

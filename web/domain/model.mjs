@@ -41,19 +41,33 @@ export function normalizeStrokeOpacity(opacity) {
   return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1;
 }
 
-export function createStroke(tool = "brush", size = 5, points = [], color = "#111318", opacity = 1) {
+export function normalizeStrokeHardness(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.min(100, Math.max(0, numeric)) : 100;
+}
+
+export function normalizeStrokeEffect(value) {
+  return ["normal", "soft", "glow", "neon"].includes(value) ? value : "normal";
+}
+
+export function createStroke(tool = "brush", size = 5, points = [], color = "#111318", opacity = 1, options = {}) {
   return {
     tool,
     size: Number.isFinite(Number(size)) && Number(size) > 0 ? Number(size) : 5,
     color: normalizeStrokeColor(color),
     opacity: normalizeStrokeOpacity(opacity),
+    hardness: normalizeStrokeHardness(options?.hardness),
+    effect: normalizeStrokeEffect(options?.effect),
     points: points.map(normalizeStrokePoint).filter(Boolean)
   };
 }
 
 export function normalizeStroke(stroke) {
   if (!stroke || !Array.isArray(stroke.points)) return null;
-  return createStroke(stroke.tool || "brush", stroke.size, stroke.points, stroke.color, stroke.opacity);
+  return createStroke(stroke.tool || "brush", stroke.size, stroke.points, stroke.color, stroke.opacity, {
+    hardness: stroke.hardness,
+    effect: stroke.effect
+  });
 }
 
 export function normalizeTransform(transform) {
@@ -88,7 +102,8 @@ export function createImageLayer(name = "Image Layer", width = 64, height = 64, 
     width: Number.isFinite(Number(width)) && Number(width) > 0 ? Number(width) : 64,
     height: Number.isFinite(Number(height)) && Number(height) > 0 ? Number(height) : 64,
     flipX: false,
-    flipY: false
+    flipY: false,
+    mask: "none"
   };
   return layer;
 }
@@ -109,7 +124,8 @@ function normalizeImage(image) {
   const width = Number(image.width);
   const height = Number(image.height);
   if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return null;
-  return { source: image.source, width, height, flipX: image.flipX === true, flipY: image.flipY === true };
+  const masks = ["none", "circle", "rounded", "star", "heart", "hexagon"];
+  return { source: image.source, width, height, flipX: image.flipX === true, flipY: image.flipY === true, mask: masks.includes(image.mask) ? image.mask : "none" };
 }
 
 function normalizeLayer(layer, index) {
@@ -189,6 +205,8 @@ export function isValidDocument(document) {
           typeof stroke.tool === "string" &&
           Number.isFinite(stroke.size) &&
           stroke.size > 0 &&
+          (stroke.hardness === undefined || (Number.isFinite(stroke.hardness) && stroke.hardness >= 0 && stroke.hardness <= 100)) &&
+          (stroke.effect === undefined || ["normal", "soft", "glow", "neon"].includes(stroke.effect)) &&
           Array.isArray(stroke.points) &&
           stroke.points.every(point =>
             point &&
@@ -205,7 +223,8 @@ export function isValidDocument(document) {
         Number.isFinite(layer.image.width) &&
         layer.image.width > 0 &&
         Number.isFinite(layer.image.height) &&
-        layer.image.height > 0
+        layer.image.height > 0 &&
+        ["none", "circle", "rounded", "star", "heart", "hexagon"].includes(layer.image.mask || "none")
       );
       return Boolean(layer.text && isValidTextLayer(layer.text) && !layer.image && layer.strokes.length === 0);
     })

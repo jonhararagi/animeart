@@ -1,8 +1,10 @@
-const CACHE_NAME = "animeart-web-shell-v8";
+const CACHE_NAME = "animeart-web-shell-v14";
 const APP_SHELL = [
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./asset-library.js",
+  "./domain/asset-library.mjs",
   "./manifest.webmanifest",
   "./service-worker.js",
   "./assets/cc0-detailed-anime-character.png.base64",
@@ -12,8 +14,12 @@ const APP_SHELL = [
   "./domain/image-import.mjs",
   "./domain/image-input.mjs",
   "./domain/image-processing.mjs",
+  "./domain/color-replacement.mjs",
   "./domain/canvas-space.mjs",
+  "./domain/touch-gestures.mjs",
   "./domain/layer-adjustments.mjs",
+  "./domain/quick-edit-recipes.mjs",
+  "./domain/background-removal.mjs",
   "./domain/text-layer.mjs",
   "./domain/model.mjs",
   "./domain/png-export.mjs",

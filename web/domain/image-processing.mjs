@@ -56,14 +56,21 @@ function createOutputCanvas(width, height, documentObject) {
   return { canvas, context };
 }
 
-function encodePng(canvas) {
+function encodeRaster(canvas) {
   if (typeof canvas.toDataURL !== "function") throw new Error("Browser image encoding API is unavailable");
-  const source = canvas.toDataURL("image/png");
+  let source = canvas.toDataURL("image/png");
+  let format = "image/png";
   if (typeof source !== "string" || !source.startsWith("data:image/png;base64,") || source.length < 32) {
     throw new Error("Browser could not encode the processed image as PNG");
   }
-  if (source.length > 2_000_000) throw new RangeError("Processed image exceeds the safe 2 MB image-layer limit. Reduce the output dimensions.");
-  return source;
+  if (source.length > 2_000_000) {
+    source = canvas.toDataURL("image/webp", 0.86);
+    format = source.startsWith("data:image/webp;base64,") ? "image/webp" : "image/png";
+  }
+  if (typeof source !== "string" || source.length > 2_000_000) {
+    throw new RangeError("Processed image still exceeds the safe 2 MB image-layer limit. Reduce the output dimensions.");
+  }
+  return { source, format };
 }
 
 export async function cropImageSource(source, rectangle, { ImageCtor = globalThis.Image, documentObject = globalThis.document } = {}) {
@@ -71,7 +78,7 @@ export async function cropImageSource(source, rectangle, { ImageCtor = globalThi
   const crop = normalizeImageCrop(rectangle, decoded.width, decoded.height);
   const { canvas, context } = createOutputCanvas(crop.width, crop.height, documentObject);
   context.drawImage(decoded.image, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
-  return { source: encodePng(canvas), width: crop.width, height: crop.height, format: "image/png" };
+  return { ...encodeRaster(canvas), width: crop.width, height: crop.height };
 }
 
 export async function resizeImageSource(source, width, height, { ImageCtor = globalThis.Image, documentObject = globalThis.document } = {}) {
@@ -79,5 +86,5 @@ export async function resizeImageSource(source, width, height, { ImageCtor = glo
   const decoded = await decodeImage(source, ImageCtor);
   const { canvas, context } = createOutputCanvas(dimensions.width, dimensions.height, documentObject);
   context.drawImage(decoded.image, 0, 0, dimensions.width, dimensions.height);
-  return { source: encodePng(canvas), ...dimensions, format: "image/png" };
+  return { ...encodeRaster(canvas), ...dimensions };
 }

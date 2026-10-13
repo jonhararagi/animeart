@@ -411,6 +411,22 @@ try {
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944)', 10000);
 
+  const sourceBeforeRecolorLength = await evaluate('(() => { const source=JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source; window.__animeArtOriginalRecolorSource=source; return source.length; })()');
+  assert(sourceBeforeRecolorLength > 100, "source image is embedded in the current local project");
+  await click("#recolor-image");
+  await waitFor('document.querySelector("#recolor-dialog").open === true');
+  await click("#sample-recolor-source");
+  const sampledSourceColor = await evaluate('(() => { const c=document.querySelector("#recolor-preview"),r=c.getBoundingClientRect(),d=c.getContext("2d").getImageData(0,0,c.width,c.height).data; let i=0; while(i<d.length&&d[i+3]===0)i+=4; if(i>=d.length)throw new Error("sample character contains no opaque pixels"); const p=i/4,x=p%c.width,y=Math.floor(p/c.width); c.dispatchEvent(new MouseEvent("click",{bubbles:true,clientX:r.left+(x+.5)*r.width/c.width,clientY:r.top+(y+.5)*r.height/c.height})); return document.querySelector("#recolor-source-color").value; })()');
+  assert(/^#[0-9a-f]{6}$/i.test(sampledSourceColor), "real browser samples an actual opaque pixel for selective recolor");
+  await click("#apply-recolor");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source !== window.__animeArtOriginalRecolorSource', 15000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.width === 944'), "real browser applies selective recolor without changing image dimensions");
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source === window.__animeArtOriginalRecolorSource', 10000);
+  await click("#redo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source !== window.__animeArtOriginalRecolorSource', 10000);
+  await saveScreenshot("animeart-studio-selective-recolor.png");
+
   await evaluate('window.__animeArtTextDrawCount = 0; const originalFillText = CanvasRenderingContext2D.prototype.fillText; CanvasRenderingContext2D.prototype.fillText = function(...args) { window.__animeArtTextDrawCount += 1; return originalFillText.apply(this, args); };');
   await click("#add-text-layer");
   const textLayerAfterCreate = (await readDocument()).layers.at(-1);
@@ -425,6 +441,14 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(textLayerId) + ')?.text?.value === "Your text"', 10000);
   await click("#redo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(textLayerId) + ')?.text?.value === "AnimeArt Studio"', 10000);
+
+  await evaluate('window.__animeArtStrokeTextCount = 0; const originalStrokeText = CanvasRenderingContext2D.prototype.strokeText; CanvasRenderingContext2D.prototype.strokeText = function(...args) { window.__animeArtStrokeTextCount += 1; return originalStrokeText.apply(this, args); };');
+  await click("#add-meme-text");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name === "Meme Top" || layer.name === "Meme Bottom").length === 2', 10000);
+  const memeLayers = (await readDocument()).layers.filter(layer => layer.name === "Meme Top" || layer.name === "Meme Bottom");
+  assert(memeLayers.length === 2 && memeLayers.every(layer => layer.contentType === "text" && layer.text?.fontFamily === "Impact" && layer.text?.outlineWidth > 0), "real browser creates two editable outlined meme caption layers");
+  assert(await evaluate('window.__animeArtStrokeTextCount > 0'), "real browser draws caption outlines through Canvas strokeText");
+  await saveScreenshot("animeart-studio-meme-captions.png");
 
   await click("#export-png");
   await waitFor('document.querySelector("#status").textContent !== "Exporting PNG…"', 10000);
@@ -503,6 +527,37 @@ try {
   await waitForServiceWorkerReadiness();
   await waitFor('document.querySelector("#storage-recovery-notice").hidden === true');
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").version === 2'), "explicitly saved supported document remains recoverable");
+
+
+  // Poster composition and shape-mask interactions use the real browser UI.
+  const beforeMaskImport = (await readDocument()).layers.length;
+  await evaluate('(() => { const bytes=Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="),c=>c.charCodeAt(0)); const file=new File([bytes],"shape-mask-fixture.png",{type:"image/png"}); const dt=new DataTransfer();dt.items.add(file);const input=document.querySelector("#image-file-input");input.files=dt.files;input.dispatchEvent(new Event("change",{bubbles:true}));return true;})()');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length === ' + (beforeMaskImport + 1), 10000);
+  await click('[aria-label="Select shape-mask-fixture"]');
+  await waitFor('document.querySelector("#image-mask-panel").hidden === false');
+  await evaluate('(() => { const select=document.querySelector("#image-mask");select.value="heart";select.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer=>layer.name==="shape-mask-fixture"&&layer.image?.mask==="heart")');
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer=>layer.name==="shape-mask-fixture"&&layer.image?.mask==="heart")'), "shape mask is applied and persisted to the selected image layer");
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer=>layer.name==="shape-mask-fixture"&&layer.image?.mask==="none")');
+  await click("#redo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer=>layer.name==="shape-mask-fixture"&&layer.image?.mask==="heart")');
+  assert(await evaluate('document.querySelector("#image-mask").value==="heart"'), "shape mask participates in undo and redo");
+
+  await evaluate("window.confirm = () => true");
+  await click("#poster-templates");
+  await waitFor('document.querySelector("#poster-template-dialog").open === true');
+  await evaluate('(() => { document.querySelector("#poster-template-style").value="comic";document.querySelector("#poster-background-color").value="#ffffff";document.querySelector("#poster-accent-color").value="#ff2b6d";document.querySelector("#poster-title-value").value="E2E COMIC";document.querySelector("#poster-subtitle-value").value="SATURDAY · 20:00"; })()');
+  await click('#poster-template-form button[type="submit"]');
+  await waitFor('document.querySelector("#poster-template-dialog").open === false');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").width === 1080 && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length === 3');
+  const posterDocument = await readDocument();
+  assert(posterDocument.width===1080&&posterDocument.height===1350, "poster template creates a 1080×1350 poster canvas");
+  assert(posterDocument.layers.length===3&&posterDocument.layers[0].name==="Poster background", "poster template creates a background layer and editable text layers");
+  assert(posterDocument.layers[0].image?.source?.startsWith("data:image/svg+xml;charset=utf-8,"), "poster background is a local editable image layer, not a remote asset");
+  assert(posterDocument.layers[1].text?.value==="E2E COMIC"&&posterDocument.layers[1].text?.outlineWidth>0, "comic poster headline is editable and includes a real text outline");
+  assert(posterDocument.layers[2].text?.value==="SATURDAY · 20:00", "poster subtitle remains editable");
+  await saveScreenshot("animeart-studio-poster-template.png");
 
   // T064: prove explicit-write failures preserve the protected payload and can be retried.
   const quotaPayload = JSON.stringify({
@@ -627,6 +682,28 @@ try {
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "startup read failure remains in protected recovery state");
 
   assert(await evaluate('document.documentElement.dataset.serviceWorkerActive === "true"'), "real browser service worker is active");
+  // Mobile regression: use Chromium's real touch input path, not synthetic MouseEvents.
+  await cdp("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 2 });
+  const touchCanvas = await selectorCenter("#canvas");
+  const touchStart = [
+    { id: 1, x: touchCanvas.x - 42, y: touchCanvas.y - 8 },
+    { id: 2, x: touchCanvas.x + 42, y: touchCanvas.y + 8 }
+  ];
+  await cdp("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: touchStart.map(point => ({ ...point, radiusX: 3, radiusY: 3, force: 1 }))
+  });
+  await cdp("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: [
+      { id: 1, x: touchCanvas.x - 78, y: touchCanvas.y + 2, radiusX: 3, radiusY: 3, force: 1 },
+      { id: 2, x: touchCanvas.x + 98, y: touchCanvas.y + 28, radiusX: 3, radiusY: 3, force: 1 }
+    ]
+  });
+  assert((await evaluate('document.querySelector("#status").textContent')).startsWith("Touch zoom "),
+    "two-finger touchscreen input updates the real editor viewport zoom");
+  await cdp("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp("Emulation.setTouchEmulationEnabled", { enabled: false });
   assert(await evaluate('document.documentElement.dataset.cacheReady === "true"'), "real browser service worker cache contains the required offline shell");
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {
