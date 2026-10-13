@@ -208,6 +208,19 @@ function updateRemoveImageControl() {
   removeSelectedImageButton.disabled = !validImage || Boolean(layer?.locked);
   removeSelectedImageButton.setAttribute("aria-label", validImage ? "Quitar imagen seleccionada: " + layer.name : "Quitar imagen");
   removeSelectedImageButton.title = layer?.locked ? "Desbloqueá la imagen para quitarla" : "Quitar solo esta imagen. Podés deshacer.";
+  if (validImage) {
+    const geometry = selectionGeometry(layer, screenViewportForDocument(state.document, state.viewport, canvasSize()), documentCenter(state.document));
+    const canvasRect = canvas.getBoundingClientRect();
+    const wrapRect = document.querySelector(".canvas-wrap").getBoundingClientRect();
+    if (geometry) {
+      const right = Math.max(...geometry.corners.map(point => point.x));
+      const top = Math.min(...geometry.corners.map(point => point.y));
+      const left = canvasRect.left - wrapRect.left + right - 23;
+      const y = canvasRect.top - wrapRect.top + top - 23;
+      removeSelectedImageButton.style.left = Math.max(4, Math.min(wrapRect.width - 50, left)) + "px";
+      removeSelectedImageButton.style.top = Math.max(4, Math.min(wrapRect.height - 50, y)) + "px";
+    }
+  }
 }
 
 function toggleSelection(layerId) {
