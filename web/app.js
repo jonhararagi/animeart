@@ -2705,17 +2705,30 @@ recoverButton.addEventListener("click", () => {
   restoreStoredProject();
 });
 
-exportProjectButton.addEventListener("click", () => {
+async function saveBlobToDevice(blob, filename, imageFormat = null) {
+  if (!(blob instanceof Blob) || blob.size < 1) throw new Error("There is no file data to export");
+  const nativeBridge = window.AnimeArtNative;
+  if (nativeBridge && typeof nativeBridge.saveFile === "function") {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(offset, Math.min(bytes.length, offset + chunkSize)));
+    }
+    const mimeType = blob.type || (imageFormat ? "image/" + imageFormat : "application/json");
+    nativeBridge.saveFile(btoa(binary), mimeType, filename);
+    status.textContent = "Opening Android Save As…";
+    return;
+  }
+  downloadImageBlob(blob, filename, imageFormat);
+}
+
+exportProjectButton.addEventListener("click", async () => {
   try {
     const serialized = serializeProjectFile(state.document);
     const blob = new Blob([serialized], { type: "application/json;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "animeart-project.json";
-    anchor.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    status.textContent = "Project file exported";
+    await saveBlobToDevice(blob, "animeart-project.json");
+    if (!window.AnimeArtNative) status.textContent = "Project file exported";
   } catch (error) {
     status.textContent = error?.message || "Could not export project file";
   }
@@ -2799,7 +2812,7 @@ async function exportPng() {
     });
     const quality = Number(exportQualityInput.value) / 100;
     const blob = await canvasToImageBlob(exportCanvas, format, quality);
-    downloadImageBlob(blob, "animeart." + format, format);
+    await saveBlobToDevice(blob, "animeart." + format, format);
     if (JSON.stringify(state.document) !== documentBefore ||
         state.history.canUndo() !== historyBeforeUndo ||
         state.history.canRedo() !== historyBeforeRedo) {
