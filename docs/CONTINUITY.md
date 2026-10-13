@@ -3136,3 +3136,19 @@ Estos PR fueron consultados por SHA, archivos y CI. No se mezclan automáticamen
 
 
 Corrección de inventario durante la integración: aunque la sincronización de assets de PR #57 ya existía en `main`, su comprobación explícita del contenido del APK no existía en el workflow de `main`. Se trasladó ese gate a la rama AA-INTEGRATION-CLOSURE-001 para comprobar que el APK contiene el editor canónico, las herramientas de recorte/texto/ajustes y no contiene la UI de generador de prompts. La aceptación depende de Android CI sobre el HEAD final.
+
+
+## AA-INTEGRATION-CLOSURE-001 — Entrega consolidada fusionada (2026-10-13)
+
+**ESTADO: MERGED.** Se integró el PR #72 en `main` mediante squash.
+
+- PR de entrega: https://github.com/jonhararagi/animeart/pull/72
+- HEAD validado antes del merge: `de5cd1033c43b79072d812507489350dda705383`.
+- Commit de integración en `main`: `b4ad437c7ed9cb5cf6a6a14ed347d241d7734a09`.
+- Web CI en el HEAD validado: PASS, run https://github.com/jonhararagi/animeart/actions/runs/38476886678.
+- Android CI en el HEAD validado: PASS, run https://github.com/jonhararagi/animeart/actions/runs/38476886635.
+- Se cerraron como supersedidos con comentario de trazabilidad los PR #66, #67, #69, #70, #71 y #57. Sus ramas no se borraron.
+- PR #68 permanece abierto como alternativa de arquitectura Android nativa; no se mezcló porque reemplaza el runtime WebView y requiere decisión separada.
+- PR #41, #43, #44 y #46 siguen abiertos como deuda de recuperación/persistencia; PR #50 y #51 siguen separados como mantenimiento de Gradle.
+
+**Límite de validación:** los workflows verdes validan el SHA exacto de la entrega antes del merge y utilizan emulador para Android. No equivalen a una nueva prueba visual manual en el teléfono del usuario. La observación reportada de problemas estéticos y de botones en el móvil sigue siendo feedback de producto para una iteración visual dedicada; no se debe declarar que quedó resuelta únicamente por CI.
