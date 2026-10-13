@@ -22,6 +22,9 @@ The editor uses the existing Document, Layer, Canvas renderer, History, storage 
 
 ## Run the Web editor
 
+On Windows, install Node.js 22 or newer, then double-click `START_ANIMEART.bat` in the repository folder. It starts the local editor and opens the browser. Your images and projects stay on your device.
+
+
 ```sh
 cd web
 npm install

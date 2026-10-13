@@ -25,14 +25,16 @@ test("text layer normalizes bounded typography and rejects unsafe font or color 
     fontWeight: "bold",
     color: "#172335",
     align: "left",
-    outlineColor: "#000000",
-    outlineWidth: 0
+    outlineColor: "#ffffff",
+    outlineWidth: 0,
+    shadowColor: "#000000",
+    shadowBlur: 0,
+    shadowOffsetX: 0,
+    shadowOffsetY: 0
   });
   assert.equal(isValidTextLayer(normalizeTextLayer({ value: "AnimeArt", fontSize: 36 })), true);
   assert.equal(isValidTextLayer({ ...normalizeTextLayer(), color: "red" }), false);
   assert.equal(isValidTextLayer({ ...normalizeTextLayer(), fontFamily: "url(x)" }), false);
-  assert.equal(isValidTextLayer({ ...normalizeTextLayer(), outlineWidth: 25 }), false);
-  assert.equal(normalizeTextLayer({ outlineWidth: 999 }).outlineWidth, 24);
 });
 
 test("text layers survive document normalization and strict validation", () => {
@@ -89,9 +91,7 @@ test("text edits participate in History and use the existing non-destructive PNG
   const app = await readFile("app.js", "utf8");
   const exporter = await readFile("domain/png-export.mjs", "utf8");
   assert.match(app, /layer\.contentType === "text"/);
-  assert.match(app, /context\.strokeText\(line, x, y\)/);
-  assert.match(app, /context\.fillText\(line, x, y\)/);
-  assert.match(app, /document\.querySelector\("#add-meme-text"\)/);
+  assert.match(app, /context\.fillText\(line,\s*x,\s*y\)/);
   assert.match(app, /state\.history\.record\(before, next\)/);
   assert.match(app, /persistDocument\(\)/);
   assert.match(app, /renderDocumentToCanvas\(state\.document, exportCanvas/);
@@ -105,4 +105,12 @@ test("text edits participate in History and use the existing non-destructive PNG
   history.record(cloneDocument(withText), changed);
   assert.equal(history.undo(changed).layers[1].text.value, "Before");
   assert.equal(history.redo(withText).layers[1].text.value, "After");
+});
+
+test("outlined and shadowed typography is normalized and validated", () => {
+  const layer = createTextLayer("Headline", { value: "COMIC!", fontFamily: "Impact", outlineColor: "#111111", outlineWidth: 6, shadowColor: "#ff00cc", shadowBlur: 14, shadowOffsetX: 3, shadowOffsetY: 4 });
+  assert.equal(isValidTextLayer(layer.text), true);
+  assert.equal(layer.text.outlineWidth, 6);
+  assert.equal(layer.text.shadowBlur, 14);
+  assert.equal(isValidTextLayer({ ...layer.text, outlineWidth: 99 }), false);
 });

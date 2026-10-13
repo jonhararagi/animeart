@@ -11,7 +11,7 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(html, /rel="manifest" href="\.\/manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\("\.\/service-worker\.js"\)/);
   assert.match(manifest, /"display": "standalone"/);
-  assert.match(worker, /animeart-web-shell-v9/);
+  assert.match(worker, /animeart-web-shell-v12/);
   assert.match(worker, /caches\.open/);
   assert.match(worker, /caches\.match/);
   assert.match(app, /layerAdjustmentsToCanvasFilter/);
@@ -21,6 +21,13 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.ok(worker.includes("./assets/ASSET_SOURCES.md"));
   assert.ok(worker.includes("./asset-library.js"));
   assert.ok(worker.includes("./domain/asset-library.mjs"));
+  assert.ok(worker.includes("./domain/quick-edit-recipes.mjs"));
+  assert.ok(worker.includes("./domain/background-removal.mjs"));
+  assert.match(html, /id="remove-background"/);
+  assert.match(html, /id="background-removal-dialog"/);
+  assert.match(html, /id="poster-template-dialog"/);
+  assert.match(html, /class="mobile-touch-dock"/);
+  assert.match(app, /removeConnectedBackground/);
   assert.match(html, /id="open-asset-library"/);
   assert.doesNotMatch(app + worker, /DocumentManager|LayerManager|CanvasManager|RendererManager|ViewportManager|HistoryManager|PersistenceManager/);
 });
@@ -80,5 +87,5 @@ test("canvas coordinate mapping is cached for offline rendering and editing", as
   assert.match(app, /documentFitScale/);
   assert.match(app, /screenViewportForDocument/);
   assert.match(worker, /\.\/domain\/canvas-space\.mjs/);
-  assert.match(worker, /animeart-web-shell-v9/);
+  assert.match(worker, /animeart-web-shell-v12/);
 });

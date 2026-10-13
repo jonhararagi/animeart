@@ -88,7 +88,8 @@ export function createImageLayer(name = "Image Layer", width = 64, height = 64, 
     width: Number.isFinite(Number(width)) && Number(width) > 0 ? Number(width) : 64,
     height: Number.isFinite(Number(height)) && Number(height) > 0 ? Number(height) : 64,
     flipX: false,
-    flipY: false
+    flipY: false,
+    mask: "none"
   };
   return layer;
 }
@@ -109,7 +110,8 @@ function normalizeImage(image) {
   const width = Number(image.width);
   const height = Number(image.height);
   if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return null;
-  return { source: image.source, width, height, flipX: image.flipX === true, flipY: image.flipY === true };
+  const masks = ["none", "circle", "rounded", "star", "heart", "hexagon"];
+  return { source: image.source, width, height, flipX: image.flipX === true, flipY: image.flipY === true, mask: masks.includes(image.mask) ? image.mask : "none" };
 }
 
 function normalizeLayer(layer, index) {
@@ -205,7 +207,8 @@ export function isValidDocument(document) {
         Number.isFinite(layer.image.width) &&
         layer.image.width > 0 &&
         Number.isFinite(layer.image.height) &&
-        layer.image.height > 0
+        layer.image.height > 0 &&
+        ["none", "circle", "rounded", "star", "heart", "hexagon"].includes(layer.image.mask || "none")
       );
       return Boolean(layer.text && isValidTextLayer(layer.text) && !layer.image && layer.strokes.length === 0);
     })

@@ -5,10 +5,12 @@ import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mj
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy } from "./domain/viewport.mjs";
 import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocumentPoint, screenViewportForDocument, zoomViewportAt } from "./domain/canvas-space.mjs";
-import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, flipImageLayer, replaceImageLayer, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
+import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
+import { removeConnectedBackground, applyEraseStrokes } from "./domain/background-removal.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
-import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
+import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
@@ -32,12 +34,25 @@ const textColorInput = document.querySelector("#text-color");
 const textOutlineColorInput = document.querySelector("#text-outline-color");
 const textOutlineWidthInput = document.querySelector("#text-outline-width");
 const textOutlineWidthValue = document.querySelector("#text-outline-width-value");
+const textShadowColorInput = document.querySelector("#text-shadow-color");
+const textShadowBlurInput = document.querySelector("#text-shadow-blur");
+const textShadowBlurValue = document.querySelector("#text-shadow-blur-value");
+const textStylePresetButtons = [...document.querySelectorAll("[data-text-style-preset]")];
+const imageMaskPanel = document.querySelector("#image-mask-panel");
+const imageMaskInput = document.querySelector("#image-mask");
 const textAlignInput = document.querySelector("#text-align");
 const textLayerName = document.querySelector("#text-layer-name");
 const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
 const imageFileInput = document.querySelector("#image-file-input");
 const cropResizeButton = document.querySelector("#crop-resize-image");
+const removeBackgroundButton = document.querySelector("#remove-background");
+const backgroundRemovalDialog = document.querySelector("#background-removal-dialog");
+const backgroundRemovalCanvas = document.querySelector("#background-removal-preview");
+const backgroundRemovalContext = backgroundRemovalCanvas?.getContext("2d", { willReadFrequently: true });
+let backgroundRemovalSession = null;
+let backgroundRemovalSampleMode = false;
+let backgroundRemovalPointerId = null;
 const flipImageHorizontalButton = document.querySelector("#flip-image-horizontal");
 const flipImageVerticalButton = document.querySelector("#flip-image-vertical");
 const imageEditDialog = document.querySelector("#image-edit-dialog");
@@ -94,6 +109,8 @@ const ADJUSTMENT_CONTROL_DEFS = Object.freeze([
   { key: "contrast", label: "Contrast", min: 0, max: 200, step: 1 },
   { key: "saturation", label: "Saturation", min: 0, max: 200, step: 1 },
   { key: "hue", label: "Hue", min: -180, max: 180, step: 1 },
+  { key: "temperature", label: "Warm / Cool", min: -100, max: 100, step: 1 },
+  { key: "tint", label: "Color Cast", min: -100, max: 100, step: 1 },
   { key: "blur", label: "Blur", min: 0, max: 20, step: 0.1 }
 ]);
 
@@ -191,6 +208,7 @@ function layerTransformForRender(layer) {
     : layer.transform;
 }
 
+function traceImageMask(context,width,height,mask){context.beginPath();if(mask==="circle")context.ellipse(width/2,height/2,width/2,height/2,0,0,Math.PI*2);else if(mask==="rounded"){const r=Math.min(width,height)*.12;if(typeof context.roundRect==="function")context.roundRect(0,0,width,height,r);else context.rect(0,0,width,height);}else if(mask==="star"){const cx=width/2,cy=height/2,o=Math.min(width,height)/2,inn=o*.43;for(let i=0;i<10;i++){const r=i%2===0?o:inn,a=-Math.PI/2+i*Math.PI/5,x=cx+Math.cos(a)*r,y=cy+Math.sin(a)*r;if(i===0)context.moveTo(x,y);else context.lineTo(x,y);}context.closePath();}else if(mask==="heart"){context.moveTo(width/2,height*.92);context.bezierCurveTo(width*.42,height*.78,width*.02,height*.52,width*.08,height*.28);context.bezierCurveTo(width*.13,height*.03,width*.39,height*.02,width/2,height*.23);context.bezierCurveTo(width*.61,height*.02,width*.87,height*.03,width*.92,height*.28);context.bezierCurveTo(width*.98,height*.52,width*.58,height*.78,width/2,height*.92);context.closePath();}else if(mask==="hexagon"){for(let i=0;i<6;i++){const a=-Math.PI/3+i*Math.PI/3,x=width/2+Math.cos(a)*width/2,y=height/2+Math.sin(a)*height/2;if(i===0)context.moveTo(x,y);else context.lineTo(x,y);}context.closePath();}else context.rect(0,0,width,height);}
 function drawImageLayer(layer, context = ctx) {
   if (!layer.image) return;
   let image = imageCache.get(layer.image.source);
@@ -209,6 +227,7 @@ function drawImageLayer(layer, context = ctx) {
   }
   if (image.complete && image.naturalWidth > 0) {
     context.save();
+    const mask=layer.image.mask||"none";if(mask!=="none"){traceImageMask(context,layer.image.width,layer.image.height,mask);context.clip();}
     if (layer.image.flipX) {
       context.translate(layer.image.width, 0);
       context.scale(-1, 1);
@@ -252,6 +271,10 @@ function drawDocument({ context = ctx, document = state.document, center = docum
       const fontFamily = genericFamily ? safeFamily : '"' + safeFamily.replace(/["\\]/g, "") + '"';
       context.font = `${previewText.fontWeight} ${previewText.fontSize}px ${fontFamily}`;
       const lineHeight = previewText.fontSize * 1.2;
+      context.shadowColor = previewText.shadowBlur > 0 ? previewText.shadowColor : "transparent";
+      context.shadowBlur = previewText.shadowBlur;
+      context.shadowOffsetX = previewText.shadowOffsetX;
+      context.shadowOffsetY = previewText.shadowOffsetY;
       previewText.value.split("\n").forEach((line, index) => {
         const x = previewText.x;
         const y = previewText.y + index * lineHeight;
@@ -527,6 +550,7 @@ function renderLayers() {
   });
   renderLayerAdjustments();
   renderLayerText();
+  renderImageMask();
   refreshImageEditButton();
 }
 
@@ -683,6 +707,7 @@ function refreshImageEditButton() {
   const layer = selectedLayerExact();
   const editableImage = Boolean(layer && layer.contentType === "image" && layer.image && !layer.locked);
   cropResizeButton.disabled = !editableImage;
+  if (removeBackgroundButton) removeBackgroundButton.disabled = !editableImage;
   cropResizeButton.title = editableImage ? "Crop or resize the selected image layer" : "Select an unlocked image layer to crop or resize";
   for (const button of [flipImageHorizontalButton, flipImageVerticalButton]) {
     if (!button) continue;
@@ -966,6 +991,42 @@ adjustmentPresetButtons.forEach(button => {
   });
 });
 
+
+const quickRecipeButtons=[...document.querySelectorAll("[data-quick-recipe]")];
+const quickRecipeStatus=document.querySelector("#quick-recipe-status");
+function runQuickEditRecipe(recipeId){
+ if(!quickRecipeStatus)return false;
+ try{
+  const result=applyQuickEditRecipe(state.document,recipeId,state.selectedLayerIds);
+  const before=cloneDocument(state.document);
+  state.document=result.document;
+  state.history.record(before,state.document);
+  refreshDocument(result.message);
+  persistDocument();
+  quickRecipeStatus.textContent=result.message;
+  quickRecipeStatus.dataset.state="ready";
+  return true;
+ }catch(error){
+  quickRecipeStatus.textContent=error.message||"Could not apply the quick-edit recipe.";
+  quickRecipeStatus.dataset.state="error";
+  status.textContent="Quick edit needs attention";
+  return false;
+ }
+}
+quickRecipeButtons.forEach(button=>button.addEventListener("click",()=>runQuickEditRecipe(button.dataset.quickRecipe)));
+document.addEventListener("keydown",event=>{
+ const target=event.target;
+ const editingText=target instanceof HTMLElement&&(target.isContentEditable||["INPUT","TEXTAREA","SELECT"].includes(target.tagName));
+ if(editingText||document.querySelector("dialog[open]"))return;
+ if(!(event.ctrlKey||event.metaKey)||!event.altKey||event.shiftKey)return;
+ const number=Number(event.key);
+ if(!Number.isInteger(number)||number<1||number>8)return;
+ const recipe=QUICK_EDIT_RECIPES[number-1];
+ if(!recipe)return;
+ event.preventDefault();
+ runQuickEditRecipe(recipe.id);
+});
+
 function getWorkingLayerText(layer) {
   if (state.textPreview?.layerId === layer?.id) return state.textPreview.values;
   return normalizeTextLayer(layer?.text);
@@ -993,8 +1054,11 @@ function renderLayerText() {
   textOutlineColorInput.value = values.outlineColor;
   textOutlineWidthInput.value = String(values.outlineWidth);
   textOutlineWidthValue.textContent = values.outlineWidth + " px";
+  textShadowColorInput.value = values.shadowColor;
+  textShadowBlurInput.value = String(values.shadowBlur);
+  textShadowBlurValue.textContent = values.shadowBlur + " px";
   textAlignInput.value = values.align;
-  for (const input of [textContentInput, textFontSizeInput, textFontFamilyInput, textFontWeightInput, textColorInput, textOutlineColorInput, textOutlineWidthInput, textAlignInput]) {
+  for (const input of [textContentInput, textFontSizeInput, textFontFamilyInput, textFontWeightInput, textColorInput, textOutlineColorInput, textOutlineWidthInput, textAlignInput, textShadowColorInput, textShadowBlurInput]) {
     input.disabled = disabled;
   }
   textFontSizeInput.setAttribute("aria-label", "Font size for " + layer.name);
@@ -1069,6 +1133,14 @@ textAlignInput.addEventListener("change", () => {
   updateTextPreview({ align: textAlignInput.value });
   commitTextPreview("Text alignment updated");
 });
+textOutlineColorInput.addEventListener("input",()=>updateTextPreview({outlineColor:textOutlineColorInput.value}));textOutlineColorInput.addEventListener("change",()=>commitTextPreview("Text outline color updated"));
+textOutlineWidthInput.addEventListener("input",()=>{const v=Number(textOutlineWidthInput.value);textOutlineWidthValue.textContent=v+" px";updateTextPreview({outlineWidth:v});});textOutlineWidthInput.addEventListener("change",()=>commitTextPreview("Text outline updated"));
+textShadowColorInput.addEventListener("input",()=>updateTextPreview({shadowColor:textShadowColorInput.value}));textShadowColorInput.addEventListener("change",()=>commitTextPreview("Text shadow color updated"));
+textShadowBlurInput.addEventListener("input",()=>{const v=Number(textShadowBlurInput.value);textShadowBlurValue.textContent=v+" px";updateTextPreview({shadowBlur:v});});textShadowBlurInput.addEventListener("change",()=>commitTextPreview("Text shadow updated"));
+textStylePresetButtons.forEach(button=>button.addEventListener("click",()=>{const layer=selectedLayerExact();if(!layer||layer.contentType!=="text"||layer.locked)return;const p={comic:{fontFamily:"Impact",fontWeight:"bold",color:"#fff200",outlineColor:"#171717",outlineWidth:5,shadowColor:"#171717",shadowBlur:0,shadowOffsetX:5,shadowOffsetY:6},poster:{fontFamily:"Arial Black",fontWeight:"bold",color:"#ffffff",outlineColor:"#101014",outlineWidth:2,shadowColor:"#000000",shadowBlur:8,shadowOffsetX:2,shadowOffsetY:4},manga:{fontFamily:"Georgia",fontWeight:"bold",color:"#111111",outlineColor:"#ffffff",outlineWidth:0,shadowColor:"#777777",shadowBlur:1,shadowOffsetX:1,shadowOffsetY:2},neon:{fontFamily:"Arial Black",fontWeight:"bold",color:"#ffffff",outlineColor:"#f000c8",outlineWidth:3,shadowColor:"#00dfff",shadowBlur:18,shadowOffsetX:0,shadowOffsetY:0}}[button.dataset.textStylePreset];if(p){updateTextPreview(p);commitTextPreview(button.dataset.textStylePreset+" text style applied");}}));
+
+function renderImageMask(){if(!imageMaskPanel||!imageMaskInput)return;const layer=selectedLayerExact(),isImage=layer?.contentType==="image"&&Boolean(layer.image);imageMaskPanel.hidden=!isImage;imageMaskInput.disabled=!isImage||layer.locked;imageMaskInput.value=isImage?(layer.image.mask||"none"):"none";}
+imageMaskInput.addEventListener("change",()=>{const layer=selectedLayerExact();if(!layer||layer.contentType!=="image"||!layer.image||layer.locked)return;const before=cloneDocument(state.document),next=setImageMask(state.document,layer.id,imageMaskInput.value);if(!next)return;state.document=next;state.history.record(before,next);refreshDocument("Image mask updated");persistDocument();});
 
 function setStorageRecoveryPending(pending, message = "") {
   state.storageRecoveryPending = pending;
@@ -1536,6 +1608,60 @@ function syncBrushControls() {
   brushOpacityValue.textContent = Math.round(state.brush.opacity * 100) + "%";
 }
 
+
+document.querySelectorAll("[data-brush-color]").forEach(button => {
+  button.addEventListener("click", () => {
+    if (!setBrushColor(button.dataset.brushColor)) return;
+    syncBrushControls();
+    document.querySelectorAll("[data-brush-color]").forEach(item => {
+      item.setAttribute("aria-pressed", String(item === button));
+    });
+    redraw();
+  });
+});
+
+const mobileDock = document.querySelector(".mobile-touch-dock");
+if (mobileDock) {
+  mobileDock.addEventListener("click", event => {
+    const button = event.target.closest("[data-touch-action]");
+    if (!button) return;
+    const action = button.dataset.touchAction;
+    if (action === "tool") {
+      document.querySelector('.toolbar [data-tool="' + button.dataset.tool + '"]')?.click();
+      mobileDock.querySelectorAll('[data-touch-action="tool"]').forEach(item => {
+        item.setAttribute("aria-pressed", String(item.dataset.tool === state.tool));
+      });
+      return;
+    }
+    if (action === "undo") { undoButton.click(); return; }
+    if (action === "redo") { redoButton.click(); return; }
+    if (action === "import-image") { imageFileInput.click(); return; }
+    if (action === "add-text") { document.querySelector("#add-text-layer")?.click(); return; }
+    if (action === "export") { exportPngButton.click(); return; }
+    if (action === "zoom-in" || action === "zoom-out") {
+      const factor = action === "zoom-in" ? 1.2 : 1 / 1.2;
+      const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, state.viewport.zoom * factor));
+      setViewport(zoomViewportAt(state.viewport, zoom, canvasCenter(), state.document, canvasSize()));
+      status.textContent = "Zoom " + Math.round(zoom * 100) + "%";
+      return;
+    }
+    if (action === "layers") {
+      const open = document.body.classList.toggle("mobile-layers-open");
+      button.setAttribute("aria-expanded", String(open));
+      document.body.classList.remove("mobile-tools-open");
+      mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+      return;
+    }
+    if (action === "more") {
+      const open = document.body.classList.toggle("mobile-tools-open");
+      button.setAttribute("aria-expanded", String(open));
+      document.body.classList.remove("mobile-layers-open");
+      mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
+      return;
+    }
+  });
+}
+
 document.querySelectorAll(".tool").forEach(button => {
   button.addEventListener("click", () => {
     state.tool = button.dataset.tool;
@@ -1637,6 +1763,173 @@ document.querySelector("#add-sample-character").addEventListener("click", async 
   }
 });
 
+
+function backgroundRemovalColorHex(data, offset) {
+  return "#" + [data[offset], data[offset + 1], data[offset + 2]].map(value => Number(value).toString(16).padStart(2, "0")).join("");
+}
+function backgroundRemovalPoint(event) {
+  const rect = backgroundRemovalCanvas.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(backgroundRemovalCanvas.width - 1, (event.clientX - rect.left) * backgroundRemovalCanvas.width / Math.max(1, rect.width))),
+    y: Math.max(0, Math.min(backgroundRemovalCanvas.height - 1, (event.clientY - rect.top) * backgroundRemovalCanvas.height / Math.max(1, rect.height)))
+  };
+}
+function renderBackgroundRemovalPreview(recompute = false) {
+  const session = backgroundRemovalSession;
+  if (!session || !backgroundRemovalContext) return;
+  try {
+    if (recompute || !session.automatic) {
+      session.automatic = removeConnectedBackground(session.original, {
+        targetColor: document.querySelector("#background-removal-color").value,
+        tolerance: Number(document.querySelector("#background-removal-tolerance").value),
+        feather: Number(document.querySelector("#background-removal-feather").value)
+      });
+    }
+    const result = applyEraseStrokes(session.automatic, session.strokes);
+    backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
+    document.querySelector("#background-removal-status").textContent =
+      "Preview ready · " + result.width + " × " + result.height + " px · " + session.strokes.length + " manual erase stroke(s)";
+    document.querySelector("#undo-background-erase").disabled = session.strokes.length === 0;
+  } catch (error) {
+    document.querySelector("#background-removal-status").textContent = error.message || "Could not process this image";
+  }
+}
+async function openBackgroundRemoval() {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) return;
+  try {
+    if (layer.image.width * layer.image.height > 16000000) {
+      throw new RangeError("Background removal is limited to 16 megapixels. Resize the image first.");
+    }
+    const image = await new Promise((resolve, reject) => {
+      const cached = imageCache.get(layer.image.source);
+      if (cached && cached.complete && cached.naturalWidth > 0) { resolve(cached); return; }
+      const candidate = cached || new Image();
+      candidate.onload = () => resolve(candidate);
+      candidate.onerror = () => reject(new Error("Could not decode the selected image"));
+      candidate.src = layer.image.source;
+      imageCache.set(layer.image.source, candidate);
+    });
+    const width = layer.image.width, height = layer.image.height;
+    backgroundRemovalCanvas.width = width;
+    backgroundRemovalCanvas.height = height;
+    backgroundRemovalContext.clearRect(0, 0, width, height);
+    backgroundRemovalContext.drawImage(image, 0, 0, width, height);
+    const original = backgroundRemovalContext.getImageData(0, 0, width, height);
+    backgroundRemovalSession = { layerId: layer.id, source: layer.image.source, width, height, original, automatic: null, strokes: [], activeStroke: null };
+    backgroundRemovalSampleMode = false;
+    document.querySelector("#background-removal-manual").checked = false;
+    document.querySelector("#background-removal-color").value = "#ffffff";
+    document.querySelector("#background-removal-tolerance").value = "36";
+    document.querySelector("#background-removal-tolerance-value").textContent = "36";
+    document.querySelector("#background-removal-feather").value = "18";
+    document.querySelector("#background-removal-feather-value").textContent = "18";
+    document.querySelector("#background-removal-brush-size").value = "28";
+    document.querySelector("#background-removal-brush-size-value").textContent = "28 px";
+    backgroundRemovalDialog.showModal();
+    renderBackgroundRemovalPreview(true);
+  } catch (error) {
+    status.textContent = error.message || "Could not open background removal";
+  }
+}
+if (removeBackgroundButton) removeBackgroundButton.addEventListener("click", openBackgroundRemoval);
+document.querySelector("#cancel-background-removal").addEventListener("click", () => {
+  backgroundRemovalDialog.close();
+  backgroundRemovalSession = null;
+  backgroundRemovalSampleMode = false;
+});
+document.querySelector("#sample-background-color").addEventListener("click", () => {
+  backgroundRemovalSampleMode = true;
+  document.querySelector("#background-removal-manual").checked = false;
+  document.querySelector("#background-removal-status").textContent = "Click a background pixel in the image preview to sample its color.";
+});
+for (const id of ["background-removal-color", "background-removal-tolerance", "background-removal-feather"]) {
+  document.querySelector("#" + id).addEventListener("input", () => {
+    const input = document.querySelector("#" + id);
+    const output = document.querySelector("#" + id + "-value");
+    if (output) output.textContent = input.value;
+    renderBackgroundRemovalPreview(true);
+  });
+}
+document.querySelector("#background-removal-brush-size").addEventListener("input", event => {
+  document.querySelector("#background-removal-brush-size-value").textContent = event.currentTarget.value + " px";
+});
+document.querySelector("#undo-background-erase").addEventListener("click", () => {
+  if (!backgroundRemovalSession) return;
+  backgroundRemovalSession.strokes.pop();
+  renderBackgroundRemovalPreview(false);
+});
+document.querySelector("#clear-background-erase").addEventListener("click", () => {
+  if (!backgroundRemovalSession) return;
+  backgroundRemovalSession.strokes = [];
+  renderBackgroundRemovalPreview(false);
+});
+backgroundRemovalCanvas.addEventListener("pointerdown", event => {
+  if (!backgroundRemovalSession) return;
+  const point = backgroundRemovalPoint(event);
+  if (backgroundRemovalSampleMode) {
+    const x = Math.floor(point.x), y = Math.floor(point.y);
+    const offset = (y * backgroundRemovalSession.width + x) * 4;
+    document.querySelector("#background-removal-color").value = backgroundRemovalColorHex(backgroundRemovalSession.original.data, offset);
+    backgroundRemovalSampleMode = false;
+    renderBackgroundRemovalPreview(true);
+    return;
+  }
+  if (!document.querySelector("#background-removal-manual").checked) return;
+  event.preventDefault();
+  backgroundRemovalPointerId = event.pointerId;
+  backgroundRemovalCanvas.setPointerCapture(event.pointerId);
+  backgroundRemovalSession.activeStroke = { size: Number(document.querySelector("#background-removal-brush-size").value), points: [point] };
+  backgroundRemovalSession.strokes.push(backgroundRemovalSession.activeStroke);
+  renderBackgroundRemovalPreview(false);
+});
+backgroundRemovalCanvas.addEventListener("pointermove", event => {
+  if (!backgroundRemovalSession || backgroundRemovalPointerId !== event.pointerId || !backgroundRemovalSession.activeStroke) return;
+  backgroundRemovalSession.activeStroke.points.push(backgroundRemovalPoint(event));
+  renderBackgroundRemovalPreview(false);
+});
+function finishBackgroundRemovalStroke(event) {
+  if (backgroundRemovalPointerId !== event.pointerId) return;
+  backgroundRemovalPointerId = null;
+  if (backgroundRemovalSession) backgroundRemovalSession.activeStroke = null;
+  renderBackgroundRemovalPreview(false);
+}
+backgroundRemovalCanvas.addEventListener("pointerup", finishBackgroundRemovalStroke);
+backgroundRemovalCanvas.addEventListener("pointercancel", finishBackgroundRemovalStroke);
+document.querySelector("#apply-background-removal").addEventListener("click", async () => {
+  const session = backgroundRemovalSession;
+  const layer = session && state.document.layers.find(item => item.id === session.layerId);
+  if (!session || !layer || layer.locked || layer.contentType !== "image" || layer.image?.source !== session.source) {
+    document.querySelector("#background-removal-status").textContent = "The selected layer changed. Close this tool and reopen it.";
+    return;
+  }
+  try {
+    const automatic = session.automatic || removeConnectedBackground(session.original, {
+      targetColor: document.querySelector("#background-removal-color").value,
+      tolerance: Number(document.querySelector("#background-removal-tolerance").value),
+      feather: Number(document.querySelector("#background-removal-feather").value)
+    });
+    const result = applyEraseStrokes(automatic, session.strokes);
+    backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
+    const source = backgroundRemovalCanvas.toDataURL("image/webp", 0.88);
+    const optimized = await optimizeImageSource(source);
+    const before = cloneDocument(state.document);
+    const next = replaceImageLayer(state.document, layer.id, { source: optimized.source, width: optimized.width, height: optimized.height }, { preserveDisplaySize: true });
+    if (!next) throw new Error("The edited image exceeds the document's image limit. Resize it and try again.");
+    imageCache.delete(session.source);
+    state.document = next;
+    state.history.record(before, next);
+    state.dirty = true;
+    refreshDocument("Background removed · transparent pixels applied");
+    persistDocument();
+    backgroundRemovalDialog.close();
+    backgroundRemovalSession = null;
+    backgroundRemovalSampleMode = false;
+  } catch (error) {
+    document.querySelector("#background-removal-status").textContent = error.message || "Could not apply transparency";
+  }
+});
+
 async function importImageIntoEditor(file, message = "Image imported") {
   if (!file) return false;
   try {
@@ -1653,7 +1946,7 @@ async function importImageIntoEditor(file, message = "Image imported") {
     state.document = result.document;
     setSelection([result.layer.id], result.layer.id);
     state.dirty = true;
-    refreshDocument(message);
+    refreshDocument(result.optimized ? `${message} (optimized locally)` : message);
     return true;
   } catch (error) {
     status.textContent = error?.message || "Image import failed";
@@ -1788,6 +2081,11 @@ function restoreStoredProject({ confirmDiscard = true } = {}) {
     return false;
   }
 }
+
+
+function posterSvgSource(width,height,background,accent,style){const bg=/^#[0-9a-fA-F]{6}$/.test(background)?background:"#171324",fg=/^#[0-9a-fA-F]{6}$/.test(accent)?accent:"#ff2b6d",band=Math.max(28,Math.round(height*.075)),secondary=style==="comic"?"#fff200":style==="manga"?"#f4f4f4":fg;const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="${bg}"/><rect width="100%" height="${band}" fill="${fg}"/><rect y="${height-band}" width="100%" height="${band}" fill="${secondary}"/><rect x="${Math.round(width*.055)}" y="${Math.round(height*.14)}" width="${Math.round(width*.89)}" height="${Math.round(height*.68)}" rx="${style==="comic"?18:4}" fill="none" stroke="${fg}" stroke-opacity=".42" stroke-width="${Math.max(2,Math.round(width*.004))}"/></svg>`;return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);}
+function createPosterTemplate(templateId,background,accent,title,subtitle,dimensions){const presets={comic:{label:"Comic Cover",title:{fontFamily:"Impact",color:"#fff200",outlineColor:"#151515",outlineWidth:6,shadowColor:"#151515",shadowBlur:0,shadowOffsetX:5,shadowOffsetY:7},subtitle:{fontFamily:"Arial Black",color:"#ffffff",outlineColor:"#151515",outlineWidth:3,shadowColor:"#151515",shadowBlur:0,shadowOffsetX:3,shadowOffsetY:4}},poster:{label:"Event Poster",title:{fontFamily:"Arial Black",color:"#ffffff",outlineColor:accent,outlineWidth:2,shadowColor:"#000000",shadowBlur:14,shadowOffsetX:0,shadowOffsetY:5},subtitle:{fontFamily:"Trebuchet MS",color:"#ffffff",outlineColor:"#151515",outlineWidth:0,shadowColor:"#000000",shadowBlur:5,shadowOffsetX:1,shadowOffsetY:2}},manga:{label:"Manga Cover",title:{fontFamily:"Georgia",color:"#111111",outlineColor:"#ffffff",outlineWidth:1,shadowColor:"#ffffff",shadowBlur:0,shadowOffsetX:2,shadowOffsetY:2},subtitle:{fontFamily:"Courier New",color:"#111111",outlineColor:"#ffffff",outlineWidth:0,shadowColor:"#ffffff",shadowBlur:0,shadowOffsetX:0,shadowOffsetY:1}}};const preset=presets[templateId]||presets.poster,width=dimensions==="square"?1080:dimensions==="banner"?1920:1080,height=dimensions==="square"?1080:dimensions==="banner"?1080:dimensions==="story"?1920:1350;if(state.storageRecoveryPending){status.textContent="Saved project is protected. Choose Save before replacing it with a poster.";return;}if(state.dirty&&!window.confirm("Replace the current canvas with a new poster? Export or save your current work first if needed."))return;const next=createDocument(width,height),bg=createImageLayer("Poster background",width,height,posterSvgSource(width,height,background,accent,templateId)),titleLayer=createTextLayer("Poster title",{value:title||"YOUR HEADLINE",x:width*.5,y:height*.34,fontSize:Math.round(height*.085),...preset.title,align:"center",fontWeight:"bold"}),subtitleLayer=createTextLayer("Poster subtitle",{value:subtitle||"ADD YOUR DETAILS HERE",x:width*.5,y:height*.78,fontSize:Math.round(height*.032),...preset.subtitle,align:"center",fontWeight:"bold"});next.layers=[bg,titleLayer,subtitleLayer];state.document=next;state.history.reset(next);state.textPreview=null;setSelection([titleLayer.id],titleLayer.id);state.viewport=createViewport();state.dirty=true;refreshDocument(preset.label+" template created");persistDocument();document.querySelector("#poster-template-dialog").close();}
+const posterForm=document.querySelector("#poster-template-form");document.querySelector("#poster-templates").addEventListener("click",()=>document.querySelector("#poster-template-dialog").showModal());document.querySelector("#cancel-poster-template").addEventListener("click",()=>document.querySelector("#poster-template-dialog").close());posterForm.addEventListener("submit",event=>{event.preventDefault();createPosterTemplate(document.querySelector("#poster-template-style").value,document.querySelector("#poster-background-color").value,document.querySelector("#poster-accent-color").value,document.querySelector("#poster-title-value").value,document.querySelector("#poster-subtitle-value").value,document.querySelector("#poster-size").value);});
 
 function createNewDocumentFromForm() {
   const width = Number(widthInput.value);
@@ -2011,7 +2309,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v9";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v12";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -2029,6 +2327,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/image-processing.mjs",
   "./domain/canvas-space.mjs",
   "./domain/layer-adjustments.mjs",
+  "./domain/quick-edit-recipes.mjs",
   "./domain/model.mjs",
   "./domain/text-layer.mjs",
   "./domain/png-export.mjs",
