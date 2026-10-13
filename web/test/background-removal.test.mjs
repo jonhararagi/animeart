@@ -31,3 +31,13 @@ test("manual cutout strokes erase alpha without painting white pixels",()=>{
 });
 
 test("edge-aware mode protects strong ink boundaries and decontaminates soft fringe",()=>{const white=[255,255,255],ink=[225,225,225],warm=[220,150,80],input=make(5,3,[white,white,ink,warm,warm,white,white,ink,warm,warm,white,white,ink,warm,warm]),out=removeConnectedBackground(input,{tolerance:0,feather:50,edgeSensitivity:24,protectLineArt:true,decontaminate:true});assert.equal(alpha(out,0),0);assert.equal(alpha(out,2),255);assert.equal(alpha(out,3),255);});
+
+test("tap-seeded magic eraser removes only the connected region around the sampled point",()=>{
+ const white=[248,248,248],red=[210,30,35];
+ const input=make(5,3,[white,white,red,white,white,white,white,red,white,white,white,white,red,white,white]);
+ const result=removeConnectedBackground(input,{targetColor:"#f8f8f8",tolerance:0,feather:0,seedPoints:[{x:0,y:1}]});
+ assert.equal(alpha(result,5),0);
+ assert.equal(alpha(result,6),0);
+ assert.equal(alpha(result,8),255);
+ assert.equal(alpha(result,2),255);
+});

@@ -8,12 +8,14 @@ function unmatte(data,offset,target,alpha){if(alpha<=0||alpha>=1)return;for(let 
  * transitions stop flood propagation, protecting black ink and warm/cool fills.
  * Feathering is restricted to the connected fringe to avoid leaking through lines.
  */
-export function removeConnectedBackground(imageData,{targetColor="#ffffff",tolerance=36,feather=18,edgeSensitivity=42,protectLineArt=true,decontaminate=true}={}){
+export function removeConnectedBackground(imageData,{targetColor="#ffffff",tolerance=36,feather=18,edgeSensitivity=42,protectLineArt=true,decontaminate=true,seedPoints=[]}={}){
  const{width,height,data:source}=validate(imageData,"Background removal"),target=parseColor(targetColor),threshold=Math.max(0,Math.min(255,Number(tolerance)||0)),soft=Math.max(0,Math.min(100,Number(feather)||0)),edge=Math.max(0,Math.min(180,Number(edgeSensitivity)||0)),reach=Math.min(255,threshold+soft),count=width*height,data=new Uint8ClampedArray(source),visited=new Uint8Array(count),queue=new Int32Array(count);let head=0,tail=0;
  const d=i=>distance(data,i*4,target);
  function seed(i){if(visited[i])return;const o=i*4;if(data[o+3]===0||d(i)>threshold)return;visited[i]=1;queue[tail++]=i;}
- for(let x=0;x<width;x++){seed(x);if(height>1)seed((height-1)*width+x);}
- for(let y=1;y<height-1;y++){seed(y*width);if(width>1)seed(y*width+width-1);}
+ const explicitSeeds=Array.isArray(seedPoints)?seedPoints.filter(p=>p&&Number.isFinite(Number(p.x))&&Number.isFinite(Number(p.y))):[];
+ if(explicitSeeds.length){for(const p of explicitSeeds){const x=Math.max(0,Math.min(width-1,Math.floor(Number(p.x)))),y=Math.max(0,Math.min(height-1,Math.floor(Number(p.y))));seed(y*width+x);}}
+ else {for(let x=0;x<width;x++){seed(x);if(height>1)seed((height-1)*width+x);}
+ for(let y=1;y<height-1;y++){seed(y*width);if(width>1)seed(y*width+width-1);}}
  while(head<tail){const i=queue[head++],x=i%width,y=Math.floor(i/width),neighbors=[];if(x)neighbors.push(i-1);if(x+1<width)neighbors.push(i+1);if(y)neighbors.push(i-width);if(y+1<height)neighbors.push(i+width);
   for(const n of neighbors){if(visited[n])continue;const o=n*4;if(data[o+3]===0){visited[n]=1;continue;}const nd=d(n);if(nd>reach)continue;
    if(protectLineArt){const p=i*4,delta=Math.sqrt(((data[o]-data[p])**2+(data[o+1]-data[p+1])**2+(data[o+2]-data[p+2])**2)/3);if(delta>edge)continue;}
