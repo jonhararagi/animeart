@@ -261,8 +261,9 @@ function drawImageLayer(layer, context = ctx) {
 
 function drawStrokeCollection(context, strokes, baseOpacity = 1) {
   for (const stroke of strokes || []) {
-    if (!Array.isArray(stroke.points) || stroke.points.length < 2) continue;
+    if (!Array.isArray(stroke.points) || stroke.points.length < (stroke.tool === "censor-light" ? 1 : 2)) continue;
     const erasing = stroke.tool === "eraser";
+    const censorLight = stroke.tool === "censor-light";
     const effect = erasing ? "normal" : (stroke.effect || "normal");
     context.save();
     context.globalCompositeOperation = erasing ? "destination-out" : "source-over";
@@ -275,11 +276,20 @@ function drawStrokeCollection(context, strokes, baseOpacity = 1) {
     context.lineJoin = "round";
     context.strokeStyle = erasing ? "#000000" : stroke.color;
     context.shadowColor = erasing || effect === "normal" ? "transparent" : stroke.color;
-    context.shadowBlur = effect === "neon" ? stroke.size * 1.8
-      : effect === "glow" ? stroke.size * 1.2
-        : effect === "soft" ? stroke.size * 0.7
-          : stroke.size * (1 - Math.min(100, Math.max(0, Number(stroke.hardness ?? 100))) / 100) * 0.45;
-    context.stroke();
+    context.shadowBlur = censorLight
+      ? stroke.size * Math.min(100, Math.max(0, Number(stroke.glow ?? 0))) / 100 * 1.2
+      : effect === "neon" ? stroke.size * 1.8
+        : effect === "glow" ? stroke.size * 1.2
+          : effect === "soft" ? stroke.size * 0.7
+            : stroke.size * (1 - Math.min(100, Math.max(0, Number(stroke.hardness ?? 100))) / 100) * 0.45;
+    if (stroke.points.length === 1 && censorLight) {
+      context.beginPath();
+      context.arc(stroke.points[0].x, stroke.points[0].y, Math.max(0.5, stroke.size / 2), 0, Math.PI * 2);
+      context.fillStyle = stroke.color;
+      context.fill();
+    } else {
+      context.stroke();
+    }
     if (effect === "neon" && !erasing) {
       context.shadowBlur = 0;
       context.strokeStyle = "#ffffff";
@@ -1808,7 +1818,11 @@ canvas.addEventListener("pointerdown", event => {
   state.drawingPointerId = event.pointerId;
   state.strokeBefore = cloneDocument(state.document);
   canvas.setPointerCapture(event.pointerId);
-  layer.strokes.push(createStroke(state.tool, state.brush.size, [pointFromEvent(event)], state.brush.color, state.brush.opacity, { hardness: state.brush.hardness, effect: state.brush.effect }));
+  layer.strokes.push(createStroke(state.tool, state.brush.size, [pointFromEvent(event)], state.brush.color, state.brush.opacity, {
+    hardness: state.brush.hardness,
+    effect: state.brush.effect,
+    glow: state.tool === "censor-light" ? Number(document.querySelector("#censor-light-glow").value) : 0
+  }));
 });
 
 canvas.addEventListener("pointermove", event => {
