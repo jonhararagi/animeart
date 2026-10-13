@@ -142,11 +142,13 @@
         </div>
       </div>
       <div class="transparency-shortcuts" aria-label="Acciones rápidas de transparencia">
+        <button type="button" id="quick-remove-image">✕ Quitar imagen</button>
         <button type="button" id="quick-remove-background">🪄 Quitar fondo</button>
         <button type="button" id="quick-recover" title="Deshacer el último cambio">↶ Recuperar</button>
         <button type="button" id="export-transparent-png">⬇ Exportar PNG transparente</button>
       </div>
       <canvas id="canvas" aria-label="Lienzo de edición. Seleccioná una capa para modificarla."></canvas>
+      <button type="button" id="remove-selected-image" aria-label="Quitar imagen seleccionada" title="Quitar solo esta imagen. Podés deshacer." hidden>×<span>Quitar imagen</span></button>
       <p class="transparency-note" id="transparency-note">Los cuadritos indican transparencia. No aparecerán en el PNG. El fondo blanco de una imagen importada sigue siendo opaco hasta quitarlo.</p>
     </section>
     <aside class="layers" aria-label="Layers">
