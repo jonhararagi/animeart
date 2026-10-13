@@ -21,6 +21,19 @@ class DrawingEditorTest {
         assertEquals(1, DocumentReducer.activeStrokes(editor.state.document, editor.state.selectedLayerId).size)
     }
 
+    @Test fun drawing_over_image_creates_separate_paint_layer() {
+        val imported = DocumentReducer.addImageLayer(CanvasDocument(), "Character", "content://gallery/character")
+        val imageLayer = imported.layers.last()
+        val editor = DrawingEditor(EditorState(document = imported, selectedLayerId = imageLayer.id))
+        editor.beginStroke(Offset(30f, 40f))
+        assertEquals("Paint", editor.state.document.layers.last().name)
+        assertEquals(LayerContent.Image("content://gallery/character"), editor.state.document.layers.first { it.id == imageLayer.id }.content)
+        editor.appendStrokePoint(Offset(50f, 60f))
+        editor.commitStroke()
+        assertEquals(LayerContent.Image("content://gallery/character"), editor.state.document.layers.first { it.id == imageLayer.id }.content)
+        assertEquals(1, (editor.state.document.layers.last().content as LayerContent.Drawing).strokes.size)
+    }
+
     @Test fun layer_operations_are_undoable() {
         val editor = DrawingEditor()
         editor.createLayer("Sketch")
