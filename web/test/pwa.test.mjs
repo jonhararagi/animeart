@@ -29,7 +29,7 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(html, /id="recolor-image"/);
   assert.match(html, /id="recolor-dialog"/);
   assert.match(app, /replaceColorRange/);
-  assert.match(app, /preserveShading: document.querySelector\("#recolor-preserve-shading"\)\.checked/);
+  assert.ok(app.includes('preserveShading: document.querySelector("#recolor-preserve-shading").checked'));
   assert.match(html, /id="remove-background"/);
   assert.match(html, /id="background-removal-dialog"/);
   assert.match(html, /id="poster-template-dialog"/);

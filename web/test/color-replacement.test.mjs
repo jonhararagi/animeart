@@ -16,7 +16,8 @@ test("selective recolor changes a sampled range without changing alpha or the in
 test("shading preservation keeps source lightness ordering across hair-like highlights", () => {
   const source=image([[60,30,15,255],[130,65,32,255],[220,160,120,255]]);
   const result=replaceColorRange(source,{sourceColor:"#804020",targetColor:"#00aaff",tolerance:255,softness:0,preserveShading:true});
-  assert.ok(result.data[0]<result.data[4]&&result.data[4]<result.data[8]);
+  const lightness = offset => (Math.max(result.data[offset],result.data[offset+1],result.data[offset+2]) + Math.min(result.data[offset],result.data[offset+1],result.data[offset+2])) / 2;
+  assert.ok(lightness(0)<lightness(4)&&lightness(4)<lightness(8));
   assert.notEqual(result.data[2],result.data[6]);
 });
 test("softness feathers the edge of a color range", () => {
