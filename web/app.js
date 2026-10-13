@@ -1,5 +1,6 @@
 import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
 import { initializeAssetLibrary } from "./asset-library.js";
+import { initializeAppearanceSettings } from "./appearance-settings.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
 import { replaceColorRange } from "./domain/color-replacement.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
@@ -1975,6 +1976,7 @@ if (mobileDock) {
     if (action === "import-image") { imageFileInput.click(); return; }
     if (action === "add-text") { document.querySelector("#add-text-layer")?.click(); return; }
     if (action === "export") { exportPngButton.click(); return; }
+    if (action === "appearance") { document.querySelector("#appearance-open")?.click(); return; }
     if (action === "zoom-in" || action === "zoom-out") {
       const factor = action === "zoom-in" ? 1.2 : 1 / 1.2;
       const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, state.viewport.zoom * factor));
@@ -2687,6 +2689,7 @@ function load() {
 }
 
 initializeAssetLibrary({ onImportImage: importImageIntoEditor, onStatus: message => { status.textContent = message; } });
+initializeAppearanceSettings();
 setSelection([state.document.layers[0].id], state.document.layers[0].id);
 load();
 renderLayers();
@@ -2696,12 +2699,13 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v14";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v15";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
   "./app.js",
   "./asset-library.js",
+  "./appearance-settings.js",
   "./domain/asset-library.mjs",
   "./manifest.webmanifest",
   "./service-worker.js",

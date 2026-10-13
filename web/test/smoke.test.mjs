@@ -476,3 +476,24 @@ test("mobile dock actions call history directly and keep the active drawing tool
   assert.match(js, /if \(action === "redo"\) \{ redo\(\); return; \}/);
   assert.match(css, /Mobile editor controls: fixed canvas/);
 });
+
+
+test("editor appearance supports custom accent, workspace color and local wallpaper without changing artwork export", async () => {
+  const [html, app, styles, worker, appearance] = await Promise.all([
+    readFile("index.html", "utf8"), readFile("app.js", "utf8"),
+    readFile("styles.css", "utf8"), readFile("service-worker.js", "utf8"),
+    readFile("appearance-settings.js", "utf8")
+  ]);
+  assert.match(html, /id="appearance-open"/);
+  assert.match(html, /id="appearance-dialog"/);
+  assert.match(html, /id="appearance-wallpaper-file"/);
+  assert.match(html, /data-touch-action="appearance"/);
+  assert.match(app, /initializeAppearanceSettings\(\)/);
+  assert.match(app, /animeart-web-shell-v15/);
+  assert.match(worker, /animeart-web-shell-v15/);
+  assert.match(worker, /\.\/appearance-settings\.js/);
+  assert.match(appearance, /animeart-editor-appearance-v1/);
+  assert.match(appearance, /MAX_WALLPAPER_BYTES = 2 \* 1024 \* 1024/);
+  assert.match(appearance, /--editor-workspace/);
+  assert.match(styles, /Picsart-inspired mobile-first editor polish/);
+});

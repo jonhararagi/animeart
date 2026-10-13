@@ -10,8 +10,8 @@
   --stroke: #2a3546;
   --muted: #929eb1;
   --text: #e9edf6;
-  --accent: #68d5ed;
-  --accent-strong: #22b8d7;
+  --accent: #c084fc;
+  --accent-strong: #a855f7;
 }
 * { box-sizing: border-box; }
 html, body { width: 100%; min-height: 100%; }
@@ -496,4 +496,47 @@ canvas {
     max-height: none; overflow: auto; border: 1px solid #35465d;
     border-radius: 14px; padding: 14px; background: rgb(15 21 31 / 98%);
   }
+}
+
+
+/* Picsart-inspired mobile-first editor polish with user-owned appearance settings. */
+.topbar-actions { display:flex; align-items:center; justify-content:flex-end; gap:12px; min-width:0; }
+#appearance-open { min-height:36px; border-radius:999px; padding:7px 14px; border-color:#604080; background:#281a39; color:#f1ddff; font-size:.75rem; font-weight:750; }
+#appearance-open:hover { background:#39214f; border-color:var(--accent); }
+.canvas-wrap { background-color:var(--editor-workspace,#111318); background-image:var(--editor-wallpaper-overlay,radial-gradient(ellipse at 50% 35%,rgb(70 55 94 / 25%),transparent 65%)); background-size:cover; background-position:center; }
+.mobile-touch-dock { background:rgb(18 17 25 / 96%); border:1px solid #40364e; box-shadow:0 10px 38px #0008; backdrop-filter:blur(18px); }
+.mobile-touch-dock button { border-radius:12px; border-color:transparent; background:#25212d; color:#e8e1ef; }
+.mobile-touch-dock button[aria-pressed="true"] { border-color:var(--accent); color:#fff; background:color-mix(in srgb,var(--accent) 26%,#211a2a); }
+#appearance-dialog { width:min(560px,calc(100vw - 24px)); max-width:560px; max-height:92dvh; padding:0; overflow:auto; border:1px solid #49395d; border-radius:20px; background:#17141e; color:var(--text); box-shadow:0 28px 100px #000b; }
+#appearance-dialog::backdrop { background:#05030bbd; backdrop-filter:blur(5px); }
+.appearance-shell { display:grid; gap:18px; padding:22px; }
+.appearance-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; border-bottom:1px solid #342a41; padding-bottom:14px; }
+.appearance-header h2 { margin:0; font-size:1.15rem; }
+.appearance-header p:not(.eyebrow) { margin:7px 0 0; max-width:370px; color:#a99db7; font-size:.73rem; line-height:1.5; }
+.appearance-section { display:grid; gap:8px; }
+.appearance-section h3 { margin:0; font-size:.86rem; }
+.appearance-section > p { margin:0; color:#a99db7; font-size:.7rem; line-height:1.5; }
+.appearance-swatches { display:flex; flex-wrap:wrap; gap:9px; margin:3px 0; }
+.appearance-swatches button { width:38px; height:38px; min-height:38px; padding:0; border-radius:50%; border:2px solid #62566f; background:var(--swatch); box-shadow:inset 0 0 0 3px #17141e; }
+.appearance-swatches button[aria-pressed="true"] { outline:2px solid var(--accent); outline-offset:3px; border-color:#fff; }
+.appearance-field { display:flex; align-items:center; justify-content:space-between; gap:12px; color:#ded4e8; font-size:.74rem; }
+.appearance-field input[type="color"] { width:52px; height:36px; border:1px solid #554564; border-radius:9px; background:#201a29; padding:3px; }
+.appearance-wallpaper-actions { display:flex; align-items:center; flex-wrap:wrap; gap:9px; }
+.appearance-upload { display:inline-flex; align-items:center; min-height:38px; padding:8px 12px; border:1px solid #65428a; border-radius:10px; background:#352044; color:#f1ddff; font-size:.72rem; font-weight:750; cursor:pointer; }
+.appearance-help, #appearance-status { color:#a99db7; font-size:.68rem; line-height:1.5; overflow-wrap:anywhere; }
+.appearance-footer { display:flex; justify-content:space-between; gap:9px; padding-top:13px; border-top:1px solid #342a41; }
+.appearance-primary { border-color:var(--accent); background:var(--accent); color:#160d20; font-weight:850; }
+.appearance-primary:hover { background:color-mix(in srgb,var(--accent) 80%,white); color:#160d20; }
+#appearance-status { margin:0; min-height:1em; }
+@media(max-width:620px) {
+ .topbar { gap:8px; padding-left:12px; padding-right:12px; }
+ .brand { font-size:.76rem; letter-spacing:.12em; gap:7px; }
+ .brand::before { width:28px; height:28px; }
+ .topbar-actions { gap:7px; }
+ #appearance-open { min-height:34px; padding:6px 10px; }
+ .status { max-width:100px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; font-size:.62rem; }
+ .appearance-shell { padding:15px; gap:15px; }
+ .appearance-header h2 { font-size:1rem; }
+ .appearance-swatches button { width:34px; height:34px; min-height:34px; }
+ .appearance-footer button { flex:1; }
 }
