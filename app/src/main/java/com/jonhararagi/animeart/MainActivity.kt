@@ -1,27 +1,46 @@
 package com.jonhararagi.animeart
 
 import android.graphics.Color
-import android.util.Log
+import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.ViewGroup
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.webkit.ServiceWorkerControllerCompat
-import androidx.webkit.ServiceWorkerClientCompat
-import androidx.webkit.WebViewFeature
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.webkit.ServiceWorkerControllerCompat
+import androidx.webkit.ServiceWorkerClientCompat
 import androidx.webkit.WebViewAssetLoader
+import androidx.webkit.WebViewFeature
 import com.jonhararagi.animeart.document.CanvasDocument
 import com.jonhararagi.animeart.persistence.ProjectPersistence
 import com.jonhararagi.animeart.ui.EditorScreen
 
 class MainActivity : ComponentActivity() {
     private var webView: WebView? = null
+    private var pendingFileChooser: ValueCallback<Array<Uri>>? = null
+
+    private val fileChooserLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val callback = pendingFileChooser
+            pendingFileChooser = null
+            if (callback == null) return@registerForActivityResult
+
+            val selectedUris = if (result.resultCode == RESULT_OK) {
+                WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
+            } else {
+                null
+            }
+            callback.onReceiveValue(selectedUris)
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,11 +71,32 @@ class MainActivity : ComponentActivity() {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.allowFileAccess = false
-            settings.allowContentAccess = false
+            // Android's system picker returns content:// URIs. WebView must be allowed to
+            // read those selected items; it still cannot browse arbitrary file:// paths.
+            settings.allowContentAccess = true
             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
             if (offlineValidation) {
                 settings.blockNetworkLoads = true
                 settings.cacheMode = android.webkit.WebSettings.LOAD_CACHE_ONLY
+            }
+            webChromeClient = object : WebChromeClient() {
+                override fun onShowFileChooser(
+                    webView: WebView,
+                    filePathCallback: ValueCallback<Array<Uri>>,
+                    fileChooserParams: FileChooserParams
+                ): Boolean {
+                    pendingFileChooser?.onReceiveValue(null)
+                    pendingFileChooser = filePathCallback
+                    return try {
+                        fileChooserLauncher.launch(fileChooserParams.createIntent())
+                        true
+                    } catch (error: Exception) {
+                        pendingFileChooser = null
+                        filePathCallback.onReceiveValue(null)
+                        Log.e("AnimeArtFilePicker", "Could not open Android file picker", error)
+                        false
+                    }
+                }
             }
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(
@@ -93,6 +133,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showLegacyEditor() {
+        pendingFileChooser?.onReceiveValue(null)
+        pendingFileChooser = null
         webView?.apply {
             stopLoading()
             (parent as? ViewGroup)?.removeView(this)
@@ -114,6 +156,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        pendingFileChooser?.onReceiveValue(null)
+        pendingFileChooser = null
         webView?.apply {
             stopLoading()
             (parent as? ViewGroup)?.removeView(this)
