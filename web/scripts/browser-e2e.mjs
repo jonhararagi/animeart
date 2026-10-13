@@ -386,8 +386,6 @@ try {
   await saveScreenshot("animeart-studio-crop-preview.png");
   await evaluate('(() => { for (const [id,value] of [["#image-crop-x","5"],["#image-crop-y","7"],["#image-crop-width","400"],["#image-crop-height","500"]]) { const input=document.querySelector(id); input.value=value; input.dispatchEvent(new Event("input",{bubbles:true})); } })()');
   await click("#apply-image-edit");
-  await new Promise(resolve => setTimeout(resolve, 500));
-  console.log("CROP_APPLY_DIAGNOSTIC", await evaluate('JSON.stringify({status:document.querySelector("#status").textContent,dialogOpen:document.querySelector("#image-edit-dialog").open,dimensions:JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.map(layer => ({name:layer.name,width:layer.image?.width,height:layer.image?.height}))})'));
   await waitFor('document.querySelector("#status").textContent === "Image cropped"', 15000);
   let croppedSample = (await readDocument()).layers.find(layer => layer.name === "battleworn_knight");
   assert(croppedSample?.image?.width === 400 && croppedSample?.image?.height === 500, "real browser crop changes image pixels to the exact crop dimensions");
