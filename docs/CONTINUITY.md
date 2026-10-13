@@ -2976,3 +2976,39 @@ La validación final depende de Web CI y Android CI completadas sobre el HEAD ex
 
 PROTECCIONES:
 Esta preparación no modifica main, no fusiona ningún PR y no cambia la base, el HEAD ni el estado de PR #46 o #47. No declara el producto listo para lanzamiento.
+
+
+---
+
+## AA-PICART-MODE-001 — Implementation continuation on PR #69
+
+DATE: 2026-10-13
+
+CANONICAL WORKING LINE:
+- PR #69: https://github.com/jonhararagi/animeart/pull/69
+- Branch: `fix/android-native-file-access-001`.
+- Main baseline at start: `cf4090f260e45cd2b3f3100e45482e1ce36c67a7`.
+
+IMPLEMENTED IN THIS CONTINUATION:
+- Added a local profile domain module with built-in anime/dark-ink, flat-color, transparent-PNG and photography presets, validated parameters, and save/update/delete for custom profiles.
+- Connected profile selection and persistence to the existing background-removal dialog; added unit and real Chromium E2E coverage for profile save/restore/delete.
+- Repaired the background-removal Apply handler to calculate the automatic connected-region matte before manual correction strokes are applied, preserving the existing image-layer/history/persistence pipeline.
+- Connected Android image and project export to a native `ACTION_CREATE_DOCUMENT` Save As bridge, with browser-download fallback. Input remains through the Android system picker.
+- Refreshed the offline shell to v17 and included the new profile module in both the service-worker shell and offline-readiness contract.
+- Updated README and added smoke assertions for the new profile, export and offline behavior.
+- Kept the existing Web document, layer model, canvas renderer, history and persistence; no second editor or remote image-processing service was added.
+
+VALIDATION STATE:
+- Source changes are committed to the PR #69 branch.
+- Do not claim local test execution.
+- Web CI, Chromium E2E, Android build/lint/instrumentation, APK generation and offline startup must finish on the final SHA before PASS can be assigned.
+- Prior runs attached to the earlier PR #69 HEAD are historical only.
+
+LIMITATIONS:
+- Background removal is a local connected-color algorithm with edge heuristics, not semantic AI segmentation.
+- Polygon/lasso selection and editable selection masks remain incomplete.
+- Advanced photographic controls beyond the current adjustment set remain incomplete.
+- Status remains PARTIAL until final-HEAD CI and the remaining acceptance criteria are verified.
+
+SAFETY:
+- Main was not edited directly. No merge, PR closure, retarget or rebase was performed.
