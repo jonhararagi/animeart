@@ -101,7 +101,7 @@ const MAX_ZOOM = 4;
 const HANDLE_RADIUS = 10;
 const imageCache = new Map();
 
-const BRUSH_DEFAULTS = Object.freeze({ color: "#111318", size: 5, opacity: 1 });
+const BRUSH_DEFAULTS = Object.freeze({ color: "#111318", size: 5, opacity: 1, hardness: 100, effect: "normal" });
 const MIN_BRUSH_SIZE = 1;
 const MAX_BRUSH_SIZE = 100;
 
@@ -299,9 +299,24 @@ function drawDocument({ context = ctx, document = state.document, center = docum
         context.lineWidth = stroke.size;
         context.lineCap = "round";
         context.lineJoin = "round";
-        context.globalAlpha = layer.opacity * (stroke.tool === "eraser" ? 1 : stroke.opacity);
-        context.strokeStyle = stroke.tool === "eraser" ? "#ffffff" : stroke.color;
+        const erasing = stroke.tool === "eraser";
+        const effect = erasing ? "normal" : (stroke.effect || "normal");
+        context.globalAlpha = layer.opacity * (erasing ? 1 : stroke.opacity);
+        context.strokeStyle = erasing ? "#ffffff" : stroke.color;
+        context.shadowColor = erasing || effect === "normal" ? "transparent" : stroke.color;
+        context.shadowBlur = effect === "neon" ? stroke.size * 1.8
+          : effect === "glow" ? stroke.size * 1.2
+            : effect === "soft" ? stroke.size * 0.7
+              : stroke.size * (1 - Math.min(100, Math.max(0, Number(stroke.hardness ?? 100))) / 100) * 0.45;
         context.stroke();
+        if (effect === "neon" && !erasing) {
+          context.shadowBlur = 0;
+          context.strokeStyle = "#ffffff";
+          context.lineWidth = Math.max(1, stroke.size * 0.32);
+          context.globalAlpha = layer.opacity * stroke.opacity;
+          context.stroke();
+        }
+        context.shadowBlur = 0;
       }
     }
     context.restore();
@@ -1511,7 +1526,7 @@ canvas.addEventListener("pointerdown", event => {
   state.drawingPointerId = event.pointerId;
   state.strokeBefore = cloneDocument(state.document);
   canvas.setPointerCapture(event.pointerId);
-  layer.strokes.push(createStroke(state.tool, state.brush.size, [pointFromEvent(event)], state.brush.color, state.brush.opacity));
+  layer.strokes.push(createStroke(state.tool, state.brush.size, [pointFromEvent(event)], state.brush.color, state.brush.opacity, { hardness: state.brush.hardness, effect: state.brush.effect }));
 });
 
 canvas.addEventListener("pointermove", event => {
@@ -1677,11 +1692,27 @@ function setBrushOpacity(value) {
   return true;
 }
 
+function setBrushHardness(value) {
+  const hardness = Number(value);
+  if (!Number.isFinite(hardness)) return false;
+  state.brush.hardness = Math.min(100, Math.max(0, hardness));
+  return true;
+}
+
+function setBrushEffect(value) {
+  if (!["normal", "soft", "glow", "neon"].includes(value)) return false;
+  state.brush.effect = value;
+  return true;
+}
+
 const brushColorInput = document.querySelector("#brush-color");
 const brushSizeInput = document.querySelector("#brush-size");
 const brushSizeValue = document.querySelector("#brush-size-value");
 const brushOpacityInput = document.querySelector("#brush-opacity");
 const brushOpacityValue = document.querySelector("#brush-opacity-value");
+const brushHardnessInput = document.querySelector("#brush-hardness");
+const brushHardnessValue = document.querySelector("#brush-hardness-value");
+const brushEffectInput = document.querySelector("#brush-effect");
 
 brushColorInput.addEventListener("input", event => {
   if (setBrushColor(event.currentTarget.value)) redraw();
@@ -1697,12 +1728,25 @@ brushOpacityInput.addEventListener("input", event => {
   brushOpacityValue.textContent = Math.round(state.brush.opacity * 100) + "%";
 });
 
+brushHardnessInput.addEventListener("input", event => {
+  if (!setBrushHardness(event.currentTarget.value)) return;
+  brushHardnessValue.textContent = Math.round(state.brush.hardness) + "%";
+});
+
+brushEffectInput.addEventListener("change", event => {
+  if (!setBrushEffect(event.currentTarget.value)) return;
+  status.textContent = "Brush effect: " + brushEffectInput.selectedOptions[0].textContent;
+});
+
 function syncBrushControls() {
   brushColorInput.value = state.brush.color;
   brushSizeInput.value = String(state.brush.size);
   brushSizeValue.textContent = String(state.brush.size);
   brushOpacityInput.value = String(Math.round(state.brush.opacity * 100));
   brushOpacityValue.textContent = Math.round(state.brush.opacity * 100) + "%";
+  brushHardnessInput.value = String(Math.round(state.brush.hardness));
+  brushHardnessValue.textContent = Math.round(state.brush.hardness) + "%";
+  brushEffectInput.value = state.brush.effect;
 }
 
 
