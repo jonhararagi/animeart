@@ -11,6 +11,13 @@ object DocumentReducer {
         return document.copy(layers = layers)
     }
 
+    fun addImageLayer(document: CanvasDocument, name: String, uri: String, index: Int = document.layers.size): CanvasDocument {
+        val layer = Layer(name = normalizeName(name, "Image"), content = LayerContent.Image(uri))
+        val layers = document.layers.toMutableList()
+        layers.add(index.coerceIn(0, layers.size), layer)
+        return document.copy(layers = layers)
+    }
+
     fun renameLayer(document: CanvasDocument, id: String, name: String): CanvasDocument =
         document.copy(layers = document.layers.map { layer ->
             if (layer.id == id) layer.copy(name = normalizeName(name, layer.name)) else layer
