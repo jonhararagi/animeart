@@ -3117,3 +3117,19 @@ TIMER:
 ### Estado de cierre al registrar la entrada
 
 PARTIAL hasta comprobar Web CI y Android CI en el HEAD final y actualizar la base del PR de entrega. `main` permanece intacto. No se afirma que los cambios estén entregados a usuarios mientras el PR de integración siga abierto.
+
+
+### Otros PR abiertos revisados: persistencia, recuperación y mantenimiento
+
+Estos PR fueron consultados por SHA, archivos y CI. No se mezclan automáticamente en el PR de usabilidad porque pertenecen a una cadena separada de seguridad de recuperación y almacenamiento, con bases históricas distintas; fusionarlos sin reconciliar sus contratos de preservación sería arriesgar los proyectos locales del usuario.
+
+| PR | HEAD / base consultados | Resultado de inspección | Disposición |
+|---|---|---|---|
+| #41 T059.1 | HEAD `9fb6643b5a2711ef66a09d9151ab93a1ca1ef90b`; base histórica `4d4b2a03be0fc1bedae59b91d2980984d3cafe81` | Web y Android CI SUCCESS en ese HEAD; mergeable false al consultar. Modifica `ProjectPersistence.kt`, `MainActivity.kt` y tests de recuperación Android. | Sigue abierto como deuda real de seguridad de recuperación. No se declara integrado en esta entrega. |
+| #43 T060 | HEAD `e6dfe2c010808bd5f5259bf86969ebdae78e076e`; apilado sobre #41 | Web y Android CI SUCCESS en ese HEAD. Añade pruebas de UI para decisión de recuperación y preservación. | Sigue abierto y apilado sobre #41; requiere reconciliación de la cadena completa. |
+| #44 T060.2 | HEAD `9057ce0730512c9f10b63b027b7220e2e73acba1`; apilado sobre #43 | Web y Android CI SUCCESS en ese HEAD. Añade prueba determinista de callback de recuperación WebView. | Sigue abierto y apilado sobre #43; no se cierra ni se considera entregado. |
+| #46 T064-R1 | HEAD `abcc2033f96779c3b171e1aae876ed724c08731a`; base histórica `e12042f58b015560e6739197a460524b0a43ae2e` | Web y Android CI SUCCESS en ese HEAD. Cambia E2E y smoke tests para fallos de almacenamiento, reintentos y recuperación. | Sigue abierto como deuda de integridad de almacenamiento. Sus pruebas no se atribuyen a `main` ni al HEAD de esta entrega. |
+| #50 GRADLE-MAINT-002 | HEAD `fe921a81240301ba99fe1ee060b9bb672fbde10c`; base histórica `c8b1c7994fba9960de94a27b77027dca84c9f424` | Web y Android CI SUCCESS en ese HEAD; mergeable false al consultar. Propone Wrapper Gradle/Kotlin y cambios de workflow. | Se mantiene separado de la entrega de UX; no se cambia el sistema de build sin reconciliar su base histórica. |
+| #51 GRADLE-MAINT-003 handoff | HEAD `d35e5226f76aea2733cedd3c8aea24f962656f76`; base histórica `c8b1c7994fba9960de94a27b77027dca84c9f424` | Web y Android CI SUCCESS en ese HEAD; solo modifica documentación de mantenimiento. | Sigue abierto; documentación separada, no bloquea la funcionalidad del editor por sí misma. |
+
+**Límite explícito:** AA-INTEGRATION-CLOSURE-001 consolida la experiencia de edición y sus rutas de importación/exportación. No resuelve los gates T059/T060/T064 de preservación de datos. Por ello, no se debe declarar cierre global de todas las ramas del repositorio mientras #41/#43/#44/#46 sigan sin reconciliarse o mientras no exista una decisión documentada de mantenerlos como trabajo separado.
