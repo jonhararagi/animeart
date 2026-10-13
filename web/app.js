@@ -2908,7 +2908,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v16";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v17";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -2929,6 +2929,8 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/canvas-space.mjs",
   "./domain/layer-adjustments.mjs",
   "./domain/quick-edit-recipes.mjs",
+  "./domain/background-removal.mjs",
+  "./domain/background-removal-profiles.mjs",
   "./domain/model.mjs",
   "./domain/text-layer.mjs",
   "./domain/png-export.mjs",
