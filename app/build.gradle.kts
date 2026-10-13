@@ -1,7 +1,27 @@
+import org.gradle.api.tasks.Sync
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+}
+
+val generatedWebAssets = layout.buildDirectory.dir("generated/animeartWebAssets")
+val syncWebEditorAssets = tasks.register<Sync>("syncWebEditorAssets") {
+    from(rootProject.file("web")) {
+        exclude(
+            "dist/**",
+            "node_modules/**",
+            "scripts/**",
+            "test/**",
+            "tests/**",
+            "package.json",
+            "package-lock.json",
+            "README.md",
+            ".gitignore"
+        )
+    }
+    into(generatedWebAssets.map { it.dir("web") })
 }
 
 android {
@@ -29,6 +49,8 @@ android {
     buildFeatures {
         compose = true
     }
+
+    sourceSets.getByName("main").assets.setSrcDirs(listOf(generatedWebAssets))
 }
 
 dependencies {
@@ -50,4 +72,9 @@ dependencies {
     androidTestImplementation("androidx.test:core:1.6.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
+}
+
+
+tasks.named("preBuild").configure {
+    dependsOn(syncWebEditorAssets)
 }

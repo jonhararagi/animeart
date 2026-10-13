@@ -1,29 +1,27 @@
 # AnimeArt
 
-AnimeArt is a local-first **image editor**, inspired by everyday editors such as Picsart. It is not an AI image generator. The active delivery target is the Web editor; the Android application remains a separate Kotlin/Compose foundation.
+AnimeArt is a local-first **image editor and compositor**, inspired by everyday editors such as Picsart. It is not an AI image generator. The Web editor in `web/` is the canonical runtime, and Android packages that same current editor into its APK through Gradle.
 
-## Web editing tools
+## Editing tools
 
 - Create documents with explicit pixel dimensions.
-- Import images from the file picker, drag-and-drop, and clipboard paste.
-- Draw with brush and eraser; configure color, size and opacity.
+- Import images from files, drag-and-drop and clipboard paste; compose many image layers in one project.
+- Move, scale, rotate, flip, crop and resize image layers while preserving transparency.
 - Manage layers: create, select, rename, duplicate, delete, reorder, hide, lock and set opacity.
-- Move, scale, rotate and mirror image layers horizontally or vertically.
-- Edit images with a visual pixel crop, free selection and common aspect ratios, or resample to new dimensions while preserving transparency.
-- Adjust brightness, contrast, saturation, hue and blur non-destructively, with Original, Anime, Cinematic, Manga and Dream presets.
-- Add editable multiline text layers with font family, weight, size, color and alignment.
-- Select multiple layers and move them together.
-- Undo and redo supported document edits.
-- Save and recover projects locally; export/import portable JSON project files.
-- Export composed artwork as PNG, JPEG or WebP. PNG preserves transparency; JPEG offers a background color; JPEG and WebP offer quality control.
+- Use masks and a true transparent-alpha eraser on drawing layers.
+- Draw with configurable color, size, opacity and hardness; use normal brush, soft airbrush, glow and neon effects.
+- Remove connected backgrounds locally with edge/line-art protection, feathering, fringe cleanup and manual erase strokes.
+- Select a source color in an image and recolor that range, preserving shading, highlights, texture and alpha.
+- Adjust brightness, contrast, saturation, hue, temperature, tint and blur non-destructively, with Original, Anime, Cinematic, Manga and Dream presets.
+- Add editable multiline text with font family, weight, size, color, alignment, outline and shadow.
+- Undo/redo, recover projects locally, import/export portable JSON projects and export the composite as PNG, JPEG or WebP.
 - Install as a PWA with an offline application shell.
 
-The editor uses the existing Document, Layer, Canvas renderer, History, storage and export boundaries. Images and projects remain in the browser unless the user explicitly exports them. No remote image-generation service is part of the editor workflow.
+Image pixels and projects stay on the device unless the user explicitly exports them. The editor does not upload artwork to an AI service.
 
 ## Run the Web editor
 
-On Windows, install Node.js 22 or newer, then double-click `START_ANIMEART.bat` in the repository folder. It starts the local editor and opens the browser. Your images and projects stay on your device.
-
+On Windows, install Node.js 22 or newer, then double-click `START_ANIMEART.bat` in the repository folder. Or run:
 
 ```sh
 cd web
@@ -31,21 +29,25 @@ npm install
 npm run dev
 ```
 
-Open **http://127.0.0.1:4173/**. The local server serves the editor directly from the source folder; it does not upload your images or projects anywhere. Set `PORT` to use another port.
+Open **http://127.0.0.1:4173/**. Set `PORT` to use another port.
 
 ## Build and test
 
 ```sh
 cd web
+npm install
 npm run build
 npm test
 ```
 
-Android:
+## Android
+
+The APK uses generated assets from the canonical `web/` directory. `app/src/main/assets/web/` is not a second source of truth.
 
 ```sh
 gradle assembleDebug
 gradle test
+gradle connectedDebugAndroidTest
 ```
 
-The GitHub Actions workflows validate the Web build and real Chromium interactions, and independently validate the Android foundation.
+GitHub Actions checks the Web build, real Chromium interactions, Android instrumentation and offline startup. The Android offline smoke derives its cache contract from the current Web sources instead of relying on a stale hard-coded version.

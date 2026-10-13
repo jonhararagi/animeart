@@ -16,6 +16,27 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class MainActivityWebViewRotationTest {
     @Test
+    fun androidLoadsTheCurrentWebEditorWithCropFlipAndExportControls() {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            val webView = waitForWebView(scenario)
+            waitUntil(scenario, timeoutMs = 10_000) {
+                findWebView(it.window.decorView)?.progress == 100
+            }
+            val currentEditorLoaded = evaluateJavascriptResult(
+                webView,
+                """(() => document.title === "AnimeArt Studio | Image Editor" &&
+                    !!document.querySelector("#crop-resize-image") &&
+                    !!document.querySelector("#flip-image-horizontal") &&
+                    !!document.querySelector("#export-format") && !!document.querySelector("#export-png") &&
+                    !!document.querySelector("#recolor-image") && !!document.querySelector("#recolor-dialog") &&
+                    !!document.querySelector("#background-removal-edge-sensitivity") &&
+                    !!document.querySelector("#brush-hardness"))()"""
+            )
+            assertEquals("true", currentEditorLoaded)
+        }
+    }
+
+    @Test
     fun activityRecreationRestoresWebViewNavigationState() {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             val initialWebView = waitForWebView(scenario)
@@ -55,13 +76,20 @@ class MainActivityWebViewRotationTest {
     }
 
     private fun evaluateJavascript(webView: WebView, script: String) {
+        evaluateJavascriptResult(webView, script)
+    }
+
+    private fun evaluateJavascriptResult(webView: WebView, script: String): String {
         val latch = CountDownLatch(1)
+        var result = "null"
         webView.post {
-            webView.evaluateJavascript(script) {
+            webView.evaluateJavascript(script) { value ->
+                result = value ?: "null"
                 latch.countDown()
             }
         }
         assertTrue("JavaScript did not complete", latch.await(10, TimeUnit.SECONDS))
+        return result
     }
 
     private fun waitUntil(
