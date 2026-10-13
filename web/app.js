@@ -1,6 +1,6 @@
 import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
 import { initializeAssetLibrary } from "./asset-library.js";
-import { initializeAppearanceSettings } from "./appearance-settings.js";
+import { getEditingHelpPreference, initializeAppearanceSettings, setEditingHelpPreference } from "./appearance-settings.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
 import { replaceColorRange } from "./domain/color-replacement.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
@@ -2264,9 +2264,9 @@ document.querySelector("#show-edit-example").addEventListener("click", () => sho
 document.querySelector("#show-edit-example-action").addEventListener("click", () => runEditGoal(state.tool === "censor-light" ? "censor" : lastEditGoal));
 document.querySelector("#close-editing-help").addEventListener("click", () => { document.querySelector("#editing-help-card").hidden = true; });
 const helpToggle = document.querySelector("#editing-help-enabled");
-try { helpToggle.checked = localStorage.getItem("animeart.editing-help-enabled") !== "false"; } catch {}
+helpToggle.checked = getEditingHelpPreference();
 helpToggle.addEventListener("change", () => {
-  try { localStorage.setItem("animeart.editing-help-enabled", String(helpToggle.checked)); } catch {}
+  setEditingHelpPreference(helpToggle.checked);
   document.querySelector("#editing-help-card").hidden = !helpToggle.checked;
 });
 
