@@ -12,6 +12,7 @@ import {
   imageLayerName,
   optimizeImageSource,
   importImageFile,
+  applyImageFileImport,
   persistDocumentSnapshot,
   readFileAsDataUrl,
   serializeDocumentForStorage,
@@ -310,4 +311,21 @@ test("imported image display scale fits the same canvas bounds regardless of sou
   assert.ok(square > 1, "ordinary phone images are enlarged to a useful canvas size");
   assert.ok(portrait < 1, "oversized images are fitted without changing source pixel dimensions");
   assert.throws(() => fitImportedImageScale(0, 20, 1080, 1350), /fit dimensions/i);
+});
+
+test("the real import transaction fits a square phone image to a stable canvas footprint", async () => {
+  class SquareImage {
+    constructor() { this.naturalWidth = 520; this.naturalHeight = 520; }
+    set src(value) { this.value = value; queueMicrotask(() => this.onload?.()); }
+  }
+  const document = createDocument(1080, 1350);
+  const history = new DocumentHistory(document);
+  const result = await applyImageFileImport(
+    { name: "phone-square.png", type: "image/png", size: 100 },
+    { document, history, persist() {}, Reader: FakeReader, ImageCtor: SquareImage }
+  );
+  assert.equal(result.layer.image.width, 520);
+  assert.equal(result.layer.image.height, 520);
+  assert.ok(Math.abs(result.layer.transform.scale - 1.7446153846) < 0.001);
+  assert.equal(result.document.layers.at(-1).id, result.layer.id);
 });
