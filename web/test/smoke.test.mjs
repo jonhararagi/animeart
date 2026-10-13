@@ -205,7 +205,8 @@ test("brush controls are wired to current stroke creation without a parallel man
   assert.match(js, /setBrushSize/);
   assert.match(js, /setBrushOpacity/);
   assert.match(js, /createStroke\(state\.tool, censor \? Number\(censorInputs\.size\.value\) : state\.brush\.size/);
-  assert.match(js, /state\.brush\.color, state\.brush\.opacity/);
+  assert.match(js, /censor \? censorInputs\.color\.value : state\.brush\.color/);
+  assert.match(js, /censor \? Number\(censorInputs\.opacity\.value\) \/ 100 : state\.brush\.opacity/);
   assert.match(js, /stroke\.color/);
   assert.match(js, /stroke\.opacity/);
   assert.doesNotMatch(js, /BrushManager|BrushController|ColorManager|OpacityManager|ToolManager|DrawingManager|StrokeManager|CanvasManager|HistoryManager/);
