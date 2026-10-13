@@ -3036,7 +3036,7 @@ SAFETY:
 
 - El canvas visible usa contexto con alfa y limpia su bitmap en lugar de rellenarlo de blanco. El blanco que forme parte de una imagen sigue siendo opaco.
 - El patrón de cuadritos y los fondos blanco/negro/gris son estilos de visualización en CSS, fuera del renderer de exportación. No se dibujan en el PNG.
-- Se muestra texto persistente para distinguir una imagen seleccionada de una capa de dibujo u otro tipo de capa.
+- Se muestra texto persistente para distinguir una imagen seleccionada de una capa de dibujo u otro tipo de capa. Al tocar otra imagen mientras se usa dibujar, borrar o censura, el primer toque selecciona la imagen y evita editar accidentalmente la capa previa.
 - Se agregaron accesos rápidos para quitar fondo, recuperar mediante Deshacer y exportar PNG, además de un control para ver la transparencia.
 - La exportación PNG continúa utilizando el canvas independiente con contexto alfa. La verificación automatizada comprueba los contratos del canvas y los controles; la validación visual en teléfono y la inspección de un PNG real exportado siguen pendientes de CI/E2E y prueba manual.
 
