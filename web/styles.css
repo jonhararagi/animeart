@@ -414,3 +414,22 @@ canvas {
  .asset-card-preview { height:120px; }
  .asset-library-header h2 { font-size:1rem; }
 }
+
+
+#background-removal-dialog{width:min(1050px,calc(100vw - 24px));max-width:1050px;max-height:92dvh;padding:0;border:1px solid #344155;border-radius:16px;background:#101722;color:var(--text);box-shadow:0 28px 100px rgb(0 0 0 / 65%)}
+#background-removal-dialog::backdrop{background:rgb(2 5 11 / 80%);backdrop-filter:blur(5px)}
+.background-removal-shell{display:grid;gap:16px;padding:20px;max-height:92dvh;overflow:auto}
+.background-removal-header{display:flex;justify-content:space-between;gap:14px;border-bottom:1px solid #293448;padding-bottom:14px}
+.background-removal-header h2{margin:0;font-size:1.15rem}
+.background-removal-header p:not(.eyebrow){color:#94a4b8;font-size:.75rem;line-height:1.5}
+.background-removal-workspace{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(230px,.8fr);gap:16px;min-height:300px}
+.background-removal-preview-wrap{display:grid;place-items:center;min-width:0;min-height:300px;overflow:auto;border:1px solid #344155;border-radius:10px;background:repeating-conic-gradient(#202938 0% 25%,#161e2b 0% 50%) 50%/20px 20px}
+#background-removal-preview{display:block;max-width:100%;max-height:60vh;object-fit:contain;touch-action:none;cursor:crosshair}
+.background-removal-controls{display:grid;align-content:start;gap:12px;min-width:0}
+.background-removal-controls input[type=color]{width:100%;height:36px}
+.background-removal-controls input[type=range]{width:100%}
+.background-removal-toggle{display:flex;align-items:center;gap:8px;font-size:.75rem}
+.background-removal-actions{display:flex;flex-wrap:wrap;gap:7px}
+#background-removal-status{margin:0;color:#9bb1c8;font-size:.7rem;line-height:1.5}
+#apply-background-removal{border-color:#31a6b8;background:#173944}
+@media(max-width:760px){.background-removal-shell{padding:12px}.background-removal-workspace{grid-template-columns:minmax(0,1fr)}.background-removal-preview-wrap{min-height:220px}#background-removal-preview{max-height:42vh}.background-removal-header h2{font-size:1rem}}
