@@ -2976,3 +2976,33 @@ La validación final depende de Web CI y Android CI completadas sobre el HEAD ex
 
 PROTECCIONES:
 Esta preparación no modifica main, no fusiona ningún PR y no cambia la base, el HEAD ni el estado de PR #46 o #47. No declara el producto listo para lanzamiento.
+
+
+---
+
+## AA-PICART-MODE-001 — Local processing profiles and Magic Eraser apply repair
+
+DATE: 2026-10-13
+
+WORKING BRANCH: `fix/mobile-touch-magic-eraser-001` (PR #69 candidate).
+
+IMPLEMENTED IN THIS CONTINUATION:
+- Added `web/domain/background-removal-profiles.mjs`: validated, local-only profile store with built-in presets for anime/dark ink, flat-color illustration, transparent PNG and photography.
+- Added tests for built-in profile coverage, bounds validation, persistence round-trip, update/delete behavior and malformed local storage recovery.
+- Connected profile selection/save/delete to the existing background-removal dialog. Profiles save target color, tolerance, connected-region mode, line-art protection, feathering and fringe cleanup parameters on the device.
+- Updated README to document the behavior and explicitly distinguish parameter presets from a trained AI model.
+- Repaired the apply action in `web/app.js`: the previous handler computed no `automatic` result before passing it to manual erase. It now computes the automatic connected-region matte from the current controls before applying manual correction strokes, then continues through the existing layer replacement/history/persistence path.
+- No server-side image processing, paid API, second editor, or parallel history was introduced.
+
+VALIDATION:
+- GitHub source updates created commits through the repository API. No local tests are claimed.
+- Required next gate: Web CI and Android CI must complete on the final branch HEAD. Do not treat older PR #69/#70 runs as evidence for these new commits.
+- Scope remains PARTIAL until CI and real UI behavior are verified on the final SHA.
+
+LIMITATIONS:
+- The background removal engine remains a local color/region algorithm with edge-protection heuristics, not semantic AI segmentation.
+- Region profiles currently use the engine's connected-region behavior; this does not add polygon/lasso selections or independent selection masks.
+- This continuation does not yet satisfy every advanced selection, photo-adjustment and text-editing criterion in AA-PICART-MODE-001.
+
+SAFETY:
+- No direct main edits, merges, PR closures, retargeting or rebases.
