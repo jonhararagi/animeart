@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { extname, join, normalize, resolve } from "node:path";
 import { spawn } from "node:child_process";
+import { inflateSync } from "node:zlib";
 import { createServer as createPortProbe } from "node:net";
 
 const ROOT = resolve(process.env.ANIMEART_E2E_ROOT || "dist");
@@ -235,6 +236,49 @@ const layerSelector = layerId => "#layers li[data-layer-id=\"" + layerId + "\"]"
 const layerButtonSelector = layerId => layerSelector(layerId) + " .layer-select";
 const layerToggleSelector = (layerId, index) => layerSelector(layerId) + " .layer-controls .layer-toggle:nth-of-type(" + index + ")";
 
+const inspectPngAlpha = bytes => {
+  if (bytes.toString("hex", 0, 8) !== "89504e470d0a1a0a") throw new Error("Export is not a PNG");
+  let offset = 8, width = 0, height = 0, bitDepth = 0, colorType = 0;
+  const imageData = [];
+  while (offset + 12 <= bytes.length) {
+    const length = bytes.readUInt32BE(offset);
+    const type = bytes.toString("ascii", offset + 4, offset + 8);
+    const data = bytes.subarray(offset + 8, offset + 8 + length);
+    if (type === "IHDR") {
+      width = data.readUInt32BE(0); height = data.readUInt32BE(4);
+      bitDepth = data[8]; colorType = data[9];
+    } else if (type === "IDAT") imageData.push(data);
+    else if (type === "IEND") break;
+    offset += 12 + length;
+  }
+  if (bitDepth !== 8 || colorType !== 6 || width < 1 || height < 1) {
+    throw new Error("PNG export must be 8-bit RGBA to preserve transparency");
+  }
+  const raw = inflateSync(Buffer.concat(imageData));
+  const stride = width * 4, previous = Buffer.alloc(stride);
+  let cursor = 0, foundTransparentPixel = false;
+  const paeth = (a,b,c) => {
+    const p=a+b-c, pa=Math.abs(p-a), pb=Math.abs(p-b), pc=Math.abs(p-c);
+    return pa<=pb&&pa<=pc?a:pb<=pc?b:c;
+  };
+  for (let y=0; y<height; y++) {
+    const filter=raw[cursor++], row=Buffer.from(raw.subarray(cursor,cursor+stride)); cursor+=stride;
+    for (let i=0; i<stride; i++) {
+      const left=i>=4?row[i-4]:0, up=previous[i]||0, upperLeft=i>=4?previous[i-4]:0;
+      if (filter===1) row[i]=(row[i]+left)&255;
+      else if (filter===2) row[i]=(row[i]+up)&255;
+      else if (filter===3) row[i]=(row[i]+Math.floor((left+up)/2))&255;
+      else if (filter===4) row[i]=(row[i]+paeth(left,up,upperLeft))&255;
+      else if (filter!==0) throw new Error("Unsupported PNG filter " + filter);
+    }
+    for (let i=3; i<stride; i+=4) if (row[i] < 255) { foundTransparentPixel=true; break; }
+    row.copy(previous);
+    if (foundTransparentPixel) break;
+  }
+  return { width, height, bitDepth, colorType, foundTransparentPixel };
+};
+
+
 
 try {
   const downloadDir = join(profile, "downloads");
@@ -350,6 +394,38 @@ try {
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "e2e-fixture" && layer.adjustments?.brightness === 125)'), "real browser persists the image adjustment in the existing project document");
 
 
+
+
+  // AA-UX-DELETE-001: exercise the visible X against two distinct image-layer IDs.
+  const importNamedFixture = async name => {
+    const addedBefore = (await readLayerSummary()).length;
+    const accepted = await evaluate('(() => { const bytes = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="), char => char.charCodeAt(0)); const file = new File([bytes], ' + JSON.stringify(name + ".png") + ', { type: "image/png" }); const transfer = new DataTransfer(); transfer.items.add(file); const input = document.querySelector("#image-file-input"); input.files = transfer.files; input.dispatchEvent(new Event("change", { bubbles: true })); return true; })()');
+    assert(accepted === true, "real browser accepted image fixture " + name);
+    await waitFor("JSON.parse(localStorage.getItem(\\"animeart-web-document\\") || \\"{}\\").layers?.length === " + (addedBefore + 1), 10000);
+    return (await readDocument()).layers.at(-1);
+  };
+  const deleteFirst = await importNamedFixture("delete-first");
+  const keepSecond = await importNamedFixture("keep-second");
+  assert(deleteFirst.id !== keepSecond.id, "two imported images have distinct stable layer IDs");
+  await click('[aria-label="Select delete-first"]');
+  assert(await evaluate('document.querySelector("#selection-indicator").textContent.includes("Imagen seleccionada: delete-first")'), "selected image is identified by a visible label, not only a blue outline");
+  assert(await evaluate('!document.querySelector("#remove-selected-image").hidden'), "the X control is visible for the selected image");
+  await click("#remove-selected-image");
+  let afterX = await readDocument();
+  assert(!afterX.layers.some(layer => layer.id === deleteFirst.id), "pressing the X removes the exact selected image ID");
+  assert(afterX.layers.some(layer => layer.id === keepSecond.id && layer.image?.source), "the second image remains intact after the first is removed");
+  await click("#undo");
+  const afterUndo = await readDocument();
+  assert(afterUndo.layers.some(layer => layer.id === deleteFirst.id && layer.image?.source), "Undo restores the removed first image with its original ID");
+  assert(afterUndo.layers.some(layer => layer.id === keepSecond.id && layer.image?.source), "Undo leaves the second image intact");
+  await click("#export-transparent-png");
+  await waitFor('document.querySelector("#status").textContent.includes("PNG exported")', 10000);
+  let pngPath = join(downloadDir, "animeart.png");
+  for (let attempt=0; attempt<60 && !existsSync(pngPath); attempt++) await sleep(100);
+  assert(existsSync(pngPath), "real browser exports the composition as a downloadable PNG");
+  const alphaReport = inspectPngAlpha(await (await import("node:fs/promises")).readFile(pngPath));
+  console.log("AA_UX_DELETE_PNG_ALPHA", JSON.stringify(alphaReport));
+  assert(alphaReport.foundTransparentPixel, "exported PNG contains actual alpha<255 pixels, not an opaque checkerboard background");
 
   const layersBeforeSample = (await readLayerSummary()).length;
   await click("#add-sample-character");
