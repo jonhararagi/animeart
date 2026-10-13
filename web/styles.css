@@ -125,8 +125,11 @@ canvas {
 .layers li[data-selected="true"] { border-color: #39879b; background: #162b35; box-shadow: inset 0 0 0 1px rgb(104 213 237 / 8%); }
 .layer-select { width: 100%; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: transparent; border-color: transparent; font-size: .76rem; font-weight: 650; }
 .layer-select { display: flex; align-items: center; gap: 8px; text-align: left; }
-.layer-thumbnail { flex: 0 0 52px; width: 52px; height: 38px; display: grid; place-items: center; overflow: hidden; border: 1px solid #354155; border-radius: 6px; background-color: #151b26; background-image: linear-gradient(45deg, #202a39 25%, transparent 25%), linear-gradient(-45deg, #202a39 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #202a39 75%), linear-gradient(-45deg, transparent 75%, #202a39 75%); background-size: 10px 10px; background-position: 0 0, 0 5px, 5px -5px, -5px 0; }
-.layer-thumbnail img, .layer-thumbnail canvas { display: block; width: 100%; height: 100%; object-fit: contain; }
+.layer-thumbnail { flex: 0 0 56px; width: 56px; height: 56px; aspect-ratio: 1 / 1; display: grid; place-items: center; overflow: hidden; border: 1px solid #354155; border-radius: 6px; background-color: #151b26; background-image: linear-gradient(45deg, #202a39 25%, transparent 25%), linear-gradient(-45deg, #202a39 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #202a39 75%), linear-gradient(-45deg, transparent 75%, #202a39 75%); background-size: 10px 10px; background-position: 0 0, 0 5px, 5px -5px, -5px 0; }
+.layer-thumbnail img, .layer-thumbnail canvas { display: block; width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain; image-rendering: auto; }
+.layers #layers li { min-height: 64px; }
+.layers #layers .layer-select { min-height: 60px; gap: 8px; touch-action: manipulation; }
+.layers #layers .layer-name { min-width: 0; overflow-wrap: anywhere; white-space: normal; line-height: 1.25; }
 .layer-thumbnail-text { color: #bcecf6; font-weight: 800; font-size: 1rem; }
 .layer-name { min-width: 0; overflow-wrap: anywhere; }
 
@@ -352,6 +355,9 @@ canvas {
   }
   .mobile-touch-dock button[aria-pressed="true"] { border-color: #4ba4b8; color: #d7f9ff; background: #153541; }
   .canvas-wrap { grid-row: 2; min-height: 42vh; }
+  .layer-thumbnail { flex-basis: 52px; width: 52px; height: 52px; }
+  .layers #layers li { min-height: 60px; }
+  .layers #layers .layer-select { min-height: 56px; }
   canvas { width: 96%; height: 92%; }
   .layers { display: none; }
   body.mobile-layers-open .layers {
@@ -443,6 +449,8 @@ canvas {
 /* Mobile editing: the canvas owns touch input so drawing and two-finger gestures remain deterministic. */
 .canvas-wrap, #canvas { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 #canvas { touch-action: none; }
+.tool, .mobile-touch-dock button { -webkit-tap-highlight-color: transparent; user-select: none; }
+.mobile-touch-dock button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 22%, #161b26); color: #fff; }
 @media (max-width: 760px) {
   .canvas-wrap { overscroll-behavior: contain; }
   .mobile-touch-dock { -webkit-overflow-scrolling: touch; }

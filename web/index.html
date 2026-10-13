@@ -18,7 +18,8 @@
     <aside class="toolbar" aria-label="Tools">
       <button class="tool" data-tool="select">Select</button>
       <button class="tool active" data-tool="brush">Brush</button>
-      <button class="tool" data-tool="eraser">Eraser</button>
+      <button class="tool" data-tool="eraser" title="Erase transparent pixels">🧽 Eraser</button>
+      <button class="tool" data-tool="magic-eraser" aria-pressed="false" title="Tap a background color to erase its connected region">🪄 Magic Eraser</button>
       <button class="tool" data-tool="pan">Pan</button>
       <span class="tool-group-label">Brush</span>
       <label class="brush-control" for="brush-color">Color<input id="brush-color" type="color" value="#111318" aria-label="Brush color"></label>
@@ -42,6 +43,7 @@
       <button id="poster-templates" type="button">Poster templates</button>
       <button id="add-image-layer" title="Import images up to 25 MB. Large images are optimized locally for project storage.">+ Image / Reference</button>
       <button id="crop-resize-image" disabled>Crop / Resize Image</button>
+      <button id="fit-image-to-canvas" type="button" disabled title="Fit the selected image inside the canvas without changing its pixel resolution">Fit image</button>
       <button id="remove-background" type="button" disabled>Remove Background</button>
       <button id="recolor-image" type="button" disabled>Recolor Range</button>
       <button id="flip-image-horizontal" type="button" disabled title="Mirror selected image left to right">Flip H</button>
@@ -181,7 +183,8 @@
   <nav class="mobile-touch-dock" aria-label="Mobile editing shortcuts">
     <button type="button" data-touch-action="tool" data-tool="select" aria-pressed="false">Select</button>
     <button type="button" data-touch-action="tool" data-tool="brush" aria-pressed="true">Brush</button>
-    <button type="button" data-touch-action="tool" data-tool="eraser" aria-pressed="false">Erase</button>
+    <button type="button" data-touch-action="tool" data-tool="eraser" aria-pressed="false" title="Transparent pixel eraser">🧽 Erase</button>
+    <button type="button" data-touch-action="tool" data-tool="magic-eraser" aria-pressed="false" title="Tap to erase connected background color">🪄 Magic</button>
     <button type="button" data-touch-action="undo">Undo</button>
     <button type="button" data-touch-action="redo">Redo</button>
     <button type="button" data-touch-action="import-image">+ Image</button>

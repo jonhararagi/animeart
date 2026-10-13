@@ -12,6 +12,7 @@ import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorder
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
 import { removeConnectedBackground, applyEraseStrokes } from "./domain/background-removal.mjs";
+import { fitImportedImageScale } from "./domain/image-import.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
@@ -140,6 +141,7 @@ const state = {
   lastPanPoint: null,
   strokeBefore: null,
   imageEraseInteraction: null,
+  magicEraseInteraction: null,
   transformInteraction: null,
   multiTransformInteraction: null,
   adjustmentPreview: null,
@@ -814,6 +816,8 @@ function refreshImageEditButton() {
   const editableImage = Boolean(layer && layer.contentType === "image" && layer.image && !layer.locked);
   cropResizeButton.disabled = !editableImage;
   if (removeBackgroundButton) removeBackgroundButton.disabled = !editableImage;
+  const fitButton = document.querySelector("#fit-image-to-canvas");
+  if (fitButton) fitButton.disabled = !editableImage;
   if (recolorButton) recolorButton.disabled = !editableImage;
   cropResizeButton.title = editableImage ? "Crop or resize the selected image layer" : "Select an unlocked image layer to crop or resize";
   for (const button of [flipImageHorizontalButton, flipImageVerticalButton]) {
@@ -865,6 +869,7 @@ function toggleSelectedImageFlip(axis) {
   persistDocument();
 }
 
+document.querySelector("#fit-image-to-canvas")?.addEventListener("click", fitSelectedImageToCanvas);
 flipImageHorizontalButton.addEventListener("click", () => toggleSelectedImageFlip("horizontal"));
 flipImageVerticalButton.addEventListener("click", () => toggleSelectedImageFlip("vertical"));
 
@@ -1527,6 +1532,7 @@ function beginTouchGesture() {
   const startDistance = distanceBetweenTouches(first, second);
   if (startDistance < 1) return false;
 
+  state.magicEraseInteraction = null;
   if (state.drawing && state.strokeBefore) state.document = state.strokeBefore;
   state.drawing = false;
   state.drawingPointerId = null;
@@ -1605,6 +1611,90 @@ function imageErasePoint(event, layer) {
   };
 }
 
+
+async function finishMagicErase(interaction) {
+  const layer = state.document.layers.find(item => item.id === interaction.layerId);
+  if (!layer || layer.contentType !== "image" || layer.locked || !layer.image?.source) return;
+  if (layer.image.width * layer.image.height > 16000000) {
+    status.textContent = "Magic Eraser supports up to 16 MP. Resize this image first.";
+    return;
+  }
+  try {
+    const source = layer.image.source;
+    let image = imageCache.get(source);
+    if (!image || !image.complete || image.naturalWidth < 1) {
+      image = await new Promise((resolve, reject) => {
+        const candidate = new Image();
+        candidate.onload = () => resolve(candidate);
+        candidate.onerror = () => reject(new Error("Could not decode this image for Magic Eraser"));
+        candidate.src = source;
+        imageCache.set(source, candidate);
+      });
+    }
+    const width = Math.max(1, Math.round(layer.image.width));
+    const height = Math.max(1, Math.round(layer.image.height));
+    const raster = document.createElement("canvas");
+    raster.width = width;
+    raster.height = height;
+    const context = raster.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("Image editing canvas is unavailable");
+    context.drawImage(image, 0, 0, width, height);
+    const original = context.getImageData(0, 0, width, height);
+    const x = Math.max(0, Math.min(width - 1, Math.floor(interaction.point.x)));
+    const y = Math.max(0, Math.min(height - 1, Math.floor(interaction.point.y)));
+    const offset = (y * width + x) * 4;
+    if (original.data[offset + 3] < 16) {
+      status.textContent = "That pixel is already transparent. Tap an opaque background pixel.";
+      return;
+    }
+    const targetColor = "#" + [original.data[offset], original.data[offset + 1], original.data[offset + 2]]
+      .map(value => value.toString(16).padStart(2, "0")).join("");
+    const result = removeConnectedBackground(original, {
+      targetColor, tolerance: 28, feather: 12, edgeSensitivity: 48,
+      protectLineArt: true, decontaminate: true, seedPoints: [{ x, y }]
+    });
+    let changed = false;
+    for (let index = 3; index < original.data.length; index += 4) {
+      if (original.data[index] !== result.data[index]) { changed = true; break; }
+    }
+    if (!changed) {
+      status.textContent = "No connected pixels matched that background. Try a nearby pixel or use Remove Background.";
+      return;
+    }
+    context.putImageData(new ImageData(result.data, width, height), 0, 0);
+    const optimized = await optimizeImageSource(raster.toDataURL("image/png"));
+    const before = cloneDocument(state.document);
+    const next = replaceImageLayer(state.document, layer.id, {
+      source: optimized.source, width: optimized.width, height: optimized.height
+    }, { preserveDisplaySize: true });
+    if (!next) throw new Error("Could not apply Magic Eraser to this image");
+    imageCache.delete(source);
+    state.document = next;
+    state.history.record(before, next);
+    state.dirty = true;
+    refreshDocument("🪄 Magic Eraser removed the tapped color region · Undo restores it");
+    persistDocument();
+  } catch (error) {
+    status.textContent = error?.message || "Magic Eraser failed";
+  }
+}
+
+function fitSelectedImageToCanvas() {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) {
+    status.textContent = "Select an unlocked image layer first";
+    return;
+  }
+  const before = cloneDocument(state.document);
+  const next = cloneDocument(state.document);
+  const target = next.layers.find(item => item.id === layer.id);
+  target.transform.scale = fitImportedImageScale(layer.image.width, layer.image.height, next.width, next.height);
+  state.document = next;
+  state.history.record(before, next);
+  refreshDocument("Image fitted to canvas · resolution preserved");
+  persistDocument();
+}
+
 async function finishImageErase(interaction) {
   const layer = state.document.layers.find(item => item.id === interaction.layerId);
   if (!layer || layer.contentType !== "image" || layer.locked || !layer.image?.source) return;
@@ -1674,6 +1764,17 @@ canvas.addEventListener("pointerdown", event => {
     beginSelectionInteraction(event);
     return;
   }
+  if (state.tool === "magic-eraser") {
+    const imageLayer = selectedLayerExact();
+    if (!imageLayer || imageLayer.contentType !== "image" || !imageLayer.image || imageLayer.locked) {
+      status.textContent = "Select an unlocked image layer, then tap the background to erase it";
+      return;
+    }
+    state.magicEraseInteraction = { pointerId: event.pointerId, layerId: imageLayer.id, point: imageErasePoint(event, imageLayer), startScreen: screenPointFromEvent(event), moved: false };
+    canvas.setPointerCapture(event.pointerId);
+    status.textContent = "🪄 Tap the background color to make that connected region transparent";
+    return;
+  }
   const layer = selectedLayer();
   if (!layer || layer.locked) return;
   if (state.tool === "eraser" && layer.contentType === "image") {
@@ -1738,6 +1839,11 @@ canvas.addEventListener("pointermove", event => {
     updateTransformPreview(event);
     return;
   }
+  if (state.magicEraseInteraction && event.pointerId === state.magicEraseInteraction.pointerId) {
+    const current = screenPointFromEvent(event);
+    if (Math.hypot(current.x - state.magicEraseInteraction.startScreen.x, current.y - state.magicEraseInteraction.startScreen.y) > 12) state.magicEraseInteraction.moved = true;
+    return;
+  }
   if (state.imageEraseInteraction && event.pointerId === state.imageEraseInteraction.pointerId) {
     const layer = state.document.layers.find(item => item.id === state.imageEraseInteraction.layerId);
     if (layer?.image) state.imageEraseInteraction.points.push(imageErasePoint(event, layer));
@@ -1799,6 +1905,14 @@ canvas.addEventListener("pointerup", event => {
     finishTransformInteraction(false);
     return;
   }
+  if (state.magicEraseInteraction && event.pointerId === state.magicEraseInteraction.pointerId) {
+    const interaction = state.magicEraseInteraction;
+    state.magicEraseInteraction = null;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    if (!interaction.moved) finishMagicErase(interaction);
+    else status.textContent = "Magic Eraser tap cancelled because the canvas moved";
+    return;
+  }
   if (state.imageEraseInteraction && event.pointerId === state.imageEraseInteraction.pointerId) {
     const interaction = state.imageEraseInteraction;
     state.imageEraseInteraction = null;
@@ -1842,6 +1956,12 @@ canvas.addEventListener("pointercancel", event => {
   }
   if (event.pointerId === state.transformPointerId) {
     finishTransformInteraction(true);
+    return;
+  }
+  if (state.magicEraseInteraction?.pointerId === event.pointerId) {
+    state.magicEraseInteraction = null;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    status.textContent = "Magic Eraser tap cancelled";
     return;
   }
   if (state.imageEraseInteraction?.pointerId === event.pointerId) {
@@ -2008,7 +2128,9 @@ document.querySelectorAll(".tool").forEach(button => {
       state.multiTransformInteraction = null;
     }
     if (state.tool !== "select" && state.transformInteraction) finishTransformInteraction(true);
+    state.magicEraseInteraction = null;
     document.querySelectorAll(".tool").forEach(b => b.classList.toggle("active", b === button));
+    mobileDock?.querySelectorAll('[data-touch-action="tool"]').forEach(item => item.setAttribute("aria-pressed", String(item.dataset.tool === state.tool)));
     redraw();
   });
 });
@@ -2699,7 +2821,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v15";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v16";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
