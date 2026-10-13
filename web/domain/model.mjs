@@ -50,6 +50,11 @@ export function normalizeStrokeEffect(value) {
   return ["normal", "soft", "glow", "neon"].includes(value) ? value : "normal";
 }
 
+export function normalizeStrokeGlow(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Math.min(100, Math.max(0, numeric)) : 0;
+}
+
 export function createStroke(tool = "brush", size = 5, points = [], color = "#111318", opacity = 1, options = {}) {
   return {
     tool,
@@ -58,6 +63,7 @@ export function createStroke(tool = "brush", size = 5, points = [], color = "#11
     opacity: normalizeStrokeOpacity(opacity),
     hardness: normalizeStrokeHardness(options?.hardness),
     effect: normalizeStrokeEffect(options?.effect),
+    glow: normalizeStrokeGlow(options?.glow),
     points: points.map(normalizeStrokePoint).filter(Boolean)
   };
 }
@@ -66,7 +72,8 @@ export function normalizeStroke(stroke) {
   if (!stroke || !Array.isArray(stroke.points)) return null;
   return createStroke(stroke.tool || "brush", stroke.size, stroke.points, stroke.color, stroke.opacity, {
     hardness: stroke.hardness,
-    effect: stroke.effect
+    effect: stroke.effect,
+    glow: stroke.glow
   });
 }
 

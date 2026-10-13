@@ -27,7 +27,7 @@ test("layer stack includes thumbnail rendering for image, text and drawing layer
   assert.match(app, /function createLayerThumbnail\(layer\)/);
   assert.match(app, /className = "layer-thumbnail"/);
   assert.match(app, /selectButton\.append\(createLayerThumbnail\(layer\), layerName\)/);
-  assert.match(app, /renderLayers\(\);\s*\n  }\s*\n\}\);\s*\n\ncanvas\.addEventListener\("pointercancel"/);
+  assert.match(app, /renderLayers\(\);[\s\S]*?canvas\.addEventListener\("pointerleave"/);
 });
 
 test("the editor exposes connected brush hardness and visual effect controls", async () => {
@@ -37,7 +37,7 @@ test("the editor exposes connected brush hardness and visual effect controls", a
   assert.match(html, /id="brush-effect"/);
   assert.match(app, /brushHardnessInput\.addEventListener\("input"/);
   assert.match(app, /brushEffectInput\.addEventListener\("change"/);
-  assert.match(app, /context\.shadowBlur = effect === "neon"/);
+  assert.match(app, /effect === "neon" \? stroke\.size \* 1\.8/);
   assert.match(app, /stroke\.effect \|\| "normal"/);
 });
 test("drawing eraser uses alpha compositing instead of painting white", async () => {

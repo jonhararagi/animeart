@@ -204,8 +204,9 @@ test("brush controls are wired to current stroke creation without a parallel man
   assert.match(js, /setBrushColor/);
   assert.match(js, /setBrushSize/);
   assert.match(js, /setBrushOpacity/);
-  assert.match(js, /createStroke\(state\.tool, state\.brush\.size/);
-  assert.match(js, /state\.brush\.color, state\.brush\.opacity/);
+  assert.match(js, /createStroke\(state\.tool, censor \? Number\(censorInputs\.size\.value\) : state\.brush\.size/);
+  assert.match(js, /censor \? censorInputs\.color\.value : state\.brush\.color/);
+  assert.match(js, /censor \? Number\(censorInputs\.opacity\.value\) \/ 100 : state\.brush\.opacity/);
   assert.match(js, /stroke\.color/);
   assert.match(js, /stroke\.opacity/);
   assert.doesNotMatch(js, /BrushManager|BrushController|ColorManager|OpacityManager|ToolManager|DrawingManager|StrokeManager|CanvasManager|HistoryManager/);
@@ -235,7 +236,7 @@ test("multi-format export UI uses the existing document renderer and local downl
   assert.match(js, /renderDocumentToCanvas/);
   assert.match(js, /drawDocument\(\{ context = ctx, document = state\.document, center = documentCenter\(document\)/);
   assert.match(js, /canvasToImageBlob\(exportCanvas, format, quality\)/);
-  assert.match(js, /downloadImageBlob\(blob, "animeart\." \+ format, format\)/);
+  assert.match(js, /await saveBlobToDevice\(blob, "animeart\." \+ format, format\)/);
   assert.match(js, /await ensureExportImages\(state\.document\)/);
   assert.match(exporter, /getContext\("2d", \{ alpha: true \}\)/);
   assert.match(exporter, /png: "image\/png"/);
@@ -417,7 +418,14 @@ test("T064 persistence writer inventory keeps the project key behind the existin
   const directWriters = sources.flatMap(([path, source]) =>
     [...source.matchAll(/localStorage\s*\.\s*setItem\s*\(/g)].map(() => path)
   );
-  assert.deepEqual(directWriters, [], "no Web module writes the project key through a direct localStorage.setItem call");
+  assert.deepEqual(
+    directWriters.filter(path => !path.endsWith(join("web", "appearance-settings.js"))),
+    [],
+    "the project key remains behind the shared snapshot boundary; appearance settings may use their own isolated key"
+  );
+  const appearanceModule = sources.find(([path]) => path.endsWith(join("web", "appearance-settings.js")));
+  assert.ok(appearanceModule, "editor appearance settings are isolated from project document persistence");
+  assert.match(appearanceModule[1], /const STORAGE_KEY = "animeart-editor-appearance-v1"/);
   const snapshotModule = sources.find(([path]) => path.endsWith(join("domain", "image-import.mjs")));
   assert.ok(snapshotModule, "existing image-import domain module is included in the writer inventory");
   assert.match(snapshotModule[1], /storage\.setItem\(key, serialized\)/, "the shared snapshot boundary owns the delegated storage write");
@@ -454,4 +462,111 @@ test("Android WebView fallback clears adjustment controls without requiring repl
   assert.ok(app.includes("while (element.firstChild) element.removeChild(element.firstChild)"));
   assert.ok(app.includes("clearElementChildren(layerAdjustmentControls)"));
   assert.ok(!app.includes("layerAdjustmentControls.replaceChildren()"));
+});
+
+
+test("image eraser edits selected image pixels and records the edit for undo", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /async function finishImageErase\(interaction\)/);
+  assert.match(js, /applyEraseStrokes\(pixels/);
+  assert.match(js, /state\.history\.record\(before, next\)/);
+  assert.match(js, /Image pixels erased/);
+  assert.match(js, /inverseTransformPoint/);
+});
+
+test("mobile dock actions call history directly and keep the active drawing tool in sync", async () => {
+  const [html, js, css] = await Promise.all([
+    readFile("index.html", "utf8"), readFile("app.js", "utf8"), readFile("styles.css", "utf8")
+  ]);
+  assert.match(html, /data-tool="brush" aria-pressed="true">🖌 Brush/);
+  assert.match(html, /data-touch-action="more" aria-expanded="false">⋯ Tools/);
+  assert.match(js, /if \(action === "undo"\) \{ undo\(\); return; \}/);
+  assert.match(js, /if \(action === "redo"\) \{ redo\(\); return; \}/);
+  assert.match(css, /Mobile editor controls: fixed canvas/);
+});
+
+
+test("editor appearance supports custom accent, workspace color and local wallpaper without changing artwork export", async () => {
+  const [html, app, styles, worker, appearance] = await Promise.all([
+    readFile("index.html", "utf8"), readFile("app.js", "utf8"),
+    readFile("styles.css", "utf8"), readFile("service-worker.js", "utf8"),
+    readFile("appearance-settings.js", "utf8")
+  ]);
+  assert.match(html, /id="appearance-open"/);
+  assert.match(html, /id="appearance-dialog"/);
+  assert.match(html, /id="appearance-wallpaper-file"/);
+  assert.match(html, /data-touch-action="appearance"/);
+  assert.match(app, /initializeAppearanceSettings\(\)/);
+  assert.match(app, /animeart-web-shell-v17/);
+  assert.match(worker, /animeart-web-shell-v17/);
+  assert.match(worker, /\.\/appearance-settings\.js/);
+  assert.match(appearance, /animeart-editor-appearance-v1/);
+  assert.match(appearance, /MAX_WALLPAPER_BYTES = 2 \* 1024 \* 1024/);
+  assert.match(appearance, /--editor-workspace/);
+  assert.match(styles, /Picsart-inspired mobile-first editor polish/);
+});
+
+test("background-removal profiles are local, reusable and wired to the existing apply pipeline", async () => {
+  const [html, app, profiles, tests] = await Promise.all([
+    readFile("index.html", "utf8"), readFile("app.js", "utf8"),
+    readFile("domain/background-removal-profiles.mjs", "utf8"),
+    readFile("test/background-removal-profiles.test.mjs", "utf8")
+  ]);
+  assert.match(html, /id="background-removal-profile"/);
+  assert.match(html, /id="save-background-profile"/);
+  assert.match(html, /id="delete-background-profile"/);
+  assert.match(app, /applyBackgroundRemovalProfile/);
+  assert.match(app, /const automatic = removeConnectedBackground\(session\.original, currentBackgroundRemovalSettings\(\)\)/);
+  assert.match(app, /applyEraseStrokes\(automatic, session\.strokes\)/);
+  assert.match(profiles, /BACKGROUND_PROFILE_STORAGE_KEY/);
+  assert.match(profiles, /anime-ink/);
+  assert.match(profiles, /flat-color/);
+  assert.match(profiles, /transparent-png/);
+  assert.match(profiles, /id: "photo"/);
+  assert.match(tests, /saves, restores, updates and deletes a custom local profile/);
+});
+
+test("Android native export bridge and browser fallback are wired to the canonical editor", async () => {
+  const [app, activity, worker] = await Promise.all([
+    readFile("app.js", "utf8"),
+    readFile("../app/src/main/java/com/jonhararagi/animeart/MainActivity.kt", "utf8"),
+    readFile("service-worker.js", "utf8")
+  ]);
+  assert.match(app, /async function saveBlobToDevice\(blob, filename, imageFormat = null\)/);
+  assert.match(app, /nativeBridge\.saveFile\(btoa\(binary\)/);
+  assert.match(app, /downloadImageBlob\(blob, filename, imageFormat\)/);
+  assert.ok(activity.includes("NativeExportBridge"));
+  assert.ok(activity.includes("Intent.ACTION_CREATE_DOCUMENT"));
+  assert.match(worker, /\.\/domain\/background-removal-profiles\.mjs/);
+  assert.match(worker, /animeart-web-shell-v17/);
+});
+
+test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size layer thumbnails", async () => {
+  const [html, app, css, worker, removal] = await Promise.all([
+    readFile("index.html", "utf8"),
+    readFile("app.js", "utf8"),
+    readFile("styles.css", "utf8"),
+    readFile("service-worker.js", "utf8"),
+    readFile("domain/background-removal.mjs", "utf8")
+  ]);
+  assert.match(html, /data-tool="magic-eraser"/);
+  assert.match(html, /data-touch-action="tool" data-tool="magic-eraser"/);
+  assert.match(html, /id="fit-image-to-canvas"/);
+  assert.match(app, /function finishMagicErase\(interaction\)/);
+  assert.match(app, /seedPoints: \[\{ x, y \}\]/);
+  assert.match(app, /state\.magicEraseInteraction/);
+  assert.match(css, /\.layer-thumbnail \{ flex: 0 0 56px; width: 56px; height: 56px/);
+  assert.match(css, /\.layers #layers \.layer-select \{ min-height: 60px/);
+  assert.match(removal, /seedPoints=\[\]/);
+  assert.match(worker, /animeart-web-shell-v17/);
+});
+
+
+test("Android export enforces the native size limit and reports native versus browser save routing", async () => {
+  const app = await readFile("app.js", "utf8");
+  assert.match(app, /const nativeBridge = globalThis\.AnimeArtNative/);
+  assert.match(app, /blob\.size > 50 \* 1024 \* 1024/);
+  assert.match(app, /return "native"/);
+  assert.match(app, /return "browser"/);
+  assert.match(app, /destination === "native" \? "Choose where to save/);
 });

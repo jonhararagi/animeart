@@ -31,6 +31,18 @@ jobs:
           gradle-version: "8.11.1"
       - name: Build
         run: gradle assembleDebug
+      - name: Verify APK bundles the current image editor
+        shell: bash
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          unzip -l "$APK" | grep -q "assets/web/domain/image-processing.mjs"
+          unzip -p "$APK" assets/web/index.html | grep -q 'id="crop-preview"'
+          unzip -p "$APK" assets/web/index.html | grep -q 'id="add-text-layer"'
+          unzip -p "$APK" assets/web/index.html | grep -q 'id="layer-adjustment-controls"'
+          if unzip -p "$APK" assets/web/index.html | grep -qi "prompt studio"; then
+            echo "Unexpected prompt-generator UI found in image editor APK" >&2
+            exit 1
+          fi
       - name: Unit tests
         run: gradle test
       - name: Lint

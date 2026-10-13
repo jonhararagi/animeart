@@ -10,11 +10,11 @@ AnimeArt is a local-first **image editor and compositor**, inspired by everyday 
 - Manage layers: create, select, rename, duplicate, delete, reorder, hide, lock and set opacity.
 - Use masks and a true transparent-alpha eraser on drawing layers.
 - Draw with configurable color, size, opacity and hardness; use normal brush, soft airbrush, glow and neon effects.
-- Remove connected backgrounds locally with edge/line-art protection, feathering, fringe cleanup and manual erase strokes.
+- Remove connected backgrounds locally with edge/line-art protection, feathering, fringe cleanup and manual erase strokes. Save, reuse and delete local processing profiles for anime ink, flat-color illustration, transparent PNGs and photography; these are local parameter presets, not a trained AI model.
 - Select a source color in an image and recolor that range, preserving shading, highlights, texture and alpha.
 - Adjust brightness, contrast, saturation, hue, temperature, tint and blur non-destructively, with Original, Anime, Cinematic, Manga and Dream presets.
 - Add editable multiline text with font family, weight, size, color, alignment, outline and shadow.
-- Undo/redo, recover projects locally, import/export portable JSON projects and export the composite as PNG, JPEG or WebP.
+- Undo/redo, recover projects locally, import/export portable JSON projects and export the composite as PNG, JPEG or WebP. Android uses the native Save As picker for images and project files; desktop browsers keep the standard download path.
 - Install as a PWA with an offline application shell.
 
 Image pixels and projects stay on the device unless the user explicitly exports them. The editor does not upload artwork to an AI service.
@@ -51,3 +51,10 @@ gradle connectedDebugAndroidTest
 ```
 
 GitHub Actions checks the Web build, real Chromium interactions, Android instrumentation and offline startup. The Android offline smoke derives its cache contract from the current Web sources instead of relying on a stale hard-coded version.
+
+
+## Beginner-friendly editing
+
+The editor now includes an **Editar fácilmente** panel with shortcuts for cropping, background removal, erasing, censor light, drawing, text, color adjustments, layers, undo and export. Contextual help is optional and its preference is kept locally on the device. Less frequently used controls are grouped under **Más herramientas**.
+
+**Luz de censura** paints on a separate drawing layer, with white as the default color, a document-space diameter control, opacity, edge softness, optional glow and Punto / Normal / Grande / Línea presets. Undo/redo works through the existing document history. Raster exports are flattened images; when visible censor strokes exist, the editor requires the explicit **Censura permanente al exportar** confirmation. Keep the editable project separately if you need to revise the censor layer later. A glow effect is visual, not a guarantee that covered source information is removed from the editable project.

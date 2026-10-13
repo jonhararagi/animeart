@@ -1,5 +1,6 @@
 import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
 import { initializeAssetLibrary } from "./asset-library.js";
+import { getEditingHelpPreference, initializeAppearanceSettings, setEditingHelpPreference } from "./appearance-settings.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
 import { replaceColorRange } from "./domain/color-replacement.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
@@ -11,14 +12,17 @@ import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorder
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
 import { removeConnectedBackground, applyEraseStrokes } from "./domain/background-removal.mjs";
+import { BUILT_IN_BACKGROUND_PROFILES, deleteBackgroundProfile, listBackgroundProfiles, saveBackgroundProfile } from "./domain/background-removal-profiles.mjs";
+import { fitImportedImageTransform } from "./domain/image-import.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
-import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
+import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
-const ctx = canvas.getContext("2d", { alpha: false });
+const removeSelectedImageButton = document.querySelector("#remove-selected-image");
+const ctx = canvas.getContext("2d", { alpha: true });
 const status = document.querySelector("#status");
 const recoveryNotice = document.querySelector("#storage-recovery-notice");
 const layersEl = document.querySelector("#layers");
@@ -129,6 +133,7 @@ let touchGesture = null;
 const state = {
   tool: "brush",
   brush: { ...BRUSH_DEFAULTS },
+  censorCursorPoint: null,
   drawing: false,
   panning: false,
   selectedLayerId: null,
@@ -138,6 +143,8 @@ const state = {
   transformPointerId: null,
   lastPanPoint: null,
   strokeBefore: null,
+  imageEraseInteraction: null,
+  magicEraseInteraction: null,
   transformInteraction: null,
   multiTransformInteraction: null,
   adjustmentPreview: null,
@@ -171,6 +178,49 @@ function setSelection(layerIds, anchorId = null) {
   state.selectedLayerId = anchorId && normalized.includes(anchorId)
     ? anchorId
     : normalized[normalized.length - 1] || null;
+  updateSelectionIndicator();
+}
+
+function updateSelectionIndicator() {
+  const indicator = document.querySelector("#selection-indicator");
+  if (!indicator) return;
+  const layer = selectedLayerExact();
+  if (!layer) {
+    indicator.dataset.kind = "none";
+    indicator.textContent = "🖼️ Seleccioná una imagen para editar";
+    indicator.title = "Tocá una imagen o elegí una capa en el panel Capas.";
+  } else if (layer.contentType === "image") {
+    indicator.dataset.kind = "image";
+    indicator.textContent = "🖼️ Imagen seleccionada: " + layer.name;
+    indicator.title = "Imagen seleccionada. Podés moverla, transformarla o quitarle el fondo.";
+  } else {
+    indicator.dataset.kind = "layer";
+    indicator.textContent = "🗂️ Capa seleccionada: " + layer.name + " (no es una imagen)";
+    indicator.title = "Seleccioná una capa de imagen para quitar el fondo. El borrador actúa sobre la capa activa.";
+  }
+}
+
+function updateRemoveImageControl() {
+  if (!removeSelectedImageButton) return;
+  const layer = selectedLayerExact();
+  const validImage = Boolean(layer && layer.contentType === "image" && layer.image);
+  removeSelectedImageButton.hidden = !validImage || document.querySelector("#view-transparency")?.getAttribute("aria-pressed") === "true";
+  removeSelectedImageButton.disabled = !validImage || Boolean(layer?.locked);
+  removeSelectedImageButton.setAttribute("aria-label", validImage ? "Quitar imagen seleccionada: " + layer.name : "Quitar imagen");
+  removeSelectedImageButton.title = layer?.locked ? "Desbloqueá la imagen para quitarla" : "Quitar solo esta imagen. Podés deshacer.";
+  if (validImage) {
+    const geometry = selectionGeometry(layer, screenViewportForDocument(state.document, state.viewport, canvasSize()), documentCenter(state.document));
+    const canvasRect = canvas.getBoundingClientRect();
+    const wrapRect = document.querySelector(".canvas-wrap").getBoundingClientRect();
+    if (geometry) {
+      const right = Math.max(...geometry.corners.map(point => point.x));
+      const top = Math.min(...geometry.corners.map(point => point.y));
+      const left = canvasRect.left - wrapRect.left + right - 23;
+      const y = canvasRect.top - wrapRect.top + top - 23;
+      removeSelectedImageButton.style.left = Math.max(4, Math.min(wrapRect.width - 50, left)) + "px";
+      removeSelectedImageButton.style.top = Math.max(4, Math.min(wrapRect.height - 50, y)) + "px";
+    }
+  }
 }
 
 function toggleSelection(layerId) {
@@ -256,8 +306,9 @@ function drawImageLayer(layer, context = ctx) {
 
 function drawStrokeCollection(context, strokes, baseOpacity = 1) {
   for (const stroke of strokes || []) {
-    if (!Array.isArray(stroke.points) || stroke.points.length < 2) continue;
+    if (!Array.isArray(stroke.points) || stroke.points.length < (stroke.tool === "censor-light" ? 1 : 2)) continue;
     const erasing = stroke.tool === "eraser";
+    const censorLight = stroke.tool === "censor-light";
     const effect = erasing ? "normal" : (stroke.effect || "normal");
     context.save();
     context.globalCompositeOperation = erasing ? "destination-out" : "source-over";
@@ -269,12 +320,21 @@ function drawStrokeCollection(context, strokes, baseOpacity = 1) {
     context.lineCap = "round";
     context.lineJoin = "round";
     context.strokeStyle = erasing ? "#000000" : stroke.color;
-    context.shadowColor = erasing || effect === "normal" ? "transparent" : stroke.color;
-    context.shadowBlur = effect === "neon" ? stroke.size * 1.8
-      : effect === "glow" ? stroke.size * 1.2
-        : effect === "soft" ? stroke.size * 0.7
-          : stroke.size * (1 - Math.min(100, Math.max(0, Number(stroke.hardness ?? 100))) / 100) * 0.45;
-    context.stroke();
+    context.shadowColor = erasing || (effect === "normal" && !censorLight) ? "transparent" : stroke.color;
+    context.shadowBlur = censorLight
+      ? stroke.size * Math.max(Math.min(100, Math.max(0, Number(stroke.glow ?? 0))), 100 - Math.min(100, Math.max(0, Number(stroke.hardness ?? 100)))) / 100 * 1.2
+      : effect === "neon" ? stroke.size * 1.8
+        : effect === "glow" ? stroke.size * 1.2
+          : effect === "soft" ? stroke.size * 0.7
+            : stroke.size * (1 - Math.min(100, Math.max(0, Number(stroke.hardness ?? 100))) / 100) * 0.45;
+    if (stroke.points.length === 1 && censorLight) {
+      context.beginPath();
+      context.arc(stroke.points[0].x, stroke.points[0].y, Math.max(0.5, stroke.size / 2), 0, Math.PI * 2);
+      context.fillStyle = stroke.color;
+      context.fill();
+    } else {
+      context.stroke();
+    }
     if (effect === "neon" && !erasing) {
       context.shadowBlur = 0;
       context.strokeStyle = "#ffffff";
@@ -461,8 +521,7 @@ function redraw() {
   const rect = canvas.getBoundingClientRect();
   const dpr = Math.max(1, window.devicePixelRatio || 1);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, rect.width, rect.height);
+  ctx.clearRect(0, 0, rect.width, rect.height);
   ctx.save();
   applyViewport();
   if (state.document.width > 0 && state.document.height > 0) {
@@ -472,7 +531,18 @@ function redraw() {
   }
   drawDocument({ context: ctx, document: state.document, center: documentCenter(state.document) });
   ctx.restore();
-  drawSelectionOverlay();
+  if (!transparencyPreview) drawSelectionOverlay();
+  updateRemoveImageControl();
+  if (!transparencyPreview && state.tool === "censor-light" && state.censorCursorPoint) {
+    const point = documentToScreenPoint(state.censorCursorPoint, state.document, state.viewport, canvasSize());
+    const radius = Number(document.querySelector("#censor-light-size").value) * state.viewport.zoom / 2;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(point.x, point.y, Math.max(2, radius), 0, Math.PI * 2);
+    ctx.strokeStyle = "#111318"; ctx.lineWidth = 3; ctx.stroke();
+    ctx.beginPath(); ctx.arc(point.x, point.y, Math.max(2, radius), 0, Math.PI * 2);
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.restore();
+  }
 }
 
 function pointFromEvent(event) {
@@ -812,6 +882,8 @@ function refreshImageEditButton() {
   const editableImage = Boolean(layer && layer.contentType === "image" && layer.image && !layer.locked);
   cropResizeButton.disabled = !editableImage;
   if (removeBackgroundButton) removeBackgroundButton.disabled = !editableImage;
+  const fitButton = document.querySelector("#fit-image-to-canvas");
+  if (fitButton) fitButton.disabled = !editableImage;
   if (recolorButton) recolorButton.disabled = !editableImage;
   cropResizeButton.title = editableImage ? "Crop or resize the selected image layer" : "Select an unlocked image layer to crop or resize";
   for (const button of [flipImageHorizontalButton, flipImageVerticalButton]) {
@@ -863,6 +935,7 @@ function toggleSelectedImageFlip(axis) {
   persistDocument();
 }
 
+document.querySelector("#fit-image-to-canvas")?.addEventListener("click", fitSelectedImageToCanvas);
 flipImageHorizontalButton.addEventListener("click", () => toggleSelectedImageFlip("horizontal"));
 flipImageVerticalButton.addEventListener("click", () => toggleSelectedImageFlip("vertical"));
 
@@ -1348,6 +1421,41 @@ function applyLayerOperation(operation, message, { allowLocked = false } = {}) {
   persistDocument();
 }
 
+function removeSelectedImage() {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image) {
+    status.textContent = "Primero tocá la imagen que querés quitar";
+    return false;
+  }
+  if (layer.locked) {
+    status.textContent = "Desbloqueá la imagen antes de quitarla";
+    return false;
+  }
+
+  const before = cloneDocument(state.document);
+  let sourceDocument = state.document;
+  if (sourceDocument.layers.length <= 1) {
+    const placeholder = createLayer("Capa vacía");
+    sourceDocument = addLayer(sourceDocument, placeholder);
+    if (!sourceDocument) {
+      status.textContent = "No se pudo preparar el lienzo para quitar la imagen";
+      return false;
+    }
+  }
+  const next = deleteLayer(sourceDocument, layer.id);
+  if (!next) {
+    status.textContent = "No se pudo quitar la imagen seleccionada";
+    return false;
+  }
+  state.document = next;
+  const nextSelection = [...next.layers].reverse().find(item => item.contentType === "image") || next.layers.at(-1) || null;
+  setSelection(nextSelection ? [nextSelection.id] : [], nextSelection?.id || null);
+  state.history.record(before, next);
+  refreshDocument("Imagen quitada: " + layer.name + ". Podés deshacer.");
+  persistDocument();
+  return true;
+}
+
 function applyMultiLayerMove(deltaX, deltaY, message = "Layers moved") {
   const layers = selectedLayersExact();
   if (layers.length < 2 || layers.some(layer => layer.locked)) return false;
@@ -1525,6 +1633,7 @@ function beginTouchGesture() {
   const startDistance = distanceBetweenTouches(first, second);
   if (startDistance < 1) return false;
 
+  state.magicEraseInteraction = null;
   if (state.drawing && state.strokeBefore) state.document = state.strokeBefore;
   state.drawing = false;
   state.drawingPointerId = null;
@@ -1593,6 +1702,147 @@ function endTouchPointer(event) {
   return false;
 }
 
+
+function imageErasePoint(event, layer) {
+  const documentPoint = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
+  const local = inverseTransformPoint(documentPoint, layer.transform, documentCenter(state.document));
+  return {
+    x: Math.max(0, Math.min(layer.image.width, layer.image.flipX ? layer.image.width - local.x : local.x)),
+    y: Math.max(0, Math.min(layer.image.height, layer.image.flipY ? layer.image.height - local.y : local.y))
+  };
+}
+
+
+async function finishMagicErase(interaction) {
+  const layer = state.document.layers.find(item => item.id === interaction.layerId);
+  if (!layer || layer.contentType !== "image" || layer.locked || !layer.image?.source) return;
+  if (layer.image.width * layer.image.height > 16000000) {
+    status.textContent = "Magic Eraser supports up to 16 MP. Resize this image first.";
+    return;
+  }
+  try {
+    const source = layer.image.source;
+    let image = imageCache.get(source);
+    if (!image || !image.complete || image.naturalWidth < 1) {
+      image = await new Promise((resolve, reject) => {
+        const candidate = new Image();
+        candidate.onload = () => resolve(candidate);
+        candidate.onerror = () => reject(new Error("Could not decode this image for Magic Eraser"));
+        candidate.src = source;
+        imageCache.set(source, candidate);
+      });
+    }
+    const width = Math.max(1, Math.round(layer.image.width));
+    const height = Math.max(1, Math.round(layer.image.height));
+    const raster = document.createElement("canvas");
+    raster.width = width;
+    raster.height = height;
+    const context = raster.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("Image editing canvas is unavailable");
+    context.drawImage(image, 0, 0, width, height);
+    const original = context.getImageData(0, 0, width, height);
+    const x = Math.max(0, Math.min(width - 1, Math.floor(interaction.point.x)));
+    const y = Math.max(0, Math.min(height - 1, Math.floor(interaction.point.y)));
+    const offset = (y * width + x) * 4;
+    if (original.data[offset + 3] < 16) {
+      status.textContent = "That pixel is already transparent. Tap an opaque background pixel.";
+      return;
+    }
+    const targetColor = "#" + [original.data[offset], original.data[offset + 1], original.data[offset + 2]]
+      .map(value => value.toString(16).padStart(2, "0")).join("");
+    const result = removeConnectedBackground(original, {
+      targetColor, tolerance: 28, feather: 12, edgeSensitivity: 48,
+      protectLineArt: true, decontaminate: true, seedPoints: [{ x, y }]
+    });
+    let changed = false;
+    for (let index = 3; index < original.data.length; index += 4) {
+      if (original.data[index] !== result.data[index]) { changed = true; break; }
+    }
+    if (!changed) {
+      status.textContent = "No connected pixels matched that background. Try a nearby pixel or use Remove Background.";
+      return;
+    }
+    context.putImageData(new ImageData(result.data, width, height), 0, 0);
+    const optimized = await optimizeImageSource(raster.toDataURL("image/png"));
+    const before = cloneDocument(state.document);
+    const next = replaceImageLayer(state.document, layer.id, {
+      source: optimized.source, width: optimized.width, height: optimized.height
+    }, { preserveDisplaySize: true });
+    if (!next) throw new Error("Could not apply Magic Eraser to this image");
+    imageCache.delete(source);
+    state.document = next;
+    state.history.record(before, next);
+    state.dirty = true;
+    persistDocument();
+    refreshDocument("🪄 Magic Eraser removed the tapped color region · Undo restores it");
+  } catch (error) {
+    status.textContent = error?.message || "Magic Eraser failed";
+  }
+}
+
+function fitSelectedImageToCanvas() {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) {
+    status.textContent = "Select an unlocked image layer first";
+    return;
+  }
+  const before = cloneDocument(state.document);
+  const next = cloneDocument(state.document);
+  const target = next.layers.find(item => item.id === layer.id);
+  target.transform = { ...target.transform, ...fitImportedImageTransform(layer.image.width, layer.image.height, next.width, next.height) };
+  state.document = next;
+  state.history.record(before, next);
+  refreshDocument("Image fitted to canvas · resolution preserved");
+  persistDocument();
+}
+
+async function finishImageErase(interaction) {
+  const layer = state.document.layers.find(item => item.id === interaction.layerId);
+  if (!layer || layer.contentType !== "image" || layer.locked || !layer.image?.source) return;
+  if (interaction.points.length === 1) interaction.points.push({ ...interaction.points[0] });
+  const source = layer.image.source;
+  let image = imageCache.get(source);
+  if (!image || !image.complete || image.naturalWidth < 1) {
+    image = await new Promise((resolve, reject) => {
+      const candidate = new Image();
+      candidate.onload = () => resolve(candidate);
+      candidate.onerror = () => reject(new Error("Could not load the selected image for erasing"));
+      candidate.src = source;
+      imageCache.set(source, candidate);
+    });
+  }
+  const width = Math.max(1, Math.round(layer.image.width));
+  const height = Math.max(1, Math.round(layer.image.height));
+  const raster = document.createElement("canvas");
+  raster.width = width;
+  raster.height = height;
+  const context = raster.getContext("2d", { willReadFrequently: true });
+  if (!context) throw new Error("Image editing canvas is unavailable");
+  context.drawImage(image, 0, 0, width, height);
+  const pixels = context.getImageData(0, 0, width, height);
+  const scale = Math.max(0.05, Number(layer.transform.scale) || 1);
+  const result = applyEraseStrokes(pixels, [{
+    size: Math.max(1, state.brush.size / scale),
+    points: interaction.points
+  }]);
+  context.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
+  const encoded = raster.toDataURL("image/png");
+  const optimized = await optimizeImageSource(encoded);
+  const before = cloneDocument(state.document);
+  const next = replaceImageLayer(state.document, layer.id, {
+    source: optimized.source,
+    width: optimized.width,
+    height: optimized.height
+  }, { preserveDisplaySize: true });
+  if (!next) throw new Error("Could not apply the erase stroke to this image");
+  imageCache.delete(source);
+  state.document = next;
+  state.history.record(before, next);
+  state.dirty = true;
+  persistDocument();
+  refreshDocument("🧽 Image pixels erased · Undo can restore them");
+}
+
 canvas.addEventListener("pointerdown", event => {
   if (event.pointerType === "touch") {
     activeTouchPointers.set(event.pointerId, { ...screenPointFromEvent(event), pointerId: event.pointerId });
@@ -1615,16 +1865,78 @@ canvas.addEventListener("pointerdown", event => {
     beginSelectionInteraction(event);
     return;
   }
-  const layer = selectedLayer();
-  if (!layer || layer.locked || layer.contentType === "image") return;
+  if (state.tool === "magic-eraser") {
+    const imageLayer = selectedLayerExact();
+    if (!imageLayer || imageLayer.contentType !== "image" || !imageLayer.image || imageLayer.locked) {
+      status.textContent = "Select an unlocked image layer, then tap the background to erase it";
+      return;
+    }
+    const documentPoint = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
+    if (!hitTestLayer(imageLayer, documentPoint, documentCenter(state.document))) {
+      status.textContent = "Tap inside the selected image to erase a background region";
+      return;
+    }
+    state.magicEraseInteraction = { pointerId: event.pointerId, layerId: imageLayer.id, point: imageErasePoint(event, imageLayer), startScreen: screenPointFromEvent(event), moved: false };
+    canvas.setPointerCapture(event.pointerId);
+    status.textContent = "🪄 Tap the background color to make that connected region transparent";
+    return;
+  }
+  const pointerDocumentPoint = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
+  const hitImage = [...state.document.layers].reverse().find(candidate =>
+    candidate.visible && candidate.contentType === "image" && candidate.image &&
+    hitTestLayer(candidate, pointerDocumentPoint, documentCenter(state.document))
+  );
+  if (hitImage && hitImage.id !== state.selectedLayerId &&
+      ["brush", "eraser", "censor-light"].includes(state.tool)) {
+    setSelection([hitImage.id], hitImage.id);
+    renderLayers();
+    redraw();
+    status.textContent = "🖼️ Imagen seleccionada. Volvé a tocar para usar " +
+      (state.tool === "eraser" ? "Borrar" : state.tool === "censor-light" ? "Luz de censura" : "Dibujar") +
+      " sobre la capa correcta.";
+    return;
+  }
+  let layer = selectedLayer();
+  if (!layer || layer.locked) return;
+  if (state.tool === "eraser" && layer.contentType === "image") {
+    state.imageEraseInteraction = {
+      pointerId: event.pointerId,
+      layerId: layer.id,
+      points: [imageErasePoint(event, layer)]
+    };
+    canvas.setPointerCapture(event.pointerId);
+    status.textContent = "Erase image pixels · release to apply";
+    return;
+  }
+  if (layer.contentType === "image") {
+    const paintLayer = createLayer("Paint " + (state.document.layers.filter(item => item.contentType === "drawing").length + 1));
+    const before = cloneDocument(state.document);
+    const next = addLayer(state.document, paintLayer);
+    if (!next) return;
+    state.document = next;
+    setSelection([paintLayer.id], paintLayer.id);
+    layer = selectedLayer();
+    state.history.record(before, next);
+    persistDocument();
+    refreshDocument("Transparent paint layer added");
+  }
   state.drawing = true;
   state.drawingPointerId = event.pointerId;
   state.strokeBefore = cloneDocument(state.document);
   canvas.setPointerCapture(event.pointerId);
-  layer.strokes.push(createStroke(state.tool, state.brush.size, [pointFromEvent(event)], state.brush.color, state.brush.opacity, { hardness: state.brush.hardness, effect: state.brush.effect }));
+  const censor = state.tool === "censor-light";
+  layer.strokes.push(createStroke(state.tool, censor ? Number(censorInputs.size.value) : state.brush.size, [pointFromEvent(event)], censor ? censorInputs.color.value : state.brush.color, censor ? Number(censorInputs.opacity.value) / 100 : state.brush.opacity, {
+    hardness: censor ? 100 - Number(censorInputs.softness.value) : state.brush.hardness,
+    effect: censor ? "normal" : state.brush.effect,
+    glow: censor ? Number(censorInputs.glow.value) : 0
+  }));
 });
 
 canvas.addEventListener("pointermove", event => {
+  if (!state.drawing && state.tool === "censor-light") {
+    state.censorCursorPoint = pointFromEvent(event);
+    redraw();
+  }
   if (event.pointerType === "touch" && activeTouchPointers.has(event.pointerId)) {
     activeTouchPointers.set(event.pointerId, { ...screenPointFromEvent(event), pointerId: event.pointerId });
     if (touchGesture && updateTouchGesture()) return;
@@ -1656,6 +1968,16 @@ canvas.addEventListener("pointermove", event => {
   }
   if (state.transformInteraction && event.pointerId === state.transformPointerId) {
     updateTransformPreview(event);
+    return;
+  }
+  if (state.magicEraseInteraction && event.pointerId === state.magicEraseInteraction.pointerId) {
+    const current = screenPointFromEvent(event);
+    if (Math.hypot(current.x - state.magicEraseInteraction.startScreen.x, current.y - state.magicEraseInteraction.startScreen.y) > 12) state.magicEraseInteraction.moved = true;
+    return;
+  }
+  if (state.imageEraseInteraction && event.pointerId === state.imageEraseInteraction.pointerId) {
+    const layer = state.document.layers.find(item => item.id === state.imageEraseInteraction.layerId);
+    if (layer?.image) state.imageEraseInteraction.points.push(imageErasePoint(event, layer));
     return;
   }
   if (!state.drawing || event.pointerId !== state.drawingPointerId) return;
@@ -1714,6 +2036,24 @@ canvas.addEventListener("pointerup", event => {
     finishTransformInteraction(false);
     return;
   }
+  if (state.magicEraseInteraction && event.pointerId === state.magicEraseInteraction.pointerId) {
+    const interaction = state.magicEraseInteraction;
+    state.magicEraseInteraction = null;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    if (!interaction.moved) finishMagicErase(interaction);
+    else status.textContent = "Magic Eraser tap cancelled because the canvas moved";
+    return;
+  }
+  if (state.imageEraseInteraction && event.pointerId === state.imageEraseInteraction.pointerId) {
+    const interaction = state.imageEraseInteraction;
+    state.imageEraseInteraction = null;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    finishImageErase(interaction).catch(error => {
+      status.textContent = error?.message || "Image erasing failed";
+      redraw();
+    });
+    return;
+  }
   if (!state.drawing || event.pointerId !== state.drawingPointerId) return;
   state.drawing = false;
   state.drawingPointerId = null;
@@ -1725,6 +2065,11 @@ canvas.addEventListener("pointerup", event => {
     refreshHistoryControls();
     renderLayers();
   }
+});
+
+canvas.addEventListener("pointerleave", () => {
+  state.censorCursorPoint = null;
+  if (state.tool === "censor-light") redraw();
 });
 
 canvas.addEventListener("pointercancel", event => {
@@ -1747,6 +2092,18 @@ canvas.addEventListener("pointercancel", event => {
   }
   if (event.pointerId === state.transformPointerId) {
     finishTransformInteraction(true);
+    return;
+  }
+  if (state.magicEraseInteraction?.pointerId === event.pointerId) {
+    state.magicEraseInteraction = null;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    status.textContent = "Magic Eraser tap cancelled";
+    return;
+  }
+  if (state.imageEraseInteraction?.pointerId === event.pointerId) {
+    state.imageEraseInteraction = null;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    status.textContent = "Image erase cancelled";
     return;
   }
   if (event.pointerId !== state.drawingPointerId) return;
@@ -1834,6 +2191,38 @@ brushEffectInput.addEventListener("change", event => {
   status.textContent = "Brush effect: " + brushEffectInput.selectedOptions[0].textContent;
 });
 
+const censorInputs = {
+  color: document.querySelector("#censor-light-color"),
+  size: document.querySelector("#censor-light-size"),
+  opacity: document.querySelector("#censor-light-opacity"),
+  softness: document.querySelector("#censor-light-softness"),
+  glow: document.querySelector("#censor-light-glow")
+};
+for (const [key, input] of Object.entries(censorInputs)) {
+  input.addEventListener("input", () => {
+    const output = document.querySelector("#censor-light-" + key + "-value");
+    output.textContent = key === "size" ? input.value + " px" : input.value + "%";
+    if (state.tool === "censor-light") redraw();
+  });
+}
+
+document.querySelectorAll("[data-censor-preset]").forEach(button => button.addEventListener("click", () => {
+  const presets = {
+    point: { size: 10, opacity: 100, softness: 0, glow: 15 },
+    normal: { size: 28, opacity: 100, softness: 25, glow: 35 },
+    large: { size: 72, opacity: 100, softness: 18, glow: 50 },
+    line: { size: 18, opacity: 100, softness: 0, glow: 20 }
+  };
+  const preset = presets[button.dataset.censorPreset];
+  if (!preset) return;
+  for (const [key, value] of Object.entries(preset)) {
+    censorInputs[key].value = String(value);
+    document.querySelector("#censor-light-" + key + "-value").textContent = key === "size" ? value + " px" : value + "%";
+  }
+  if (state.tool === "censor-light") redraw();
+}));
+
+
 function syncBrushControls() {
   brushColorInput.value = state.brush.color;
   brushSizeInput.value = String(state.brush.size);
@@ -1870,11 +2259,12 @@ if (mobileDock) {
       });
       return;
     }
-    if (action === "undo") { undoButton.click(); return; }
-    if (action === "redo") { redoButton.click(); return; }
+    if (action === "undo") { undo(); return; }
+    if (action === "redo") { redo(); return; }
     if (action === "import-image") { imageFileInput.click(); return; }
     if (action === "add-text") { document.querySelector("#add-text-layer")?.click(); return; }
     if (action === "export") { exportPngButton.click(); return; }
+    if (action === "appearance") { document.querySelector("#appearance-open")?.click(); return; }
     if (action === "zoom-in" || action === "zoom-out") {
       const factor = action === "zoom-in" ? 1.2 : 1 / 1.2;
       const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, state.viewport.zoom * factor));
@@ -1906,9 +2296,86 @@ document.querySelectorAll(".tool").forEach(button => {
       state.multiTransformInteraction = null;
     }
     if (state.tool !== "select" && state.transformInteraction) finishTransformInteraction(true);
-    document.querySelectorAll(".tool").forEach(b => b.classList.toggle("active", b === button));
+    state.magicEraseInteraction = null;
+    document.querySelectorAll(".tool").forEach(b => {
+      b.classList.toggle("active", b === button);
+      if (b.hasAttribute("aria-pressed")) b.setAttribute("aria-pressed", String(b === button));
+    });
+    mobileDock?.querySelectorAll('[data-touch-action="tool"]').forEach(item => item.setAttribute("aria-pressed", String(item.dataset.tool === state.tool)));
+    document.querySelector(".censor-light-controls")?.classList.toggle("is-active", state.tool === "censor-light");
+    if (state.tool === "censor-light") { document.querySelector(".more-tools").open = true; status.textContent = "Luz de censura activa"; }
     redraw();
   });
+});
+
+
+const helpGoals = {
+  crop: ["Recortar", "Selecciona una imagen, abre Crop / Resize Image, ajusta el marco y pulsa Aplicar."],
+  background: ["Quitar fondo", "Selecciona una imagen, toca una zona del fondo, ajusta la tolerancia, protege los contornos y pulsa Aplicar."],
+  erase: ["Borrar", "Elige Borrar y arrastra sobre la zona. Deshacer recupera lo borrado."],
+  censor: ["Luz de censura", "Elige Luz de censura, ajusta tamaño y color y arrastra sobre la zona. Para cubrirla por completo usa opacidad al 100%."],
+  draw: ["Dibujar", "Elige un color y arrastra sobre la imagen para pintar en una capa separada."],
+  text: ["Texto", "Pulsa Texto, escribe en el inspector y ajusta el estilo. La capa de texto sigue editable."],
+  color: ["Mejorar color", "Selecciona una imagen y ajusta brillo, contraste o saturación en Image adjustments."],
+  layers: ["Capas", "Toca una capa para seleccionarla. Cambia el orden, visibilidad y opacidad con los controles disponibles."],
+  undo: ["Deshacer", "Pulsa Deshacer para volver un paso atrás. Rehacer recupera el cambio."],
+  export: ["Guardar / Exportar", "Guardar localmente conserva el proyecto editable. Exportar imagen crea una imagen compuesta."]
+};
+let lastEditGoal = "crop";
+function showGoalHelp(goal) {
+  const item = helpGoals[goal] || ["Ayúdame a editar", "Importa una imagen y elige la tarea que quieras realizar."];
+  document.querySelector("#editing-help-title").textContent = item[0];
+  document.querySelector("#editing-help-copy").textContent = item[1];
+  const list = document.querySelector("#editing-help-steps");
+  list.replaceChildren();
+  item[1].split(/(?<=\.)\s+/).filter(Boolean).forEach(step => {
+    const li = document.createElement("li");
+    li.textContent = step;
+    list.append(li);
+  });
+  list.hidden = !list.childElementCount;
+  document.querySelector("#editing-help-card").hidden = !document.querySelector("#editing-help-enabled").checked;
+}
+function runEditGoal(goal) {
+  lastEditGoal = goal;
+  showGoalHelp(goal);
+  const actions = {
+    crop: () => cropResizeButton.click(),
+    background: () => {
+      const layer = selectedLayerExact();
+      if (!layer || layer.contentType !== "image" || !layer.image) {
+        status.textContent = "Seleccioná primero una capa de imagen en el lienzo o en Capas para quitar el fondo.";
+        document.querySelector("#selection-indicator")?.focus?.();
+        return;
+      }
+      removeBackgroundButton.click();
+    },
+    erase: () => {
+      if (!selectedLayerExact()) {
+        status.textContent = "Primero tocá una imagen o elegí una capa en Capas. Después usá Borrar.";
+        return;
+      }
+      document.querySelector('.toolbar [data-tool="eraser"]')?.click();
+    },
+    censor: () => document.querySelector('.toolbar [data-tool="censor-light"]')?.click(),
+    draw: () => document.querySelector('.toolbar [data-tool="brush"]')?.click(),
+    text: () => document.querySelector("#add-text-layer").click(),
+    color: () => document.querySelector("#adjustments-title").scrollIntoView({block:"nearest"}),
+    layers: () => document.querySelector("#layers").scrollIntoView({block:"nearest"}),
+    undo: () => undoButton.click(),
+    export: () => exportPngButton.click()
+  };
+  actions[goal]?.();
+}
+document.querySelectorAll("[data-edit-goal]").forEach(button => button.addEventListener("click", () => runEditGoal(button.dataset.editGoal)));
+document.querySelector("#show-edit-example").addEventListener("click", () => showGoalHelp(state.tool === "censor-light" ? "censor" : lastEditGoal));
+document.querySelector("#show-edit-example-action").addEventListener("click", () => runEditGoal(state.tool === "censor-light" ? "censor" : lastEditGoal));
+document.querySelector("#close-editing-help").addEventListener("click", () => { document.querySelector("#editing-help-card").hidden = true; });
+const helpToggle = document.querySelector("#editing-help-enabled");
+helpToggle.checked = getEditingHelpPreference();
+helpToggle.addEventListener("change", () => {
+  setEditingHelpPreference(helpToggle.checked);
+  document.querySelector("#editing-help-card").hidden = !helpToggle.checked;
 });
 
 undoButton.addEventListener("click", undo);
@@ -1966,7 +2433,9 @@ document.querySelector("#add-text-layer").addEventListener("click", () => {
     fontSize: Math.max(24, Math.min(64, Math.round(height * 0.1))),
     fontFamily: "Arial",
     fontWeight: "bold",
-    color: "#172335",
+    color: "#ffffff",
+    outlineColor: "#111318",
+    outlineWidth: 2,
     align: "left"
   });
   const before = cloneDocument(state.document);
@@ -2000,6 +2469,76 @@ document.querySelector("#add-sample-character").addEventListener("click", async 
   }
 });
 
+
+function currentBackgroundRemovalSettings() {
+  return {
+    targetColor: document.querySelector("#background-removal-color").value,
+    tolerance: Number(document.querySelector("#background-removal-tolerance").value),
+    feather: Number(document.querySelector("#background-removal-feather").value),
+    edgeSensitivity: Number(document.querySelector("#background-removal-edge-sensitivity").value),
+    protectLineArt: document.querySelector("#background-removal-protect-line-art").checked,
+    decontaminate: document.querySelector("#background-removal-decontaminate").checked,
+    connectivity: "connected"
+  };
+}
+function populateBackgroundRemovalProfiles(selectedId = "anime-ink") {
+  const select = document.querySelector("#background-removal-profile");
+  if (!select) return;
+  const profiles = listBackgroundProfiles();
+  select.replaceChildren();
+  for (const profile of profiles) {
+    const option = document.createElement("option");
+    option.value = profile.id;
+    option.textContent = profile.name;
+    select.append(option);
+  }
+  select.value = profiles.some(profile => profile.id === selectedId) ? selectedId : "anime-ink";
+  document.querySelector("#delete-background-profile").disabled = !select.value.startsWith("custom-");
+}
+function applyBackgroundRemovalProfile(profileId, render = true) {
+  const profile = listBackgroundProfiles().find(item => item.id === profileId) || BUILT_IN_BACKGROUND_PROFILES[0];
+  const values = {
+    "background-removal-color": profile.targetColor,
+    "background-removal-tolerance": profile.tolerance,
+    "background-removal-feather": profile.feather,
+    "background-removal-edge-sensitivity": profile.edgeSensitivity
+  };
+  for (const [id, value] of Object.entries(values)) {
+    const input = document.querySelector("#" + id);
+    input.value = String(value);
+    const output = document.querySelector("#" + id + "-value");
+    if (output) output.textContent = String(value);
+  }
+  document.querySelector("#background-removal-protect-line-art").checked = profile.protectLineArt;
+  document.querySelector("#background-removal-decontaminate").checked = profile.decontaminate;
+  document.querySelector("#background-removal-profile-name").value = profile.name;
+  document.querySelector("#delete-background-profile").disabled = !profile.id.startsWith("custom-");
+  if (render) renderBackgroundRemovalPreview(true);
+}
+document.querySelector("#background-removal-profile").addEventListener("change", event => {
+  applyBackgroundRemovalProfile(event.currentTarget.value);
+});
+document.querySelector("#save-background-profile").addEventListener("click", () => {
+  try {
+    const profile = saveBackgroundProfile(document.querySelector("#background-removal-profile-name").value, currentBackgroundRemovalSettings());
+    populateBackgroundRemovalProfiles(profile.id);
+    applyBackgroundRemovalProfile(profile.id);
+    document.querySelector("#background-removal-status").textContent = "Saved local profile: " + profile.name;
+  } catch (error) {
+    document.querySelector("#background-removal-status").textContent = error.message || "Could not save processing profile";
+  }
+});
+document.querySelector("#delete-background-profile").addEventListener("click", () => {
+  const selectedId = document.querySelector("#background-removal-profile").value;
+  if (!selectedId.startsWith("custom-")) return;
+  if (!deleteBackgroundProfile(selectedId)) {
+    document.querySelector("#background-removal-status").textContent = "Could not delete this local profile";
+    return;
+  }
+  populateBackgroundRemovalProfiles("anime-ink");
+  applyBackgroundRemovalProfile("anime-ink");
+  document.querySelector("#background-removal-status").textContent = "Local profile deleted";
+});
 
 function backgroundRemovalColorHex(data, offset) {
   return "#" + [data[offset], data[offset + 1], data[offset + 2]].map(value => Number(value).toString(16).padStart(2, "0")).join("");
@@ -2068,6 +2607,8 @@ async function openBackgroundRemoval() {
     document.querySelector("#background-removal-edge-sensitivity-value").textContent = "42";
     document.querySelector("#background-removal-protect-line-art").checked = true;
     document.querySelector("#background-removal-decontaminate").checked = true;
+    populateBackgroundRemovalProfiles("anime-ink");
+    applyBackgroundRemovalProfile("anime-ink", false);
     document.querySelector("#background-removal-brush-size").value = "28";
     document.querySelector("#background-removal-brush-size-value").textContent = "28 px";
     backgroundRemovalDialog.showModal();
@@ -2148,14 +2689,7 @@ document.querySelector("#apply-background-removal").addEventListener("click", as
     return;
   }
   try {
-removeConnectedBackground(session.original, {
-        targetColor: document.querySelector("#background-removal-color").value,
-        tolerance: Number(document.querySelector("#background-removal-tolerance").value),
-        feather: Number(document.querySelector("#background-removal-feather").value),
-        edgeSensitivity: Number(document.querySelector("#background-removal-edge-sensitivity").value),
-        protectLineArt: document.querySelector("#background-removal-protect-line-art").checked,
-        decontaminate: document.querySelector("#background-removal-decontaminate").checked
-      });
+    const automatic = removeConnectedBackground(session.original, currentBackgroundRemovalSettings());
     const result = applyEraseStrokes(automatic, session.strokes);
     backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
     const source = backgroundRemovalCanvas.toDataURL("image/webp", 0.88);
@@ -2412,17 +2946,40 @@ recoverButton.addEventListener("click", () => {
   restoreStoredProject();
 });
 
-exportProjectButton.addEventListener("click", () => {
+async function saveBlobToDevice(blob, filename, imageFormat = null) {
+  if (!(blob instanceof Blob) || blob.size < 1) throw new Error("There is no file data to export");
+  const nativeBridge = globalThis.AnimeArtNative;
+  if (nativeBridge && typeof nativeBridge.saveFile === "function") {
+    if (blob.size > 50 * 1024 * 1024) throw new Error("Android export limit is 50 MB");
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(offset, Math.min(bytes.length, offset + chunkSize)));
+    }
+    const mimeType = blob.type || (imageFormat === "jpeg" ? "image/jpeg" : imageFormat === "webp" ? "image/webp" : imageFormat === "png" ? "image/png" : "application/json");
+    nativeBridge.saveFile(btoa(binary), mimeType, filename);
+    return "native";
+  }
+  if (imageFormat) {
+    downloadImageBlob(blob, filename, imageFormat);
+    return "browser";
+  }
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return "browser";
+}
+
+exportProjectButton.addEventListener("click", async () => {
   try {
     const serialized = serializeProjectFile(state.document);
     const blob = new Blob([serialized], { type: "application/json;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "animeart-project.json";
-    anchor.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    status.textContent = "Project file exported";
+    const destination = await saveBlobToDevice(blob, "animeart-project.json");
+    status.textContent = destination === "native" ? "Choose where to save the project file" : "Project file exported";
   } catch (error) {
     status.textContent = error?.message || "Could not export project file";
   }
@@ -2481,6 +3038,11 @@ function syncExportFormatControls() {
 }
 
 async function exportPng() {
+  const hasCensorStrokes = state.document.layers.some(layer => layer.visible && (layer.strokes || []).some(stroke => stroke.tool === "censor-light"));
+  if (hasCensorStrokes && !document.querySelector("#censor-permanent-export").checked) {
+    status.textContent = "Activa “Censura permanente al exportar” para confirmar que los trazos se aplanarán en el archivo final.";
+    return;
+  }
   const documentBefore = JSON.stringify(state.document);
   const historyBeforeUndo = state.history.canUndo();
   const historyBeforeRedo = state.history.canRedo();
@@ -2506,13 +3068,13 @@ async function exportPng() {
     });
     const quality = Number(exportQualityInput.value) / 100;
     const blob = await canvasToImageBlob(exportCanvas, format, quality);
-    downloadImageBlob(blob, "animeart." + format, format);
+    const destination = await saveBlobToDevice(blob, "animeart." + format, format);
     if (JSON.stringify(state.document) !== documentBefore ||
         state.history.canUndo() !== historyBeforeUndo ||
         state.history.canRedo() !== historyBeforeRedo) {
       throw new Error("PNG export modified editor state");
     }
-    status.textContent = format.toUpperCase() + " exported";
+    status.textContent = destination === "native" ? "Choose where to save the image" : format.toUpperCase() + " exported";
   } catch (error) {
     status.textContent = error?.message || "PNG export failed";
   } finally {
@@ -2521,6 +3083,57 @@ async function exportPng() {
 }
 
 exportPngButton.addEventListener("click", exportPng);
+const transparencyButton = document.querySelector("#view-transparency");
+const canvasWrapElement = document.querySelector(".canvas-wrap");
+const backgroundModeButtons = [...document.querySelectorAll("[data-canvas-background]")];
+let transparencyPreview = false;
+function setCanvasBackground(mode) {
+  canvasWrapElement.dataset.background = mode;
+  backgroundModeButtons.forEach(button => {
+    const active = button.dataset.canvasBackground === mode;
+    button.setAttribute("aria-pressed", String(active));
+  });
+  status.textContent = mode === "checkerboard"
+    ? "Los cuadritos representan píxeles transparentes; no se exportan. El blanco dentro del dibujo sigue siendo opaco."
+    : "Fondo de vista cambiado. Esta opción solo cambia la vista, no los píxeles de la imagen.";
+}
+transparencyButton?.addEventListener("click", () => {
+  transparencyPreview = !transparencyPreview;
+  transparencyButton.setAttribute("aria-pressed", String(transparencyPreview));
+  transparencyButton.textContent = transparencyPreview ? "Salir de vista previa" : "Ver transparencia";
+  status.textContent = transparencyPreview
+    ? "Vista previa de transparencia: los controles de selección no se incluyen en el PNG. El patrón no se exporta."
+    : "Volviste al modo de edición. Los cuadritos solo representan transparencia.";
+  redraw();
+  updateRemoveImageControl();
+});
+backgroundModeButtons.forEach(button => button.addEventListener("click", () => setCanvasBackground(button.dataset.canvasBackground)));
+removeSelectedImageButton?.addEventListener("click", event => {
+  event.preventDefault();
+  event.stopPropagation();
+  removeSelectedImage();
+});
+document.querySelector("#quick-remove-image")?.addEventListener("click", () => removeSelectedImage());
+document.querySelector("#quick-remove-background")?.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image) {
+    status.textContent = "Seleccioná una imagen antes de quitar el fondo.";
+    return;
+  }
+  removeBackgroundButton.click();
+});
+document.querySelector("#quick-recover")?.addEventListener("click", () => undoButton.click());
+document.querySelector("#export-transparent-png")?.addEventListener("click", () => {
+  exportFormatInput.value = "png";
+  syncExportFormatControls();
+  exportPngButton.click();
+});
+updateSelectionIndicator();
+setCanvasBackground("checkerboard");
+if (transparencyButton) {
+  transparencyButton.setAttribute("aria-pressed", "false");
+  transparencyButton.textContent = "Ver transparencia";
+}
 exportFormatInput.addEventListener("change", syncExportFormatControls);
 exportQualityInput.addEventListener("input", syncExportFormatControls);
 syncExportFormatControls();
@@ -2585,6 +3198,7 @@ function load() {
 }
 
 initializeAssetLibrary({ onImportImage: importImageIntoEditor, onStatus: message => { status.textContent = message; } });
+initializeAppearanceSettings();
 setSelection([state.document.layers[0].id], state.document.layers[0].id);
 load();
 renderLayers();
@@ -2594,12 +3208,13 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v14";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v17";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
   "./app.js",
   "./asset-library.js",
+  "./appearance-settings.js",
   "./domain/asset-library.mjs",
   "./manifest.webmanifest",
   "./service-worker.js",
@@ -2614,6 +3229,8 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/canvas-space.mjs",
   "./domain/layer-adjustments.mjs",
   "./domain/quick-edit-recipes.mjs",
+  "./domain/background-removal.mjs",
+  "./domain/background-removal-profiles.mjs",
   "./domain/model.mjs",
   "./domain/text-layer.mjs",
   "./domain/png-export.mjs",

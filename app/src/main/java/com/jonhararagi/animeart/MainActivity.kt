@@ -1,27 +1,107 @@
 package com.jonhararagi.animeart
 
+import android.content.Intent
 import android.graphics.Color
-import android.util.Log
+import android.net.Uri
 import android.os.Bundle
+import android.util.Base64
+import android.util.Log
+import android.widget.Toast
 import android.view.ViewGroup
+import android.webkit.JavascriptInterface
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.webkit.ServiceWorkerControllerCompat
-import androidx.webkit.ServiceWorkerClientCompat
-import androidx.webkit.WebViewFeature
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.webkit.ServiceWorkerControllerCompat
+import androidx.webkit.ServiceWorkerClientCompat
 import androidx.webkit.WebViewAssetLoader
+import androidx.webkit.WebViewFeature
 import com.jonhararagi.animeart.document.CanvasDocument
 import com.jonhararagi.animeart.persistence.ProjectPersistence
 import com.jonhararagi.animeart.ui.EditorScreen
 
 class MainActivity : ComponentActivity() {
     private var webView: WebView? = null
+    private var pendingFileChooser: ValueCallback<Array<Uri>>? = null
+    private var pendingExportBytes: ByteArray? = null
+    private var pendingExportName: String = "animeart.png"
+
+    private val fileChooserLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val callback = pendingFileChooser
+            pendingFileChooser = null
+            if (callback == null) return@registerForActivityResult
+
+            val selectedUris = if (result.resultCode == RESULT_OK) {
+                WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
+            } else {
+                null
+            }
+            callback.onReceiveValue(selectedUris)
+        }
+
+    private val exportFileLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val bytes = pendingExportBytes
+            val name = pendingExportName
+            pendingExportBytes = null
+            if (result.resultCode != RESULT_OK || result.data?.data == null || bytes == null) {
+                Toast.makeText(this, "Export cancelled", Toast.LENGTH_SHORT).show()
+                return@registerForActivityResult
+            }
+            val uri = result.data!!.data!!
+            runCatching {
+                contentResolver.openOutputStream(uri)?.use { output -> output.write(bytes) }
+                    ?: throw IllegalStateException("Could not open the selected destination")
+            }.onSuccess {
+                Toast.makeText(this, "Saved $name", Toast.LENGTH_LONG).show()
+            }.onFailure { error ->
+                Toast.makeText(this, error.message ?: "Export failed", Toast.LENGTH_LONG).show()
+            }
+        }
+
+    private inner class NativeExportBridge {
+        @JavascriptInterface
+        fun saveFile(base64Data: String, mimeType: String, requestedName: String) {
+            runOnUiThread {
+                try {
+                    val safeMime = when (mimeType.substringBefore(';').trim().lowercase()) {
+                        "image/png" -> "image/png"
+                        "image/jpeg" -> "image/jpeg"
+                        "image/webp" -> "image/webp"
+                        "application/json" -> "application/json"
+                        else -> throw IllegalArgumentException("Unsupported export format")
+                    }
+                    if (base64Data.length > 70_000_000) throw IllegalArgumentException("Export is too large")
+                    val bytes = Base64.decode(base64Data, Base64.DEFAULT)
+                    if (bytes.isEmpty() || bytes.size > 50 * 1024 * 1024) {
+                        throw IllegalArgumentException("Export must be between 1 byte and 50 MB")
+                    }
+                    val safeName = requestedName.replace(Regex("[^A-Za-z0-9._-]"), "_")
+                        .take(120).ifBlank { "animeart-export" }
+                    pendingExportBytes = bytes
+                    pendingExportName = safeName
+                    val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = safeMime
+                        putExtra(Intent.EXTRA_TITLE, safeName)
+                    }
+                    exportFileLauncher.launch(intent)
+                } catch (error: Exception) {
+                    pendingExportBytes = null
+                    Toast.makeText(this@MainActivity, error.message ?: "Export failed", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,13 +130,35 @@ class MainActivity : ComponentActivity() {
         val view = WebView(this).apply {
             setBackgroundColor(Color.TRANSPARENT)
             settings.javaScriptEnabled = true
+            addJavascriptInterface(NativeExportBridge(), "AnimeArtNative")
             settings.domStorageEnabled = true
             settings.allowFileAccess = false
-            settings.allowContentAccess = false
+            // Android's system picker returns content:// URIs. WebView must be allowed to
+            // read those selected items; it still cannot browse arbitrary file:// paths.
+            settings.allowContentAccess = true
             settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
             if (offlineValidation) {
                 settings.blockNetworkLoads = true
                 settings.cacheMode = android.webkit.WebSettings.LOAD_CACHE_ONLY
+            }
+            webChromeClient = object : WebChromeClient() {
+                override fun onShowFileChooser(
+                    webView: WebView,
+                    filePathCallback: ValueCallback<Array<Uri>>,
+                    fileChooserParams: WebChromeClient.FileChooserParams
+                ): Boolean {
+                    pendingFileChooser?.onReceiveValue(null)
+                    pendingFileChooser = filePathCallback
+                    return try {
+                        fileChooserLauncher.launch(fileChooserParams.createIntent())
+                        true
+                    } catch (error: Exception) {
+                        pendingFileChooser = null
+                        filePathCallback.onReceiveValue(null)
+                        Log.e("AnimeArtFilePicker", "Could not open Android file picker", error)
+                        false
+                    }
+                }
             }
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(
@@ -93,6 +195,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun showLegacyEditor() {
+        pendingFileChooser?.onReceiveValue(null)
+        pendingFileChooser = null
         webView?.apply {
             stopLoading()
             (parent as? ViewGroup)?.removeView(this)
@@ -114,6 +218,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        pendingFileChooser?.onReceiveValue(null)
+        pendingFileChooser = null
+        pendingExportBytes = null
         webView?.apply {
             stopLoading()
             (parent as? ViewGroup)?.removeView(this)

@@ -2976,3 +2976,163 @@ La validación final depende de Web CI y Android CI completadas sobre el HEAD ex
 
 PROTECCIONES:
 Esta preparación no modifica main, no fusiona ningún PR y no cambia la base, el HEAD ni el estado de PR #46 o #47. No declara el producto listo para lanzamiento.
+
+
+---
+
+## AA-PICART-MODE-001 — Implementation continuation on PR #69
+
+DATE: 2026-10-13
+
+CANONICAL WORKING LINE:
+- PR #69: https://github.com/jonhararagi/animeart/pull/69
+- Branch: `fix/android-native-file-access-001`.
+- Main baseline at start: `cf4090f260e45cd2b3f3100e45482e1ce36c67a7`.
+
+IMPLEMENTED IN THIS CONTINUATION:
+- Added a local profile domain module with built-in anime/dark-ink, flat-color, transparent-PNG and photography presets, validated parameters, and save/update/delete for custom profiles.
+- Connected profile selection and persistence to the existing background-removal dialog; added unit and real Chromium E2E coverage for profile save/restore/delete.
+- Repaired the background-removal Apply handler to calculate the automatic connected-region matte before manual correction strokes are applied, preserving the existing image-layer/history/persistence pipeline.
+- Connected Android image and project export to a native `ACTION_CREATE_DOCUMENT` Save As bridge, with browser-download fallback. Input remains through the Android system picker.
+- Refreshed the offline shell to v17 and included the new profile module in both the service-worker shell and offline-readiness contract.
+- Updated README and added smoke assertions for the new profile, export and offline behavior.
+- Kept the existing Web document, layer model, canvas renderer, history and persistence; no second editor or remote image-processing service was added.
+
+VALIDATION STATE:
+- Source changes are committed to the PR #69 branch.
+- Do not claim local test execution.
+- Web CI, Chromium E2E, Android build/lint/instrumentation, APK generation and offline startup must finish on the final SHA before PASS can be assigned.
+- Prior runs attached to the earlier PR #69 HEAD are historical only.
+
+LIMITATIONS:
+- Background removal is a local connected-color algorithm with edge heuristics, not semantic AI segmentation.
+- Polygon/lasso selection and editable selection masks remain incomplete.
+- Advanced photographic controls beyond the current adjustment set remain incomplete.
+- Status remains PARTIAL until final-HEAD CI and the remaining acceptance criteria are verified.
+
+SAFETY:
+- Main was not edited directly. No merge, PR closure, retarget or rebase was performed.
+
+
+## AA-PICART-MODE-001 · Beginner panel and Luz de censura · 2026-10-13
+
+- Added a compact **Editar fácilmente** panel with ten goal shortcuts and local preference for contextual help. The goal buttons route to existing crop, background removal, eraser, brush, text, adjustment, layers, undo and export functions.
+- Added a collapsible **Más herramientas** group so advanced controls do not occupy the primary task panel.
+- Added the **Luz de censura** drawing tool on the canonical editor. It writes to an independent drawing layer, uses document-coordinate diameter, supports color, opacity, edge softness, adjustable glow and four parameter presets. Single-point taps render as a covered dot; undo/redo use the existing document history.
+- Raster export is flattened by the existing image export pipeline. When a visible censor stroke exists, export is blocked until the user confirms **Censura permanente al exportar**. The saved project remains editable, so users should retain it separately from the final flattened image.
+- Fixed painting over a selected image to select the newly created transparent drawing layer before appending the stroke.
+- Added unit/smoke tests for censor stroke model values, primary goal controls and their connection to the canonical editor.
+- Validation must be checked on the final HEAD. The initial workflows triggered by this change were Web CI run #508 and Android CI run #607; neither was complete at the time this note was written.
+- Known limits: no semantic AI segmentation; the local background remover remains a connected-color/edge heuristic. Softness and glow are canvas visual effects, not semantic edge reconstruction. Android native save and WebView packaging must pass the final workflow before release claims.
+
+
+---
+
+## AA-UX-TRANSPARENCY-001 — selección y transparencia explícitas
+
+**Rama de trabajo:** `aa-ux-transparency-001`
+**Base de implementación:** PR #69, SHA previo `58c1324e22856ce58ef73e341fb5d7ffb3d47b01`.
+**Estado:** implementación inicial preparada para validación CI; no fusionada.
+
+- El canvas visible usa contexto con alfa y limpia su bitmap en lugar de rellenarlo de blanco. El blanco que forme parte de una imagen sigue siendo opaco.
+- El patrón de cuadritos y los fondos blanco/negro/gris son estilos de visualización en CSS, fuera del renderer de exportación. No se dibujan en el PNG.
+- Se muestra texto persistente para distinguir una imagen seleccionada de una capa de dibujo u otro tipo de capa. Al tocar otra imagen mientras se usa dibujar, borrar o censura, el primer toque selecciona la imagen y evita editar accidentalmente la capa previa.
+- Se agregaron accesos rápidos para quitar fondo, recuperar mediante Deshacer y exportar PNG, además de un control para ver la transparencia.
+- La exportación PNG continúa utilizando el canvas independiente con contexto alfa. La verificación automatizada comprueba los contratos del canvas y los controles; la validación visual en teléfono y la inspección de un PNG real exportado siguen pendientes de CI/E2E y prueba manual.
+
+**No declarado todavía:** PASS integral de los ocho criterios de aceptación. Las pruebas automatizadas y la compilación Android deben concluir sobre el SHA final de esta rama antes de cerrar la tarea.
+
+
+---
+
+## AA-UX-DELETE-001 — X funcional para quitar la imagen seleccionada
+
+**Fecha:** 2026-10-13  
+**Rama:** `aa-ux-delete-001`  
+**Base:** PR #71, SHA `383e2a36bc31d59df3fe70b135611d233a074a14`.
+
+- Añade una X táctil de 46 px junto a la esquina superior derecha de la imagen seleccionada; solo aparece para una capa de imagen seleccionada y se oculta durante la vista previa de transparencia.
+- La X y la acción visible `Quitar imagen` comparten una operación de borrado de capa no destructiva para píxeles, registrada en el historial existente. `Deshacer` restaura la imagen eliminada.
+- La operación valida el ID de la capa seleccionada, distingue capas bloqueadas y mantiene el lienzo válido si la imagen era la única capa.
+- El borrador de píxeles sigue siendo una herramienta separada; la X no pinta ni borra píxeles.
+- Se añade E2E real en Chromium con dos importaciones de imagen: identifica la primera mediante etiqueta, verifica que la X elimina su ID exacto, comprueba que la segunda permanece, deshace, exporta PNG y decodifica el canal alfa para demostrar que existen píxeles con alfa menor que 255.
+- Estado: **PASS para el SHA de código** `45161f51bebb7a5761aca5d1845e86adaf064f18`; PR #72 sigue abierto y no se fusionó.
+- Web CI run #525 / ID `38459217137`: SUCCESS, incluidos build, tests y E2E real de Chromium. https://github.com/jonhararagi/animeart/actions/runs/38459217137
+- Android CI run #624 / ID `38459217296`: SUCCESS, incluidos build, unit tests, lint, instrumentation/startup smoke y subida del APK. https://github.com/jonhararagi/animeart/actions/runs/38459217296
+- E2E confirmó que la X elimina el ID de la primera imagen, la segunda sigue intacta, Undo recupera ambas y el PNG RGBA de 800 × 600 contiene píxeles con alfa menor que 255.
+- Chromium validó la interacción y el archivo exportado. No se hizo una comprobación manual en un teléfono Android físico; Android CI no certifica el aspecto de la X en todos los dispositivos.
+- La evidencia corresponde exactamente al SHA de código indicado. La actualización documental es posterior y no cambia la implementación.
+- Sin cambios directos a `main`, sin fusiones ni cierres de PR.
+
+
+---
+
+## AA-INTEGRATION-CLOSURE-001 — Consolidación de entrega Web/Android
+
+FECHA:
+2026-10-13
+
+TIMER:
+6–12 horas activas estimadas para la tarea completa. No es tiempo medido.
+
+### Baseline y reglas
+
+- SHA de `main` verificado al iniciar: `cf4090f260e45cd2b3f3100e45482e1ce36c67a7`.
+- Fuente de verdad de la aplicación: `web/`; Android empaqueta la fuente Web mediante `syncWebEditorAssets` en `app/build.gradle.kts`.
+- No se modificó directamente `main`, no se forzó ningún push y no se eliminaron ramas.
+- No se encontró `docs/bitacora.md`; esta entrada se registra en el documento de continuidad existente.
+- Rama de trabajo de consolidación: `aa-ux-delete-001`, que ya contenía la cadena #69 → #71 → #72.
+
+### Inventario real de PR y disposición
+
+| PR | HEAD consultado | Estado al inspeccionar | Disposición |
+|---|---|---|---|
+| #69 | `58c1324e22856ce58ef73e341fb5d7ffb3d47b01` | OPEN; Web y Android CI SUCCESS en ese HEAD | Base de la cadena integrada. Incluye edición guiada, luz de censura, borrado mágico, ajuste al lienzo, selección y puente de archivos Android. |
+| #70 | `1bdbd9bb3f595e446623bd44e45f163a0be22b59` | OPEN; Web y Android CI SUCCESS en ese HEAD | Sus cambios útiles se consolidan en la cadena #72. La rama ya contenía borrado de píxeles por capa, capa de pintura, controles táctiles, historial y puente Android Save As. Se añadió el límite Web de 50 MiB, retorno explícito de destino native/browser y prueba de regresión. Se deja abierto hasta la entrega integrada. |
+| #71 | `383e2a36bc31d59df3fe70b135611d233a074a14` | OPEN; Web y Android CI SUCCESS en ese HEAD | Se conserva: selección identificada por texto, transparencia real, vista de cuadritos no exportable y accesos rápidos. |
+| #72 | `78c56d2d464c32dc243301b424d58200499a8b7c` al inicio; rama actualizada durante esta tarea | OPEN | PR de entrega existente elegido para consolidar, evitando abrir otro PR de integración innecesario. |
+| #67 | `adb0e65a7fa39fe750018412f7eee20c3ecea39d` | OPEN; Web y Android CI SUCCESS en ese HEAD | No se copia la rama completa: sus funciones útiles de lienzo móvil fijo, zona segura, dock táctil y gestos de zoom/pan ya están presentes en la rama consolidada y cubiertas por las pruebas actuales. |
+| #66 | `bbe60f252f3eb0e8d9a4dd8b5a7e3584aff77ed1` | OPEN; Web y Android CI SUCCESS en ese HEAD | Se integra el aviso accionable al abrir con `file://`, el lanzador Windows dentro de `web/` y sus pruebas. El lanzador de la raíz ya existía en `main`. |
+| #68 | `9831a77bbd6db223d9cc17034f4ee904b8ed0963` | OPEN; propuesta nativa Compose alternativa | No se integra: sustituye el runtime Android WebView por un editor nativo paralelo y contradice la arquitectura canónica documentada. Se conserva abierto, sin descartar ni borrar su rama. |
+| #57 | `90062fee9ac11132cb019fb22e9a8ce3042af839` | OPEN; mergeable false al consultar | La sincronización de `web/` a assets Android ya existe en `main`; el gate adicional de inspección del APK de #57 se incorporó a `.github/workflows/android.yml` en esta rama y queda sujeto al CI final. No cerrar hasta verificarlo en el HEAD consolidado. |
+| #65 / rama `feat/animeart-aa-closure-001` | `94cecbc553c902848869d95e58c0818f729d3a69` | PR #65 ya MERGED | Historial cerrado; no se vuelve a integrar. |
+| Rama `feat/animeart-consolidated-editor-001` | `82e9dcc1a12e4b55c391be2630dc837d6b3a2c94` | Divergente de `main`: 41 commits ahead, 11 behind; 27 archivos en el diff consultado | No se usa como base de entrega porque contiene una línea amplia y divergente que requiere reconciliación independiente. No se elimina ni se sobrescribe. |
+
+### Cambios consolidados durante AA-INTEGRATION-CLOSURE-001
+
+- `web/app.js`: el guardado usa `globalThis.AnimeArtNative`, rechaza exportaciones Android superiores a 50 MiB antes de codificarlas en Base64 y devuelve `native` o `browser`. Los mensajes de exportación distinguen entre abrir el selector Android Save As y descargar en el navegador.
+- `web/test/smoke.test.mjs`: cobertura para el límite de tamaño y la ruta de destino.
+- `web/index.html`: si el editor se abre con `file://`, presenta un aviso visible en español que explica por qué los módulos y controles no funcionan y cómo iniciar el servidor local.
+- `web/START_ANIMEART.bat`: lanzador autónomo para quien solo tenga la carpeta `web/`.
+- `web/test/launch-mode.test.mjs`: pruebas para el aviso y el lanzador.
+- Se mantienen las funciones de la cadena #69/#71/#72: luz de censura, borrado mágico y borrador de píxeles separados, capa de pintura, controles móviles, historial, selección visible, X para quitar la imagen seleccionada, vista previa de transparencia y exportación PNG con alfa.
+
+### Validación
+
+- El HEAD de código previo a esta entrada documental fue `34742d706541b4d67a80e32b4d42df8c2aa290c0`. Los workflows Web y Android se iniciaron para ese HEAD, pero sus resultados no se atribuyen a commits posteriores.
+- Esta actualización documental crea un HEAD nuevo y exige comprobar ambos workflows sobre ese SHA exacto antes de declarar PASS.
+- El resultado E2E de #72 en su HEAD anterior confirmó eliminación de la imagen seleccionada por ID, conservación de la segunda imagen, restauración por Undo y PNG RGBA con píxeles alfa menores que 255. Esa evidencia es histórica y no sustituye los workflows del HEAD final de esta consolidación.
+- La verificación Android CI es instrumental/emulada. No equivale a una inspección visual manual en un teléfono físico.
+
+### Estado de cierre al registrar la entrada
+
+PARTIAL hasta comprobar Web CI y Android CI en el HEAD final y actualizar la base del PR de entrega. `main` permanece intacto. No se afirma que los cambios estén entregados a usuarios mientras el PR de integración siga abierto.
+
+
+### Otros PR abiertos revisados: persistencia, recuperación y mantenimiento
+
+Estos PR fueron consultados por SHA, archivos y CI. No se mezclan automáticamente en el PR de usabilidad porque pertenecen a una cadena separada de seguridad de recuperación y almacenamiento, con bases históricas distintas; fusionarlos sin reconciliar sus contratos de preservación sería arriesgar los proyectos locales del usuario.
+
+| PR | HEAD / base consultados | Resultado de inspección | Disposición |
+|---|---|---|---|
+| #41 T059.1 | HEAD `9fb6643b5a2711ef66a09d9151ab93a1ca1ef90b`; base histórica `4d4b2a03be0fc1bedae59b91d2980984d3cafe81` | Web y Android CI SUCCESS en ese HEAD; mergeable false al consultar. Modifica `ProjectPersistence.kt`, `MainActivity.kt` y tests de recuperación Android. | Sigue abierto como deuda real de seguridad de recuperación. No se declara integrado en esta entrega. |
+| #43 T060 | HEAD `e6dfe2c010808bd5f5259bf86969ebdae78e076e`; apilado sobre #41 | Web y Android CI SUCCESS en ese HEAD. Añade pruebas de UI para decisión de recuperación y preservación. | Sigue abierto y apilado sobre #41; requiere reconciliación de la cadena completa. |
+| #44 T060.2 | HEAD `9057ce0730512c9f10b63b027b7220e2e73acba1`; apilado sobre #43 | Web y Android CI SUCCESS en ese HEAD. Añade prueba determinista de callback de recuperación WebView. | Sigue abierto y apilado sobre #43; no se cierra ni se considera entregado. |
+| #46 T064-R1 | HEAD `abcc2033f96779c3b171e1aae876ed724c08731a`; base histórica `e12042f58b015560e6739197a460524b0a43ae2e` | Web y Android CI SUCCESS en ese HEAD. Cambia E2E y smoke tests para fallos de almacenamiento, reintentos y recuperación. | Sigue abierto como deuda de integridad de almacenamiento. Sus pruebas no se atribuyen a `main` ni al HEAD de esta entrega. |
+| #50 GRADLE-MAINT-002 | HEAD `fe921a81240301ba99fe1ee060b9bb672fbde10c`; base histórica `c8b1c7994fba9960de94a27b77027dca84c9f424` | Web y Android CI SUCCESS en ese HEAD; mergeable false al consultar. Propone Wrapper Gradle/Kotlin y cambios de workflow. | Se mantiene separado de la entrega de UX; no se cambia el sistema de build sin reconciliar su base histórica. |
+| #51 GRADLE-MAINT-003 handoff | HEAD `d35e5226f76aea2733cedd3c8aea24f962656f76`; base histórica `c8b1c7994fba9960de94a27b77027dca84c9f424` | Web y Android CI SUCCESS en ese HEAD; solo modifica documentación de mantenimiento. | Sigue abierto; documentación separada, no bloquea la funcionalidad del editor por sí misma. |
+
+**Límite explícito:** AA-INTEGRATION-CLOSURE-001 consolida la experiencia de edición y sus rutas de importación/exportación. No resuelve los gates T059/T060/T064 de preservación de datos. Por ello, no se debe declarar cierre global de todas las ramas del repositorio mientras #41/#43/#44/#46 sigan sin reconciliarse o mientras no exista una decisión documentada de mantenerlos como trabajo separado.
+
+
+Corrección de inventario durante la integración: aunque la sincronización de assets de PR #57 ya existía en `main`, su comprobación explícita del contenido del APK no existía en el workflow de `main`. Se trasladó ese gate a la rama AA-INTEGRATION-CLOSURE-001 para comprobar que el APK contiene el editor canónico, las herramientas de recorte/texto/ajustes y no contiene la UI de generador de prompts. La aceptación depende de Android CI sobre el HEAD final.

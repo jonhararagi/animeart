@@ -56,3 +56,16 @@ test("document raster rendering keeps document pixels at the export origin", () 
   assert.deepEqual(renderCenter, { x: 400, y: 300 });
   assert.deepEqual(translations, [], "export does not offset pixel coordinates by a second viewport-center translation");
 });
+
+
+test("transparent preview uses an alpha canvas without baking its checkerboard into export", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const app = await readFile(join(import.meta.dirname, "..", "app.js"), "utf8");
+  const html = await readFile(join(import.meta.dirname, "..", "index.html"), "utf8");
+  assert.match(app, /getContext\("2d", \{ alpha: true \}\)/);
+  assert.match(app, /ctx\.clearRect\(0, 0, rect\.width, rect\.height\)/);
+  assert.match(app, /renderDocumentToCanvas\(state\.document, exportCanvas/);
+  assert.match(html, /id="export-transparent-png"/);
+  assert.match(html, /Los cuadritos indican transparencia\. No aparecerán en el PNG/);
+});

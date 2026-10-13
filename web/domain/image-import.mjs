@@ -146,6 +146,29 @@ export async function optimizeImageSource(source, {
   throw imageImportError("Could not optimize this image enough for local project storage. Try a smaller image.");
 }
 
+
+export function fitImportedImageScale(imageWidth, imageHeight, documentWidth, documentHeight, fill = 0.84) {
+  const imageW = Number(imageWidth), imageH = Number(imageHeight);
+  const canvasW = Number(documentWidth), canvasH = Number(documentHeight);
+  const margin = Number(fill);
+  if (![imageW,imageH,canvasW,canvasH,margin].every(Number.isFinite) ||
+      imageW <= 0 || imageH <= 0 || canvasW <= 0 || canvasH <= 0 || margin <= 0 || margin > 1) {
+    throw imageImportError("Image fit dimensions are invalid");
+  }
+  return Math.max(0.01, Math.min(4, canvasW * margin / imageW, canvasH * margin / imageH));
+}
+
+export function fitImportedImageTransform(imageWidth, imageHeight, documentWidth, documentHeight, fill = 0.84) {
+  const scale = fitImportedImageScale(imageWidth, imageHeight, documentWidth, documentHeight, fill);
+  const canvasW = Number(documentWidth), canvasH = Number(documentHeight);
+  const imageW = Number(imageWidth), imageH = Number(imageHeight);
+  return {
+    scale,
+    x: scale * (canvasW - imageW) / 2,
+    y: scale * (canvasH - imageH) / 2
+  };
+}
+
 export function createImportedImageLayer(fileName, source, width, height) {
   if (typeof source !== "string" || !source) throw imageImportError("Image source is empty");
   if (source.length > MAX_IMAGE_SOURCE_CHARS) {
@@ -195,6 +218,9 @@ export async function applyImageFileImport(file, { document, history, persist, R
     throw imageImportError("Image import transaction is not configured");
   }
   const { layer, optimized } = await importImageFile(file, { Reader, ImageCtor, documentObject });
+  if (Number(document.width) > 0 && Number(document.height) > 0) {
+    layer.transform = { ...layer.transform, ...fitImportedImageTransform(layer.image.width, layer.image.height, document.width, document.height) };
+  }
   const before = cloneDocument(document);
   const next = cloneDocument(document);
   next.layers.push(layer);

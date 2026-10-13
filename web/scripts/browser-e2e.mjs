@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { extname, join, normalize, resolve } from "node:path";
 import { spawn } from "node:child_process";
+import { inflateSync } from "node:zlib";
 import { createServer as createPortProbe } from "node:net";
 
 const ROOT = resolve(process.env.ANIMEART_E2E_ROOT || "dist");
@@ -193,7 +194,7 @@ const saveScreenshot = async filename => {
 };
 
 const selectorCenter = async selector => {
-  const rect = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return null; el.scrollIntoView({ block: "center", inline: "center" }); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, width: r.width, height: r.height }; })()`);
+  const rect = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return null; const details = el.closest("details"); if (details && !details.open) details.open = true; el.scrollIntoView({ block: "center", inline: "center" }); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, width: r.width, height: r.height }; })()`);
   if (!rect) throw new Error(`Selector not found: ${selector}`);
   return rect;
 };
@@ -234,6 +235,49 @@ const readLayerSummary = async () => evaluate(`JSON.parse(localStorage.getItem("
 const layerSelector = layerId => "#layers li[data-layer-id=\"" + layerId + "\"]";
 const layerButtonSelector = layerId => layerSelector(layerId) + " .layer-select";
 const layerToggleSelector = (layerId, index) => layerSelector(layerId) + " .layer-controls .layer-toggle:nth-of-type(" + index + ")";
+
+const inspectPngAlpha = bytes => {
+  if (bytes.toString("hex", 0, 8) !== "89504e470d0a1a0a") throw new Error("Export is not a PNG");
+  let offset = 8, width = 0, height = 0, bitDepth = 0, colorType = 0;
+  const imageData = [];
+  while (offset + 12 <= bytes.length) {
+    const length = bytes.readUInt32BE(offset);
+    const type = bytes.toString("ascii", offset + 4, offset + 8);
+    const data = bytes.subarray(offset + 8, offset + 8 + length);
+    if (type === "IHDR") {
+      width = data.readUInt32BE(0); height = data.readUInt32BE(4);
+      bitDepth = data[8]; colorType = data[9];
+    } else if (type === "IDAT") imageData.push(data);
+    else if (type === "IEND") break;
+    offset += 12 + length;
+  }
+  if (bitDepth !== 8 || colorType !== 6 || width < 1 || height < 1) {
+    throw new Error("PNG export must be 8-bit RGBA to preserve transparency");
+  }
+  const raw = inflateSync(Buffer.concat(imageData));
+  const stride = width * 4, previous = Buffer.alloc(stride);
+  let cursor = 0, foundTransparentPixel = false;
+  const paeth = (a,b,c) => {
+    const p=a+b-c, pa=Math.abs(p-a), pb=Math.abs(p-b), pc=Math.abs(p-c);
+    return pa<=pb&&pa<=pc?a:pb<=pc?b:c;
+  };
+  for (let y=0; y<height; y++) {
+    const filter=raw[cursor++], row=Buffer.from(raw.subarray(cursor,cursor+stride)); cursor+=stride;
+    for (let i=0; i<stride; i++) {
+      const left=i>=4?row[i-4]:0, up=previous[i]||0, upperLeft=i>=4?previous[i-4]:0;
+      if (filter===1) row[i]=(row[i]+left)&255;
+      else if (filter===2) row[i]=(row[i]+up)&255;
+      else if (filter===3) row[i]=(row[i]+Math.floor((left+up)/2))&255;
+      else if (filter===4) row[i]=(row[i]+paeth(left,up,upperLeft))&255;
+      else if (filter!==0) throw new Error("Unsupported PNG filter " + filter);
+    }
+    for (let i=3; i<stride; i+=4) if (row[i] < 255) { foundTransparentPixel=true; break; }
+    row.copy(previous);
+    if (foundTransparentPixel) break;
+  }
+  return { width, height, bitDepth, colorType, foundTransparentPixel };
+};
+
 
 
 try {
@@ -351,6 +395,38 @@ try {
 
 
 
+
+  // AA-UX-DELETE-001: exercise the visible X against two distinct image-layer IDs.
+  const importNamedFixture = async name => {
+    const addedBefore = (await readLayerSummary()).length;
+    const accepted = await evaluate('(() => { const bytes = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="), char => char.charCodeAt(0)); const file = new File([bytes], ' + JSON.stringify(name + ".png") + ', { type: "image/png" }); const transfer = new DataTransfer(); transfer.items.add(file); const input = document.querySelector("#image-file-input"); input.files = transfer.files; input.dispatchEvent(new Event("change", { bubbles: true })); return true; })()');
+    assert(accepted === true, "real browser accepted image fixture " + name);
+    await waitFor("JSON.parse(localStorage.getItem(\"animeart-web-document\") || \"{}\").layers?.length === " + (addedBefore + 1), 10000);
+    return (await readDocument()).layers.at(-1);
+  };
+  const deleteFirst = await importNamedFixture("delete-first");
+  const keepSecond = await importNamedFixture("keep-second");
+  assert(deleteFirst.id !== keepSecond.id, "two imported images have distinct stable layer IDs");
+  await click('[aria-label="Select delete-first"]');
+  assert(await evaluate('document.querySelector("#selection-indicator").textContent.includes("Imagen seleccionada: delete-first")'), "selected image is identified by a visible label, not only a blue outline");
+  assert(await evaluate('!document.querySelector("#remove-selected-image").hidden'), "the X control is visible for the selected image");
+  await click("#remove-selected-image");
+  let afterX = await readDocument();
+  assert(!afterX.layers.some(layer => layer.id === deleteFirst.id), "pressing the X removes the exact selected image ID");
+  assert(afterX.layers.some(layer => layer.id === keepSecond.id && layer.image?.source), "the second image remains intact after the first is removed");
+  await click("#undo");
+  const afterUndo = await readDocument();
+  assert(afterUndo.layers.some(layer => layer.id === deleteFirst.id && layer.image?.source), "Undo restores the removed first image with its original ID");
+  assert(afterUndo.layers.some(layer => layer.id === keepSecond.id && layer.image?.source), "Undo leaves the second image intact");
+  await click("#export-transparent-png");
+  await waitFor('document.querySelector("#status").textContent.includes("PNG exported")', 10000);
+  let pngPath = join(downloadDir, "animeart.png");
+  for (let attempt=0; attempt<60 && !existsSync(pngPath); attempt++) await sleep(100);
+  assert(existsSync(pngPath), "real browser exports the composition as a downloadable PNG");
+  const alphaReport = inspectPngAlpha(await (await import("node:fs/promises")).readFile(pngPath));
+  console.log("AA_UX_DELETE_PNG_ALPHA", JSON.stringify(alphaReport));
+  assert(alphaReport.foundTransparentPixel, "exported PNG contains actual alpha<255 pixels, not an opaque checkerboard background");
+
   const layersBeforeSample = (await readLayerSummary()).length;
   await click("#add-sample-character");
   await waitFor("JSON.parse(localStorage.getItem(\"animeart-web-document\") || \"{}\").layers?.length === " + (layersBeforeSample + 1), 15000);
@@ -368,6 +444,8 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.flipX === true)', 10000);
 
   // Exercise actual raster edits, history, flips and aspect preservation in Chromium.
+  const beforeCropDocument = await readDocument();
+  const beforeCropSample = beforeCropDocument.layers.find(layer => layer.name === "battleworn_knight");
   await click("#crop-resize-image");
   await waitFor('document.querySelector("#image-edit-dialog").open === true');
   await waitFor('document.querySelector("#crop-preview").width > 1', 15000);
@@ -390,7 +468,7 @@ try {
   let croppedSample = (await readDocument()).layers.find(layer => layer.name === "battleworn_knight");
   assert(croppedSample?.image?.width === 400 && croppedSample?.image?.height === 500, "real browser crop changes image pixels to the exact crop dimensions");
   assert(croppedSample?.image?.flipX === true, "real browser crop retains the image mirror setting");
-  assert(Math.abs(croppedSample?.transform?.x - 5) < 0.001 && Math.abs(croppedSample?.transform?.y - 7) < 0.001, "real browser crop compensates the image transform for the crop origin");
+  assert(Math.abs(croppedSample?.transform?.x - (beforeCropSample.transform.x + 5 * beforeCropSample.transform.scale)) < 0.001 && Math.abs(croppedSample?.transform?.y - (beforeCropSample.transform.y + 7 * beforeCropSample.transform.scale)) < 0.001, "real browser crop compensates the image transform for the crop origin at the fitted and centered image transform");
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944 && layer.image?.height === 944)', 10000);
   await click("#redo");
@@ -398,6 +476,8 @@ try {
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944 && layer.image?.height === 944)', 10000);
 
+  const beforeResizeDocument = await readDocument();
+  const beforeResizeSample = beforeResizeDocument.layers.find(layer => layer.name === "battleworn_knight");
   await click("#crop-resize-image");
   await waitFor('document.querySelector("#image-edit-dialog").open === true');
   await click('input[name="image-edit-mode"][value="resize"]');
@@ -406,8 +486,11 @@ try {
   await waitFor('document.querySelector("#status").textContent === "Image resized"', 15000);
   const resizedSample = (await readDocument()).layers.find(layer => layer.name === "battleworn_knight");
   assert(resizedSample?.image?.width === 472 && resizedSample?.image?.height === 472, "real browser resize re-samples the image while preserving its selected aspect ratio");
-  assert(Math.abs(resizedSample?.transform?.scale - 2) < 0.001, "real browser resize keeps the image's displayed size when aspect ratio is locked");
-  assert(Math.abs(resizedSample?.transform?.x - 400) < 0.001 && Math.abs(resizedSample?.transform?.y - 300) < 0.001, "real browser resize preserves the image layer position in document pixels");
+  const expectedResizeScale = beforeResizeSample.transform.scale * 2;
+  assert(Math.abs(resizedSample?.transform?.scale - expectedResizeScale) < 0.001, "real browser resize keeps the image's displayed size when aspect ratio is locked");
+  const expectedResizeX = beforeResizeSample.transform.x + (expectedResizeScale - beforeResizeSample.transform.scale) * beforeResizeDocument.width / 2;
+  const expectedResizeY = beforeResizeSample.transform.y + (expectedResizeScale - beforeResizeSample.transform.scale) * beforeResizeDocument.height / 2;
+  assert(Math.abs(resizedSample?.transform?.x - expectedResizeX) < 0.001 && Math.abs(resizedSample?.transform?.y - expectedResizeY) < 0.001, "real browser resize preserves the image layer position in document space");
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944)', 10000);
 
@@ -559,6 +642,43 @@ try {
   assert(posterDocument.layers[2].text?.value==="SATURDAY · 20:00", "poster subtitle remains editable");
   await saveScreenshot("animeart-studio-poster-template.png");
 
+  // Real-browser Magic Eraser regression: tapping the connected background makes it transparent.
+  const beforeMagicLayerCount = (await readDocument()).layers.length;
+  await evaluate('(async () => { const source=document.createElement("canvas");source.width=64;source.height=64;const context=source.getContext("2d");context.fillStyle="#ffffff";context.fillRect(0,0,64,64);context.fillStyle="#d21e23";context.fillRect(2,2,10,10);const blob=await new Promise(resolve=>source.toBlob(resolve,"image/png"));const file=new File([blob],"magic-tap-fixture.png",{type:"image/png"});const transfer=new DataTransfer();transfer.items.add(file);const input=document.querySelector("#image-file-input");input.files=transfer.files;input.dispatchEvent(new Event("change",{bubbles:true}));return true;})()');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length === ' + (beforeMagicLayerCount + 1), 10000);
+  await click('[aria-label="Select magic-tap-fixture"]');
+  const magicOriginalSource = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture").image.source');
+  await click('[data-tool="magic-eraser"]');
+  await click("#canvas");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture")?.image?.source !== ' + JSON.stringify(null), 10000);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture")?.image?.source !== ' + JSON.stringify(magicOriginalSource), 10000);
+  const magicDiagnostics = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers?.find(item=>item.name==="magic-tap-fixture");const canvas=document.querySelector("#canvas"),rect=canvas.getBoundingClientRect();return {status:document.querySelector("#status").textContent,tool:document.querySelector("[data-tool=magic-eraser]")?.className,transform:layer?.transform,image:layer?.image?{width:layer.image.width,height:layer.image.height}:null,canvas:{left:rect.left,top:rect.top,width:rect.width,height:rect.height}}; })()');
+  assert(magicDiagnostics.status.includes("Magic Eraser removed the tapped color region"), "Magic Eraser tap applies a connected-region cutout; diagnostics=" + JSON.stringify(magicDiagnostics));
+  const magicPixels = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture");return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>{const canvas=document.createElement("canvas");canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;const context=canvas.getContext("2d",{willReadFrequently:true});context.drawImage(image,0,0);const pixels=context.getImageData(0,0,canvas.width,canvas.height).data;resolve({width:canvas.width,height:canvas.height,backgroundAlpha:pixels[(32*canvas.width+32)*4+3],subjectAlpha:pixels[(4*canvas.width+4)*4+3]});};image.onerror=()=>reject(new Error("Magic Eraser result did not decode"));image.src=layer.image.source;});})()');
+  assert(magicPixels.width===64&&magicPixels.height===64, "Magic Eraser keeps source dimensions");
+  assert(magicPixels.backgroundAlpha===0, "tap-seeded Magic Eraser removes the tapped connected background to transparency");
+  assert(magicPixels.subjectAlpha===255, "Magic Eraser protects the differently colored subject");
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer=>layer.name==="magic-tap-fixture"&&layer.image?.source)',10000);
+  assert(await evaluate('document.querySelector("[data-tool=magic-eraser]").classList.contains("active")'), "Magic Eraser remains visibly selected after undo");
+
+  // Local background-processing profiles are saved, reapplied and deleted in the real editor.
+  await click("#remove-background");
+  await waitFor('document.querySelector("#background-removal-dialog").open === true');
+  await evaluate('(() => { const select=document.querySelector("#background-removal-profile");select.value="photo";select.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await waitFor('document.querySelector("#background-removal-tolerance").value === "28"');
+  await evaluate('document.querySelector("#background-removal-profile-name").value="E2E profile"');
+  await click("#save-background-profile");
+  await waitFor('JSON.parse(localStorage.getItem("animeart.background-removal-profiles.v1")||"[]").some(profile=>profile.id==="custom-e2e-profile")');
+  await evaluate('(() => { const select=document.querySelector("#background-removal-profile");select.value="anime-ink";select.dispatchEvent(new Event("change",{bubbles:true}));select.value="custom-e2e-profile";select.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await waitFor('document.querySelector("#background-removal-tolerance").value === "28"');
+  assert(await evaluate('document.querySelector("#background-removal-profile-name").value === "E2E profile"'), "saved profile restores its editable name and parameters");
+  await click("#delete-background-profile");
+  await waitFor('!JSON.parse(localStorage.getItem("animeart.background-removal-profiles.v1")||"[]").some(profile=>profile.id==="custom-e2e-profile")');
+  await click("#cancel-background-removal");
+  await waitFor('document.querySelector("#background-removal-dialog").open === false');
+
+
   // T064: prove explicit-write failures preserve the protected payload and can be retried.
   const quotaPayload = JSON.stringify({
     version: 999, width: 320, height: 240,
@@ -682,6 +802,7 @@ try {
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "startup read failure remains in protected recovery state");
 
   assert(await evaluate('document.documentElement.dataset.serviceWorkerActive === "true"'), "real browser service worker is active");
+
   // Mobile regression: use Chromium's real touch input path, not synthetic MouseEvents.
   await cdp("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 2 });
   const touchCanvas = await selectorCenter("#canvas");
