@@ -33,6 +33,14 @@ class DrawingEditor(initial: EditorState = EditorState()) {
         executeDocumentCommand(before, after, id)
     }
 
+    fun addImageLayer(uri: String, name: String = "Image") {
+        if (uri.isBlank()) return
+        val before = state.document
+        val after = DocumentReducer.addImageLayer(before, name, uri)
+        val id = after.layers.last().id
+        executeDocumentCommand(before, after, id)
+    }
+
     fun renameLayer(name: String) = mutateSelected { doc, id -> DocumentReducer.renameLayer(doc, id, name) }
 
     fun setLayerVisibility(visible: Boolean) = mutateSelected { doc, id ->
