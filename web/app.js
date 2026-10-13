@@ -12,6 +12,7 @@ import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorder
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
 import { removeConnectedBackground, applyEraseStrokes } from "./domain/background-removal.mjs";
+import { BUILT_IN_BACKGROUND_PROFILES, deleteBackgroundProfile, listBackgroundProfiles, saveBackgroundProfile } from "./domain/background-removal-profiles.mjs";
 import { fitImportedImageTransform } from "./domain/image-import.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot } from "./domain/image-import.mjs";
@@ -2235,6 +2236,76 @@ document.querySelector("#add-sample-character").addEventListener("click", async 
 });
 
 
+function currentBackgroundRemovalSettings() {
+  return {
+    targetColor: document.querySelector("#background-removal-color").value,
+    tolerance: Number(document.querySelector("#background-removal-tolerance").value),
+    feather: Number(document.querySelector("#background-removal-feather").value),
+    edgeSensitivity: Number(document.querySelector("#background-removal-edge-sensitivity").value),
+    protectLineArt: document.querySelector("#background-removal-protect-line-art").checked,
+    decontaminate: document.querySelector("#background-removal-decontaminate").checked,
+    connectivity: "connected"
+  };
+}
+function populateBackgroundRemovalProfiles(selectedId = "anime-ink") {
+  const select = document.querySelector("#background-removal-profile");
+  if (!select) return;
+  const profiles = listBackgroundProfiles();
+  select.replaceChildren();
+  for (const profile of profiles) {
+    const option = document.createElement("option");
+    option.value = profile.id;
+    option.textContent = profile.name;
+    select.append(option);
+  }
+  select.value = profiles.some(profile => profile.id === selectedId) ? selectedId : "anime-ink";
+  document.querySelector("#delete-background-profile").disabled = !select.value.startsWith("custom-");
+}
+function applyBackgroundRemovalProfile(profileId, render = true) {
+  const profile = listBackgroundProfiles().find(item => item.id === profileId) || BUILT_IN_BACKGROUND_PROFILES[0];
+  const values = {
+    "background-removal-color": profile.targetColor,
+    "background-removal-tolerance": profile.tolerance,
+    "background-removal-feather": profile.feather,
+    "background-removal-edge-sensitivity": profile.edgeSensitivity
+  };
+  for (const [id, value] of Object.entries(values)) {
+    const input = document.querySelector("#" + id);
+    input.value = String(value);
+    const output = document.querySelector("#" + id + "-value");
+    if (output) output.textContent = String(value);
+  }
+  document.querySelector("#background-removal-protect-line-art").checked = profile.protectLineArt;
+  document.querySelector("#background-removal-decontaminate").checked = profile.decontaminate;
+  document.querySelector("#background-removal-profile-name").value = profile.name;
+  document.querySelector("#delete-background-profile").disabled = !profile.id.startsWith("custom-");
+  if (render) renderBackgroundRemovalPreview(true);
+}
+document.querySelector("#background-removal-profile").addEventListener("change", event => {
+  applyBackgroundRemovalProfile(event.currentTarget.value);
+});
+document.querySelector("#save-background-profile").addEventListener("click", () => {
+  try {
+    const profile = saveBackgroundProfile(document.querySelector("#background-removal-profile-name").value, currentBackgroundRemovalSettings());
+    populateBackgroundRemovalProfiles(profile.id);
+    applyBackgroundRemovalProfile(profile.id);
+    document.querySelector("#background-removal-status").textContent = "Saved local profile: " + profile.name;
+  } catch (error) {
+    document.querySelector("#background-removal-status").textContent = error.message || "Could not save processing profile";
+  }
+});
+document.querySelector("#delete-background-profile").addEventListener("click", () => {
+  const selectedId = document.querySelector("#background-removal-profile").value;
+  if (!selectedId.startsWith("custom-")) return;
+  if (!deleteBackgroundProfile(selectedId)) {
+    document.querySelector("#background-removal-status").textContent = "Could not delete this local profile";
+    return;
+  }
+  populateBackgroundRemovalProfiles("anime-ink");
+  applyBackgroundRemovalProfile("anime-ink");
+  document.querySelector("#background-removal-status").textContent = "Local profile deleted";
+});
+
 function backgroundRemovalColorHex(data, offset) {
   return "#" + [data[offset], data[offset + 1], data[offset + 2]].map(value => Number(value).toString(16).padStart(2, "0")).join("");
 }
@@ -2302,6 +2373,8 @@ async function openBackgroundRemoval() {
     document.querySelector("#background-removal-edge-sensitivity-value").textContent = "42";
     document.querySelector("#background-removal-protect-line-art").checked = true;
     document.querySelector("#background-removal-decontaminate").checked = true;
+    populateBackgroundRemovalProfiles("anime-ink");
+    applyBackgroundRemovalProfile("anime-ink", false);
     document.querySelector("#background-removal-brush-size").value = "28";
     document.querySelector("#background-removal-brush-size-value").textContent = "28 px";
     backgroundRemovalDialog.showModal();
@@ -2382,14 +2455,7 @@ document.querySelector("#apply-background-removal").addEventListener("click", as
     return;
   }
   try {
-removeConnectedBackground(session.original, {
-        targetColor: document.querySelector("#background-removal-color").value,
-        tolerance: Number(document.querySelector("#background-removal-tolerance").value),
-        feather: Number(document.querySelector("#background-removal-feather").value),
-        edgeSensitivity: Number(document.querySelector("#background-removal-edge-sensitivity").value),
-        protectLineArt: document.querySelector("#background-removal-protect-line-art").checked,
-        decontaminate: document.querySelector("#background-removal-decontaminate").checked
-      });
+    const automatic = removeConnectedBackground(session.original, currentBackgroundRemovalSettings());
     const result = applyEraseStrokes(automatic, session.strokes);
     backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
     const source = backgroundRemovalCanvas.toDataURL("image/webp", 0.88);
