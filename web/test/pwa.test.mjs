@@ -11,7 +11,7 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(html, /rel="manifest" href="\.\/manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\("\.\/service-worker\.js"\)/);
   assert.match(manifest, /"display": "standalone"/);
-  assert.match(worker, /animeart-web-shell-v12/);
+  assert.match(worker, /animeart-web-shell-v13/);
   assert.match(worker, /caches\.open/);
   assert.match(worker, /caches\.match/);
   assert.match(app, /layerAdjustmentsToCanvasFilter/);
@@ -87,5 +87,7 @@ test("canvas coordinate mapping is cached for offline rendering and editing", as
   assert.match(app, /documentFitScale/);
   assert.match(app, /screenViewportForDocument/);
   assert.match(worker, /\.\/domain\/canvas-space\.mjs/);
-  assert.match(worker, /animeart-web-shell-v12/);
+  assert.match(worker, /animeart-web-shell-v13/);
 });
+
+test("edge-aware cutout controls are wired into the offline editor",async()=>{const html=await readFile("index.html","utf8"),app=await readFile("app.js","utf8"),worker=await readFile("service-worker.js","utf8"),algorithm=await readFile("domain/background-removal.mjs","utf8");assert.match(html,/id="background-removal-edge-sensitivity"/);assert.match(html,/id="background-removal-protect-line-art"/);assert.match(html,/id="background-removal-decontaminate"/);assert.match(app,/protectLineArt: document\.querySelector\("#background-removal-protect-line-art"\)\.checked/);assert.match(app,/decontaminate: document\.querySelector\("#background-removal-decontaminate"\)\.checked/);assert.match(worker,/animeart-web-shell-v13/);assert.match(algorithm,/edgeSensitivity/);assert.match(algorithm,/unmatte/);});

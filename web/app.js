@@ -1782,7 +1782,10 @@ function renderBackgroundRemovalPreview(recompute = false) {
       session.automatic = removeConnectedBackground(session.original, {
         targetColor: document.querySelector("#background-removal-color").value,
         tolerance: Number(document.querySelector("#background-removal-tolerance").value),
-        feather: Number(document.querySelector("#background-removal-feather").value)
+        feather: Number(document.querySelector("#background-removal-feather").value),
+        edgeSensitivity: Number(document.querySelector("#background-removal-edge-sensitivity").value),
+        protectLineArt: document.querySelector("#background-removal-protect-line-art").checked,
+        decontaminate: document.querySelector("#background-removal-decontaminate").checked
       });
     }
     const result = applyEraseStrokes(session.automatic, session.strokes);
@@ -1824,6 +1827,10 @@ async function openBackgroundRemoval() {
     document.querySelector("#background-removal-tolerance-value").textContent = "36";
     document.querySelector("#background-removal-feather").value = "18";
     document.querySelector("#background-removal-feather-value").textContent = "18";
+    document.querySelector("#background-removal-edge-sensitivity").value = "42";
+    document.querySelector("#background-removal-edge-sensitivity-value").textContent = "42";
+    document.querySelector("#background-removal-protect-line-art").checked = true;
+    document.querySelector("#background-removal-decontaminate").checked = true;
     document.querySelector("#background-removal-brush-size").value = "28";
     document.querySelector("#background-removal-brush-size-value").textContent = "28 px";
     backgroundRemovalDialog.showModal();
@@ -1843,11 +1850,11 @@ document.querySelector("#sample-background-color").addEventListener("click", () 
   document.querySelector("#background-removal-manual").checked = false;
   document.querySelector("#background-removal-status").textContent = "Click a background pixel in the image preview to sample its color.";
 });
-for (const id of ["background-removal-color", "background-removal-tolerance", "background-removal-feather"]) {
+for (const id of ["background-removal-color", "background-removal-tolerance", "background-removal-feather", "background-removal-edge-sensitivity", "background-removal-protect-line-art", "background-removal-decontaminate"]) {
   document.querySelector("#" + id).addEventListener("input", () => {
     const input = document.querySelector("#" + id);
     const output = document.querySelector("#" + id + "-value");
-    if (output) output.textContent = input.value;
+    if (output) output.textContent = input.type === "checkbox" ? (input.checked ? "On" : "Off") : input.value;
     renderBackgroundRemovalPreview(true);
   });
 }
@@ -1907,7 +1914,10 @@ document.querySelector("#apply-background-removal").addEventListener("click", as
     const automatic = session.automatic || removeConnectedBackground(session.original, {
       targetColor: document.querySelector("#background-removal-color").value,
       tolerance: Number(document.querySelector("#background-removal-tolerance").value),
-      feather: Number(document.querySelector("#background-removal-feather").value)
+      feather: Number(document.querySelector("#background-removal-feather").value),
+        edgeSensitivity: Number(document.querySelector("#background-removal-edge-sensitivity").value),
+        protectLineArt: document.querySelector("#background-removal-protect-line-art").checked,
+        decontaminate: document.querySelector("#background-removal-decontaminate").checked
     });
     const result = applyEraseStrokes(automatic, session.strokes);
     backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
@@ -2309,7 +2319,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v12";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v13";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
