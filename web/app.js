@@ -8,6 +8,7 @@ import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocume
 import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
+import { removeConnectedBackground, applyEraseStrokes } from "./domain/background-removal.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
@@ -45,6 +46,13 @@ const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
 const imageFileInput = document.querySelector("#image-file-input");
 const cropResizeButton = document.querySelector("#crop-resize-image");
+const removeBackgroundButton = document.querySelector("#remove-background");
+const backgroundRemovalDialog = document.querySelector("#background-removal-dialog");
+const backgroundRemovalCanvas = document.querySelector("#background-removal-preview");
+const backgroundRemovalContext = backgroundRemovalCanvas?.getContext("2d", { willReadFrequently: true });
+let backgroundRemovalSession = null;
+let backgroundRemovalSampleMode = false;
+let backgroundRemovalPointerId = null;
 const flipImageHorizontalButton = document.querySelector("#flip-image-horizontal");
 const flipImageVerticalButton = document.querySelector("#flip-image-vertical");
 const imageEditDialog = document.querySelector("#image-edit-dialog");
@@ -699,6 +707,7 @@ function refreshImageEditButton() {
   const layer = selectedLayerExact();
   const editableImage = Boolean(layer && layer.contentType === "image" && layer.image && !layer.locked);
   cropResizeButton.disabled = !editableImage;
+  if (removeBackgroundButton) removeBackgroundButton.disabled = !editableImage;
   cropResizeButton.title = editableImage ? "Crop or resize the selected image layer" : "Select an unlocked image layer to crop or resize";
   for (const button of [flipImageHorizontalButton, flipImageVerticalButton]) {
     if (!button) continue;
@@ -1751,6 +1760,172 @@ document.querySelector("#add-sample-character").addEventListener("click", async 
     status.textContent = error?.message || "Could not load CC0 character sample";
   } finally {
     button.disabled = false;
+  }
+});
+
+
+function backgroundRemovalColorHex(data, offset) {
+  return "#" + [data[offset], data[offset + 1], data[offset + 2]].map(value => Number(value).toString(16).padStart(2, "0")).join("");
+}
+function backgroundRemovalPoint(event) {
+  const rect = backgroundRemovalCanvas.getBoundingClientRect();
+  return {
+    x: Math.max(0, Math.min(backgroundRemovalCanvas.width - 1, (event.clientX - rect.left) * backgroundRemovalCanvas.width / Math.max(1, rect.width))),
+    y: Math.max(0, Math.min(backgroundRemovalCanvas.height - 1, (event.clientY - rect.top) * backgroundRemovalCanvas.height / Math.max(1, rect.height)))
+  };
+}
+function renderBackgroundRemovalPreview(recompute = false) {
+  const session = backgroundRemovalSession;
+  if (!session || !backgroundRemovalContext) return;
+  try {
+    if (recompute || !session.automatic) {
+      session.automatic = removeConnectedBackground(session.original, {
+        targetColor: document.querySelector("#background-removal-color").value,
+        tolerance: Number(document.querySelector("#background-removal-tolerance").value),
+        feather: Number(document.querySelector("#background-removal-feather").value)
+      });
+    }
+    const result = applyEraseStrokes(session.automatic, session.strokes);
+    backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
+    document.querySelector("#background-removal-status").textContent =
+      "Preview ready · " + result.width + " × " + result.height + " px · " + session.strokes.length + " manual erase stroke(s)";
+    document.querySelector("#undo-background-erase").disabled = session.strokes.length === 0;
+  } catch (error) {
+    document.querySelector("#background-removal-status").textContent = error.message || "Could not process this image";
+  }
+}
+async function openBackgroundRemoval() {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) return;
+  try {
+    if (layer.image.width * layer.image.height > 16000000) {
+      throw new RangeError("Background removal is limited to 16 megapixels. Resize the image first.");
+    }
+    const image = await new Promise((resolve, reject) => {
+      const cached = imageCache.get(layer.image.source);
+      if (cached && cached.complete && cached.naturalWidth > 0) { resolve(cached); return; }
+      const candidate = cached || new Image();
+      candidate.onload = () => resolve(candidate);
+      candidate.onerror = () => reject(new Error("Could not decode the selected image"));
+      candidate.src = layer.image.source;
+      imageCache.set(layer.image.source, candidate);
+    });
+    const width = layer.image.width, height = layer.image.height;
+    backgroundRemovalCanvas.width = width;
+    backgroundRemovalCanvas.height = height;
+    backgroundRemovalContext.clearRect(0, 0, width, height);
+    backgroundRemovalContext.drawImage(image, 0, 0, width, height);
+    const original = backgroundRemovalContext.getImageData(0, 0, width, height);
+    backgroundRemovalSession = { layerId: layer.id, source: layer.image.source, width, height, original, automatic: null, strokes: [], activeStroke: null };
+    backgroundRemovalSampleMode = false;
+    document.querySelector("#background-removal-manual").checked = false;
+    document.querySelector("#background-removal-color").value = "#ffffff";
+    document.querySelector("#background-removal-tolerance").value = "36";
+    document.querySelector("#background-removal-tolerance-value").textContent = "36";
+    document.querySelector("#background-removal-feather").value = "18";
+    document.querySelector("#background-removal-feather-value").textContent = "18";
+    document.querySelector("#background-removal-brush-size").value = "28";
+    document.querySelector("#background-removal-brush-size-value").textContent = "28 px";
+    backgroundRemovalDialog.showModal();
+    renderBackgroundRemovalPreview(true);
+  } catch (error) {
+    status.textContent = error.message || "Could not open background removal";
+  }
+}
+if (removeBackgroundButton) removeBackgroundButton.addEventListener("click", openBackgroundRemoval);
+document.querySelector("#cancel-background-removal").addEventListener("click", () => {
+  backgroundRemovalDialog.close();
+  backgroundRemovalSession = null;
+  backgroundRemovalSampleMode = false;
+});
+document.querySelector("#sample-background-color").addEventListener("click", () => {
+  backgroundRemovalSampleMode = true;
+  document.querySelector("#background-removal-manual").checked = false;
+  document.querySelector("#background-removal-status").textContent = "Click a background pixel in the image preview to sample its color.";
+});
+for (const id of ["background-removal-color", "background-removal-tolerance", "background-removal-feather"]) {
+  document.querySelector("#" + id).addEventListener("input", () => {
+    const input = document.querySelector("#" + id);
+    const output = document.querySelector("#" + id + "-value");
+    if (output) output.textContent = input.value;
+    renderBackgroundRemovalPreview(true);
+  });
+}
+document.querySelector("#background-removal-brush-size").addEventListener("input", event => {
+  document.querySelector("#background-removal-brush-size-value").textContent = event.currentTarget.value + " px";
+});
+document.querySelector("#undo-background-erase").addEventListener("click", () => {
+  if (!backgroundRemovalSession) return;
+  backgroundRemovalSession.strokes.pop();
+  renderBackgroundRemovalPreview(false);
+});
+document.querySelector("#clear-background-erase").addEventListener("click", () => {
+  if (!backgroundRemovalSession) return;
+  backgroundRemovalSession.strokes = [];
+  renderBackgroundRemovalPreview(false);
+});
+backgroundRemovalCanvas.addEventListener("pointerdown", event => {
+  if (!backgroundRemovalSession) return;
+  const point = backgroundRemovalPoint(event);
+  if (backgroundRemovalSampleMode) {
+    const x = Math.floor(point.x), y = Math.floor(point.y);
+    const offset = (y * backgroundRemovalSession.width + x) * 4;
+    document.querySelector("#background-removal-color").value = backgroundRemovalColorHex(backgroundRemovalSession.original.data, offset);
+    backgroundRemovalSampleMode = false;
+    renderBackgroundRemovalPreview(true);
+    return;
+  }
+  if (!document.querySelector("#background-removal-manual").checked) return;
+  event.preventDefault();
+  backgroundRemovalPointerId = event.pointerId;
+  backgroundRemovalCanvas.setPointerCapture(event.pointerId);
+  backgroundRemovalSession.activeStroke = { size: Number(document.querySelector("#background-removal-brush-size").value), points: [point] };
+  backgroundRemovalSession.strokes.push(backgroundRemovalSession.activeStroke);
+  renderBackgroundRemovalPreview(false);
+});
+backgroundRemovalCanvas.addEventListener("pointermove", event => {
+  if (!backgroundRemovalSession || backgroundRemovalPointerId !== event.pointerId || !backgroundRemovalSession.activeStroke) return;
+  backgroundRemovalSession.activeStroke.points.push(backgroundRemovalPoint(event));
+  renderBackgroundRemovalPreview(false);
+});
+function finishBackgroundRemovalStroke(event) {
+  if (backgroundRemovalPointerId !== event.pointerId) return;
+  backgroundRemovalPointerId = null;
+  if (backgroundRemovalSession) backgroundRemovalSession.activeStroke = null;
+  renderBackgroundRemovalPreview(false);
+}
+backgroundRemovalCanvas.addEventListener("pointerup", finishBackgroundRemovalStroke);
+backgroundRemovalCanvas.addEventListener("pointercancel", finishBackgroundRemovalStroke);
+document.querySelector("#apply-background-removal").addEventListener("click", () => {
+  const session = backgroundRemovalSession;
+  const layer = session && state.document.layers.find(item => item.id === session.layerId);
+  if (!session || !layer || layer.locked || layer.contentType !== "image" || layer.image?.source !== session.source) {
+    document.querySelector("#background-removal-status").textContent = "The selected layer changed. Close this tool and reopen it.";
+    return;
+  }
+  try {
+    const automatic = session.automatic || removeConnectedBackground(session.original, {
+      targetColor: document.querySelector("#background-removal-color").value,
+      tolerance: Number(document.querySelector("#background-removal-tolerance").value),
+      feather: Number(document.querySelector("#background-removal-feather").value)
+    });
+    const result = applyEraseStrokes(automatic, session.strokes);
+    backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
+    const source = backgroundRemovalCanvas.toDataURL("image/webp", 0.92);
+    const before = cloneDocument(state.document);
+    const next = replaceImageLayer(state.document, layer.id, { source, width: result.width, height: result.height });
+    if (!next) throw new Error("The edited image exceeds the document's image limit. Resize it and try again.");
+    imageCache.delete(session.source);
+    state.document = next;
+    state.history.record(before, next);
+    state.dirty = true;
+    refreshDocument("Background removed · transparent pixels applied");
+    persistDocument();
+    backgroundRemovalDialog.close();
+    backgroundRemovalSession = null;
+    backgroundRemovalSampleMode = false;
+  } catch (error) {
+    document.querySelector("#background-removal-status").textContent = error.message || "Could not apply transparency";
   }
 });
 
