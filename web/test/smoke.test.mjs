@@ -455,3 +455,24 @@ test("Android WebView fallback clears adjustment controls without requiring repl
   assert.ok(app.includes("clearElementChildren(layerAdjustmentControls)"));
   assert.ok(!app.includes("layerAdjustmentControls.replaceChildren()"));
 });
+
+
+test("image eraser edits selected image pixels and records the edit for undo", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /async function finishImageErase\(interaction\)/);
+  assert.match(js, /applyEraseStrokes\(pixels/);
+  assert.match(js, /state\.history\.record\(before, next\)/);
+  assert.match(js, /Image pixels erased/);
+  assert.match(js, /inverseTransformPoint/);
+});
+
+test("mobile dock actions call history directly and keep the active drawing tool in sync", async () => {
+  const [html, js, css] = await Promise.all([
+    readFile("index.html", "utf8"), readFile("app.js", "utf8"), readFile("styles.css", "utf8")
+  ]);
+  assert.match(html, /data-tool="brush" aria-pressed="true">Brush/);
+  assert.match(html, /data-touch-action="more" aria-expanded="false">Tools/);
+  assert.match(js, /if \(action === "undo"\) \{ undo\(\); return; \}/);
+  assert.match(js, /if \(action === "redo"\) \{ redo\(\); return; \}/);
+  assert.match(css, /Mobile editor controls: fixed canvas/);
+});

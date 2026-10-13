@@ -14,7 +14,7 @@ import { removeConnectedBackground, applyEraseStrokes } from "./domain/backgroun
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
-import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
+import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
@@ -138,6 +138,7 @@ const state = {
   transformPointerId: null,
   lastPanPoint: null,
   strokeBefore: null,
+  imageEraseInteraction: null,
   transformInteraction: null,
   multiTransformInteraction: null,
   adjustmentPreview: null,
@@ -1593,6 +1594,63 @@ function endTouchPointer(event) {
   return false;
 }
 
+
+function imageErasePoint(event, layer) {
+  const documentPoint = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
+  const local = inverseTransformPoint(documentPoint, layer.transform, documentCenter(state.document));
+  return {
+    x: Math.max(0, Math.min(layer.image.width, layer.image.flipX ? layer.image.width - local.x : local.x)),
+    y: Math.max(0, Math.min(layer.image.height, layer.image.flipY ? layer.image.height - local.y : local.y))
+  };
+}
+
+async function finishImageErase(interaction) {
+  const layer = state.document.layers.find(item => item.id === interaction.layerId);
+  if (!layer || layer.contentType !== "image" || layer.locked || !layer.image?.source) return;
+  if (interaction.points.length === 1) interaction.points.push({ ...interaction.points[0] });
+  const source = layer.image.source;
+  let image = imageCache.get(source);
+  if (!image || !image.complete || image.naturalWidth < 1) {
+    image = await new Promise((resolve, reject) => {
+      const candidate = new Image();
+      candidate.onload = () => resolve(candidate);
+      candidate.onerror = () => reject(new Error("Could not load the selected image for erasing"));
+      candidate.src = source;
+      imageCache.set(source, candidate);
+    });
+  }
+  const width = Math.max(1, Math.round(layer.image.width));
+  const height = Math.max(1, Math.round(layer.image.height));
+  const raster = document.createElement("canvas");
+  raster.width = width;
+  raster.height = height;
+  const context = raster.getContext("2d", { willReadFrequently: true });
+  if (!context) throw new Error("Image editing canvas is unavailable");
+  context.drawImage(image, 0, 0, width, height);
+  const pixels = context.getImageData(0, 0, width, height);
+  const scale = Math.max(0.05, Number(layer.transform.scale) || 1);
+  const result = applyEraseStrokes(pixels, [{
+    size: Math.max(1, state.brush.size / scale),
+    points: interaction.points
+  }]);
+  context.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
+  const encoded = raster.toDataURL("image/png");
+  const optimized = await optimizeImageSource(encoded);
+  const before = cloneDocument(state.document);
+  const next = replaceImageLayer(state.document, layer.id, {
+    source: optimized.source,
+    width: optimized.width,
+    height: optimized.height
+  }, { preserveDisplaySize: true });
+  if (!next) throw new Error("Could not apply the erase stroke to this image");
+  imageCache.delete(source);
+  state.document = next;
+  state.history.record(before, next);
+  state.dirty = true;
+  refreshDocument("Image pixels erased · Undo can restore them");
+  persistDocument();
+}
+
 canvas.addEventListener("pointerdown", event => {
   if (event.pointerType === "touch") {
     activeTouchPointers.set(event.pointerId, { ...screenPointFromEvent(event), pointerId: event.pointerId });
@@ -1616,7 +1674,28 @@ canvas.addEventListener("pointerdown", event => {
     return;
   }
   const layer = selectedLayer();
-  if (!layer || layer.locked || layer.contentType === "image") return;
+  if (!layer || layer.locked) return;
+  if (state.tool === "eraser" && layer.contentType === "image") {
+    state.imageEraseInteraction = {
+      pointerId: event.pointerId,
+      layerId: layer.id,
+      points: [imageErasePoint(event, layer)]
+    };
+    canvas.setPointerCapture(event.pointerId);
+    status.textContent = "Erase image pixels · release to apply";
+    return;
+  }
+  if (layer.contentType === "image") {
+    const paintLayer = createLayer("Paint " + (state.document.layers.filter(item => item.contentType === "drawing").length + 1));
+    const before = cloneDocument(state.document);
+    const next = addLayer(state.document, paintLayer);
+    if (!next) return;
+    state.document = next;
+    setSelection([paintLayer.id], paintLayer.id);
+    state.history.record(before, next);
+    persistDocument();
+    refreshDocument("Transparent paint layer added");
+  }
   state.drawing = true;
   state.drawingPointerId = event.pointerId;
   state.strokeBefore = cloneDocument(state.document);
@@ -1656,6 +1735,11 @@ canvas.addEventListener("pointermove", event => {
   }
   if (state.transformInteraction && event.pointerId === state.transformPointerId) {
     updateTransformPreview(event);
+    return;
+  }
+  if (state.imageEraseInteraction && event.pointerId === state.imageEraseInteraction.pointerId) {
+    const layer = state.document.layers.find(item => item.id === state.imageEraseInteraction.layerId);
+    if (layer?.image) state.imageEraseInteraction.points.push(imageErasePoint(event, layer));
     return;
   }
   if (!state.drawing || event.pointerId !== state.drawingPointerId) return;
@@ -1714,6 +1798,16 @@ canvas.addEventListener("pointerup", event => {
     finishTransformInteraction(false);
     return;
   }
+  if (state.imageEraseInteraction && event.pointerId === state.imageEraseInteraction.pointerId) {
+    const interaction = state.imageEraseInteraction;
+    state.imageEraseInteraction = null;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    finishImageErase(interaction).catch(error => {
+      status.textContent = error?.message || "Image erasing failed";
+      redraw();
+    });
+    return;
+  }
   if (!state.drawing || event.pointerId !== state.drawingPointerId) return;
   state.drawing = false;
   state.drawingPointerId = null;
@@ -1747,6 +1841,12 @@ canvas.addEventListener("pointercancel", event => {
   }
   if (event.pointerId === state.transformPointerId) {
     finishTransformInteraction(true);
+    return;
+  }
+  if (state.imageEraseInteraction?.pointerId === event.pointerId) {
+    state.imageEraseInteraction = null;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    status.textContent = "Image erase cancelled";
     return;
   }
   if (event.pointerId !== state.drawingPointerId) return;
@@ -1870,8 +1970,8 @@ if (mobileDock) {
       });
       return;
     }
-    if (action === "undo") { undoButton.click(); return; }
-    if (action === "redo") { redoButton.click(); return; }
+    if (action === "undo") { undo(); return; }
+    if (action === "redo") { redo(); return; }
     if (action === "import-image") { imageFileInput.click(); return; }
     if (action === "add-text") { document.querySelector("#add-text-layer")?.click(); return; }
     if (action === "export") { exportPngButton.click(); return; }
@@ -1966,7 +2066,9 @@ document.querySelector("#add-text-layer").addEventListener("click", () => {
     fontSize: Math.max(24, Math.min(64, Math.round(height * 0.1))),
     fontFamily: "Arial",
     fontWeight: "bold",
-    color: "#172335",
+    color: "#ffffff",
+    outlineColor: "#111318",
+    outlineWidth: 2,
     align: "left"
   });
   const before = cloneDocument(state.document);
