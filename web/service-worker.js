@@ -21,6 +21,7 @@ const APP_SHELL = [
   "./domain/layer-adjustments.mjs",
   "./domain/quick-edit-recipes.mjs",
   "./domain/background-removal.mjs",
+  "./domain/background-removal-profiles.mjs",
   "./domain/text-layer.mjs",
   "./domain/model.mjs",
   "./domain/png-export.mjs",
