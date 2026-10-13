@@ -40,3 +40,10 @@ test("the editor exposes connected brush hardness and visual effect controls", a
   assert.match(app, /context\.shadowBlur = effect === "neon"/);
   assert.match(app, /stroke\.effect \|\| "normal"/);
 });
+test("drawing eraser uses alpha compositing instead of painting white", async () => {
+  const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
+  assert.match(app, /context\.globalCompositeOperation = erasing \? "destination-out" : "source-over"/);
+  assert.match(app, /function drawDrawingLayer\(layer, context, documentModel\)/);
+  assert.match(app, /previewContext\.globalCompositeOperation = stroke\.tool === "eraser" \? "destination-out" : "source-over"/);
+  assert.doesNotMatch(app, /context\.strokeStyle = erasing \? "#ffffff"/);
+});

@@ -107,6 +107,7 @@ const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
 const HANDLE_RADIUS = 10;
 const imageCache = new Map();
+const drawingLayerRasterCache = new WeakMap();
 
 const BRUSH_DEFAULTS = Object.freeze({ color: "#111318", size: 5, opacity: 1, hardness: 100, effect: "normal" });
 const MIN_BRUSH_SIZE = 1;
@@ -252,6 +253,64 @@ function drawImageLayer(layer, context = ctx) {
   }
 }
 
+
+function drawStrokeCollection(context, strokes, baseOpacity = 1) {
+  for (const stroke of strokes || []) {
+    if (!Array.isArray(stroke.points) || stroke.points.length < 2) continue;
+    const erasing = stroke.tool === "eraser";
+    const effect = erasing ? "normal" : (stroke.effect || "normal");
+    context.save();
+    context.globalCompositeOperation = erasing ? "destination-out" : "source-over";
+    context.globalAlpha = baseOpacity * (Number.isFinite(Number(stroke.opacity)) ? Math.max(0, Math.min(1, Number(stroke.opacity))) : 1);
+    context.beginPath();
+    context.moveTo(stroke.points[0].x, stroke.points[0].y);
+    for (const point of stroke.points.slice(1)) context.lineTo(point.x, point.y);
+    context.lineWidth = stroke.size;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.strokeStyle = erasing ? "#000000" : stroke.color;
+    context.shadowColor = erasing || effect === "normal" ? "transparent" : stroke.color;
+    context.shadowBlur = effect === "neon" ? stroke.size * 1.8
+      : effect === "glow" ? stroke.size * 1.2
+        : effect === "soft" ? stroke.size * 0.7
+          : stroke.size * (1 - Math.min(100, Math.max(0, Number(stroke.hardness ?? 100))) / 100) * 0.45;
+    context.stroke();
+    if (effect === "neon" && !erasing) {
+      context.shadowBlur = 0;
+      context.strokeStyle = "#ffffff";
+      context.lineWidth = Math.max(1, stroke.size * 0.32);
+      context.globalAlpha = baseOpacity * Math.max(0, Math.min(1, Number(stroke.opacity) || 0));
+      context.globalCompositeOperation = "source-over";
+      context.stroke();
+    }
+    context.restore();
+  }
+}
+
+function drawDrawingLayer(layer, context, documentModel) {
+  const hasEraser = (layer.strokes || []).some(stroke => stroke.tool === "eraser");
+  if (!hasEraser) {
+    drawStrokeCollection(context, layer.strokes, layer.opacity);
+    return;
+  }
+  const width = Math.max(1, Math.ceil(Number(documentModel.width) || 512));
+  const height = Math.max(1, Math.ceil(Number(documentModel.height) || 512));
+  const editingThisLayer = state.drawing && layer.id === state.selectedLayerId;
+  let raster = editingThisLayer ? null : drawingLayerRasterCache.get(layer);
+  if (raster && (raster.width !== width || raster.height !== height)) raster = null;
+  if (editingThisLayer) drawingLayerRasterCache.delete(layer);
+  if (!raster) {
+    raster = document.createElement("canvas");
+    raster.width = width;
+    raster.height = height;
+    const rasterContext = raster.getContext("2d");
+    if (!rasterContext) return;
+    drawStrokeCollection(rasterContext, layer.strokes, 1);
+    if (!editingThisLayer) drawingLayerRasterCache.set(layer, raster);
+  }
+  context.drawImage(raster, 0, 0, width, height);
+}
+
 function drawDocument({ context = ctx, document = state.document, center = documentCenter(document), transformForLayer = layerTransformForRender } = {}) {
   for (const layer of document.layers) {
     if (!layer.visible) continue;
@@ -298,33 +357,7 @@ function drawDocument({ context = ctx, document = state.document, center = docum
         context.fillText(line, x, y);
       });
     } else {
-      for (const stroke of layer.strokes) {
-        if (stroke.points.length < 2) continue;
-        context.beginPath();
-        context.moveTo(stroke.points[0].x, stroke.points[0].y);
-        for (const point of stroke.points.slice(1)) context.lineTo(point.x, point.y);
-        context.lineWidth = stroke.size;
-        context.lineCap = "round";
-        context.lineJoin = "round";
-        const erasing = stroke.tool === "eraser";
-        const effect = erasing ? "normal" : (stroke.effect || "normal");
-        context.globalAlpha = layer.opacity * (erasing ? 1 : stroke.opacity);
-        context.strokeStyle = erasing ? "#ffffff" : stroke.color;
-        context.shadowColor = erasing || effect === "normal" ? "transparent" : stroke.color;
-        context.shadowBlur = effect === "neon" ? stroke.size * 1.8
-          : effect === "glow" ? stroke.size * 1.2
-            : effect === "soft" ? stroke.size * 0.7
-              : stroke.size * (1 - Math.min(100, Math.max(0, Number(stroke.hardness ?? 100))) / 100) * 0.45;
-        context.stroke();
-        if (effect === "neon" && !erasing) {
-          context.shadowBlur = 0;
-          context.strokeStyle = "#ffffff";
-          context.lineWidth = Math.max(1, stroke.size * 0.32);
-          context.globalAlpha = layer.opacity * stroke.opacity;
-          context.stroke();
-        }
-        context.shadowBlur = 0;
-      }
+      drawDrawingLayer(layer, context, document);
     }
     context.restore();
   }
@@ -484,8 +517,9 @@ function createLayerThumbnail(layer) {
         previewContext.lineWidth = Math.max(1 / scale, stroke.size);
         previewContext.lineCap = "round";
         previewContext.lineJoin = "round";
-        previewContext.strokeStyle = stroke.tool === "eraser" ? "#ffffff" : stroke.color;
-        previewContext.globalAlpha = stroke.tool === "eraser" ? 1 : stroke.opacity;
+        previewContext.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
+        previewContext.strokeStyle = stroke.tool === "eraser" ? "#000000" : stroke.color;
+        previewContext.globalAlpha = stroke.opacity ?? 1;
         previewContext.stroke();
       }
     }
