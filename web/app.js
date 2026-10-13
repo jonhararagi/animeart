@@ -2260,7 +2260,7 @@ function runEditGoal(goal) {
   actions[goal]?.();
 }
 document.querySelectorAll("[data-edit-goal]").forEach(button => button.addEventListener("click", () => runEditGoal(button.dataset.editGoal)));
-document.querySelector("#show-edit-example").addEventListener("click", () => showGoalHelp(state.tool === "censor-light" ? "censor" : "crop"));
+document.querySelector("#show-edit-example").addEventListener("click", () => showGoalHelp(state.tool === "censor-light" ? "censor" : lastEditGoal));
 document.querySelector("#show-edit-example-action").addEventListener("click", () => runEditGoal(state.tool === "censor-light" ? "censor" : lastEditGoal));
 document.querySelector("#close-editing-help").addEventListener("click", () => { document.querySelector("#editing-help-card").hidden = true; });
 const helpToggle = document.querySelector("#editing-help-enabled");
