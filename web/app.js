@@ -2226,14 +2226,23 @@ const helpGoals = {
   undo: ["Deshacer", "Pulsa Deshacer para volver un paso atrás. Rehacer recupera el cambio."],
   export: ["Guardar / Exportar", "Guardar localmente conserva el proyecto editable. Exportar imagen crea una imagen compuesta."]
 };
+let lastEditGoal = "crop";
 function showGoalHelp(goal) {
   const item = helpGoals[goal] || ["Ayúdame a editar", "Importa una imagen y elige la tarea que quieras realizar."];
   document.querySelector("#editing-help-title").textContent = item[0];
   document.querySelector("#editing-help-copy").textContent = item[1];
-  document.querySelector("#editing-help-steps").hidden = true;
+  const list = document.querySelector("#editing-help-steps");
+  list.replaceChildren();
+  item[1].split(/(?<=\\.)\\s+/).filter(Boolean).forEach(step => {
+    const li = document.createElement("li");
+    li.textContent = step;
+    list.append(li);
+  });
+  list.hidden = !list.childElementCount;
   document.querySelector("#editing-help-card").hidden = !document.querySelector("#editing-help-enabled").checked;
 }
 function runEditGoal(goal) {
+  lastEditGoal = goal;
   showGoalHelp(goal);
   const actions = {
     crop: () => cropResizeButton.click(),
@@ -2251,7 +2260,7 @@ function runEditGoal(goal) {
 }
 document.querySelectorAll("[data-edit-goal]").forEach(button => button.addEventListener("click", () => runEditGoal(button.dataset.editGoal)));
 document.querySelector("#show-edit-example").addEventListener("click", () => showGoalHelp(state.tool === "censor-light" ? "censor" : "crop"));
-document.querySelector("#show-edit-example-action").addEventListener("click", () => runEditGoal(state.tool === "censor-light" ? "censor" : "background"));
+document.querySelector("#show-edit-example-action").addEventListener("click", () => runEditGoal(state.tool === "censor-light" ? "censor" : lastEditGoal));
 document.querySelector("#close-editing-help").addEventListener("click", () => { document.querySelector("#editing-help-card").hidden = true; });
 const helpToggle = document.querySelector("#editing-help-enabled");
 try { helpToggle.checked = localStorage.getItem("animeart.editing-help-enabled") !== "false"; } catch {}
@@ -2910,6 +2919,11 @@ function syncExportFormatControls() {
 }
 
 async function exportPng() {
+  const hasCensorStrokes = state.document.layers.some(layer => layer.visible && (layer.strokes || []).some(stroke => stroke.tool === "censor-light"));
+  if (hasCensorStrokes && !document.querySelector("#censor-permanent-export").checked) {
+    status.textContent = "Activa “Censura permanente al exportar” para confirmar que los trazos se aplanarán en el archivo final.";
+    return;
+  }
   const documentBefore = JSON.stringify(state.document);
   const historyBeforeUndo = state.history.canUndo();
   const historyBeforeRedo = state.history.canRedo();
