@@ -278,7 +278,7 @@ function drawStrokeCollection(context, strokes, baseOpacity = 1) {
     context.strokeStyle = erasing ? "#000000" : stroke.color;
     context.shadowColor = erasing || effect === "normal" ? "transparent" : stroke.color;
     context.shadowBlur = censorLight
-      ? stroke.size * Math.min(100, Math.max(0, Number(stroke.glow ?? 0))) / 100 * 1.2
+      ? stroke.size * Math.max(Math.min(100, Math.max(0, Number(stroke.glow ?? 0))), 100 - Math.min(100, Math.max(0, Number(stroke.hardness ?? 100)))) / 100 * 1.2
       : effect === "neon" ? stroke.size * 1.8
         : effect === "glow" ? stroke.size * 1.2
           : effect === "soft" ? stroke.size * 0.7
@@ -1802,7 +1802,7 @@ canvas.addEventListener("pointerdown", event => {
     status.textContent = "🪄 Tap the background color to make that connected region transparent";
     return;
   }
-  const layer = selectedLayer();
+  let layer = selectedLayer();
   if (!layer || layer.locked) return;
   if (state.tool === "eraser" && layer.contentType === "image") {
     state.imageEraseInteraction = {
@@ -1821,6 +1821,7 @@ canvas.addEventListener("pointerdown", event => {
     if (!next) return;
     state.document = next;
     setSelection([paintLayer.id], paintLayer.id);
+    layer = selectedLayer();
     state.history.record(before, next);
     persistDocument();
     refreshDocument("Transparent paint layer added");
