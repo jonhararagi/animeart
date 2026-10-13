@@ -476,3 +476,18 @@ test("mobile dock actions call history directly and keep the active drawing tool
   assert.match(js, /if \(action === "redo"\) \{ redo\(\); return; \}/);
   assert.match(css, /Mobile editor controls: fixed canvas/);
 });
+
+
+test("Android image and project export use the native Save As picker when the bridge exists", async () => {
+  const [app, exporter, activity] = await Promise.all([
+    readFile("app.js", "utf8"),
+    readFile("domain/png-export.mjs", "utf8"),
+    readFile("../app/src/main/java/com/jonhararagi/animeart/MainActivity.kt", "utf8").catch(() => "")
+  ]);
+  assert.match(app, /async function saveBlobToDevice\(blob, filename, imageFormat = null\)/);
+  assert.match(app, /nativeBridge\.saveFile\(btoa\(binary\)/);
+  assert.match(app, /await saveBlobToDevice\(blob, "animeart-project\.json"\)/);
+  assert.match(app, /await saveBlobToDevice\(blob, "animeart\." \+ format, format\)/);
+  assert.match(exporter, /export function canvasToImageBlob/);
+  assert.ok(activity === "" || activity.includes("NativeExportBridge"));
+});
