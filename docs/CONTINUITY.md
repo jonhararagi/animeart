@@ -3063,3 +3063,57 @@ SAFETY:
 - Chromium validó la interacción y el archivo exportado. No se hizo una comprobación manual en un teléfono Android físico; Android CI no certifica el aspecto de la X en todos los dispositivos.
 - La evidencia corresponde exactamente al SHA de código indicado. La actualización documental es posterior y no cambia la implementación.
 - Sin cambios directos a `main`, sin fusiones ni cierres de PR.
+
+
+---
+
+## AA-INTEGRATION-CLOSURE-001 — Consolidación de entrega Web/Android
+
+FECHA:
+2026-10-13
+
+TIMER:
+6–12 horas activas estimadas para la tarea completa. No es tiempo medido.
+
+### Baseline y reglas
+
+- SHA de `main` verificado al iniciar: `cf4090f260e45cd2b3f3100e45482e1ce36c67a7`.
+- Fuente de verdad de la aplicación: `web/`; Android empaqueta la fuente Web mediante `syncWebEditorAssets` en `app/build.gradle.kts`.
+- No se modificó directamente `main`, no se forzó ningún push y no se eliminaron ramas.
+- No se encontró `docs/bitacora.md`; esta entrada se registra en el documento de continuidad existente.
+- Rama de trabajo de consolidación: `aa-ux-delete-001`, que ya contenía la cadena #69 → #71 → #72.
+
+### Inventario real de PR y disposición
+
+| PR | HEAD consultado | Estado al inspeccionar | Disposición |
+|---|---|---|---|
+| #69 | `58c1324e22856ce58ef73e341fb5d7ffb3d47b01` | OPEN; Web y Android CI SUCCESS en ese HEAD | Base de la cadena integrada. Incluye edición guiada, luz de censura, borrado mágico, ajuste al lienzo, selección y puente de archivos Android. |
+| #70 | `1bdbd9bb3f595e446623bd44e45f163a0be22b59` | OPEN; Web y Android CI SUCCESS en ese HEAD | Sus cambios útiles se consolidan en la cadena #72. La rama ya contenía borrado de píxeles por capa, capa de pintura, controles táctiles, historial y puente Android Save As. Se añadió el límite Web de 50 MiB, retorno explícito de destino native/browser y prueba de regresión. Se deja abierto hasta la entrega integrada. |
+| #71 | `383e2a36bc31d59df3fe70b135611d233a074a14` | OPEN; Web y Android CI SUCCESS en ese HEAD | Se conserva: selección identificada por texto, transparencia real, vista de cuadritos no exportable y accesos rápidos. |
+| #72 | `78c56d2d464c32dc243301b424d58200499a8b7c` al inicio; rama actualizada durante esta tarea | OPEN | PR de entrega existente elegido para consolidar, evitando abrir otro PR de integración innecesario. |
+| #67 | `adb0e65a7fa39fe750018412f7eee20c3ecea39d` | OPEN; Web y Android CI SUCCESS en ese HEAD | No se copia la rama completa: sus funciones útiles de lienzo móvil fijo, zona segura, dock táctil y gestos de zoom/pan ya están presentes en la rama consolidada y cubiertas por las pruebas actuales. |
+| #66 | `bbe60f252f3eb0e8d9a4dd8b5a7e3584aff77ed1` | OPEN; Web y Android CI SUCCESS en ese HEAD | Se integra el aviso accionable al abrir con `file://`, el lanzador Windows dentro de `web/` y sus pruebas. El lanzador de la raíz ya existía en `main`. |
+| #68 | `9831a77bbd6db223d9cc17034f4ee904b8ed0963` | OPEN; propuesta nativa Compose alternativa | No se integra: sustituye el runtime Android WebView por un editor nativo paralelo y contradice la arquitectura canónica documentada. Se conserva abierto, sin descartar ni borrar su rama. |
+| #57 | `90062fee9ac11132cb019fb22e9a8ce3042af839` | OPEN; mergeable false al consultar | No se copia: la sincronización de `web/` a los assets Android y el gate de arranque offline ya están en `main` y en el workflow Android actual. Se considera supersedido funcionalmente, no se cierra aquí. |
+| #65 / rama `feat/animeart-aa-closure-001` | `94cecbc553c902848869d95e58c0818f729d3a69` | PR #65 ya MERGED | Historial cerrado; no se vuelve a integrar. |
+| Rama `feat/animeart-consolidated-editor-001` | `82e9dcc1a12e4b55c391be2630dc837d6b3a2c94` | Divergente de `main`: 41 commits ahead, 11 behind; 27 archivos en el diff consultado | No se usa como base de entrega porque contiene una línea amplia y divergente que requiere reconciliación independiente. No se elimina ni se sobrescribe. |
+
+### Cambios consolidados durante AA-INTEGRATION-CLOSURE-001
+
+- `web/app.js`: el guardado usa `globalThis.AnimeArtNative`, rechaza exportaciones Android superiores a 50 MiB antes de codificarlas en Base64 y devuelve `native` o `browser`. Los mensajes de exportación distinguen entre abrir el selector Android Save As y descargar en el navegador.
+- `web/test/smoke.test.mjs`: cobertura para el límite de tamaño y la ruta de destino.
+- `web/index.html`: si el editor se abre con `file://`, presenta un aviso visible en español que explica por qué los módulos y controles no funcionan y cómo iniciar el servidor local.
+- `web/START_ANIMEART.bat`: lanzador autónomo para quien solo tenga la carpeta `web/`.
+- `web/test/launch-mode.test.mjs`: pruebas para el aviso y el lanzador.
+- Se mantienen las funciones de la cadena #69/#71/#72: luz de censura, borrado mágico y borrador de píxeles separados, capa de pintura, controles móviles, historial, selección visible, X para quitar la imagen seleccionada, vista previa de transparencia y exportación PNG con alfa.
+
+### Validación
+
+- El HEAD de código previo a esta entrada documental fue `34742d706541b4d67a80e32b4d42df8c2aa290c0`. Los workflows Web y Android se iniciaron para ese HEAD, pero sus resultados no se atribuyen a commits posteriores.
+- Esta actualización documental crea un HEAD nuevo y exige comprobar ambos workflows sobre ese SHA exacto antes de declarar PASS.
+- El resultado E2E de #72 en su HEAD anterior confirmó eliminación de la imagen seleccionada por ID, conservación de la segunda imagen, restauración por Undo y PNG RGBA con píxeles alfa menores que 255. Esa evidencia es histórica y no sustituye los workflows del HEAD final de esta consolidación.
+- La verificación Android CI es instrumental/emulada. No equivale a una inspección visual manual en un teléfono físico.
+
+### Estado de cierre al registrar la entrada
+
+PARTIAL hasta comprobar Web CI y Android CI en el HEAD final y actualizar la base del PR de entrega. `main` permanece intacto. No se afirma que los cambios estén entregados a usuarios mientras el PR de integración siga abierto.
