@@ -189,6 +189,18 @@
     <button type="button" data-touch-action="more" aria-expanded="false">More</button>
     <button type="button" data-touch-action="export">Export</button>
   </nav>
+  <dialog id="poster-template-dialog" aria-labelledby="poster-template-title">
+    <form id="poster-template-form" method="dialog">
+      <h2 id="poster-template-title">Create a poster</h2>
+      <label>Style<select id="poster-template-style"><option value="poster">Event poster</option><option value="comic">Comic cover</option><option value="manga">Manga cover</option></select></label>
+      <label>Canvas size<select id="poster-size"><option value="portrait">Portrait 1080 × 1350</option><option value="square">Square 1080 × 1080</option><option value="story">Story 1080 × 1920</option><option value="banner">Banner 1920 × 1080</option></select></label>
+      <label>Background<input id="poster-background-color" type="color" value="#171324"></label>
+      <label>Accent<input id="poster-accent-color" type="color" value="#ff2b6d"></label>
+      <label>Title<input id="poster-title-value" maxlength="180" value="YOUR HEADLINE"></label>
+      <label>Subtitle<input id="poster-subtitle-value" maxlength="240" value="ADD YOUR DETAILS HERE"></label>
+      <div class="dialog-actions"><button type="button" id="cancel-poster-template">Cancel</button><button type="submit">Create poster</button></div>
+    </form>
+  </dialog>
   <dialog id="background-removal-dialog" aria-labelledby="background-removal-title">
     <section class="background-removal-shell">
       <header class="background-removal-header">
@@ -220,18 +232,7 @@
     </section>
   </dialog>
   <dialog id="image-edit-dialog"
-  <dialog id="poster-template-dialog" aria-labelledby="poster-template-title">
-    <form id="poster-template-form" method="dialog">
-      <h2 id="poster-template-title">Create a poster</h2>
-      <label>Style<select id="poster-template-style"><option value="poster">Event poster</option><option value="comic">Comic cover</option><option value="manga">Manga cover</option></select></label>
-      <label>Canvas size<select id="poster-size"><option value="portrait">Portrait 1080 × 1350</option><option value="square">Square 1080 × 1080</option><option value="story">Story 1080 × 1920</option><option value="banner">Banner 1920 × 1080</option></select></label>
-      <label>Background<input id="poster-background-color" type="color" value="#171324"></label>
-      <label>Accent<input id="poster-accent-color" type="color" value="#ff2b6d"></label>
-      <label>Title<input id="poster-title-value" maxlength="180" value="YOUR HEADLINE"></label>
-      <label>Subtitle<input id="poster-subtitle-value" maxlength="240" value="ADD YOUR DETAILS HERE"></label>
-      <div class="dialog-actions"><button type="button" id="cancel-poster-template">Cancel</button><button type="submit">Create poster</button></div>
-    </form>
-  </dialog>
+
  aria-labelledby="image-edit-title">
     <form id="image-edit-form" method="dialog">
       <h2 id="image-edit-title">Crop / Resize Image</h2>
