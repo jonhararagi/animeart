@@ -22,6 +22,14 @@ test("brush effects and hardness survive project serialization and recovery", ()
   assert.equal(isValidDocument(restored), true);
 });
 
+test("layer stack includes thumbnail rendering for image, text and drawing layers", async () => {
+  const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
+  assert.match(app, /function createLayerThumbnail\(layer\)/);
+  assert.match(app, /className = "layer-thumbnail"/);
+  assert.match(app, /selectButton\.append\(createLayerThumbnail\(layer\), layerName\)/);
+  assert.match(app, /renderLayers\(\);\s*\n  }\s*\n\}\);\s*\n\ncanvas\.addEventListener\("pointercancel"/);
+});
+
 test("the editor exposes connected brush hardness and visual effect controls", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
