@@ -2406,7 +2406,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v12";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v13";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
