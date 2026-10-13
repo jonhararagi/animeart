@@ -16,12 +16,60 @@
   <div id="storage-recovery-notice" class="recovery-notice" role="alert" hidden></div>
   <main class="workspace">
     <aside class="toolbar" aria-label="Tools">
-      <button class="tool" data-tool="select">Select</button>
+      <section class="easy-edit-panel" aria-labelledby="easy-edit-title">
+        <div class="easy-edit-heading"><span aria-hidden="true">✨</span><div><h2 id="easy-edit-title">Editar fácilmente</h2><p>Elige lo que quieres hacer</p></div></div>
+        <div class="easy-edit-grid">
+          <button type="button" data-edit-goal="crop"><span aria-hidden="true">✂️</span><b>Recortar</b><small>Quita bordes sobrantes</small></button>
+          <button type="button" data-edit-goal="background"><span aria-hidden="true">🪄</span><b>Quitar fondo</b><small>Hazlo transparente</small></button>
+          <button type="button" data-edit-goal="erase"><span aria-hidden="true">🧽</span><b>Borrar</b><small>Elimina una parte</small></button>
+          <button type="button" data-edit-goal="censor"><span aria-hidden="true">✨</span><b>Luz de censura</b><small>Cubre con luz brillante</small></button>
+          <button type="button" data-edit-goal="draw"><span aria-hidden="true">🖌️</span><b>Dibujar</b><small>Pinta sobre la imagen</small></button>
+          <button type="button" data-edit-goal="text"><span aria-hidden="true">🔤</span><b>Texto</b><small>Añade palabras o globos</small></button>
+          <button type="button" data-edit-goal="color"><span aria-hidden="true">🎨</span><b>Mejorar color</b><small>Brillo y contraste</small></button>
+          <button type="button" data-edit-goal="layers"><span aria-hidden="true">🗂️</span><b>Capas</b><small>Ordena los elementos</small></button>
+          <button type="button" data-edit-goal="undo"><span aria-hidden="true">↶</span><b>Deshacer</b><small>Vuelve un paso atrás</small></button>
+          <button type="button" data-edit-goal="export"><span aria-hidden="true">💾</span><b>Guardar / Exportar</b><small>Conserva tu edición</small></button>
+        </div>
+        <div class="guided-edit-tools">
+          <label class="guided-toggle"><input id="editing-help-enabled" type="checkbox" checked> Ayúdame a editar</label>
+          <button type="button" id="show-edit-example">¿Cómo hago esto?</button>
+          <button type="button" id="show-edit-example-action">Mostrarme un ejemplo</button>
+        </div>
+        <section id="editing-help-card" class="editing-help-card" aria-live="polite">
+          <button type="button" id="close-editing-help" aria-label="Cerrar consejo">×</button>
+          <strong id="editing-help-title">¡Empecemos!</strong>
+          <p id="editing-help-copy">Importa una imagen con “+ Image / Reference” y elige una tarea de arriba.</p>
+          <ol id="editing-help-steps" hidden></ol>
+        </section>
+      </section>
+      <details class="more-tools">
+        <summary>Más herramientas</summary>
+        <div class="more-tools-content">
+          <button class="tool" data-tool="select">Select</button>
       <button class="tool active" data-tool="brush">Brush</button>
       <button class="tool" data-tool="eraser" title="Erase transparent pixels">🧽 Eraser</button>
       <button class="tool" data-tool="magic-eraser" aria-pressed="false" title="Tap a background color to erase its connected region">🪄 Magic Eraser</button>
       <button class="tool" data-tool="pan">Pan</button>
-      <span class="tool-group-label">Brush</span>
+          <button class="tool" data-tool="brush">🖌️ Dibujar</button>
+          <button class="tool" data-tool="eraser" title="Erase transparent pixels">🧽 Borrar</button>
+          <button class="tool" data-tool="magic-eraser" aria-pressed="false" title="Tap a background color to erase its connected region">🪄 Quitar fondo</button>
+          <button class="tool" data-tool="censor-light" aria-pressed="false" title="Paint an independent bright censor stroke">✨ Luz de censura</button>
+          <button class="tool" data-tool="pan">✋ Mover / zoom</button>
+          <section class="censor-light-controls" aria-labelledby="censor-light-title">
+            <h3 id="censor-light-title">✨ Luz de censura</h3>
+            <p>Cubre una zona con color opaco. La imagen original queda debajo, en otra capa.</p>
+            <label for="censor-light-color">Color<input id="censor-light-color" type="color" value="#ffffff"></label>
+            <label for="censor-light-size">Tamaño <output id="censor-light-size-value">28 px</output><input id="censor-light-size" type="range" min="2" max="320" step="1" value="28"></label>
+            <label for="censor-light-opacity">Opacidad <output id="censor-light-opacity-value">100%</output><input id="censor-light-opacity" type="range" min="10" max="100" step="1" value="100"></label>
+            <label for="censor-light-softness">Borde suave <output id="censor-light-softness-value">25%</output><input id="censor-light-softness" type="range" min="0" max="100" step="1" value="25"></label>
+            <label for="censor-light-glow">Resplandor <output id="censor-light-glow-value">35%</output><input id="censor-light-glow" type="range" min="0" max="100" step="1" value="35"></label>
+            <div class="censor-presets" aria-label="Tamaño rápido de censura">
+              <button type="button" data-censor-preset="point">Punto</button><button type="button" data-censor-preset="normal">Normal</button><button type="button" data-censor-preset="large">Grande</button><button type="button" data-censor-preset="line">Línea</button>
+            </div>
+            <label class="censor-permanent"><input id="censor-permanent-export" type="checkbox" checked> Censura permanente al exportar</label>
+            <p class="censor-warning">La exportación aplana la imagen. El archivo final no tendrá una capa separada para esta censura; el proyecto guardado conserva la edición. Para censura sensible, usa color opaco y 100% de opacidad.</p>
+          </section>
+          <span class="tool-group-label">Brush</span>
       <label class="brush-control" for="brush-color">Color<input id="brush-color" type="color" value="#111318" aria-label="Brush color"></label>
       <label class="brush-control" for="brush-size">Size<input id="brush-size" type="range" min="1" max="100" step="1" value="5" aria-label="Brush size"><output id="brush-size-value">5</output></label>
       <label class="brush-control" for="brush-opacity">Opacity<input id="brush-opacity" type="range" min="0" max="100" step="1" value="100" aria-label="Brush opacity"><output id="brush-opacity-value">100%</output></label>
@@ -83,6 +131,8 @@
       <button data-transform="scale-up" title="Scale layer up">+</button>
       <button data-transform="rotate-left" title="Rotate layer left">↺</button>
       <button data-transform="rotate-right" title="Rotate layer right">↻</button>
+        </div>
+      </details>
     </aside>
     <section class="canvas-wrap">
       <canvas id="canvas" aria-label="AnimeArt canvas"></canvas>
