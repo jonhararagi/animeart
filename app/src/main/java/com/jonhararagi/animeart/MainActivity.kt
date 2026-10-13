@@ -25,7 +25,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        showWebEditor(savedInstanceState)
+        // Native Android Compose editor is the primary application, not a WebView wrapper.
+        showLegacyEditor()
     }
 
     private fun showWebEditor(savedInstanceState: Bundle?) {
