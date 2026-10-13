@@ -417,7 +417,14 @@ test("T064 persistence writer inventory keeps the project key behind the existin
   const directWriters = sources.flatMap(([path, source]) =>
     [...source.matchAll(/localStorage\s*\.\s*setItem\s*\(/g)].map(() => path)
   );
-  assert.deepEqual(directWriters, [], "no Web module writes the project key through a direct localStorage.setItem call");
+  assert.deepEqual(
+    directWriters.filter(path => !path.endsWith(join("web", "appearance-settings.js"))),
+    [],
+    "the project key remains behind the shared snapshot boundary; appearance settings may use their own isolated key"
+  );
+  const appearanceModule = sources.find(([path]) => path.endsWith(join("web", "appearance-settings.js")));
+  assert.ok(appearanceModule, "editor appearance settings are isolated from project document persistence");
+  assert.match(appearanceModule[1], /const STORAGE_KEY = "animeart-editor-appearance-v1"/);
   const snapshotModule = sources.find(([path]) => path.endsWith(join("domain", "image-import.mjs")));
   assert.ok(snapshotModule, "existing image-import domain module is included in the writer inventory");
   assert.match(snapshotModule[1], /storage\.setItem\(key, serialized\)/, "the shared snapshot boundary owns the delegated storage write");
