@@ -235,7 +235,7 @@ test("multi-format export UI uses the existing document renderer and local downl
   assert.match(js, /renderDocumentToCanvas/);
   assert.match(js, /drawDocument\(\{ context = ctx, document = state\.document, center = documentCenter\(document\)/);
   assert.match(js, /canvasToImageBlob\(exportCanvas, format, quality\)/);
-  assert.match(js, /downloadImageBlob\(blob, "animeart\." \+ format, format\)/);
+  assert.match(js, /await saveBlobToDevice\(blob, "animeart\." \+ format, format\)/);
   assert.match(js, /await ensureExportImages\(state\.document\)/);
   assert.match(exporter, /getContext\("2d", \{ alpha: true \}\)/);
   assert.match(exporter, /png: "image\/png"/);
