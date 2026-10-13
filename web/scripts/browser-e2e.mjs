@@ -573,7 +573,9 @@ try {
   await click('[aria-label="Select magic-tap-fixture"]');
   await click('[data-tool="magic-eraser"]');
   await click("#canvas");
-  await waitFor('document.querySelector("#status").textContent.includes("Magic Eraser removed the tapped color region")', 10000);
+  await sleep(250);
+  const magicDiagnostics = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers?.find(item=>item.name==="magic-tap-fixture");const canvas=document.querySelector("#canvas"),rect=canvas.getBoundingClientRect();return {status:document.querySelector("#status").textContent,tool:document.querySelector("[data-tool=magic-eraser]")?.className,transform:layer?.transform,image:layer?.image?{width:layer.image.width,height:layer.image.height}:null,canvas:{left:rect.left,top:rect.top,width:rect.width,height:rect.height}}; })()');
+  assert(magicDiagnostics.status.includes("Magic Eraser removed the tapped color region"), "Magic Eraser tap applies a connected-region cutout; diagnostics=" + JSON.stringify(magicDiagnostics));
   const magicPixels = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture");return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>{const canvas=document.createElement("canvas");canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;const context=canvas.getContext("2d",{willReadFrequently:true});context.drawImage(image,0,0);const pixels=context.getImageData(0,0,canvas.width,canvas.height).data;resolve({width:canvas.width,height:canvas.height,backgroundAlpha:pixels[(32*canvas.width+32)*4+3],subjectAlpha:pixels[(4*canvas.width+4)*4+3]});};image.onerror=()=>reject(new Error("Magic Eraser result did not decode"));image.src=layer.image.source;});})()');
   assert(magicPixels.width===64&&magicPixels.height===64, "Magic Eraser keeps source dimensions");
   assert(magicPixels.backgroundAlpha===0, "tap-seeded Magic Eraser removes the tapped connected background to transparency");
