@@ -13,3 +13,10 @@ test("beginner panel and censor controls are connected to the canonical editor",
  assert.ok(app.includes("const censor = state.tool === \"censor-light\""));
  assert.ok(app.includes("renderDocumentToCanvas(state.document, exportCanvas"));
 });
+
+test("painting over an image selects the independent transparent layer before recording strokes", async () => {
+ const app = await readFile("app.js","utf8");
+ assert.match(app, /setSelection\(\[paintLayer\.id\], paintLayer\.id\);\s*layer = selectedLayer\(\);/);
+ assert.match(app, /state\.history\.record\(before, state\.document\)/);
+ assert.match(app, /hasCensorStrokes && !document\.querySelector\("#censor-permanent-export"\)\.checked/);
+});
