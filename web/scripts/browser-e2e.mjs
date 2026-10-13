@@ -401,7 +401,7 @@ try {
     const addedBefore = (await readLayerSummary()).length;
     const accepted = await evaluate('(() => { const bytes = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="), char => char.charCodeAt(0)); const file = new File([bytes], ' + JSON.stringify(name + ".png") + ', { type: "image/png" }); const transfer = new DataTransfer(); transfer.items.add(file); const input = document.querySelector("#image-file-input"); input.files = transfer.files; input.dispatchEvent(new Event("change", { bubbles: true })); return true; })()');
     assert(accepted === true, "real browser accepted image fixture " + name);
-    await waitFor("JSON.parse(localStorage.getItem(\\"animeart-web-document\\") || \\"{}\\").layers?.length === " + (addedBefore + 1), 10000);
+    await waitFor("JSON.parse(localStorage.getItem(\"animeart-web-document\") || \"{}\").layers?.length === " + (addedBefore + 1), 10000);
     return (await readDocument()).layers.at(-1);
   };
   const deleteFirst = await importNamedFixture("delete-first");
