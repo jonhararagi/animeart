@@ -1,6 +1,7 @@
 import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
 import { initializeAssetLibrary } from "./asset-library.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
+import { replaceColorRange } from "./domain/color-replacement.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy } from "./domain/viewport.mjs";
@@ -48,6 +49,12 @@ const redoButton = document.querySelector("#redo");
 const imageFileInput = document.querySelector("#image-file-input");
 const cropResizeButton = document.querySelector("#crop-resize-image");
 const removeBackgroundButton = document.querySelector("#remove-background");
+const recolorButton = document.querySelector("#recolor-image");
+const recolorDialog = document.querySelector("#recolor-dialog");
+const recolorCanvas = document.querySelector("#recolor-preview");
+const recolorContext = recolorCanvas?.getContext("2d", { willReadFrequently: true });
+let recolorSession = null;
+let recolorSampleMode = false;
 const backgroundRemovalDialog = document.querySelector("#background-removal-dialog");
 const backgroundRemovalCanvas = document.querySelector("#background-removal-preview");
 const backgroundRemovalContext = backgroundRemovalCanvas?.getContext("2d", { willReadFrequently: true });
@@ -771,6 +778,7 @@ function refreshImageEditButton() {
   const editableImage = Boolean(layer && layer.contentType === "image" && layer.image && !layer.locked);
   cropResizeButton.disabled = !editableImage;
   if (removeBackgroundButton) removeBackgroundButton.disabled = !editableImage;
+  if (recolorButton) recolorButton.disabled = !editableImage;
   cropResizeButton.title = editableImage ? "Crop or resize the selected image layer" : "Select an unlocked image layer to crop or resize";
   for (const button of [flipImageHorizontalButton, flipImageVerticalButton]) {
     if (!button) continue;
@@ -1968,7 +1976,10 @@ function renderBackgroundRemovalPreview(recompute = false) {
       session.automatic = removeConnectedBackground(session.original, {
         targetColor: document.querySelector("#background-removal-color").value,
         tolerance: Number(document.querySelector("#background-removal-tolerance").value),
-        feather: Number(document.querySelector("#background-removal-feather").value)
+        feather: Number(document.querySelector("#background-removal-feather").value),
+        edgeSensitivity: Number(document.querySelector("#background-removal-edge-sensitivity").value),
+        protectLineArt: document.querySelector("#background-removal-protect-line-art").checked,
+        decontaminate: document.querySelector("#background-removal-decontaminate").checked
       });
     }
     const result = applyEraseStrokes(session.automatic, session.strokes);
@@ -2010,6 +2021,10 @@ async function openBackgroundRemoval() {
     document.querySelector("#background-removal-tolerance-value").textContent = "36";
     document.querySelector("#background-removal-feather").value = "18";
     document.querySelector("#background-removal-feather-value").textContent = "18";
+    document.querySelector("#background-removal-edge-sensitivity").value = "42";
+    document.querySelector("#background-removal-edge-sensitivity-value").textContent = "42";
+    document.querySelector("#background-removal-protect-line-art").checked = true;
+    document.querySelector("#background-removal-decontaminate").checked = true;
     document.querySelector("#background-removal-brush-size").value = "28";
     document.querySelector("#background-removal-brush-size-value").textContent = "28 px";
     backgroundRemovalDialog.showModal();
@@ -2029,11 +2044,11 @@ document.querySelector("#sample-background-color").addEventListener("click", () 
   document.querySelector("#background-removal-manual").checked = false;
   document.querySelector("#background-removal-status").textContent = "Click a background pixel in the image preview to sample its color.";
 });
-for (const id of ["background-removal-color", "background-removal-tolerance", "background-removal-feather"]) {
+for (const id of ["background-removal-color", "background-removal-tolerance", "background-removal-feather", "background-removal-edge-sensitivity", "background-removal-protect-line-art", "background-removal-decontaminate"]) {
   document.querySelector("#" + id).addEventListener("input", () => {
     const input = document.querySelector("#" + id);
     const output = document.querySelector("#" + id + "-value");
-    if (output) output.textContent = input.value;
+    if (output) output.textContent = input.type === "checkbox" ? (input.checked ? "On" : "Off") : input.value;
     renderBackgroundRemovalPreview(true);
   });
 }
@@ -2090,11 +2105,14 @@ document.querySelector("#apply-background-removal").addEventListener("click", as
     return;
   }
   try {
-    const automatic = session.automatic || removeConnectedBackground(session.original, {
-      targetColor: document.querySelector("#background-removal-color").value,
-      tolerance: Number(document.querySelector("#background-removal-tolerance").value),
-      feather: Number(document.querySelector("#background-removal-feather").value)
-    });
+removeConnectedBackground(session.original, {
+        targetColor: document.querySelector("#background-removal-color").value,
+        tolerance: Number(document.querySelector("#background-removal-tolerance").value),
+        feather: Number(document.querySelector("#background-removal-feather").value),
+        edgeSensitivity: Number(document.querySelector("#background-removal-edge-sensitivity").value),
+        protectLineArt: document.querySelector("#background-removal-protect-line-art").checked,
+        decontaminate: document.querySelector("#background-removal-decontaminate").checked
+      });
     const result = applyEraseStrokes(automatic, session.strokes);
     backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
     const source = backgroundRemovalCanvas.toDataURL("image/webp", 0.88);
@@ -2114,6 +2132,44 @@ document.querySelector("#apply-background-removal").addEventListener("click", as
   } catch (error) {
     document.querySelector("#background-removal-status").textContent = error.message || "Could not apply transparency";
   }
+});
+
+
+function pixelHex(data, offset) { return "#" + [data[offset],data[offset+1],data[offset+2]].map(v=>v.toString(16).padStart(2,"0")).join(""); }
+function renderRecolorPreview() {
+ const s=recolorSession;if(!s||!recolorContext)return;
+ try { const result=s.sourceColor?replaceColorRange(s.original,{sourceColor:s.sourceColor,targetColor:document.querySelector("#recolor-target-color").value,tolerance:Number(document.querySelector("#recolor-tolerance").value),softness:Number(document.querySelector("#recolor-softness").value),preserveShading:document.querySelector("#recolor-preserve-shading").checked}):s.original;
+ recolorContext.putImageData(new ImageData(result.data,result.width,result.height),0,0);
+ document.querySelector("#recolor-tolerance-value").textContent=document.querySelector("#recolor-tolerance").value;
+ document.querySelector("#recolor-softness-value").textContent=document.querySelector("#recolor-softness").value;
+ document.querySelector("#recolor-status").textContent=s.sourceColor?"Preview: source color range selected. Shading and alpha are preserved.":"Choose “Sample source color” and tap the color to replace.";
+ } catch(error){document.querySelector("#recolor-status").textContent=error.message||"Preview failed";}
+}
+async function openRecolorTool() {
+ const layer=selectedLayerExact();if(!layer||layer.contentType!=="image"||!layer.image||layer.locked)return;
+ try {
+  if(layer.image.width*layer.image.height>16000000)throw new RangeError("Color replacement is limited to 16 megapixels. Resize the image first.");
+  const image=await new Promise((resolve,reject)=>{const cached=imageCache.get(layer.image.source);if(cached&&cached.complete&&cached.naturalWidth>0){resolve(cached);return;}const candidate=cached||new Image();candidate.onload=()=>resolve(candidate);candidate.onerror=()=>reject(new Error("Could not decode the selected image"));candidate.src=layer.image.source;imageCache.set(layer.image.source,candidate);});
+  const width=layer.image.width,height=layer.image.height;recolorCanvas.width=width;recolorCanvas.height=height;recolorContext.clearRect(0,0,width,height);recolorContext.drawImage(image,0,0,width,height);
+  recolorSession={layerId:layer.id,source:layer.image.source,original:recolorContext.getImageData(0,0,width,height),sourceColor:null};recolorSampleMode=false;
+  document.querySelector("#recolor-source-color").value="#806050";document.querySelector("#recolor-target-color").value="#c76cf2";document.querySelector("#recolor-tolerance").value="36";document.querySelector("#recolor-softness").value="28";document.querySelector("#recolor-preserve-shading").checked=true;
+  recolorDialog.showModal();renderRecolorPreview();
+ } catch(error){status.textContent=error.message||"Could not open color replacement";}
+}
+if(recolorButton)recolorButton.addEventListener("click",openRecolorTool);
+function closeRecolorTool(){recolorDialog.close();recolorSession=null;recolorSampleMode=false;}
+document.querySelector("#cancel-recolor").addEventListener("click",closeRecolorTool);
+document.querySelector("#cancel-recolor-bottom").addEventListener("click",closeRecolorTool);
+document.querySelector("#sample-recolor-source").addEventListener("click",()=>{recolorSampleMode=true;document.querySelector("#recolor-status").textContent="Tap the source color in the image preview.";});
+recolorCanvas.addEventListener("click",event=>{const s=recolorSession;if(!s||!recolorSampleMode)return;const r=recolorCanvas.getBoundingClientRect(),x=Math.max(0,Math.min(recolorCanvas.width-1,Math.floor((event.clientX-r.left)*recolorCanvas.width/r.width))),y=Math.max(0,Math.min(recolorCanvas.height-1,Math.floor((event.clientY-r.top)*recolorCanvas.height/r.height))),o=(y*recolorCanvas.width+x)*4;s.sourceColor=pixelHex(s.original.data,o);document.querySelector("#recolor-source-color").value=s.sourceColor;recolorSampleMode=false;renderRecolorPreview();});
+for(const id of ["recolor-target-color","recolor-tolerance","recolor-softness","recolor-preserve-shading"]){document.querySelector("#"+id).addEventListener("input",renderRecolorPreview);document.querySelector("#"+id).addEventListener("change",renderRecolorPreview);}
+document.querySelector("#apply-recolor").addEventListener("click",async()=>{
+ const s=recolorSession,layer=s&&state.document.layers.find(item=>item.id===s.layerId);
+ if(!s||!layer||layer.locked||layer.contentType!=="image"||layer.image?.source!==s.source){document.querySelector("#recolor-status").textContent="Selected layer changed. Close and reopen the tool.";return;}
+ if(!s.sourceColor){document.querySelector("#recolor-status").textContent="Sample a source color before applying.";return;}
+ const button=document.querySelector("#apply-recolor");button.disabled=true;
+ try {const result=replaceColorRange(s.original,{sourceColor:s.sourceColor,targetColor:document.querySelector("#recolor-target-color").value,tolerance:Number(document.querySelector("#recolor-tolerance").value),softness:Number(document.querySelector("#recolor-softness").value),preserveShading:document.querySelector("#recolor-preserve-shading").checked});recolorContext.putImageData(new ImageData(result.data,result.width,result.height),0,0);const optimized=await optimizeImageSource(recolorCanvas.toDataURL("image/webp",0.88));const before=cloneDocument(state.document),next=replaceImageLayer(state.document,layer.id,{source:optimized.source,width:optimized.width,height:optimized.height},{preserveDisplaySize:true});if(!next)throw new Error("Recolored image exceeds the document limit. Resize it and try again.");imageCache.delete(s.source);state.document=next;state.history.record(before,next);state.dirty=true;refreshDocument("Color range replaced · shading preserved");persistDocument();closeRecolorTool();
+ } catch(error){document.querySelector("#recolor-status").textContent=error.message||"Could not apply recolor";} finally{button.disabled=false;}
 });
 
 async function importImageIntoEditor(file, message = "Image imported") {
@@ -2495,7 +2551,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v13";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v14";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -2511,6 +2567,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/image-import.mjs",
   "./domain/image-input.mjs",
   "./domain/image-processing.mjs",
+  "./domain/color-replacement.mjs",
   "./domain/canvas-space.mjs",
   "./domain/layer-adjustments.mjs",
   "./domain/quick-edit-recipes.mjs",

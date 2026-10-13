@@ -43,6 +43,7 @@
       <button id="add-image-layer" title="Import images up to 25 MB. Large images are optimized locally for project storage.">+ Image / Reference</button>
       <button id="crop-resize-image" disabled>Crop / Resize Image</button>
       <button id="remove-background" type="button" disabled>Remove Background</button>
+      <button id="recolor-image" type="button" disabled>Recolor Range</button>
       <button id="flip-image-horizontal" type="button" disabled title="Mirror selected image left to right">Flip H</button>
       <button id="flip-image-vertical" type="button" disabled title="Mirror selected image top to bottom">Flip V</button>
       <button id="add-sample-character" title="Import the bundled CC0 1.0 character as a real image layer">+ CC0 Character Sample</button>
@@ -222,6 +223,11 @@
           <label class="text-field" for="background-removal-feather">Edge softness <output id="background-removal-feather-value">18</output>
             <input id="background-removal-feather" type="range" min="0" max="100" value="18">
           </label>
+          <label class="text-field" for="background-removal-edge-sensitivity">Ink edge protection <output id="background-removal-edge-sensitivity-value">42</output>
+            <input id="background-removal-edge-sensitivity" type="range" min="0" max="120" value="42">
+          </label>
+          <label class="background-removal-toggle"><input id="background-removal-protect-line-art" type="checkbox" checked> Protect dark outlines and strong color boundaries</label>
+          <label class="background-removal-toggle"><input id="background-removal-decontaminate" type="checkbox" checked> Clean background-color fringe on soft edges</label>
           <label class="text-field" for="background-removal-brush-size">Erase brush <output id="background-removal-brush-size-value">28 px</output>
             <input id="background-removal-brush-size" type="range" min="2" max="180" value="28">
           </label>
@@ -229,6 +235,23 @@
           <div class="background-removal-actions"><button id="undo-background-erase" type="button" disabled>Undo erase stroke</button><button id="clear-background-erase" type="button">Clear erase strokes</button></div>
           <p id="background-removal-status" role="status" aria-live="polite">Click “Sample color” then choose the background color in the preview.</p>
           <button id="apply-background-removal" type="button">Apply transparency to layer</button>
+        </div>
+      </div>
+    </section>
+  </dialog>
+  <dialog id="recolor-dialog" aria-labelledby="recolor-title">
+    <section class="recolor-shell">
+      <header class="recolor-header"><div><p class="eyebrow">PIXEL EDITING · LOCAL ONLY</p><h2 id="recolor-title">Selective Color Replacement</h2><p>Sample a color and replace it while preserving shadows, highlights and transparency.</p></div><button id="cancel-recolor" type="button">Cancel</button></header>
+      <div class="recolor-workspace"><div class="recolor-preview-wrap"><canvas id="recolor-preview" aria-label="Color replacement preview"></canvas></div>
+        <div class="recolor-controls">
+          <label class="text-field" for="recolor-source-color">Sampled source color<input id="recolor-source-color" type="color" value="#806050" disabled></label>
+          <button id="sample-recolor-source" type="button">Sample source color</button>
+          <label class="text-field" for="recolor-target-color">Replacement color<input id="recolor-target-color" type="color" value="#c76cf2"></label>
+          <label class="text-field" for="recolor-tolerance">Color range <output id="recolor-tolerance-value">36</output><input id="recolor-tolerance" type="range" min="0" max="160" value="36"></label>
+          <label class="text-field" for="recolor-softness">Range softness <output id="recolor-softness-value">28</output><input id="recolor-softness" type="range" min="0" max="120" value="28"></label>
+          <label class="background-removal-toggle"><input id="recolor-preserve-shading" type="checkbox" checked> Preserve shading and texture</label>
+          <p id="recolor-status" role="status" aria-live="polite">Select a source color from the image preview.</p>
+          <div class="dialog-actions"><button id="cancel-recolor-bottom" type="button">Cancel</button><button id="apply-recolor" type="button">Apply color</button></div>
         </div>
       </div>
     </section>
