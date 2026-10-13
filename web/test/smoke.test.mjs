@@ -504,3 +504,23 @@ test("editor appearance supports custom accent, workspace color and local wallpa
   assert.match(appearance, /--editor-workspace/);
   assert.match(styles, /Picsart-inspired mobile-first editor polish/);
 });
+
+test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size layer thumbnails", async () => {
+  const [html, app, css, worker, removal] = await Promise.all([
+    readFile("index.html", "utf8"),
+    readFile("app.js", "utf8"),
+    readFile("styles.css", "utf8"),
+    readFile("service-worker.js", "utf8"),
+    readFile("domain/background-removal.mjs", "utf8")
+  ]);
+  assert.match(html, /data-tool="magic-eraser"/);
+  assert.match(html, /data-touch-action="tool" data-tool="magic-eraser"/);
+  assert.match(html, /id="fit-image-to-canvas"/);
+  assert.match(app, /function finishMagicErase\(interaction\)/);
+  assert.match(app, /seedPoints: \[\{ x, y \}\]/);
+  assert.match(app, /state\.magicEraseInteraction/);
+  assert.match(css, /\.layer-thumbnail \{ flex: 0 0 56px; width: 56px; height: 56px/);
+  assert.match(css, /\.layers #layers \.layer-select \{ min-height: 60px/);
+  assert.match(removal, /seedPoints=\[\]/);
+  assert.match(worker, /animeart-web-shell-v16/);
+});
