@@ -1672,6 +1672,7 @@ canvas.addEventListener("pointerup", event => {
     state.history.record(before, state.document);
     persistDocument();
     refreshHistoryControls();
+    renderLayers();
   }
 });
 
