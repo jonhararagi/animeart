@@ -2110,6 +2110,22 @@ for (const [key, input] of Object.entries(censorInputs)) {
   });
 }
 
+document.querySelectorAll("[data-censor-preset]").forEach(button => button.addEventListener("click", () => {
+  const presets = {
+    point: { size: 10, opacity: 100, softness: 0, glow: 15 },
+    normal: { size: 28, opacity: 100, softness: 25, glow: 35 },
+    large: { size: 72, opacity: 100, softness: 18, glow: 50 },
+    line: { size: 18, opacity: 100, softness: 0, glow: 20 }
+  };
+  const preset = presets[button.dataset.censorPreset];
+  if (!preset) return;
+  for (const [key, value] of Object.entries(preset)) {
+    censorInputs[key].value = String(value);
+    document.querySelector("#censor-light-" + key + "-value").textContent = key === "size" ? value + " px" : value + "%";
+  }
+  if (state.tool === "censor-light") redraw();
+}));
+
 
 function syncBrushControls() {
   brushColorInput.value = state.brush.color;
