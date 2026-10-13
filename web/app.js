@@ -12,7 +12,7 @@ import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorder
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
 import { removeConnectedBackground, applyEraseStrokes } from "./domain/background-removal.mjs";
-import { fitImportedImageScale } from "./domain/image-import.mjs";
+import { fitImportedImageTransform } from "./domain/image-import.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
@@ -1688,7 +1688,7 @@ function fitSelectedImageToCanvas() {
   const before = cloneDocument(state.document);
   const next = cloneDocument(state.document);
   const target = next.layers.find(item => item.id === layer.id);
-  target.transform.scale = fitImportedImageScale(layer.image.width, layer.image.height, next.width, next.height);
+  target.transform = { ...target.transform, ...fitImportedImageTransform(layer.image.width, layer.image.height, next.width, next.height) };
   state.document = next;
   state.history.record(before, next);
   refreshDocument("Image fitted to canvas · resolution preserved");
