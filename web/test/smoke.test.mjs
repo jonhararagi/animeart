@@ -560,3 +560,13 @@ test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size la
   assert.match(removal, /seedPoints=\[\]/);
   assert.match(worker, /animeart-web-shell-v17/);
 });
+
+
+test("Android export enforces the native size limit and reports native versus browser save routing", async () => {
+  const app = await readFile("app.js", "utf8");
+  assert.match(app, /const nativeBridge = globalThis\.AnimeArtNative/);
+  assert.match(app, /blob\.size > 50 \* 1024 \* 1024/);
+  assert.match(app, /return "native"/);
+  assert.match(app, /return "browser"/);
+  assert.match(app, /destination === "native" \? "Choose where to save/);
+});
