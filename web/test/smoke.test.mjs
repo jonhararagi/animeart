@@ -505,6 +505,38 @@ test("editor appearance supports custom accent, workspace color and local wallpa
   assert.match(styles, /Picsart-inspired mobile-first editor polish/);
 });
 
+test("background-removal profiles are local, reusable and wired to the existing apply pipeline", async () => {
+  const [html, app, profiles, tests] = await Promise.all([
+    readFile("index.html", "utf8"), readFile("app.js", "utf8"),
+    readFile("domain/background-removal-profiles.mjs", "utf8"),
+    readFile("test/background-removal-profiles.test.mjs", "utf8")
+  ]);
+  assert.match(html, /id="background-removal-profile"/);
+  assert.match(html, /id="save-background-profile"/);
+  assert.match(html, /id="delete-background-profile"/);
+  assert.match(app, /applyBackgroundRemovalProfile/);
+  assert.match(app, /const automatic = removeConnectedBackground\(session\.original, currentBackgroundRemovalSettings\(\)\)/);
+  assert.match(app, /applyEraseStrokes\(automatic, session\.strokes\)/);
+  assert.match(profiles, /BACKGROUND_PROFILE_STORAGE_KEY/);
+  assert.match(profiles, /anime-ink/);
+  assert.match(profiles, /flat-color/);
+  assert.match(profiles, /transparent-png/);
+  assert.match(profiles, /id: "photo"/);
+  assert.match(tests, /saves, restores, updates and deletes a custom local profile/);
+});
+
+test("image erasing uses inverse transform and Android export preserves browser fallback", async () => {
+  const [app, activity] = await Promise.all([
+    readFile("app.js", "utf8"),
+    readFile("../app/src/main/java/com/jonhararagi/animeart/MainActivity.kt", "utf8")
+  ]);
+  assert.match(app, /inverseTransformPoint/);
+  assert.match(app, /async function saveBlobToDevice\(blob, filename, imageFormat = null\)/);
+  assert.match(app, /nativeBridge\.saveFile\(btoa\(binary\)/);
+  assert.match(app, /downloadImageBlob\(blob, filename, imageFormat\)/);
+  assert.ok(activity.includes("NativeExportBridge"));
+});
+
 test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size layer thumbnails", async () => {
   const [html, app, css, worker, removal] = await Promise.all([
     readFile("index.html", "utf8"),
