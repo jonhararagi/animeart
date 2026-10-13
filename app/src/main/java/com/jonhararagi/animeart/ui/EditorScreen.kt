@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
@@ -49,6 +50,7 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
     var tick by remember { mutableIntStateOf(0) }
     var renameText by remember { mutableStateOf("") }
     var statusMessage by remember { mutableStateOf("Listo para editar") }
+    var showLayers by remember { mutableStateOf(false) }
     fun refresh() { tick++ }
 
     val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -85,6 +87,7 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
             }
             Row {
                 TextButton(onClick = { imagePicker.launch(arrayOf("image/*")) }) { Text("+ Imagen") }
+                TextButton(onClick = { showLayers = !showLayers }) { Text(if (showLayers) "Ocultar capas" else "Capas ${state.document.layers.size}") }
                 TextButton(onClick = { editor.undo(); refresh() }, enabled = editor.canUndo()) { Text("↶") }
                 TextButton(onClick = { editor.redo(); refresh() }, enabled = editor.canRedo()) { Text("↷") }
                 TextButton(onClick = { persistence.save("default", editor.state.document); statusMessage = "Proyecto guardado" }) { Text("Guardar") }
@@ -117,40 +120,52 @@ fun EditorScreen(initialDocument: CanvasDocument = CanvasDocument()) {
             )
         }
 
-        LayerPanel(
-            state = state,
-            renameText = renameText,
-            onRenameText = { renameText = it },
-            onCreate = { editor.createLayer("Layer"); refresh() },
-            onSelect = { editor.selectLayer(it); refresh() },
-            onVisibility = { id, value ->
-                editor.selectLayer(id); editor.setLayerVisibility(value); refresh()
-            },
-            onLock = { id, value ->
-                editor.selectLayer(id); editor.setLayerLocked(value); refresh()
-            },
-            onRename = { editor.renameLayer(renameText); refresh() },
-            onDuplicate = { editor.duplicateSelectedLayer(); refresh() },
-            onDelete = { editor.deleteSelectedLayer(); refresh() },
-            onUp = { editor.moveSelectedLayerUp(); refresh() },
-            onDown = { editor.moveSelectedLayerDown(); refresh() },
-            onOpacity = { editor.setLayerOpacity(it); refresh() }
-        )
+        if (showLayers) {
+            LayerPanel(
+                state = state,
+                renameText = renameText,
+                onRenameText = { renameText = it },
+                onCreate = { editor.createLayer("Layer"); refresh() },
+                onSelect = { editor.selectLayer(it); refresh() },
+                onVisibility = { id, value ->
+                    editor.selectLayer(id); editor.setLayerVisibility(value); refresh()
+                },
+                onLock = { id, value ->
+                    editor.selectLayer(id); editor.setLayerLocked(value); refresh()
+                },
+                onRename = { editor.renameLayer(renameText); refresh() },
+                onDuplicate = { editor.duplicateSelectedLayer(); refresh() },
+                onDelete = { editor.deleteSelectedLayer(); refresh() },
+                onUp = { editor.moveSelectedLayerUp(); refresh() },
+                onDown = { editor.moveSelectedLayerDown(); refresh() },
+                onOpacity = { editor.setLayerOpacity(it); refresh() }
+            )
+        }
 
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(0xFF111111L, 0xFFFF3355L, 0xFF3366FFL, 0xFF22AA66L, 0xFFFFFFFFL).forEach { color ->
-                Button(
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf(0xFF111111L, 0xFFFF3355L, 0xFF3366FFL, 0xFF22AA66L, 0xFFFFFFFFL, 0xFFFFC857L, 0xFF9B5DE5L, 0xFF00BBF9L).forEach { color ->
+                Surface(
                     onClick = { editor.setColor(color); refresh() },
-                    contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier.size(42.dp)
-                ) { Text("●", color = Color(color.toInt())) }
+                    modifier = Modifier.size(34.dp),
+                    shape = MaterialTheme.shapes.small,
+                    color = Color(color.toInt()),
+                    border = if (state.brushColorArgb == color) BorderStroke(3.dp, MaterialTheme.colorScheme.primary) else null
+                ) {}
+            }
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Tamaño ${state.brushSize.toInt()}", style = MaterialTheme.typography.labelMedium)
+                Slider(value = state.brushSize, onValueChange = { editor.setBrushSize(it); refresh() }, valueRange = 1f..120f)
             }
             Column(Modifier.weight(1f)) {
-                Text("Pincel " + state.brushSize.toInt())
-                Slider(value = state.brushSize, onValueChange = { editor.setBrushSize(it); refresh() }, valueRange = 1f..80f)
-            }
-            Column(Modifier.weight(1f)) {
-                Text("Opacidad pincel " + (state.brushOpacity * 100).toInt() + "%")
+                Text("Opacidad ${(state.brushOpacity * 100).toInt()}%", style = MaterialTheme.typography.labelMedium)
                 Slider(value = state.brushOpacity, onValueChange = { editor.setBrushOpacity(it); refresh() }, valueRange = 0.05f..1f)
             }
         }
