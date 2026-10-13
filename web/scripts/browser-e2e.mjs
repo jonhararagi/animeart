@@ -586,6 +586,23 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer=>layer.name==="magic-tap-fixture"&&layer.image?.source)',10000);
   assert(await evaluate('document.querySelector("[data-tool=magic-eraser]").classList.contains("active")'), "Magic Eraser remains visibly selected after undo");
 
+  // Local background-processing profiles are saved, reapplied and deleted in the real editor.
+  await click("#remove-background");
+  await waitFor('document.querySelector("#background-removal-dialog").open === true');
+  await evaluate('(() => { const select=document.querySelector("#background-removal-profile");select.value="photo";select.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await waitFor('document.querySelector("#background-removal-tolerance").value === "28"');
+  await evaluate('document.querySelector("#background-removal-profile-name").value="E2E profile"');
+  await click("#save-background-profile");
+  await waitFor('JSON.parse(localStorage.getItem("animeart.background-removal-profiles.v1")||"[]").some(profile=>profile.id==="custom-e2e-profile")');
+  await evaluate('(() => { const select=document.querySelector("#background-removal-profile");select.value="anime-ink";select.dispatchEvent(new Event("change",{bubbles:true}));select.value="custom-e2e-profile";select.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await waitFor('document.querySelector("#background-removal-tolerance").value === "28"');
+  assert(await evaluate('document.querySelector("#background-removal-profile-name").value === "E2E profile"'), "saved profile restores its editable name and parameters");
+  await click("#delete-background-profile");
+  await waitFor('!JSON.parse(localStorage.getItem("animeart.background-removal-profiles.v1")||"[]").some(profile=>profile.id==="custom-e2e-profile")');
+  await click("#cancel-background-removal");
+  await waitFor('document.querySelector("#background-removal-dialog").open === false');
+
+
   // T064: prove explicit-write failures preserve the protected payload and can be retried.
   const quotaPayload = JSON.stringify({
     version: 999, width: 320, height: 240,
