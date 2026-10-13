@@ -2208,7 +2208,7 @@ document.querySelectorAll(".tool").forEach(button => {
     });
     mobileDock?.querySelectorAll('[data-touch-action="tool"]').forEach(item => item.setAttribute("aria-pressed", String(item.dataset.tool === state.tool)));
     document.querySelector(".censor-light-controls")?.classList.toggle("is-active", state.tool === "censor-light");
-    if (state.tool === "censor-light") status.textContent = "✨ Luz de censura activa · arrastra para cubrir la zona";
+    if (state.tool === "censor-light") { document.querySelector(".more-tools").open = true; status.textContent = "Luz de censura activa"; }
     redraw();
   });
 });
