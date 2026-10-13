@@ -3056,5 +3056,10 @@ SAFETY:
 - La operación valida el ID de la capa seleccionada, distingue capas bloqueadas y mantiene el lienzo válido si la imagen era la única capa.
 - El borrador de píxeles sigue siendo una herramienta separada; la X no pinta ni borra píxeles.
 - Se añade E2E real en Chromium con dos importaciones de imagen: identifica la primera mediante etiqueta, verifica que la X elimina su ID exacto, comprueba que la segunda permanece, deshace, exporta PNG y decodifica el canal alfa para demostrar que existen píxeles con alfa menor que 255.
-- Estado: pendiente de Web CI, Chromium E2E y Android CI sobre el SHA final. No se declara PASS antes de revisar los resultados.
+- Estado: **PASS para el SHA de código** `45161f51bebb7a5761aca5d1845e86adaf064f18`; PR #72 sigue abierto y no se fusionó.
+- Web CI run #525 / ID `38459217137`: SUCCESS, incluidos build, tests y E2E real de Chromium. https://github.com/jonhararagi/animeart/actions/runs/38459217137
+- Android CI run #624 / ID `38459217296`: SUCCESS, incluidos build, unit tests, lint, instrumentation/startup smoke y subida del APK. https://github.com/jonhararagi/animeart/actions/runs/38459217296
+- E2E confirmó que la X elimina el ID de la primera imagen, la segunda sigue intacta, Undo recupera ambas y el PNG RGBA de 800 × 600 contiene píxeles con alfa menor que 255.
+- Chromium validó la interacción y el archivo exportado. No se hizo una comprobación manual en un teléfono Android físico; Android CI no certifica el aspecto de la X en todos los dispositivos.
+- La evidencia corresponde exactamente al SHA de código indicado. La actualización documental es posterior y no cambia la implementación.
 - Sin cambios directos a `main`, sin fusiones ni cierres de PR.
