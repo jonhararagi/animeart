@@ -1694,16 +1694,20 @@ function endTouchPointer(event) {
   if (event.pointerType !== "touch") return false;
   activeTouchPointers.delete(event.pointerId);
   if (touchGesture) {
+    // When a pinch becomes a one-finger gesture, continue from the remaining
+    // finger's current position as a canvas pan. Never reuse the old pinch
+    // midpoint or object-drag origin, which would cause a visible jump.
+    const remaining = activeTouchPointers.values().next().value || null;
     touchGesture = null;
     state.drawing = false;
     state.drawingPointerId = null;
     state.strokeBefore = null;
-    state.panning = false;
-    state.panPointerId = null;
-    state.lastPanPoint = null;
     state.transformInteraction = null;
     state.transformPointerId = null;
     state.multiTransformInteraction = null;
+    state.panning = Boolean(remaining);
+    state.panPointerId = remaining?.pointerId ?? null;
+    state.lastPanPoint = remaining ? { x: remaining.x, y: remaining.y } : null;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     redraw();
     return true;
