@@ -629,3 +629,6 @@ body.interactive-mode .guided-edit-tools,body.interactive-mode .editing-help-car
 body.interactive-mode .easy-edit-grid button{min-height:44px}
 body.interactive-mode .easy-edit-grid button small{display:none}
 @media(max-width:620px){.editor-mode-switch button{min-height:44px;font-size:.78rem}.editor-mode-hint{font-size:.75rem}}
+
+.magic-tolerance-control{grid-column:1/-1;display:grid;gap:6px;padding:8px 10px;border:1px solid #344155;border-radius:9px;background:#111923;font-size:.75rem}
+.magic-tolerance-control output{font-weight:800;color:#d7f9ff}
