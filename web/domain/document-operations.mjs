@@ -240,6 +240,6 @@ export function replaceImageLayer(document, layerId, replacement, { cropOrigin =
       scale: nextScale
     };
   }
-  layer.image = { source: replacement.source, width, height, flipX: layer.image.flipX === true, flipY: layer.image.flipY === true, mask: layer.image.mask || "none" };
+  layer.image = { source: replacement.source, width, height, flipX: layer.image.flipX === true, flipY: layer.image.flipY === true, mask: layer.image.mask || "none", ...((typeof replacement.restoreSource === "string" && replacement.restoreSource.length <= 2_000_000) ? { restoreSource: replacement.restoreSource } : (typeof layer.image.restoreSource === "string" ? { restoreSource: layer.image.restoreSource } : {})) };
   return next;
 }
