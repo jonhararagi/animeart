@@ -510,7 +510,25 @@
       });
     }
   </script>
-  <script type="module" src="./mobile-crop-shortcut.js"></script>
+  <script>
+    (() => {
+      const cropDock = document.querySelector(".mobile-touch-dock");
+      const cropAction = document.querySelector("#crop-resize-image");
+      const cropStatus = document.querySelector("#status");
+      cropDock?.addEventListener("click", event => {
+        if (!event.target.closest('[data-touch-action="crop-image"]')) return;
+        document.body.classList.remove("mobile-tools-open", "mobile-layers-open");
+        cropDock.querySelectorAll('[data-touch-action="more"], [data-touch-action="layers"]').forEach(button => {
+          button.setAttribute("aria-expanded", "false");
+        });
+        if (!cropAction || cropAction.disabled) {
+          if (cropStatus) cropStatus.textContent = "Seleccioná una imagen desbloqueada en el lienzo o en Capas para poder recortarla.";
+          return;
+        }
+        cropAction.click();
+      });
+    })();
+  </script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
