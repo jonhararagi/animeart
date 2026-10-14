@@ -636,3 +636,30 @@ body.interactive-mode .easy-edit-grid button small{display:none}
 #editor-mode-toggle{min-height:36px;padding:7px 10px;border-radius:999px;border:1px solid #3b6c7b;background:#142c36;color:#dcf9ff;font-size:.72rem;font-weight:800;white-space:nowrap}
 #editor-mode-toggle:focus-visible,.editor-mode-switch button:focus-visible{outline:3px solid #65dcf5;outline-offset:2px}
 @media(max-width:620px){.topbar-actions{gap:5px}#editor-mode-toggle{padding:6px 8px;font-size:.65rem}#appearance-open{padding:6px 8px;font-size:.65rem}.topbar-actions .status{display:none}}
+
+
+/* AA-PICSART-UX-001: safe magic-erase review and touch-friendly restore brush */
+.magic-preview-shell { width:min(100%, 980px); padding:clamp(14px, 3vw, 26px); color:var(--text,#f3f5fa); }
+#magic-eraser-preview-dialog { width:min(96vw, 1020px); max-width:1020px; max-height:92dvh; overflow:auto; border:1px solid #3a465b; border-radius:18px; background:#111722; color:var(--text,#f3f5fa); box-shadow:0 24px 90px rgb(0 0 0 / 55%); }
+#magic-eraser-preview-dialog::backdrop { background:rgb(5 8 14 / 78%); backdrop-filter:blur(3px); }
+.magic-preview-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:18px; }
+.magic-preview-header h2 { margin:4px 0 8px; }
+.magic-preview-header p { margin:4px 0; color:var(--muted,#aab4c5); }
+.magic-preview-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+.magic-preview-grid figure { min-width:0; margin:0; }
+.magic-preview-grid figcaption { margin:0 0 8px; font-weight:700; }
+.magic-preview-canvas { display:grid; place-items:center; min-height:180px; max-height:48dvh; overflow:auto; padding:10px; border:1px solid #364258; border-radius:12px; background-color:#222b39; background-image:linear-gradient(45deg,#303b4c 25%,transparent 25%),linear-gradient(-45deg,#303b4c 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#303b4c 75%),linear-gradient(-45deg,transparent 75%,#303b4c 75%); background-size:20px 20px; background-position:0 0,0 10px,10px -10px,-10px 0; }
+.magic-preview-canvas canvas { display:block; max-width:100%; max-height:44dvh; object-fit:contain; }
+.magic-preview-note { margin:16px 0; color:var(--muted,#aab4c5); }
+#magic-eraser-preview-dialog .dialog-actions { display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; }
+#magic-eraser-preview-dialog button { min-height:44px; padding:10px 16px; border:1px solid #526078; border-radius:10px; background:#202b3d; color:inherit; font:inherit; font-weight:650; }
+#magic-eraser-apply { background:#9bdbff !important; color:#101722 !important; border-color:#9bdbff !important; }
+@media (max-width:620px) {
+  .magic-preview-shell { padding:12px; }
+  .magic-preview-header { flex-direction:column; }
+  .magic-preview-header > button { width:100%; }
+  .magic-preview-grid { grid-template-columns:1fr; }
+  .magic-preview-canvas { min-height:120px; max-height:34dvh; }
+  .magic-preview-canvas canvas { max-height:30dvh; }
+  #magic-eraser-preview-dialog .dialog-actions > button { flex:1 1 140px; }
+}
