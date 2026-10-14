@@ -677,3 +677,16 @@ test("multi-layer drag snapshots selected layer IDs until the pointer interactio
   assert.match(js, /applyMultiLayerMove\(delta\.x, delta\.y, "Layers moved", interaction\.layerIds\)/);
   assert.match(js, /ids\.length < 2 \|\| layers\.length !== ids\.length \|\| layers\.some\(layer => layer\.locked\)/);
 });
+
+
+test("multi-selection group bounds initiate a move without requiring a per-layer hit", async () => {
+  const js = await readFile("app.js", "utf8");
+  const start = js.indexOf("const groupHit = hitTestHandle(screenPoint, groupScreenGeometry, HANDLE_RADIUS)");
+  const end = js.indexOf('if (groupHit === "scale-nw"', start);
+  assert.ok(start >= 0 && end > start, "group hit-test and scale controls are present");
+  const groupHitHandling = js.slice(start, end);
+  assert.match(groupHitHandling, /if \(groupHit === "move"\)/);
+  assert.match(groupHitHandling, /type: "move"/);
+  assert.match(groupHitHandling, /layerIds: layers\.map\(layer => layer\.id\)/);
+  assert.match(groupHitHandling, /canvas\.setPointerCapture\(event\.pointerId\)/);
+});
