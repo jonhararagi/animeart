@@ -1752,7 +1752,7 @@ async function finishMagicErase(interaction) {
     const targetColor = "#" + [original.data[offset], original.data[offset + 1], original.data[offset + 2]]
       .map(value => value.toString(16).padStart(2, "0")).join("");
     const result = removeConnectedBackground(original, {
-      targetColor, tolerance: 28, feather: 12, edgeSensitivity: 48,
+      targetColor, tolerance: Number(document.querySelector("#magic-eraser-tolerance")?.value || 28), feather: 12, edgeSensitivity: 48,
       protectLineArt: true, decontaminate: true, seedPoints: [{ x, y }]
     });
     let changed = false;
@@ -2310,6 +2310,12 @@ function setInteractionMode(mode) {
 }
 document.querySelectorAll("[data-editor-mode]").forEach(button => button.addEventListener("click", () => setInteractionMode(button.dataset.editorMode)));
 try { setInteractionMode(localStorage.getItem("animeart-editor-mode-v1") || "simple"); } catch { setInteractionMode("simple"); }
+
+ const magicTolerance = document.querySelector("#magic-eraser-tolerance");
+const magicToleranceValue = document.querySelector("#magic-eraser-tolerance-value");
+magicTolerance?.addEventListener("input", () => {
+  if (magicToleranceValue) magicToleranceValue.value = magicTolerance.value;
+});
 
  document.querySelectorAll(".tool").forEach(button => {
   button.addEventListener("click", () => {
@@ -3230,7 +3236,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v17";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v18";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
