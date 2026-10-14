@@ -54,8 +54,9 @@
         <div class="more-tools-content">
           <button class="tool active" data-tool="select" aria-pressed="true">🖐️ Seleccionar / mover</button>
       <button class="tool" data-tool="brush" aria-pressed="false">🖌️ Dibujar</button>
-      <button class="tool" data-tool="eraser" title="Erase transparent pixels">🧽 Borrar</button>
-      <button class="tool" data-tool="magic-eraser" aria-pressed="false" title="Toca una región de fondo conectada para hacerla transparente">🪄 Borrado mágico</button>
+      <button class="tool" data-tool="eraser" title="Borrar píxeles transparentes">🧽 Borrar</button>
+      <button class="tool" data-tool="restore-brush" aria-pressed="false" title="Pintá sobre una zona borrada para recuperar píxeles originales">🩹 Restaurar</button>
+      <button class="tool" data-tool="magic-eraser" aria-pressed="false" title="Toca una región de fondo conectada para previsualizar el borrado">🪄 Borrado mágico</button>
       <label class="brush-control magic-tolerance-control" for="magic-eraser-tolerance">Tolerancia del borrado mágico <output id="magic-eraser-tolerance-value">28</output><input id="magic-eraser-tolerance" type="range" min="4" max="100" step="1" value="28"></label>
       <button class="tool" data-tool="censor-light" aria-pressed="false" title="Paint an independent bright censor stroke">✨ Luz de censura</button>
       <button class="tool" data-tool="pan">✋ Mover / zoom</button>
@@ -255,8 +256,9 @@
   <nav class="mobile-touch-dock" aria-label="Mobile editing shortcuts">
     <button type="button" data-touch-action="tool" data-tool="select" aria-pressed="true">🖐 Mover</button>
     <button type="button" data-touch-action="tool" data-tool="brush" aria-pressed="false">🖌 Dibujar</button>
-    <button type="button" data-touch-action="tool" data-tool="eraser" aria-pressed="false" title="Transparent pixel eraser">🧽 Erase</button>
-    <button type="button" data-touch-action="tool" data-tool="magic-eraser" aria-pressed="false" title="Tap to erase connected background color">🪄 Magic</button>
+    <button type="button" data-touch-action="tool" data-tool="eraser" aria-pressed="false" title="Borrar píxeles">🧽 Borrar</button>
+    <button type="button" data-touch-action="tool" data-tool="restore-brush" aria-pressed="false" title="Restaurar píxeles originales">🩹 Restaurar</button>
+    <button type="button" data-touch-action="tool" data-tool="magic-eraser" aria-pressed="false" title="Previsualizar borrado mágico">🪄 Mágico</button>
     <button type="button" data-touch-action="undo">↶ Undo</button>
     <button type="button" data-touch-action="redo">↷ Redo</button>
     <button type="button" data-touch-action="import-image">🖼 Image</button>
@@ -280,6 +282,20 @@
       <label>Subtitle<input id="poster-subtitle-value" maxlength="240" value="ADD YOUR DETAILS HERE"></label>
       <div class="dialog-actions"><button type="button" id="cancel-poster-template">Cancel</button><button type="submit">Create poster</button></div>
     </form>
+  </dialog>
+  <dialog id="magic-eraser-preview-dialog" aria-labelledby="magic-eraser-preview-title">
+    <section class="magic-preview-shell">
+      <header class="magic-preview-header">
+        <div><p class="eyebrow">EDICIÓN SEGURA · SIN APLICAR TODAVÍA</p><h2 id="magic-eraser-preview-title">Revisar borrado mágico</h2><p>Compará el original con el resultado. Cancelar conserva la imagen intacta.</p></div>
+        <button id="magic-eraser-cancel" type="button">Cancelar</button>
+      </header>
+      <div class="magic-preview-grid">
+        <figure><figcaption>Antes · original</figcaption><div class="magic-preview-canvas"><canvas id="magic-eraser-before-preview" aria-label="Imagen original antes del borrado mágico"></canvas></div></figure>
+        <figure><figcaption>Después · vista previa</figcaption><div class="magic-preview-canvas"><canvas id="magic-eraser-after-preview" aria-label="Resultado de borrado mágico sin aplicar"></canvas></div></figure>
+      </div>
+      <p class="magic-preview-note">Si el resultado no te convence, cancelá. Después de aplicar, podés usar Deshacer o el pincel Restaurar.</p>
+      <div class="dialog-actions"><button id="magic-eraser-cancel-secondary" type="button">Conservar original</button><button id="magic-eraser-apply" type="button">Aplicar borrado</button></div>
+    </section>
   </dialog>
   <dialog id="background-removal-dialog" aria-labelledby="background-removal-title">
     <section class="background-removal-shell">
