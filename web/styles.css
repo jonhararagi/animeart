@@ -896,3 +896,58 @@ body.interactive-mode .easy-edit-grid button small{display:none}
     max-height: 32dvh !important;
   }
 }
+
+
+/* AA-TOUCH-TOOLS-TOGGLE-001: persistent, isolated handle for collapsing the tool tray. */
+.mobile-tools-toggle { display: none; }
+@media (max-width: 920px) {
+  .workspace {
+    grid-template-rows: minmax(0, 1fr) 36px 118px;
+  }
+  .canvas-wrap { grid-row: 1; }
+  .mobile-tools-toggle {
+    grid-column: 1;
+    grid-row: 2;
+    display: flex;
+    position: relative;
+    z-index: 5;
+    align-items: center;
+    justify-content: center;
+    justify-self: stretch;
+    width: 100%;
+    min-height: 36px;
+    max-height: 36px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-top: 1px solid #334155;
+    border-bottom: 1px solid #334155;
+    border-radius: 0;
+    background: #202938;
+    color: #f8fafc;
+    font-size: 1.35rem;
+    line-height: 1;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-tools-toggle:focus-visible {
+    outline: 2px solid #7dd3fc;
+    outline-offset: -3px;
+  }
+  .toolbar { grid-row: 3; max-height: 118px; }
+  body.mobile-tools-open .workspace { grid-template-rows: minmax(0, 1fr) 36px 230px; }
+  body.mobile-tools-open .toolbar { grid-row: 3; max-height: 230px; }
+  body.mobile-tools-collapsed .workspace { grid-template-rows: minmax(0, 1fr) 36px 0 !important; }
+  body.mobile-tools-collapsed .toolbar {
+    display: none !important;
+    max-height: 0 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+  body.mobile-tools-collapsed .mobile-tools-toggle { grid-row: 2; }
+  body.mobile-layers-open .workspace { grid-template-rows: minmax(0, 1fr) 0 minmax(110px, 32dvh) !important; }
+  body.mobile-layers-open .mobile-tools-toggle { min-height: 0; max-height: 0; overflow: hidden; border: 0; }
+}
