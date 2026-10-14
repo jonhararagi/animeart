@@ -18,6 +18,11 @@
     <aside class="toolbar" aria-label="Tools">
       <section class="easy-edit-panel" aria-labelledby="easy-edit-title">
         <div class="easy-edit-heading"><span aria-hidden="true">✨</span><div><h2 id="easy-edit-title">Editar fácilmente</h2><p>Elige lo que quieres hacer</p></div></div>
+        <div class="editor-mode-switch" role="group" aria-label="Modo de edición">
+          <button type="button" data-editor-mode="simple" aria-pressed="true">🌱 Modo simple</button>
+          <button type="button" data-editor-mode="interactive" aria-pressed="false">✋ Modo interactivo</button>
+        </div>
+        <p class="editor-mode-hint" id="editor-mode-hint">Simple: elegí una tarea. Para acomodar una imagen, tocala y arrastrala.</p>
         <div class="easy-edit-grid">
           <button type="button" data-edit-goal="crop"><span aria-hidden="true">✂️</span><b>Recortar</b><small>Quita bordes sobrantes</small></button>
           <button type="button" data-edit-goal="background"><span aria-hidden="true">🪄</span><b>Quitar fondo</b><small>Hazlo transparente</small></button>
@@ -45,8 +50,8 @@
       <details class="more-tools">
         <summary>Más herramientas</summary>
         <div class="more-tools-content">
-          <button class="tool" data-tool="select">Select</button>
-      <button class="tool active" data-tool="brush">🖌️ Dibujar</button>
+          <button class="tool active" data-tool="select" aria-pressed="true">🖐️ Seleccionar / mover</button>
+      <button class="tool" data-tool="brush" aria-pressed="false">🖌️ Dibujar</button>
       <button class="tool" data-tool="eraser" title="Erase transparent pixels">🧽 Borrar</button>
       <button class="tool" data-tool="magic-eraser" aria-pressed="false" title="Tap a background color to erase its connected region">🪄 Quitar fondo</button>
       <button class="tool" data-tool="censor-light" aria-pressed="false" title="Paint an independent bright censor stroke">✨ Luz de censura</button>
@@ -245,8 +250,8 @@
     </aside>
   </main>
   <nav class="mobile-touch-dock" aria-label="Mobile editing shortcuts">
-    <button type="button" data-touch-action="tool" data-tool="select" aria-pressed="false">🖐 Select</button>
-    <button type="button" data-touch-action="tool" data-tool="brush" aria-pressed="true">🖌 Brush</button>
+    <button type="button" data-touch-action="tool" data-tool="select" aria-pressed="true">🖐 Mover</button>
+    <button type="button" data-touch-action="tool" data-tool="brush" aria-pressed="false">🖌 Dibujar</button>
     <button type="button" data-touch-action="tool" data-tool="eraser" aria-pressed="false" title="Transparent pixel eraser">🧽 Erase</button>
     <button type="button" data-touch-action="tool" data-tool="magic-eraser" aria-pressed="false" title="Tap to erase connected background color">🪄 Magic</button>
     <button type="button" data-touch-action="undo">↶ Undo</button>
