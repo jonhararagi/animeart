@@ -434,6 +434,17 @@ try {
   assert(cc0Sample?.contentType === "image" && cc0Sample?.name === "battleworn_knight", "real browser imports the bundled CC0 character as a native image layer");
   assert(cc0Sample?.image?.width === 944 && cc0Sample?.image?.height === 944, "real browser decodes the verified CC0 PNG dimensions");
   assert(cc0Sample?.image?.source?.startsWith("data:image/png;base64,"), "CC0 sample is embedded locally instead of uploaded to a server");
+  const initialSampleTransform = JSON.stringify(cc0Sample.transform);
+  const sampleCanvasCenter = await selectorCenter("#canvas");
+  await mouseStroke([
+    { x: sampleCanvasCenter.x - 24, y: sampleCanvasCenter.y - 12 },
+    { x: sampleCanvasCenter.x + 8, y: sampleCanvasCenter.y + 4 },
+    { x: sampleCanvasCenter.x + 36, y: sampleCanvasCenter.y + 18 }
+  ]);
+  const movedSample = (await readDocument()).layers.find(layer => layer.name === "battleworn_knight");
+  assert(JSON.stringify(movedSample?.transform) !== initialSampleTransform, "default Select/Move tool drags an imported image directly on the canvas");
+  await click("#undo");
+  await waitFor("JSON.stringify(JSON.parse(localStorage.getItem(\"animeart-web-document\")).layers.find(layer => layer.name === \"battleworn_knight\").transform) === " + JSON.stringify(JSON.parse(initialSampleTransform)), 10000);
   await saveScreenshot("animeart-studio-cc0-sample.png");
   assert(await evaluate('document.querySelector("#flip-image-horizontal").disabled === false && document.querySelector("#flip-image-vertical").disabled === false'), "image flip controls activate for an unlocked image layer");
   await click("#flip-image-horizontal");
