@@ -1775,18 +1775,24 @@ function drawMagicPreview(canvasElement, source) {
 }
 
 async function openMagicErasePreview({ layerId, originalSource, resultSource, width, height }) {
-  pendingMagicErase = { layerId, originalSource, resultSource, width, height };
   const dialog = document.querySelector("#magic-eraser-preview-dialog");
+  const applyButton = document.querySelector("#magic-eraser-apply");
+  pendingMagicErase = { layerId, originalSource, resultSource, width, height };
+  if (applyButton) {
+    applyButton.disabled = false;
+    applyButton.textContent = "Aplicar borrado";
+  }
   try {
     await Promise.all([
       drawMagicPreview(document.querySelector("#magic-eraser-before-preview"), originalSource),
       drawMagicPreview(document.querySelector("#magic-eraser-after-preview"), resultSource)
     ]);
-    if (dialog && !dialog.open) dialog.showModal();
-    status.textContent = "Revisá el resultado. Todavía no se modificó la imagen.";
+    if (!dialog) throw new Error("No se encontró la ventana de vista previa del borrado mágico.");
+    if (!dialog.open) dialog.showModal();
+    status.textContent = "Revisá el resultado y pulsá «Aplicar borrado». La imagen no cambia hasta confirmar.";
   } catch (error) {
     pendingMagicErase = null;
-    status.textContent = error?.message || "No se pudo crear la vista previa";
+    status.textContent = error?.message || "No se pudo crear la vista previa. La imagen original sigue intacta.";
   }
 }
 
@@ -1797,33 +1803,55 @@ function cancelMagicErasePreview() {
   status.textContent = "Borrado mágico cancelado. La imagen original sigue intacta.";
 }
 
-function applyMagicErasePreview() {
+async function applyMagicErasePreview() {
   const pending = pendingMagicErase;
-  if (!pending) return;
+  const applyButton = document.querySelector("#magic-eraser-apply");
+  if (!pending || applyButton?.disabled) {
+    if (!pending) status.textContent = "No hay un borrado pendiente para aplicar. Repetí la selección.";
+    return;
+  }
   const layer = state.document.layers.find(item => item.id === pending.layerId);
   if (!layer || layer.contentType !== "image" || layer.locked || !layer.image) {
     cancelMagicErasePreview();
     status.textContent = "La capa cambió. Volvé a seleccionar la imagen e intentá otra vez.";
     return;
   }
-  const before = cloneDocument(state.document);
-  const next = replaceImageLayer(state.document, layer.id, {
-    source: pending.resultSource, width: pending.width, height: pending.height,
-    restoreSource: layer.image.restoreSource || pending.originalSource
-  }, { preserveDisplaySize: true });
-  if (!next) {
-    status.textContent = "No se pudo aplicar el borrado. La imagen sigue intacta.";
-    return;
+  if (applyButton) {
+    applyButton.disabled = true;
+    applyButton.textContent = "Aplicando…";
   }
-  imageCache.delete(layer.image.source);
-  state.document = next;
-  state.history.record(before, next);
-  state.dirty = true;
-  persistDocument();
-  pendingMagicErase = null;
-  const dialog = document.querySelector("#magic-eraser-preview-dialog");
-  if (dialog?.open) dialog.close();
-  refreshDocument("Borrado mágico aplicado. Deshacer revierte el cambio; Restaurar recupera píxeles del original.");
+  try {
+    const before = cloneDocument(state.document);
+    // Keep the layer's logical dimensions. The optimized preview source can be
+    // a few pixels smaller after local compression, and using those rounded
+    // dimensions made preserveDisplaySize reject an otherwise valid erase.
+    const next = replaceImageLayer(state.document, layer.id, {
+      source: pending.resultSource,
+      width: Math.round(layer.image.width),
+      height: Math.round(layer.image.height),
+      restoreSource: layer.image.restoreSource || pending.originalSource
+    }, { preserveDisplaySize: true });
+    if (!next) {
+      status.textContent = "No se pudo aplicar el borrado. La imagen original sigue intacta. Probá de nuevo o usá Deshacer.";
+      return;
+    }
+    imageCache.delete(layer.image.source);
+    state.document = next;
+    state.history.record(before, next);
+    state.dirty = true;
+    await persistDocument();
+    pendingMagicErase = null;
+    const dialog = document.querySelector("#magic-eraser-preview-dialog");
+    if (dialog?.open) dialog.close();
+    refreshDocument("Borrado mágico aplicado. Deshacer revierte el cambio; Restaurar recupera píxeles del original.");
+  } catch (error) {
+    status.textContent = error?.message || "No se pudo aplicar el borrado mágico. La imagen original sigue intacta.";
+  } finally {
+    if (applyButton) {
+      applyButton.disabled = false;
+      applyButton.textContent = "Aplicar borrado";
+    }
+  }
 }
 
 async function finishMagicErase(interaction) {
@@ -2481,6 +2509,18 @@ document.querySelectorAll("[data-brush-color]").forEach(button => {
     });
     redraw();
   });
+});
+
+// This control sits outside the canvas event surface: toggling the tools must never paint or erase.
+const mobileToolsToggle = document.querySelector("#mobile-tools-toggle");
+mobileToolsToggle?.addEventListener("click", event => {
+  event.preventDefault();
+  event.stopPropagation();
+  const collapsed = document.body.classList.toggle("mobile-tools-collapsed");
+  mobileToolsToggle.setAttribute("aria-expanded", String(!collapsed));
+  mobileToolsToggle.setAttribute("aria-label", collapsed ? "Mostrar herramientas" : "Ocultar herramientas");
+  mobileToolsToggle.title = collapsed ? "Mostrar herramientas para elegir una acción" : "Ocultar herramientas para ampliar el lienzo";
+  mobileToolsToggle.querySelector("span").textContent = collapsed ? "⌃" : "⌄";
 });
 
 const mobileDock = document.querySelector(".mobile-touch-dock");
@@ -3406,6 +3446,13 @@ transparencyButton?.addEventListener("click", () => {
   updateRemoveImageControl();
 });
 backgroundModeButtons.forEach(button => button.addEventListener("click", () => setCanvasBackground(button.dataset.canvasBackground)));
+const toggleLayersPanelButton = document.querySelector("#toggle-layers-panel");
+toggleLayersPanelButton?.addEventListener("click", () => {
+  const collapsed = document.body.classList.toggle("layers-collapsed");
+  toggleLayersPanelButton.setAttribute("aria-pressed", String(!collapsed));
+  toggleLayersPanelButton.textContent = collapsed ? "Mostrar capas" : "Ocultar capas";
+  toggleLayersPanelButton.title = collapsed ? "Volver a mostrar capas y propiedades" : "Ocultar capas y propiedades para ampliar el lienzo";
+});
 removeSelectedImageButton?.addEventListener("click", event => {
   event.preventDefault();
   event.stopPropagation();
