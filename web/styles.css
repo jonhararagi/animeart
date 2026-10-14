@@ -848,3 +848,14 @@ body.interactive-mode .easy-edit-grid button small{display:none}
   #magic-eraser-preview-dialog .dialog-actions > button { flex: 1 1 0; min-width: 0; min-height: 46px; padding: 8px 6px; font-size: .75rem; }
   #magic-eraser-cancel { min-height: 44px; }
 }
+
+@media (max-width: 920px) {
+  body.mobile-tools-open .toolbar {
+    position: static;
+    inset: auto;
+    z-index: auto;
+    width: auto;
+    max-height: 126px;
+  }
+  body.mobile-layers-open .layers { display: none !important; }
+}
