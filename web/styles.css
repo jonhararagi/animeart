@@ -673,3 +673,178 @@ body.interactive-mode .easy-edit-grid button small{display:none}
     scroll-behavior: auto !important;
   }
 }
+
+
+/* AA-EDITOR-WORKSPACE-002: canvas-first layout with tools below the work area. */
+@media (min-width: 921px) {
+  .workspace {
+    height: calc(100dvh - 62px);
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) 276px;
+    grid-template-rows: minmax(0, 1fr) 190px;
+    overflow: hidden;
+  }
+  .canvas-wrap { grid-column: 1; grid-row: 1; min-height: 0; }
+  .toolbar {
+    grid-column: 1;
+    grid-row: 2;
+    display: block;
+    min-height: 0;
+    max-height: 190px;
+    overflow: auto;
+    padding: 8px 12px 10px;
+    border-right: 0;
+    border-top: 1px solid #293447;
+  }
+  .layers {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    max-height: none;
+    min-height: 0;
+    overflow: auto;
+    border-top: 0;
+    border-left: 1px solid #293447;
+  }
+  .easy-edit-panel { padding: 8px; gap: 6px; }
+  .easy-edit-heading { gap: 7px; }
+  .easy-edit-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .easy-edit-grid button { min-height: 48px; padding: 5px; }
+  .easy-edit-grid button small { font-size: .58rem; }
+  .guided-edit-tools { grid-template-columns: auto 1fr 1fr; align-items: center; }
+  .guided-toggle { grid-column: auto; }
+  .editing-help-card { display: none; }
+  .toolbar .more-tools summary { padding: 7px 2px; }
+  .toolbar .more-tools-content { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .canvas-tools { inset: 8px 8px auto; }
+  .transparency-shortcuts { inset: auto 8px 8px; }
+}
+@media (max-width: 920px) {
+  body {
+    display: grid;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    grid-template-rows: 56px minmax(0, 1fr) auto;
+  }
+  .topbar { height: 56px; min-height: 56px; padding: 0 10px; }
+  .workspace {
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) 126px;
+  }
+  .canvas-wrap {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .toolbar {
+    grid-column: 1;
+    grid-row: 2;
+    display: block;
+    min-height: 0;
+    max-height: 126px;
+    overflow: auto;
+    padding: 6px 8px;
+    border-top: 1px solid #293447;
+    border-right: 0;
+  }
+  .layers { display: none; }
+  .easy-edit-panel { padding: 5px; gap: 5px; border-radius: 9px; }
+  .easy-edit-heading p, .editor-mode-hint, .guided-edit-tools, .editing-help-card { display: none !important; }
+  .easy-edit-heading h2 { font-size: .76rem; }
+  .editor-mode-switch { display: flex; gap: 5px; margin: 0; }
+  .editor-mode-switch button { min-height: 30px; padding: 4px 8px; font-size: .68rem; }
+  .easy-edit-grid {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 2px 1px 5px;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+  .easy-edit-grid button {
+    flex: 0 0 116px;
+    min-height: 48px;
+    padding: 5px;
+  }
+  .easy-edit-grid button b { font-size: .65rem; }
+  .easy-edit-grid button small { display: none; }
+  .toolbar .more-tools summary { padding: 5px 2px; font-size: .7rem; }
+  .toolbar .more-tools-content {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    padding-bottom: 5px;
+  }
+  .toolbar .more-tools-content > button { min-height: 38px; font-size: .68rem; }
+  .mobile-touch-dock {
+    position: static;
+    z-index: auto;
+    display: flex;
+    width: 100%;
+    min-height: 54px;
+    max-height: 58px;
+    padding: 5px 6px max(5px, env(safe-area-inset-bottom));
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    border-top: 1px solid #2a3546;
+    background: #10141c;
+    scrollbar-width: thin;
+  }
+  .mobile-touch-dock button {
+    flex: 0 0 auto;
+    min-width: 68px;
+    min-height: 40px;
+    padding: 6px 9px;
+    font-size: .68rem;
+    white-space: nowrap;
+  }
+  .canvas-tools { inset: 5px 5px auto; }
+  #selection-indicator { min-height: 30px; padding: 5px 8px; font-size: .7rem; }
+  .canvas-view-actions { display: flex; flex-wrap: nowrap; width: 100%; overflow-x: auto; }
+  .canvas-view-actions button { flex: 0 0 auto; min-height: 32px; font-size: .62rem; }
+  .transparency-shortcuts { display: none; }
+  .transparency-note { display: none; }
+  canvas { width: 94%; height: 78%; max-height: 100%; }
+}
+@media (max-width: 620px) {
+  .workspace { grid-template-rows: minmax(0, 1fr) 118px; }
+  .toolbar { max-height: 118px; padding: 4px 6px; }
+  .easy-edit-heading { display: none; }
+  .editor-mode-switch button { flex: 1; }
+  .easy-edit-grid button { flex-basis: 108px; min-height: 44px; }
+  .mobile-touch-dock { min-height: 52px; max-height: 56px; }
+  .mobile-touch-dock button { min-width: 62px; font-size: .64rem; }
+  .canvas-view-actions button { padding: 4px 6px; }
+  #magic-eraser-preview-dialog {
+    width: calc(100vw - 12px);
+    max-width: none;
+    max-height: calc(100dvh - 12px);
+    margin: auto;
+    padding: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  .magic-preview-shell { width: 100%; min-width: 0; padding: 10px; }
+  .magic-preview-header { gap: 8px; margin-bottom: 10px; }
+  .magic-preview-header h2 { font-size: 1rem; }
+  .magic-preview-header p { font-size: .74rem; line-height: 1.35; }
+  .magic-preview-grid { gap: 8px; }
+  .magic-preview-grid figure { display: grid; grid-template-columns: 66px minmax(0, 1fr); align-items: center; gap: 7px; }
+  .magic-preview-grid figcaption { margin: 0; font-size: .7rem; }
+  .magic-preview-canvas { min-height: 82px; max-height: 19dvh; padding: 4px; }
+  .magic-preview-canvas canvas { max-height: 18dvh; }
+  .magic-preview-note { margin: 9px 0; font-size: .7rem; line-height: 1.35; }
+  #magic-eraser-preview-dialog .dialog-actions { position: sticky; bottom: 0; padding: 7px 0 2px; background: #111722; }
+  #magic-eraser-preview-dialog .dialog-actions > button { flex: 1 1 0; min-width: 0; min-height: 46px; padding: 8px 6px; font-size: .75rem; }
+  #magic-eraser-cancel { min-height: 44px; }
+}
