@@ -884,3 +884,15 @@ body.interactive-mode .easy-edit-grid button small{display:none}
     border-right: 0;
   }
 }
+
+@media (max-width: 920px) {
+  body.mobile-layers-open .layers {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    z-index: auto !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: 32dvh !important;
+  }
+}
