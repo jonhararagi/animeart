@@ -2472,6 +2472,21 @@ if (mobileDock) {
     }
     if (action === "undo") { undo(); return; }
     if (action === "redo") { redo(); return; }
+    if (action === "crop-image") {
+      document.body.classList.remove("mobile-tools-open", "mobile-layers-open");
+      mobileDock.querySelectorAll('[data-touch-action="more"], [data-touch-action="layers"]').forEach(item => item.setAttribute("aria-expanded", "false"));
+      const layer = selectedLayerExact();
+      if (!layer || layer.contentType !== "image" || !layer.image) {
+        status.textContent = "Primero seleccioná una imagen en el lienzo o en Capas; después tocá Recortar.";
+        return;
+      }
+      if (layer.locked) {
+        status.textContent = "La imagen está bloqueada. Desbloqueala desde Capas para poder recortarla.";
+        return;
+      }
+      cropResizeButton.click();
+      return;
+    }
     if (action === "import-image") { imageFileInput.click(); return; }
     if (action === "add-text") { document.querySelector("#add-text-layer")?.click(); return; }
     if (action === "export") { exportPngButton.click(); return; }
