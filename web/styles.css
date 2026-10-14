@@ -663,3 +663,13 @@ body.interactive-mode .easy-edit-grid button small{display:none}
   .magic-preview-canvas canvas { max-height:30dvh; }
   #magic-eraser-preview-dialog .dialog-actions > button { flex:1 1 140px; }
 }
+
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
