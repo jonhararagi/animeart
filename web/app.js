@@ -2249,7 +2249,7 @@ canvas.addEventListener("pointerup", event => {
   if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
     const interaction = state.multiTransformInteraction;
     const current = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
-    const layers = selectedLayersExact();
+    const layers = interactionLayers(interaction);
     if (interaction.type === "move") {
       interaction.previewDelta = { x: current.x - interaction.startDocument.x, y: current.y - interaction.startDocument.y };
     } else if (interaction.type === "scale") {
