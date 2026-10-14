@@ -2275,6 +2275,12 @@ canvas.addEventListener("pointercancel", event => {
     status.textContent = "Magic Eraser tap cancelled";
     return;
   }
+  if (state.imageRestoreInteraction?.pointerId === event.pointerId) {
+    state.imageRestoreInteraction = null;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    status.textContent = "Restauración cancelada; no se modificó la imagen.";
+    return;
+  }
   if (state.imageEraseInteraction?.pointerId === event.pointerId) {
     state.imageEraseInteraction = null;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
@@ -2597,6 +2603,7 @@ helpToggle.addEventListener("change", () => {
 undoButton.addEventListener("click", undo);
 document.querySelector("#magic-eraser-apply")?.addEventListener("click", applyMagicErasePreview);
 document.querySelector("#magic-eraser-cancel")?.addEventListener("click", cancelMagicErasePreview);
+document.querySelector("#magic-eraser-cancel-secondary")?.addEventListener("click", cancelMagicErasePreview);
 document.querySelector("#magic-eraser-preview-dialog")?.addEventListener("cancel", () => { pendingMagicErase = null; });
 
 redoButton.addEventListener("click", redo);
