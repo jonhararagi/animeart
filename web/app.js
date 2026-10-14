@@ -1615,6 +1615,20 @@ function beginSelectionInteraction(event) {
       const length = Math.hypot(outward.x, outward.y) || 1;
       groupScreenGeometry.rotationHandle = { x: topMid.x + outward.x / length * 32, y: topMid.y + outward.y / length * 32 };
       const groupHit = hitTestHandle(screenPoint, groupScreenGeometry, HANDLE_RADIUS);
+      // A hit inside the group bounds is itself a valid drag target. Do not
+      // depend on a second per-layer hit test, which can miss edge pixels.
+      if (groupHit === "move") {
+        if (layers.some(layer => layer.locked)) return;
+        state.multiTransformInteraction = {
+          pointerId: event.pointerId,
+          type: "move",
+          layerIds: layers.map(layer => layer.id),
+          startDocument: documentPoint,
+          previewDelta: { x: 0, y: 0 }
+        };
+        canvas.setPointerCapture(event.pointerId);
+        return;
+      }
       if (groupHit === "scale-nw" || groupHit === "scale-ne" || groupHit === "scale-se" || groupHit === "scale-sw") {
         if (layers.some(layer => layer.locked)) return;
         state.multiTransformInteraction = { pointerId: event.pointerId, type: "scale", handle: groupHit, startDocument: documentPoint, layerIds: layers.map(layer => layer.id), previewTransforms: new Map(layers.map(layer => [layer.id, { ...layer.transform }])) };
