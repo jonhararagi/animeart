@@ -617,3 +617,15 @@ canvas {
   #remove-selected-image { width: 50px; height: 50px; min-height: 50px; font-size: 32px; }
   #remove-selected-image span { font-size: 12px; }
 }
+
+
+/* AA-PICSART-UX-001: beginner/interact mode switch and touch-first layer manipulation. */
+.editor-mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0 4px}
+.editor-mode-switch button{min-height:42px;padding:8px 6px;border-radius:10px;font-size:.76rem;font-weight:750;border:1px solid #344155;background:#151e2b;color:#c8d5e5}
+.editor-mode-switch button.active{background:#153846;border-color:#48c9e5;color:#e4fbff;box-shadow:inset 0 0 0 1px #48c9e555}
+.editor-mode-hint{margin:3px 0 8px;color:#adbed0;font-size:.72rem;line-height:1.4}
+body.interactive-mode .editor-mode-hint{display:none}
+body.interactive-mode .guided-edit-tools,body.interactive-mode .editing-help-card{display:none}
+body.interactive-mode .easy-edit-grid button{min-height:44px}
+body.interactive-mode .easy-edit-grid button small{display:none}
+@media(max-width:620px){.editor-mode-switch button{min-height:44px;font-size:.78rem}.editor-mode-hint{font-size:.75rem}}
