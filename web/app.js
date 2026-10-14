@@ -2511,6 +2511,18 @@ document.querySelectorAll("[data-brush-color]").forEach(button => {
   });
 });
 
+// This control sits outside the canvas event surface: toggling the tools must never paint or erase.
+const mobileToolsToggle = document.querySelector("#mobile-tools-toggle");
+mobileToolsToggle?.addEventListener("click", event => {
+  event.preventDefault();
+  event.stopPropagation();
+  const collapsed = document.body.classList.toggle("mobile-tools-collapsed");
+  mobileToolsToggle.setAttribute("aria-expanded", String(!collapsed));
+  mobileToolsToggle.setAttribute("aria-label", collapsed ? "Mostrar herramientas" : "Ocultar herramientas");
+  mobileToolsToggle.title = collapsed ? "Mostrar herramientas para elegir una acción" : "Ocultar herramientas para ampliar el lienzo";
+  mobileToolsToggle.querySelector("span").textContent = collapsed ? "⌃" : "⌄";
+});
+
 const mobileDock = document.querySelector(".mobile-touch-dock");
 if (mobileDock) {
   mobileDock.addEventListener("click", event => {
