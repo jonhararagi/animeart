@@ -446,6 +446,8 @@ test("image crop and resize stay on the existing image-layer, history and persis
   assert.match(html, /id="image-resize-fields"/);
   assert.match(app, /state\.history\.record\(before, next\)/);
   assert.match(app, /refreshDocument\(mode === "crop" \? "Image cropped" : "Image resized"\)/);
+  assert.match(app, /if \\(event\\.type === "pointerup"\\)/, "crop drag consumes the final pointerup coordinate");
+  assert.match(app, /updateCropInputs\\(drag\\.before\\)/, "cancelled crop drag restores the prior crop rectangle");
   assert.match(operations, /export function replaceImageLayer/);
   assert.match(processing, /export async function cropImageSource/);
   assert.match(processing, /export async function resizeImageSource/);
