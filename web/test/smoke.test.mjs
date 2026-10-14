@@ -638,3 +638,19 @@ test("AA-PICSART-UX-001 magic erase is preview-first and supports pixel restorat
   assert.match(model, /image\.restoreSource/);
   assert.match(operations, /replacement\.restoreSource/);
 });
+
+
+test("magic erase confirmation keeps the source intact on failure and preserves the layer's logical dimensions", async () => {
+  const app = await readFile("app.js", "utf8");
+  const html = await readFile("index.html", "utf8");
+  const css = await readFile("styles.css", "utf8");
+  assert.match(app, /async function applyMagicErasePreview\(\)/);
+  assert.match(app, /width: Math\.round\(layer\.image\.width\)/);
+  assert.match(app, /height: Math\.round\(layer\.image\.height\)/);
+  assert.match(app, /No se pudo aplicar el borrado\. La imagen original sigue intacta/);
+  assert.match(app, /applyButton\.disabled = true/);
+  assert.match(html, /id="magic-eraser-apply"/);
+  assert.match(css, /AA-EDITOR-WORKSPACE-002/);
+  assert.match(css, /body\.mobile-tools-open \.toolbar/);
+  assert.match(css, /\.mobile-touch-dock\s*\{\s*position: static/);
+});
