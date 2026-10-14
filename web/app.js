@@ -145,6 +145,7 @@ const state = {
   lastPanPoint: null,
   strokeBefore: null,
   imageEraseInteraction: null,
+  imageRestoreInteraction: null,
   magicEraseInteraction: null,
   transformInteraction: null,
   multiTransformInteraction: null,
@@ -1714,11 +1715,85 @@ function imageErasePoint(event, layer) {
 }
 
 
+let pendingMagicErase = null;
+
+function drawMagicPreview(canvasElement, source) {
+  if (!canvasElement || !source) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => {
+      const maxWidth = 520, maxHeight = 380;
+      const scale = Math.min(maxWidth / image.naturalWidth, maxHeight / image.naturalHeight, 1);
+      canvasElement.width = Math.max(1, Math.round(image.naturalWidth * scale));
+      canvasElement.height = Math.max(1, Math.round(image.naturalHeight * scale));
+      const context = canvasElement.getContext("2d");
+      if (!context) { reject(new Error("No se pudo mostrar la vista previa")); return; }
+      context.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      context.drawImage(image, 0, 0, canvasElement.width, canvasElement.height);
+      resolve();
+    };
+    image.onerror = () => reject(new Error("No se pudo cargar la vista previa"));
+    image.src = source;
+  });
+}
+
+async function openMagicErasePreview({ layerId, originalSource, resultSource, width, height }) {
+  pendingMagicErase = { layerId, originalSource, resultSource, width, height };
+  const dialog = document.querySelector("#magic-eraser-preview-dialog");
+  try {
+    await Promise.all([
+      drawMagicPreview(document.querySelector("#magic-eraser-before-preview"), originalSource),
+      drawMagicPreview(document.querySelector("#magic-eraser-after-preview"), resultSource)
+    ]);
+    if (dialog && !dialog.open) dialog.showModal();
+    status.textContent = "Revisá el resultado. Todavía no se modificó la imagen.";
+  } catch (error) {
+    pendingMagicErase = null;
+    status.textContent = error?.message || "No se pudo crear la vista previa";
+  }
+}
+
+function cancelMagicErasePreview() {
+  pendingMagicErase = null;
+  const dialog = document.querySelector("#magic-eraser-preview-dialog");
+  if (dialog?.open) dialog.close();
+  status.textContent = "Borrado mágico cancelado. La imagen original sigue intacta.";
+}
+
+function applyMagicErasePreview() {
+  const pending = pendingMagicErase;
+  if (!pending) return;
+  const layer = state.document.layers.find(item => item.id === pending.layerId);
+  if (!layer || layer.contentType !== "image" || layer.locked || !layer.image) {
+    cancelMagicErasePreview();
+    status.textContent = "La capa cambió. Volvé a seleccionar la imagen e intentá otra vez.";
+    return;
+  }
+  const before = cloneDocument(state.document);
+  const next = replaceImageLayer(state.document, layer.id, {
+    source: pending.resultSource, width: pending.width, height: pending.height,
+    restoreSource: layer.image.restoreSource || pending.originalSource
+  }, { preserveDisplaySize: true });
+  if (!next) {
+    status.textContent = "No se pudo aplicar el borrado. La imagen sigue intacta.";
+    return;
+  }
+  imageCache.delete(layer.image.source);
+  state.document = next;
+  state.history.record(before, next);
+  state.dirty = true;
+  persistDocument();
+  pendingMagicErase = null;
+  const dialog = document.querySelector("#magic-eraser-preview-dialog");
+  if (dialog?.open) dialog.close();
+  refreshDocument("Borrado mágico aplicado. Deshacer revierte el cambio; Restaurar recupera píxeles del original.");
+}
+
 async function finishMagicErase(interaction) {
   const layer = state.document.layers.find(item => item.id === interaction.layerId);
   if (!layer || layer.contentType !== "image" || layer.locked || !layer.image?.source) return;
   if (layer.image.width * layer.image.height > 16000000) {
-    status.textContent = "Magic Eraser supports up to 16 MP. Resize this image first.";
+    status.textContent = "El borrado mágico admite hasta 16 MP. Reducí la imagen primero.";
     return;
   }
   try {
@@ -1728,7 +1803,7 @@ async function finishMagicErase(interaction) {
       image = await new Promise((resolve, reject) => {
         const candidate = new Image();
         candidate.onload = () => resolve(candidate);
-        candidate.onerror = () => reject(new Error("Could not decode this image for Magic Eraser"));
+        candidate.onerror = () => reject(new Error("No se pudo abrir la imagen para el borrado mágico"));
         candidate.src = source;
         imageCache.set(source, candidate);
       });
@@ -1739,14 +1814,14 @@ async function finishMagicErase(interaction) {
     raster.width = width;
     raster.height = height;
     const context = raster.getContext("2d", { willReadFrequently: true });
-    if (!context) throw new Error("Image editing canvas is unavailable");
+    if (!context) throw new Error("El lienzo de edición no está disponible");
     context.drawImage(image, 0, 0, width, height);
     const original = context.getImageData(0, 0, width, height);
     const x = Math.max(0, Math.min(width - 1, Math.floor(interaction.point.x)));
     const y = Math.max(0, Math.min(height - 1, Math.floor(interaction.point.y)));
     const offset = (y * width + x) * 4;
     if (original.data[offset + 3] < 16) {
-      status.textContent = "That pixel is already transparent. Tap an opaque background pixel.";
+      status.textContent = "Ese píxel ya es transparente. Tocá un píxel opaco del fondo.";
       return;
     }
     const targetColor = "#" + [original.data[offset], original.data[offset + 1], original.data[offset + 2]]
@@ -1760,24 +1835,93 @@ async function finishMagicErase(interaction) {
       if (original.data[index] !== result.data[index]) { changed = true; break; }
     }
     if (!changed) {
-      status.textContent = "No connected pixels matched that background. Try a nearby pixel or use Remove Background.";
+      status.textContent = "No se encontró una región conectada de ese color. Probá un píxel cercano o Quitar fondo.";
       return;
     }
     context.putImageData(new ImageData(result.data, width, height), 0, 0);
     const optimized = await optimizeImageSource(raster.toDataURL("image/png"));
+    await openMagicErasePreview({
+      layerId: layer.id, originalSource: source, resultSource: optimized.source,
+      width: optimized.width, height: optimized.height
+    });
+  } catch (error) {
+    status.textContent = error?.message || "Falló el borrado mágico";
+  }
+}
+
+async function finishImageRestore(interaction) {
+  const layer = state.document.layers.find(item => item.id === interaction.layerId);
+  if (!layer || layer.contentType !== "image" || layer.locked || !layer.image?.source) return;
+  const backupSource = layer.image.restoreSource;
+  if (!backupSource) {
+    status.textContent = "Esta imagen no tiene una copia original para Restaurar. Usá Deshacer si el borrado fue reciente.";
+    return;
+  }
+  try {
+    const loadImage = source => new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error("No se pudo abrir la copia original"));
+      image.src = source;
+    });
+    const [currentImage, originalImage] = await Promise.all([loadImage(layer.image.source), loadImage(backupSource)]);
+    const width = Math.round(layer.image.width), height = Math.round(layer.image.height);
+    if (originalImage.naturalWidth !== width || originalImage.naturalHeight !== height ||
+        currentImage.naturalWidth !== width || currentImage.naturalHeight !== height) {
+      status.textContent = "La imagen cambió de tamaño después del borrado. Deshacer sigue disponible; la restauración por pincel requiere el tamaño original.";
+      return;
+    }
+    const raster = document.createElement("canvas");
+    raster.width = width; raster.height = height;
+    const context = raster.getContext("2d", { willReadFrequently: true });
+    if (!context) throw new Error("El lienzo de restauración no está disponible");
+    context.drawImage(currentImage, 0, 0);
+    const current = context.getImageData(0, 0, width, height);
+    const originalCanvas = document.createElement("canvas");
+    originalCanvas.width = width; originalCanvas.height = height;
+    const originalContext = originalCanvas.getContext("2d", { willReadFrequently: true });
+    if (!originalContext) throw new Error("La copia original no está disponible");
+    originalContext.drawImage(originalImage, 0, 0);
+    const original = originalContext.getImageData(0, 0, width, height);
+    const radius = Math.max(1, state.brush.size / Math.max(0.05, Number(layer.transform.scale) || 1) / 2);
+    const points = interaction.points;
+    const stamp = point => {
+      const minX = Math.max(0, Math.floor(point.x - radius)), maxX = Math.min(width - 1, Math.ceil(point.x + radius));
+      const minY = Math.max(0, Math.floor(point.y - radius)), maxY = Math.min(height - 1, Math.ceil(point.y + radius));
+      for (let py = minY; py <= maxY; py++) for (let px = minX; px <= maxX; px++) {
+        const dx = px - point.x, dy = py - point.y;
+        if (dx * dx + dy * dy > radius * radius) continue;
+        const index = (py * width + px) * 4;
+        current.data[index] = original.data[index];
+        current.data[index + 1] = original.data[index + 1];
+        current.data[index + 2] = original.data[index + 2];
+        current.data[index + 3] = original.data[index + 3];
+      }
+    };
+    if (points.length === 1) stamp(points[0]);
+    for (let i = 1; i < points.length; i++) {
+      const from = points[i - 1], to = points[i];
+      const distance = Math.hypot(to.x - from.x, to.y - from.y);
+      const steps = Math.max(1, Math.ceil(distance / Math.max(1, radius * 0.45)));
+      for (let step = 0; step <= steps; step++) {
+        const t = step / steps;
+        stamp({ x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t });
+      }
+    }
+    context.putImageData(current, 0, 0);
+    const optimized = await optimizeImageSource(raster.toDataURL("image/png"));
     const before = cloneDocument(state.document);
     const next = replaceImageLayer(state.document, layer.id, {
-      source: optimized.source, width: optimized.width, height: optimized.height
+      source: optimized.source, width: optimized.width, height: optimized.height, restoreSource: backupSource
     }, { preserveDisplaySize: true });
-    if (!next) throw new Error("Could not apply Magic Eraser to this image");
-    imageCache.delete(source);
+    if (!next) throw new Error("No se pudo aplicar la restauración");
     state.document = next;
     state.history.record(before, next);
     state.dirty = true;
     persistDocument();
-    refreshDocument("🪄 Magic Eraser removed the tapped color region · Undo restores it");
+    refreshDocument("Pincel Restaurar aplicado. Deshacer revierte la restauración.");
   } catch (error) {
-    status.textContent = error?.message || "Magic Eraser failed";
+    status.textContent = error?.message || "Falló el pincel Restaurar";
   }
 }
 
@@ -1864,6 +2008,21 @@ canvas.addEventListener("pointerdown", event => {
   }
   if (state.tool === "select") {
     beginSelectionInteraction(event);
+    return;
+  }
+  if (state.tool === "restore-brush") {
+    const imageLayer = selectedLayerExact();
+    if (!imageLayer || imageLayer.contentType !== "image" || !imageLayer.image || imageLayer.locked) {
+      status.textContent = "Seleccioná una capa de imagen desbloqueada para restaurar píxeles.";
+      return;
+    }
+    if (!imageLayer.image.restoreSource) {
+      status.textContent = "Esta imagen no tiene copia original guardada. El pincel Restaurar aparece disponible después de usar Borrado mágico.";
+      return;
+    }
+    state.imageRestoreInteraction = { pointerId: event.pointerId, layerId: imageLayer.id, points: [imageErasePoint(event, imageLayer)] };
+    canvas.setPointerCapture(event.pointerId);
+    status.textContent = "🩹 Restaurando píxeles originales. Soltá para aplicar.";
     return;
   }
   if (state.tool === "magic-eraser") {
@@ -1981,6 +2140,11 @@ canvas.addEventListener("pointermove", event => {
     if (layer?.image) state.imageEraseInteraction.points.push(imageErasePoint(event, layer));
     return;
   }
+  if (state.imageRestoreInteraction && event.pointerId === state.imageRestoreInteraction.pointerId) {
+    const layer = state.document.layers.find(item => item.id === state.imageRestoreInteraction.layerId);
+    if (layer?.image) state.imageRestoreInteraction.points.push(imageErasePoint(event, layer));
+    return;
+  }
   if (!state.drawing || event.pointerId !== state.drawingPointerId) return;
   const layer = selectedLayer();
   const stroke = layer?.strokes[layer.strokes.length - 1];
@@ -2043,6 +2207,16 @@ canvas.addEventListener("pointerup", event => {
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     if (!interaction.moved) finishMagicErase(interaction);
     else status.textContent = "Magic Eraser tap cancelled because the canvas moved";
+    return;
+  }
+  if (state.imageRestoreInteraction && event.pointerId === state.imageRestoreInteraction.pointerId) {
+    const interaction = state.imageRestoreInteraction;
+    state.imageRestoreInteraction = null;
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    finishImageRestore(interaction).catch(error => {
+      status.textContent = error?.message || "Falló el pincel Restaurar";
+      redraw();
+    });
     return;
   }
   if (state.imageEraseInteraction && event.pointerId === state.imageEraseInteraction.pointerId) {
@@ -2421,6 +2595,10 @@ helpToggle.addEventListener("change", () => {
 });
 
 undoButton.addEventListener("click", undo);
+document.querySelector("#magic-eraser-apply")?.addEventListener("click", applyMagicErasePreview);
+document.querySelector("#magic-eraser-cancel")?.addEventListener("click", cancelMagicErasePreview);
+document.querySelector("#magic-eraser-preview-dialog")?.addEventListener("cancel", () => { pendingMagicErase = null; });
+
 redoButton.addEventListener("click", redo);
 
 document.querySelector("#add-layer").addEventListener("click", () => {
