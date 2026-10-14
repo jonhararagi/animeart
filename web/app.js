@@ -217,11 +217,29 @@ function updateRemoveImageControl() {
     const wrapRect = document.querySelector(".canvas-wrap").getBoundingClientRect();
     if (geometry) {
       const right = Math.max(...geometry.corners.map(point => point.x));
+      const left = Math.min(...geometry.corners.map(point => point.x));
       const top = Math.min(...geometry.corners.map(point => point.y));
-      const left = canvasRect.left - wrapRect.left + right - 23;
-      const y = canvasRect.top - wrapRect.top + top - 23;
-      removeSelectedImageButton.style.left = Math.max(4, Math.min(wrapRect.width - 50, left)) + "px";
-      removeSelectedImageButton.style.top = Math.max(4, Math.min(wrapRect.height - 50, y)) + "px";
+      const buttonSize = window.matchMedia("(max-width: 620px)").matches ? 50 : 46;
+      const safeGap = 28;
+      const canvasOffsetX = canvasRect.left - wrapRect.left;
+      const canvasOffsetY = canvasRect.top - wrapRect.top;
+      const rightPosition = canvasOffsetX + right + safeGap;
+      const leftPosition = canvasOffsetX + left - buttonSize - safeGap;
+      const enoughRight = rightPosition + buttonSize <= wrapRect.width - 4;
+      const enoughLeft = leftPosition >= 4;
+      if (enoughRight) {
+        removeSelectedImageButton.style.left = rightPosition + "px";
+      } else if (enoughLeft) {
+        removeSelectedImageButton.style.left = leftPosition + "px";
+      } else {
+        // Never cover a transform handle. The layer list still provides deletion.
+        removeSelectedImageButton.hidden = true;
+        return;
+      }
+      const y = canvasOffsetY + top - Math.round(buttonSize / 2);
+      removeSelectedImageButton.style.top = Math.max(4, Math.min(wrapRect.height - buttonSize - 4, y)) + "px";
+    } else {
+      removeSelectedImageButton.hidden = true;
     }
   }
 }
@@ -992,7 +1010,7 @@ cropPreviewCanvas.addEventListener("pointerdown", event => {
   const point = cropPreviewPoint(event);
   if (!point) return;
   event.preventDefault();
-  cropPreviewDrag = { pointerId: event.pointerId, start: point };
+  cropPreviewDrag = { pointerId: event.pointerId, start: point, before: { x: Number(imageCropX.value), y: Number(imageCropY.value), width: Number(imageCropWidth.value), height: Number(imageCropHeight.value) } };
   cropPreviewCanvas.setPointerCapture(event.pointerId);
   updateCropInputs({ x: point.x, y: point.y, width: 1, height: 1 });
   drawCropPreview();
@@ -1006,7 +1024,15 @@ cropPreviewCanvas.addEventListener("pointermove", event => {
 });
 function finishCropPreviewDrag(event) {
   if (!cropPreviewDrag || cropPreviewDrag.pointerId !== event.pointerId) return;
+  const drag = cropPreviewDrag;
+  if (event.type === "pointerup") {
+    const point = cropPreviewPoint(event);
+    if (point) updateCropInputs(cropDragRectangle(drag.start, point));
+  } else {
+    updateCropInputs(drag.before);
+  }
   cropPreviewDrag = null;
+  drawCropPreview();
   if (cropPreviewCanvas.hasPointerCapture(event.pointerId)) cropPreviewCanvas.releasePointerCapture(event.pointerId);
 }
 cropPreviewCanvas.addEventListener("pointerup", finishCropPreviewDrag);
@@ -2472,6 +2498,21 @@ if (mobileDock) {
     }
     if (action === "undo") { undo(); return; }
     if (action === "redo") { redo(); return; }
+    if (action === "crop-image") {
+      document.body.classList.remove("mobile-tools-open", "mobile-layers-open");
+      mobileDock.querySelectorAll('[data-touch-action="more"], [data-touch-action="layers"]').forEach(item => item.setAttribute("aria-expanded", "false"));
+      const layer = selectedLayerExact();
+      if (!layer || layer.contentType !== "image" || !layer.image) {
+        status.textContent = "Primero seleccioná una imagen en el lienzo o en Capas; después tocá Recortar.";
+        return;
+      }
+      if (layer.locked) {
+        status.textContent = "La imagen está bloqueada. Desbloqueala desde Capas para poder recortarla.";
+        return;
+      }
+      cropResizeButton.click();
+      return;
+    }
     if (action === "import-image") { imageFileInput.click(); return; }
     if (action === "add-text") { document.querySelector("#add-text-layer")?.click(); return; }
     if (action === "export") { exportPngButton.click(); return; }

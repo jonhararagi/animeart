@@ -446,6 +446,8 @@ test("image crop and resize stay on the existing image-layer, history and persis
   assert.match(html, /id="image-resize-fields"/);
   assert.match(app, /state\.history\.record\(before, next\)/);
   assert.match(app, /refreshDocument\(mode === "crop" \? "Image cropped" : "Image resized"\)/);
+  assert.ok(app.includes('if (event.type === "pointerup")'), "crop drag consumes the final pointerup coordinate");
+  assert.ok(app.includes("updateCropInputs(drag.before)"), "cancelled crop drag restores the prior crop rectangle");
   assert.match(operations, /export function replaceImageLayer/);
   assert.match(processing, /export async function cropImageSource/);
   assert.match(processing, /export async function resizeImageSource/);
@@ -479,7 +481,11 @@ test("mobile dock actions call history directly and keep the active drawing tool
     readFile("index.html", "utf8"), readFile("app.js", "utf8"), readFile("styles.css", "utf8")
   ]);
   assert.match(html, /data-tool="brush" aria-pressed="false">🖌 Dibujar/);
-  assert.match(html, /data-touch-action="more" aria-expanded="false">⋯ Tools/);
+  assert.match(html, /data-touch-action="more" aria-expanded="false">✨ Editar/);
+  assert.match(html, /data-touch-action="crop-image"/);
+  assert.match(js, /Primero seleccioná una imagen en el lienzo o en Capas; después tocá Recortar/);
+  assert.match(js, /La imagen está bloqueada\. Desbloqueala desde Capas para poder recortarla/);
+  assert.doesNotMatch(html, /data-touch-action="more" aria-expanded="false">More/);
   assert.match(js, /if \(action === "undo"\) \{ undo\(\); return; \}/);
   assert.match(js, /if \(action === "redo"\) \{ redo\(\); return; \}/);
   assert.match(css, /Mobile editor controls: fixed canvas/);
