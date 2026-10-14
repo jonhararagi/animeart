@@ -859,3 +859,28 @@ body.interactive-mode .easy-edit-grid button small{display:none}
   }
   body.mobile-layers-open .layers { display: none !important; }
 }
+
+/* Keep mobile tool and layer drawers in document flow, never over the artwork. */
+@media (min-width: 921px) {
+  body.layers-collapsed .workspace { grid-template-columns: minmax(0, 1fr) 0; }
+  body.layers-collapsed .layers { display: none; }
+}
+@media (max-width: 920px) {
+  #toggle-layers-panel { display: none; }
+  body.mobile-tools-open .workspace { grid-template-rows: minmax(0, 1fr) 230px; }
+  body.mobile-tools-open .toolbar { max-height: 230px; }
+  body.mobile-layers-open .workspace { grid-template-rows: minmax(0, 1fr) 0 minmax(110px, 32dvh); }
+  body.mobile-layers-open .toolbar { display: none; }
+  body.mobile-layers-open .layers {
+    display: block;
+    grid-column: 1;
+    grid-row: 3;
+    max-height: 32dvh;
+    min-height: 0;
+    padding: 8px;
+    overflow: auto;
+    border: 1px solid #293447;
+    border-left: 0;
+    border-right: 0;
+  }
+}
