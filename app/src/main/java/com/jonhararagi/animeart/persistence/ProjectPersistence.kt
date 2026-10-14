@@ -3,7 +3,14 @@ package com.jonhararagi.animeart.persistence
 import android.content.Context
 import com.jonhararagi.animeart.document.*
 import org.json.JSONArray
+import org.json.JSONException
 import org.json.JSONObject
+
+sealed interface RecoveryResult {
+    data object Missing : RecoveryResult
+    data class Loaded(val document: CanvasDocument) : RecoveryResult
+    data object Failed : RecoveryResult
+}
 
 class ProjectPersistence(private val context: Context) {
     private val prefs = context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
@@ -49,21 +56,36 @@ class ProjectPersistence(private val context: Context) {
         prefs.edit().putString("project", root.toString()).apply()
     }
 
-    fun loadDocument(): CanvasDocument? = runCatching {
-        loadDocumentUnsafe()
-    }.getOrNull()
+    fun loadDocument(): RecoveryResult {
+        val raw = try {
+            prefs.getString("project", null)
+        } catch (_: Exception) {
+            return RecoveryResult.Failed
+        } ?: return RecoveryResult.Missing
 
-    private fun loadDocumentUnsafe(): CanvasDocument? {
-        val root = prefs.getString("project", null)?.let(::JSONObject) ?: return null
-        val layersJson = root.optJSONArray("layers") ?: return null
+        return try {
+            RecoveryResult.Loaded(loadDocumentUnsafe(raw))
+        } catch (_: Exception) {
+            // Preserve the original recovery payload on every parse or storage failure.
+            RecoveryResult.Failed
+        }
+    }
+
+    private fun loadDocumentUnsafe(raw: String): CanvasDocument {
+        val root = JSONObject(raw)
+        val width = root.getInt("width")
+        val height = root.getInt("height")
+        if (width <= 0 || height <= 0) throw JSONException("Invalid document dimensions")
+        val layersJson = root.optJSONArray("layers") ?: throw JSONException("Missing document layers")
+        if (layersJson.length() == 0) throw JSONException("Document has no layers")
         val layers = buildList {
             for (i in 0 until layersJson.length()) {
                 val l = layersJson.getJSONObject(i)
-                val strokesJson = l.optJSONArray("strokes") ?: JSONArray()
+                val strokesJson = l.optJSONArray("strokes") ?: throw JSONException("Missing layer strokes")
                 val strokes = buildList {
                     for (j in 0 until strokesJson.length()) {
                         val s = strokesJson.getJSONObject(j)
-                        val pointsJson = s.optJSONArray("points") ?: JSONArray()
+                        val pointsJson = s.optJSONArray("points") ?: throw JSONException("Missing stroke points")
                         val points = buildList {
                             for (k in 0 until pointsJson.length()) {
                                 val p = pointsJson.getJSONObject(k)
@@ -113,11 +135,7 @@ class ProjectPersistence(private val context: Context) {
                 )
             }
         }
-        return CanvasDocument(
-            root.optInt("width", 1080),
-            root.optInt("height", 1080),
-            layers.ifEmpty { listOf(Layer(name = "Background", content = LayerContent.Drawing())) }
-        )
+        return CanvasDocument(width, height, layers)
     }
 
     fun loadRecovery(): JSONObject? = prefs.getString("project", null)?.let(::JSONObject)
