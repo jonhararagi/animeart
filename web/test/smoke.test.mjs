@@ -654,3 +654,17 @@ test("magic erase confirmation keeps the source intact on failure and preserves 
   assert.match(css, /body\.mobile-tools-open \.toolbar/);
   assert.match(css, /\.mobile-touch-dock\s*\{\s*position: static/);
 });
+
+
+test("touch tools toggle collapses without activating the canvas tool and remains reachable", async () => {
+  const [html, app, css] = await Promise.all([
+    readFile("index.html", "utf8"),
+    readFile("app.js", "utf8"),
+    readFile("styles.css", "utf8")
+  ]);
+  assert.match(html, /id="mobile-tools-toggle"/);
+  assert.match(html, /aria-expanded="true" aria-label="Ocultar herramientas"/);
+  assert.match(app, /mobileToolsToggle\?\.addEventListener\("click", event => \{[\s\S]*?event\.preventDefault\(\);[\s\S]*?event\.stopPropagation\(\);[\s\S]*?classList\.toggle\("mobile-tools-collapsed"\)/);
+  assert.match(css, /\.mobile-tools-toggle\s*\{[\s\S]*?touch-action:\s*manipulation/);
+  assert.match(css, /body\.mobile-tools-collapsed \.toolbar\s*\{[\s\S]*?display:\s*none !important/);
+});
