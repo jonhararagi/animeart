@@ -217,11 +217,29 @@ function updateRemoveImageControl() {
     const wrapRect = document.querySelector(".canvas-wrap").getBoundingClientRect();
     if (geometry) {
       const right = Math.max(...geometry.corners.map(point => point.x));
+      const left = Math.min(...geometry.corners.map(point => point.x));
       const top = Math.min(...geometry.corners.map(point => point.y));
-      const left = canvasRect.left - wrapRect.left + right - 23;
-      const y = canvasRect.top - wrapRect.top + top - 23;
-      removeSelectedImageButton.style.left = Math.max(4, Math.min(wrapRect.width - 50, left)) + "px";
-      removeSelectedImageButton.style.top = Math.max(4, Math.min(wrapRect.height - 50, y)) + "px";
+      const buttonSize = window.matchMedia("(max-width: 620px)").matches ? 50 : 46;
+      const safeGap = 28;
+      const canvasOffsetX = canvasRect.left - wrapRect.left;
+      const canvasOffsetY = canvasRect.top - wrapRect.top;
+      const rightPosition = canvasOffsetX + right + safeGap;
+      const leftPosition = canvasOffsetX + left - buttonSize - safeGap;
+      const enoughRight = rightPosition + buttonSize <= wrapRect.width - 4;
+      const enoughLeft = leftPosition >= 4;
+      if (enoughRight) {
+        removeSelectedImageButton.style.left = rightPosition + "px";
+      } else if (enoughLeft) {
+        removeSelectedImageButton.style.left = leftPosition + "px";
+      } else {
+        // Never cover a transform handle. The layer list still provides deletion.
+        removeSelectedImageButton.hidden = true;
+        return;
+      }
+      const y = canvasOffsetY + top - Math.round(buttonSize / 2);
+      removeSelectedImageButton.style.top = Math.max(4, Math.min(wrapRect.height - buttonSize - 4, y)) + "px";
+    } else {
+      removeSelectedImageButton.hidden = true;
     }
   }
 }
