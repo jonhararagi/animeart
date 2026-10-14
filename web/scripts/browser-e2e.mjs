@@ -564,6 +564,7 @@ try {
   await evaluate('(() => { document.querySelector("#document-width").value = "640"; document.querySelector("#document-height").value = "480"; })()');
   await click('#project-form button[type="submit"]');
   await waitFor('document.querySelector("#status").textContent === "New document created"');
+  await click('.toolbar [data-tool="brush"]');
   const recoveryCanvas = await selectorCenter("#canvas");
   await mouseStroke([
     { x: recoveryCanvas.x - 40, y: recoveryCanvas.y - 20 },
