@@ -579,7 +579,7 @@ canvas {
 .canvas-wrap[data-background="gray"] canvas { background: #777; }
 .canvas-tools { position: absolute; z-index: 3; inset: 10px 10px auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; pointer-events: none; }
 .canvas-tools > *, .canvas-view-actions { pointer-events: auto; }
-#selection-indicator { display: inline-flex; align-items: center; max-width: min(100%, 420px); min-height: 38px; padding: 8px 12px; border: 1px solid #7c8ca3; border-radius: 10px; color: #fff; background: #111827ee; font-size: .8rem; font-weight: 750; box-shadow: 0 4px 16px #0005; overflow-wrap: anywhere; }
+#selection-indicator { pointer-events: none; display: inline-flex; align-items: center; max-width: min(100%, 420px); min-height: 38px; padding: 8px 12px; border: 1px solid #7c8ca3; border-radius: 10px; color: #fff; background: #111827ee; font-size: .8rem; font-weight: 750; box-shadow: 0 4px 16px #0005; overflow-wrap: anywhere; }
 #selection-indicator[data-kind="image"] { border-color: #45c6a4; }
 #selection-indicator[data-kind="layer"] { border-color: #f0bf62; }
 .canvas-view-actions { display: flex; flex-wrap: wrap; gap: 5px; }
