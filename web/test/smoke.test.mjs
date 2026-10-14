@@ -593,3 +593,12 @@ test("Magic Eraser tolerance is user-adjustable instead of hardcoded", async () 
   assert.match(app, /tolerance: Number\(document\.querySelector\("#magic-eraser-tolerance"\)\?\.value \|\| 28\)/);
   assert.match(app, /magicTolerance\?\.addEventListener\("input"/);
 });
+
+
+test("interaction mode remains reachable from the mobile header when the tool panel is hidden", async () => {
+  const [html, app, css] = await Promise.all([readFile("index.html", "utf8"), readFile("app.js", "utf8"), readFile("styles.css", "utf8")]);
+  assert.match(html, /id="editor-mode-toggle"/);
+  assert.match(app, /editor-mode-toggle.*addEventListener\("click"/);
+  assert.match(app, /modeToggle\.textContent = state\.interactionMode === "interactive" \? "Modo simple" : "Modo interactivo"/);
+  assert.match(css, /#editor-mode-toggle/);
+});
