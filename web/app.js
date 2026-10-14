@@ -109,7 +109,7 @@ let dragDepth = 0;
 
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
-const HANDLE_RADIUS = 10;
+const HANDLE_RADIUS = 22;
 const imageCache = new Map();
 const drawingLayerRasterCache = new WeakMap();
 
@@ -131,7 +131,8 @@ const activeTouchPointers = new Map();
 let touchGesture = null;
 
 const state = {
-  tool: "brush",
+  tool: "select",
+  interactionMode: "simple",
   brush: { ...BRUSH_DEFAULTS },
   censorCursorPoint: null,
   drawing: false,
@@ -2289,7 +2290,28 @@ if (mobileDock) {
   });
 }
 
-document.querySelectorAll(".tool").forEach(button => {
+function setInteractionMode(mode) {
+  state.interactionMode = mode === "interactive" ? "interactive" : "simple";
+  document.body.classList.toggle("interactive-mode", state.interactionMode === "interactive");
+  document.body.classList.toggle("simple-mode", state.interactionMode === "simple");
+  document.querySelectorAll("[data-editor-mode]").forEach(button => {
+    const active = button.dataset.editorMode === state.interactionMode;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  const help = document.querySelector("#editing-help-card");
+  if (help) help.hidden = state.interactionMode === "interactive" || !document.querySelector("#editing-help-enabled")?.checked;
+  const details = document.querySelector(".more-tools");
+  if (details && state.interactionMode === "interactive") details.open = false;
+  try { localStorage.setItem("animeart-editor-mode-v1", state.interactionMode); } catch {}
+  status.textContent = state.interactionMode === "interactive"
+    ? "Modo interactivo: tocá un elemento para moverlo; usá las esquinas para cambiar tamaño y el control superior para rotar."
+    : "Modo simple: elegí una tarea guiada. También podés tocar y arrastrar una imagen para acomodarla.";
+}
+document.querySelectorAll("[data-editor-mode]").forEach(button => button.addEventListener("click", () => setInteractionMode(button.dataset.editorMode)));
+try { setInteractionMode(localStorage.getItem("animeart-editor-mode-v1") || "simple"); } catch { setInteractionMode("simple"); }
+
+ document.querySelectorAll(".tool").forEach(button => {
   button.addEventListener("click", () => {
     state.tool = button.dataset.tool;
     if (state.tool !== "select" && state.multiTransformInteraction) {
