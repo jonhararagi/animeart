@@ -602,3 +602,13 @@ test("interaction mode remains reachable from the mobile header when the tool pa
   assert.match(app, /modeToggle\.textContent = state\.interactionMode === "interactive" \? "Modo simple" : "Modo interactivo"/);
   assert.match(css, /#editor-mode-toggle/);
 });
+
+
+test("beginner quick actions expose direct move and fit-to-canvas", async () => {
+  const [html, app] = await Promise.all([readFile("index.html", "utf8"), readFile("app.js", "utf8")]);
+  assert.match(html, /data-edit-goal="move"/);
+  assert.match(html, /data-edit-goal="fit"/);
+  assert.match(app, /move: \(\) => \{/);
+  assert.match(app, /fit: \(\) => document\.querySelector\("#fit-image-to-canvas"\)\?\.click\(\)/);
+  assert.match(app, /Toca la imagen y arrástrala/);
+});
