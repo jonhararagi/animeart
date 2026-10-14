@@ -8,6 +8,7 @@ import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy } from "./domain/viewport.mjs";
 import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocumentPoint, screenViewportForDocument, zoomViewportAt } from "./domain/canvas-space.mjs";
 import { distanceBetweenTouches, midpointBetweenTouches, updatePinchPanViewport } from "./domain/touch-gestures.mjs";
+import { createFrameScheduler } from "./domain/frame-scheduler.mjs";
 import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
@@ -519,7 +520,13 @@ function drawSelectionOverlay() {
     ctx.restore();
   }
 }
+const redrawScheduler = createFrameScheduler(callback => window.requestAnimationFrame(callback), frameId => window.cancelAnimationFrame(frameId));
+
 function redraw() {
+  redrawScheduler.schedule(drawNow);
+}
+
+function drawNow() {
   const rect = canvas.getBoundingClientRect();
   const dpr = Math.max(1, window.devicePixelRatio || 1);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -2149,7 +2156,8 @@ canvas.addEventListener("pointermove", event => {
   const layer = selectedLayer();
   const stroke = layer?.strokes[layer.strokes.length - 1];
   if (!stroke) return;
-  stroke.points.push(pointFromEvent(event));
+  const samples = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : [];
+  for (const sample of (samples.length ? samples : [event])) stroke.points.push(pointFromEvent(sample));
   redraw();
 });
 
@@ -2167,6 +2175,24 @@ canvas.addEventListener("pointerup", event => {
     state.drawingPointerId = null;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     return;
+  }
+  // Consume the release position before committing, so a fast final movement is never lost.
+  if (state.transformInteraction && event.pointerId === state.transformPointerId) {
+    updateTransformPreview(event);
+  }
+  if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
+    const interaction = state.multiTransformInteraction;
+    const current = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
+    const layers = selectedLayersExact();
+    if (interaction.type === "move") {
+      interaction.previewDelta = { x: current.x - interaction.startDocument.x, y: current.y - interaction.startDocument.y };
+    } else if (interaction.type === "scale") {
+      const transforms = groupScaleTransforms(layers, documentCenter(state.document), interaction.handle, current);
+      if (transforms) interaction.previewTransforms = new Map(transforms.map(item => [item.id, item.transform]));
+    } else if (interaction.type === "rotate") {
+      const transforms = groupRotationTransforms(layers, documentCenter(state.document), current, interaction.startDocument);
+      if (transforms) interaction.previewTransforms = new Map(transforms.map(item => [item.id, item.transform]));
+    }
   }
   if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
     const interaction = state.multiTransformInteraction;
