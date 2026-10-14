@@ -18,14 +18,22 @@ import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.webkit.ServiceWorkerControllerCompat
 import androidx.webkit.ServiceWorkerClientCompat
 import androidx.webkit.WebViewAssetLoader
 import androidx.webkit.WebViewFeature
 import com.jonhararagi.animeart.document.CanvasDocument
 import com.jonhararagi.animeart.persistence.ProjectPersistence
+import com.jonhararagi.animeart.persistence.RecoveryResult
 import com.jonhararagi.animeart.ui.EditorScreen
 
 class MainActivity : ComponentActivity() {
@@ -204,14 +212,44 @@ class MainActivity : ComponentActivity() {
         }
         webView = null
 
-        val initialDocument = runCatching {
-            ProjectPersistence(this).loadDocument() ?: CanvasDocument()
-        }.getOrDefault(CanvasDocument())
+        val recovery = ProjectPersistence(this).loadDocument()
 
         setContent {
             MaterialTheme {
                 Surface {
-                    EditorScreen(initialDocument = initialDocument)
+                    when (recovery) {
+                        is RecoveryResult.Loaded -> EditorScreen(initialDocument = recovery.document)
+                        RecoveryResult.Missing -> EditorScreen(initialDocument = CanvasDocument())
+                        RecoveryResult.Failed -> {
+                            var startNewDocument by remember { mutableStateOf(false) }
+                            if (startNewDocument) {
+                                // Stored recovery remains untouched until an explicit save.
+                                EditorScreen(initialDocument = CanvasDocument())
+                            } else {
+                                AlertDialog(
+                                    onDismissRequest = {},
+                                    title = { Text("No se pudo recuperar el documento") },
+                                    text = {
+                                        Text(
+                                            "Los datos guardados existen, pero no se pueden interpretar. " +
+                                                "Se conservarán sin cambios. Puedes cancelar o iniciar un documento nuevo; " +
+                                                "solo se reemplazarán si eliges Guardar en el editor."
+                                        )
+                                    },
+                                    confirmButton = {
+                                        TextButton(onClick = { startNewDocument = true }) {
+                                            Text("Iniciar documento nuevo")
+                                        }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { finish() }) {
+                                            Text("Cancelar")
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
