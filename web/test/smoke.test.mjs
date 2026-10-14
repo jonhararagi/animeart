@@ -612,3 +612,23 @@ test("beginner quick actions expose direct move and fit-to-canvas", async () => 
   assert.match(app, /fit: \(\) => document\.querySelector\("#fit-image-to-canvas"\)\?\.click\(\)/);
   assert.match(app, /Toca la imagen y arrástrala/);
 });
+
+
+test("AA-PICSART-UX-001 magic erase is preview-first and supports pixel restoration", async () => {
+  const js = await readFile("app.js", "utf8");
+  const html = await readFile("index.html", "utf8");
+  const model = await readFile("domain/model.mjs", "utf8");
+  const operations = await readFile("domain/document-operations.mjs", "utf8");
+  assert.match(js, /openMagicErasePreview\(/);
+  assert.match(js, /applyMagicErasePreview\(/);
+  assert.match(js, /cancelMagicErasePreview\(/);
+  assert.match(js, /async function finishImageRestore\(/);
+  assert.match(js, /state\.tool === "restore-brush"/);
+  assert.match(html, /id="magic-eraser-preview-dialog"/);
+  assert.match(html, /id="magic-eraser-before-preview"/);
+  assert.match(html, /id="magic-eraser-after-preview"/);
+  assert.match(html, /data-tool="restore-brush"/);
+  assert.match(html, /data-touch-action="tool" data-tool="restore-brush"/);
+  assert.match(model, /image\.restoreSource/);
+  assert.match(operations, /replacement\.restoreSource/);
+});
