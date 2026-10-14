@@ -2303,13 +2303,13 @@ function setInteractionMode(mode) {
   if (help) help.hidden = state.interactionMode === "interactive" || !document.querySelector("#editing-help-enabled")?.checked;
   const details = document.querySelector(".more-tools");
   if (details && state.interactionMode === "interactive") details.open = false;
-  try { localStorage.setItem("animeart-editor-mode-v1", state.interactionMode); } catch {}
+  try { sessionStorage.setItem("animeart-editor-mode-v1", state.interactionMode); } catch {}
   status.textContent = state.interactionMode === "interactive"
     ? "Modo interactivo: tocá un elemento para moverlo; usá las esquinas para cambiar tamaño y el control superior para rotar."
     : "Modo simple: elegí una tarea guiada. También podés tocar y arrastrar una imagen para acomodarla.";
 }
 document.querySelectorAll("[data-editor-mode]").forEach(button => button.addEventListener("click", () => setInteractionMode(button.dataset.editorMode)));
-try { setInteractionMode(localStorage.getItem("animeart-editor-mode-v1") || "simple"); } catch { setInteractionMode("simple"); }
+try { setInteractionMode(sessionStorage.getItem("animeart-editor-mode-v1") || "simple"); } catch { setInteractionMode("simple"); }
 
  const magicTolerance = document.querySelector("#magic-eraser-tolerance");
 const magicToleranceValue = document.querySelector("#magic-eraser-tolerance-value");
