@@ -53,7 +53,8 @@
           <button class="tool active" data-tool="select" aria-pressed="true">🖐️ Seleccionar / mover</button>
       <button class="tool" data-tool="brush" aria-pressed="false">🖌️ Dibujar</button>
       <button class="tool" data-tool="eraser" title="Erase transparent pixels">🧽 Borrar</button>
-      <button class="tool" data-tool="magic-eraser" aria-pressed="false" title="Tap a background color to erase its connected region">🪄 Quitar fondo</button>
+      <button class="tool" data-tool="magic-eraser" aria-pressed="false" title="Toca una región de fondo conectada para hacerla transparente">🪄 Borrado mágico</button>
+      <label class="brush-control magic-tolerance-control" for="magic-eraser-tolerance">Tolerancia del borrado mágico <output id="magic-eraser-tolerance-value">28</output><input id="magic-eraser-tolerance" type="range" min="4" max="100" step="1" value="28"></label>
       <button class="tool" data-tool="censor-light" aria-pressed="false" title="Paint an independent bright censor stroke">✨ Luz de censura</button>
       <button class="tool" data-tool="pan">✋ Mover / zoom</button>
           <section class="censor-light-controls" aria-labelledby="censor-light-title">
