@@ -3162,3 +3162,16 @@ Corrección de inventario durante la integración: aunque la sincronización de 
 - Se cerraron los PR restantes #41, #43, #44, #46, #50, #51 y #68 a petición del usuario, dejando un comentario explícito sobre qué no se integró. Las ramas remotas se conservan, no se borraron.
 - Comprobación posterior: no quedan PR abiertos en el repositorio.
 - **Importante:** cerrar PR no equivale a integrar sus cambios. #41/#43/#44/#46 (recuperación/almacenamiento), #50/#51 (mantenimiento Gradle) y #68 (editor nativo alternativo) no están incluidos en esta APK. La APK contiene la entrega consolidada #72; no se declara que incluya cambios de ramas no fusionadas.
+
+
+## AA-PICSART-UX-001 — Primera implementación de interacción guiada (2026-10-14)
+
+- Estado: `PARTIAL / CI PENDIENTE / VALIDACIÓN TÁCTIL FÍSICA PENDIENTE`.
+- Rama: `aa-picsart-ux-001`.
+- Cambio inicial: la herramienta por defecto pasa de Dibujar a Seleccionar/Mover, para que tocar y arrastrar una imagen no requiera descubrir y activar primero una herramienta oculta.
+- El radio de detección táctil de los tiradores de transformación aumenta de 10 a 22 píxeles de pantalla para facilitar escalado/rotación con el dedo.
+- Se añadieron los modos persistentes `Modo simple` y `Modo interactivo`. El simple conserva la guía de tareas; el interactivo oculta la ayuda y compacta los accesos de tarea para priorizar la manipulación directa.
+- El Borrado mágico ahora expone un control de tolerancia (4–100) en vez de fijar siempre el valor 28. Sigue siendo borrado por región conectada de color, no segmentación semántica con IA; el resultado debe poder deshacerse mediante el historial existente.
+- Se actualizó el idioma del documento a español y se incrementó el caché offline de `v17` a `v18` para evitar servir una interfaz antigua.
+- Se añadieron pruebas estáticas de regresión para modo de interacción, selección por defecto, radio de tiradores y tolerancia del borrador mágico.
+- No se afirma todavía que la experiencia completa estilo Picsart esté terminada. Faltan comprobar las CI en el SHA de la rama, validar visualmente los flujos E2E y probar el tacto en un dispositivo físico. La vista previa reversible del borrado mágico y el pincel de restauración siguen siendo trabajo pendiente si no están cubiertos por el código existente.
