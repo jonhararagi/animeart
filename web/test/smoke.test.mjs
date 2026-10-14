@@ -690,3 +690,9 @@ test("multi-selection group bounds initiate a move without requiring a per-layer
   assert.match(groupHitHandling, /layerIds: layers\.map\(layer => layer\.id\)/);
   assert.match(groupHitHandling, /canvas\.setPointerCapture\(event\.pointerId\)/);
 });
+
+
+test("selection status indicator never intercepts canvas pointer gestures", async () => {
+  const css = await readFile("styles.css", "utf8");
+  assert.match(css, /#selection-indicator\s*\{[^}]*pointer-events:\s*none/);
+});
