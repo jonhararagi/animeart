@@ -497,8 +497,8 @@ test("editor appearance supports custom accent, workspace color and local wallpa
   assert.match(html, /id="appearance-wallpaper-file"/);
   assert.match(html, /data-touch-action="appearance"/);
   assert.match(app, /initializeAppearanceSettings\(\)/);
-  assert.match(app, /animeart-web-shell-v17/);
-  assert.match(worker, /animeart-web-shell-v17/);
+  assert.match(app, /animeart-web-shell-v18/);
+  assert.match(worker, /animeart-web-shell-v18/);
   assert.match(worker, /\.\/appearance-settings\.js/);
   assert.match(appearance, /animeart-editor-appearance-v1/);
   assert.match(appearance, /MAX_WALLPAPER_BYTES = 2 \* 1024 \* 1024/);
@@ -538,7 +538,7 @@ test("Android native export bridge and browser fallback are wired to the canonic
   assert.ok(activity.includes("NativeExportBridge"));
   assert.ok(activity.includes("Intent.ACTION_CREATE_DOCUMENT"));
   assert.match(worker, /\.\/domain\/background-removal-profiles\.mjs/);
-  assert.match(worker, /animeart-web-shell-v17/);
+  assert.match(worker, /animeart-web-shell-v18/);
 });
 
 test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size layer thumbnails", async () => {
@@ -558,7 +558,7 @@ test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size la
   assert.match(css, /\.layer-thumbnail \{ flex: 0 0 56px; width: 56px; height: 56px/);
   assert.match(css, /\.layers #layers \.layer-select \{ min-height: 60px/);
   assert.match(removal, /seedPoints=\[\]/);
-  assert.match(worker, /animeart-web-shell-v17/);
+  assert.match(worker, /animeart-web-shell-v18/);
 });
 
 
@@ -569,4 +569,27 @@ test("Android export enforces the native size limit and reports native versus br
   assert.match(app, /return "native"/);
   assert.match(app, /return "browser"/);
   assert.match(app, /destination === "native" \? "Choose where to save/);
+});
+
+
+test("AA-PICSART-UX-001 defaults to direct layer selection and exposes simple and interactive modes", async () => {
+  const [html, app, css, worker] = await Promise.all([readFile("index.html", "utf8"), readFile("app.js", "utf8"), readFile("styles.css", "utf8"), readFile("service-worker.js", "utf8")]);
+  assert.match(app, /tool: "select"/);
+  assert.match(app, /const HANDLE_RADIUS = 22/);
+  assert.match(app, /function setInteractionMode\(mode\)/);
+  assert.match(app, /animeart-editor-mode-v1/);
+  assert.match(app, /state\.interactionMode === "interactive"/);
+  assert.match(html, /data-editor-mode="simple"/);
+  assert.match(html, /data-editor-mode="interactive"/);
+  assert.match(html, /data-tool="select" aria-pressed="true">🖐️ Seleccionar \/ mover/);
+  assert.match(css, /\.editor-mode-switch button\.active/);
+  assert.match(worker, /animeart-web-shell-v18/);
+  assert.match(app, /animeart-web-shell-v18/);
+});
+
+test("Magic Eraser tolerance is user-adjustable instead of hardcoded", async () => {
+  const [html, app] = await Promise.all([readFile("index.html", "utf8"), readFile("app.js", "utf8")]);
+  assert.match(html, /id="magic-eraser-tolerance" type="range"/);
+  assert.match(app, /tolerance: Number\(document\.querySelector\("#magic-eraser-tolerance"\)\?\.value \|\| 28\)/);
+  assert.match(app, /magicTolerance\?\.addEventListener\("input"/);
 });
