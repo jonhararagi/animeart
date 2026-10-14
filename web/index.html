@@ -255,7 +255,7 @@
   </main>
   <nav class="mobile-touch-dock" aria-label="Mobile editing shortcuts">
     <button type="button" data-touch-action="tool" data-tool="select" aria-pressed="true">🖐 Mover</button>
-    <button type="button" data-edit-goal="crop" title="Seleccioná una imagen para recortarla">✂️ Recortar</button>
+    <button type="button" data-touch-action="crop-image" title="Seleccioná una imagen para recortarla">✂️ Recortar</button>
     <button type="button" data-touch-action="tool" data-tool="brush" aria-pressed="false">🖌 Dibujar</button>
     <button type="button" data-touch-action="tool" data-tool="eraser" aria-pressed="false" title="Borrar píxeles">🧽 Borrar</button>
     <button type="button" data-touch-action="tool" data-tool="restore-brush" aria-pressed="false" title="Restaurar píxeles originales">🩹 Restaurar</button>
@@ -510,6 +510,7 @@
       });
     }
   </script>
+  <script type="module" src="./mobile-crop-shortcut.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>
