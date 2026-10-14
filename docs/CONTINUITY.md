@@ -3195,3 +3195,14 @@ Corrección de inventario durante la integración: aunque la sincronización de 
 - Los botones de Restaurar están disponibles en herramientas y dock móvil. Se agregó manejo explícito de cancelación del gesto táctil, vista previa con tablero de transparencia y aumento de caché offline a `v19`.
 - Se amplió el E2E real del navegador: vista previa, cancelación sin mutación, aplicación del borrado, persistencia de la fuente original, restauración del píxel central y Deshacer del trazo. Las CI del HEAD final deben determinar el estado real; no se reutiliza un PASS de un SHA anterior como prueba del HEAD actual.
 - Límites aún explícitos: el algoritmo sigue siendo borrado por región conectada de color, no segmentación semántica IA; la restauración requiere una copia original guardada y dimensiones idénticas; falta validación táctil en teléfono físico. Esto completa el tramo funcional de previsualización/restauración, no garantiza paridad total con Picsart ni declara el proyecto cerrado.
+
+## AA-SMOOTH-INTERACTION-001 — Cierre de implementación y CI (2026-10-14)
+
+- Rama: `aa-smooth-interaction-001`; PR de entrega: https://github.com/jonhararagi/animeart/pull/75.
+- Cambios: scheduler de renderizado con `requestAnimationFrame`, muestras coalesced de Pointer Events, consumo de posición final en `pointerup`, continuidad del gesto al pasar de pinch a un dedo, pruebas de regresión, compatibilidad PWA offline con caché v20 y respeto de `prefers-reduced-motion`.
+- HEAD de implementación verificado antes de esta entrada: `465230394e0a817897b24a1097f698e91d3a5627`.
+- Web CI / E2E real de Chromium: PASS, run https://github.com/jonhararagi/animeart/actions/runs/38522667185.
+- Android CI: PASS, build, verificación de contenido del APK, unit tests, lint, instrumentación, startup smoke y subida del APK completados; run https://github.com/jonhararagi/animeart/actions/runs/38522666966.
+- La actualización documental crea un nuevo HEAD y obliga a comprobar otra vez ambas CI sobre el SHA final antes de fusionar.
+- Límite explícito: no hubo prueba táctil en un teléfono físico. La CI emulada y el E2E de Chromium no se presentan como sustituto de esa prueba manual.
+- Estado: implementación automatizada PASS; integración en main pendiente de CI del HEAD documental final y merge autorizado. No se certifica que todos los saltos físicos estén eliminados sin prueba táctil real.
