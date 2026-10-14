@@ -1491,11 +1491,18 @@ function removeSelectedImage() {
   return true;
 }
 
-function applyMultiLayerMove(deltaX, deltaY, message = "Layers moved") {
-  const layers = selectedLayersExact();
-  if (layers.length < 2 || layers.some(layer => layer.locked)) return false;
+function interactionLayers(interaction) {
+  const ids = Array.isArray(interaction?.layerIds) ? interaction.layerIds : state.selectedLayerIds;
+  const byId = new Map(state.document.layers.map(layer => [layer.id, layer]));
+  return ids.map(id => byId.get(id)).filter(Boolean);
+}
+
+function applyMultiLayerMove(deltaX, deltaY, message = "Layers moved", layerIds = state.selectedLayerIds) {
+  const ids = Array.isArray(layerIds) ? [...new Set(layerIds)] : [];
+  const layers = interactionLayers({ layerIds: ids });
+  if (ids.length < 2 || layers.length !== ids.length || layers.some(layer => layer.locked)) return false;
   const before = cloneDocument(state.document);
-  const next = translateLayers(state.document, layers.map(layer => layer.id), deltaX, deltaY);
+  const next = translateLayers(state.document, ids, deltaX, deltaY);
   if (!next) return false;
   state.document = next;
   state.history.record(before, next);
@@ -1608,15 +1615,29 @@ function beginSelectionInteraction(event) {
       const length = Math.hypot(outward.x, outward.y) || 1;
       groupScreenGeometry.rotationHandle = { x: topMid.x + outward.x / length * 32, y: topMid.y + outward.y / length * 32 };
       const groupHit = hitTestHandle(screenPoint, groupScreenGeometry, HANDLE_RADIUS);
+      // A hit inside the group bounds is itself a valid drag target. Do not
+      // depend on a second per-layer hit test, which can miss edge pixels.
+      if (groupHit === "move") {
+        if (layers.some(layer => layer.locked)) return;
+        state.multiTransformInteraction = {
+          pointerId: event.pointerId,
+          type: "move",
+          layerIds: layers.map(layer => layer.id),
+          startDocument: documentPoint,
+          previewDelta: { x: 0, y: 0 }
+        };
+        canvas.setPointerCapture(event.pointerId);
+        return;
+      }
       if (groupHit === "scale-nw" || groupHit === "scale-ne" || groupHit === "scale-se" || groupHit === "scale-sw") {
         if (layers.some(layer => layer.locked)) return;
-        state.multiTransformInteraction = { pointerId: event.pointerId, type: "scale", handle: groupHit, startDocument: documentPoint, previewTransforms: new Map(layers.map(layer => [layer.id, { ...layer.transform }])) };
+        state.multiTransformInteraction = { pointerId: event.pointerId, type: "scale", handle: groupHit, startDocument: documentPoint, layerIds: layers.map(layer => layer.id), previewTransforms: new Map(layers.map(layer => [layer.id, { ...layer.transform }])) };
         canvas.setPointerCapture(event.pointerId);
         return;
       }
       if (groupHit === "rotate") {
         if (layers.some(layer => layer.locked)) return;
-        state.multiTransformInteraction = { pointerId: event.pointerId, type: "rotate", startDocument: documentPoint, previewTransforms: new Map(layers.map(layer => [layer.id, { ...layer.transform }])) };
+        state.multiTransformInteraction = { pointerId: event.pointerId, type: "rotate", startDocument: documentPoint, layerIds: layers.map(layer => layer.id), previewTransforms: new Map(layers.map(layer => [layer.id, { ...layer.transform }])) };
         canvas.setPointerCapture(event.pointerId);
         return;
       }
@@ -1631,6 +1652,7 @@ function beginSelectionInteraction(event) {
       state.multiTransformInteraction = {
         pointerId: event.pointerId,
         type: "move",
+        layerIds: layers.map(layer => layer.id),
         startDocument: documentPoint,
         previewDelta: { x: 0, y: 0 }
       };
@@ -2177,7 +2199,7 @@ canvas.addEventListener("pointermove", event => {
   if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
     const interaction = state.multiTransformInteraction;
     const current = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
-    const layers = selectedLayersExact();
+    const layers = interactionLayers(interaction);
     if (interaction.type === "move") {
       const start = interaction.startDocument;
       interaction.previewDelta = { x: current.x - start.x, y: current.y - start.y };
@@ -2241,7 +2263,7 @@ canvas.addEventListener("pointerup", event => {
   if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
     const interaction = state.multiTransformInteraction;
     const current = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
-    const layers = selectedLayersExact();
+    const layers = interactionLayers(interaction);
     if (interaction.type === "move") {
       interaction.previewDelta = { x: current.x - interaction.startDocument.x, y: current.y - interaction.startDocument.y };
     } else if (interaction.type === "scale") {
@@ -2258,7 +2280,7 @@ canvas.addEventListener("pointerup", event => {
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     if (interaction.type === "move") {
       const delta = interaction.previewDelta || { x: 0, y: 0 };
-      if (delta.x !== 0 || delta.y !== 0) applyMultiLayerMove(delta.x, delta.y);
+      if (delta.x !== 0 || delta.y !== 0) applyMultiLayerMove(delta.x, delta.y, "Layers moved", interaction.layerIds);
       else redraw();
     } else {
       const transforms = [...(interaction.previewTransforms?.entries() || [])].map(([id, transform]) => ({ id, transform }));
