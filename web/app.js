@@ -2292,6 +2292,11 @@ if (mobileDock) {
 
 function setInteractionMode(mode) {
   state.interactionMode = mode === "interactive" ? "interactive" : "simple";
+  const modeToggle = document.querySelector("#editor-mode-toggle");
+  if (modeToggle) {
+    modeToggle.textContent = state.interactionMode === "interactive" ? "Modo simple" : "Modo interactivo";
+    modeToggle.setAttribute("aria-label", state.interactionMode === "interactive" ? "Cambiar a modo simple" : "Cambiar a modo interactivo");
+  }
   document.body.classList.toggle("interactive-mode", state.interactionMode === "interactive");
   document.body.classList.toggle("simple-mode", state.interactionMode === "simple");
   document.querySelectorAll("[data-editor-mode]").forEach(button => {
@@ -2309,6 +2314,7 @@ function setInteractionMode(mode) {
     : "Modo simple: elegí una tarea guiada. También podés tocar y arrastrar una imagen para acomodarla.";
 }
 document.querySelectorAll("[data-editor-mode]").forEach(button => button.addEventListener("click", () => setInteractionMode(button.dataset.editorMode)));
+document.querySelector("#editor-mode-toggle")?.addEventListener("click", () => setInteractionMode(state.interactionMode === "interactive" ? "simple" : "interactive"));
 try { setInteractionMode(sessionStorage.getItem("animeart-editor-mode-v1") || "simple"); } catch { setInteractionMode("simple"); }
 
  const magicTolerance = document.querySelector("#magic-eraser-tolerance");
