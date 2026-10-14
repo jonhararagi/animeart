@@ -10,13 +10,19 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import androidx.webkit.WebViewAssetLoader;
+
 public class MainActivity extends Activity {
     private WebView webView;
     private ValueCallback<Uri[]> fileCallback;
     private static final int FILE_PICKER = 1701;
+    private WebViewAssetLoader assetLoader;
 
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        assetLoader = new WebViewAssetLoader.Builder()
+                .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this))
+                .build();
         webView = new WebView(this);
         webView.setBackgroundColor(0xFF17171C);
         webView.getSettings().setJavaScriptEnabled(true);
@@ -25,9 +31,13 @@ public class MainActivity extends Activity {
         webView.getSettings().setAllowContentAccess(true);
         webView.getSettings().setMediaPlaybackRequiresUserGesture(false);
         webView.setWebViewClient(new WebViewClient() {
+            @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                return assetLoader.shouldInterceptRequest(request.getUrl());
+            }
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                String scheme = request.getUrl().getScheme();
-                return !"file".equals(scheme) && !"about".equals(scheme);
+                Uri uri = request.getUrl();
+                if ("https".equals(uri.getScheme()) && "appassets.androidplatform.net".equals(uri.getHost())) return false;
+                return !"about".equals(uri.getScheme());
             }
         });
         webView.setWebChromeClient(new WebChromeClient() {
@@ -41,7 +51,7 @@ public class MainActivity extends Activity {
             }
         });
         setContentView(webView);
-        if (savedInstanceState == null) webView.loadUrl("file:///android_asset/www/index.html");
+        if (savedInstanceState == null) webView.loadUrl("https://appassets.androidplatform.net/assets/www/index.html");
         else webView.restoreState(savedInstanceState);
     }
 
