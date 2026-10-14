@@ -2344,6 +2344,8 @@ magicTolerance?.addEventListener("input", () => {
 
 
 const helpGoals = {
+  move: ["Mover / acomodar", "Toca la imagen y arrástrala. Usa las esquinas para cambiar el tamaño y el tirador de arriba para girar. Pulsa fuera del elemento para quitar el cuadro de selección."],
+  fit: ["Ajustar al lienzo", "Centra la imagen y haz que encaje dentro del lienzo sin deformar sus proporciones. Puedes volver a moverla después."],
   crop: ["Recortar", "Selecciona una imagen, abre Crop / Resize Image, ajusta el marco y pulsa Aplicar."],
   background: ["Quitar fondo", "Selecciona una imagen, toca una zona del fondo, ajusta la tolerancia, protege los contornos y pulsa Aplicar."],
   erase: ["Borrar", "Elige Borrar y arrastra sobre la zona. Deshacer recupera lo borrado."],
@@ -2374,6 +2376,12 @@ function runEditGoal(goal) {
   lastEditGoal = goal;
   showGoalHelp(goal);
   const actions = {
+    move: () => {
+      document.querySelector('.toolbar [data-tool="select"]')?.click();
+      canvas.scrollIntoView({ block: "center", behavior: "smooth" });
+      status.textContent = "Toca la imagen y arrástrala para moverla. Usa las esquinas para cambiar el tamaño.";
+    },
+    fit: () => document.querySelector("#fit-image-to-canvas")?.click(),
     crop: () => cropResizeButton.click(),
     background: () => {
       const layer = selectedLayerExact();
