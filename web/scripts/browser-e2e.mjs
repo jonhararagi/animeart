@@ -444,7 +444,7 @@ try {
   const movedSample = (await readDocument()).layers.find(layer => layer.name === "battleworn_knight");
   assert(JSON.stringify(movedSample?.transform) !== initialSampleTransform, "default Select/Move tool drags an imported image directly on the canvas");
   await click("#undo");
-  await waitFor("JSON.stringify(JSON.parse(localStorage.getItem(\"animeart-web-document\")).layers.find(layer => layer.name === \"battleworn_knight\").transform) === " + JSON.stringify(JSON.parse(initialSampleTransform)), 10000);
+  await waitFor("JSON.stringify(JSON.parse(localStorage.getItem(\"animeart-web-document\")).layers.find(layer => layer.name === \"battleworn_knight\").transform) === " + JSON.stringify(initialSampleTransform), 10000);
   await saveScreenshot("animeart-studio-cc0-sample.png");
   assert(await evaluate('document.querySelector("#flip-image-horizontal").disabled === false && document.querySelector("#flip-image-vertical").disabled === false'), "image flip controls activate for an unlocked image layer");
   await click("#flip-image-horizontal");
