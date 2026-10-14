@@ -668,3 +668,12 @@ test("touch tools toggle collapses without activating the canvas tool and remain
   assert.match(css, /\.mobile-tools-toggle\s*\{[\s\S]*?touch-action:\s*manipulation/);
   assert.match(css, /body\.mobile-tools-collapsed \.toolbar\s*\{[\s\S]*?display:\s*none !important/);
 });
+
+
+test("multi-layer drag snapshots selected layer IDs until the pointer interaction commits", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.match(js, /function interactionLayers\(interaction\)/);
+  assert.match(js, /layerIds: layers\.map\(layer => layer\.id\)/);
+  assert.match(js, /applyMultiLayerMove\(delta\.x, delta\.y, "Layers moved", interaction\.layerIds\)/);
+  assert.match(js, /ids\.length < 2 \|\| layers\.length !== ids\.length \|\| layers\.some\(layer => layer\.locked\)/);
+});
