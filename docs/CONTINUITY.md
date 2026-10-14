@@ -3175,3 +3175,13 @@ Corrección de inventario durante la integración: aunque la sincronización de 
 - Se actualizó el idioma del documento a español y se incrementó el caché offline de `v17` a `v18` para evitar servir una interfaz antigua.
 - Se añadieron pruebas estáticas de regresión para modo de interacción, selección por defecto, radio de tiradores y tolerancia del borrador mágico.
 - No se afirma todavía que la experiencia completa estilo Picsart esté terminada. Faltan comprobar las CI en el SHA de la rama, validar visualmente los flujos E2E y probar el tacto en un dispositivo físico. La vista previa reversible del borrado mágico y el pincel de restauración siguen siendo trabajo pendiente si no están cubiertos por el código existente.
+
+
+### AA-PICSART-UX-001 — Addendum de accesibilidad y E2E (2026-10-14)
+
+- El cambio de modo también está disponible desde un botón compacto en la cabecera, visible en móvil aunque el panel de herramientas esté oculto.
+- El modo simple ahora ofrece acciones guiadas explícitas `Mover / acomodar` y `Ajustar al lienzo`, además de recortar, quitar fondo, borrar, dibujar, texto, color, capas, deshacer y exportar.
+- Se añadió un caso E2E de navegador real: importar el personaje CC0, arrastrarlo directamente con la herramienta inicial Seleccionar/Mover y deshacer para volver a la transformación inicial. Ese caso pasó en Web CI en SHA `3dabc5b05421157c1e5f45cabfe7a01c63c24241` (run https://github.com/jonhararagi/animeart/actions/runs/38513762240).
+- En el mismo SHA pasaron Build, Test, Verify build output y Real browser E2E. Android CI para ese SHA quedó pendiente/cancelado al actualizar la rama; se espera la ejecución final en el HEAD más reciente.
+- El modo es una capa de usabilidad, no una arquitectura paralela. La manipulación directa continúa usando el canvas, el modelo de capas, el historial y las transformaciones existentes.
+- Límite aún abierto: no se ha añadido una restauración por pincel no destructiva ni una vista previa reversible específica para el Borrado mágico; no se debe declarar cerrada toda la petición Picsart hasta implementar y validar esas partes y probar táctilmente en un teléfono real.
