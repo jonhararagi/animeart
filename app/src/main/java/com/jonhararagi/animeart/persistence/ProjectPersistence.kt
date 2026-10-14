@@ -161,12 +161,16 @@ private fun contentValue(content: LayerContent): String = when (content) {
     is LayerContent.Shape -> content.type
 }
 
-private fun JSONObject.readContent(): LayerContent? = when (optString("contentType", "drawing")) {
-    "empty" -> LayerContent.Empty
-    "image" -> LayerContent.Image(optString("contentValue"))
-    "reference" -> LayerContent.Reference(optString("contentValue"))
-    "text" -> LayerContent.Text(optString("contentValue"))
-    "shape" -> LayerContent.Shape(optString("contentValue"))
-    "drawing" -> null
-    else -> null
+private fun JSONObject.readContent(): LayerContent? {
+    val type = optString("contentType", "drawing")
+    val value = if (has("contentValue") && !isNull("contentValue")) getString("contentValue") else null
+    return when (type) {
+        "empty" -> LayerContent.Empty
+        "image" -> LayerContent.Image(value ?: throw JSONException("Image layer is missing its value"))
+        "reference" -> LayerContent.Reference(value ?: throw JSONException("Reference layer is missing its value"))
+        "text" -> LayerContent.Text(value ?: throw JSONException("Text layer is missing its value"))
+        "shape" -> LayerContent.Shape(value ?: throw JSONException("Shape layer is missing its value"))
+        "drawing" -> null
+        else -> throw JSONException("Unsupported layer content type")
+    }
 }
