@@ -132,7 +132,7 @@ function normalizeImage(image) {
   const height = Number(image.height);
   if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return null;
   const masks = ["none", "circle", "rounded", "star", "heart", "hexagon"];
-  return { source: image.source, width, height, flipX: image.flipX === true, flipY: image.flipY === true, mask: masks.includes(image.mask) ? image.mask : "none" };
+  return { source: image.source, width, height, flipX: image.flipX === true, flipY: image.flipY === true, mask: masks.includes(image.mask) ? image.mask : "none", ...(typeof image.restoreSource === "string" && image.restoreSource.length <= 2_000_000 ? { restoreSource: image.restoreSource } : {}) };
 }
 
 function normalizeLayer(layer, index) {
