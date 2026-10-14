@@ -3206,3 +3206,14 @@ Corrección de inventario durante la integración: aunque la sincronización de 
 - La actualización documental crea un nuevo HEAD y obliga a comprobar otra vez ambas CI sobre el SHA final antes de fusionar.
 - Límite explícito: no hubo prueba táctil en un teléfono físico. La CI emulada y el E2E de Chromium no se presentan como sustituto de esa prueba manual.
 - Estado: implementación automatizada PASS; integración en main pendiente de CI del HEAD documental final y merge autorizado. No se certifica que todos los saltos físicos estén eliminados sin prueba táctil real.
+
+
+---
+
+## AA-RECOVERY-SAFETY-001 — Reconciliación de estado real de persistencia (2026-10-14)
+
+- Esta entrada corrige el inventario histórico: aunque el apéndice antiguo de T064 indicaba que sus pruebas seguían fuera de `main`, la versión actual de `web/scripts/browser-e2e.mjs` en `main` ya contiene escenarios dinámicos T064 para fallo de cuota, error genérico de escritura, preservación exacta del payload, reintento explícito, edición en memoria mientras la recuperación está protegida, migración legacy y fallo de lectura de almacenamiento. No se vuelve a copiar el script antiguo de T064 encima del E2E actual.
+- El gate estático de `web/test/smoke.test.mjs` y los escenarios dinámicos Web existentes se mantienen como están. Su existencia no sustituye la validación CI del SHA actual.
+- La brecha de producción que sí permanece es Android: `ProjectPersistence.loadDocument()` todavía convertía fallos en `null`, y `MainActivity` abría un documento vacío por defecto. El PR AA-RECOVERY-SAFETY-001 introduce `RecoveryResult.Missing/Loaded/Failed`, rechazo de documentos incompatibles, preservación del payload y decisión explícita antes de empezar un documento nuevo.
+- PR de integración: https://github.com/jonhararagi/animeart/pull/76. Rama `integration/animeart-recovery-safety-2026-10-14`. HEAD actual al iniciar esta reconciliación: `abd4468ef06c8203fcd2409c2866fa84fd8e1bdc`; esta modificación documental generará un nuevo HEAD y exige validar nuevamente ambos workflows sobre ese SHA final.
+- Estado: integración Android y documentación en revisión; no declarar PASS ni fusionar hasta que Web CI y Android CI del HEAD final terminen correctamente. La protección de recuperación no está integrada en `main` hasta el merge del PR.
