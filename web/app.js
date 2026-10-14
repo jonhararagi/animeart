@@ -3434,6 +3434,13 @@ transparencyButton?.addEventListener("click", () => {
   updateRemoveImageControl();
 });
 backgroundModeButtons.forEach(button => button.addEventListener("click", () => setCanvasBackground(button.dataset.canvasBackground)));
+const toggleLayersPanelButton = document.querySelector("#toggle-layers-panel");
+toggleLayersPanelButton?.addEventListener("click", () => {
+  const collapsed = document.body.classList.toggle("layers-collapsed");
+  toggleLayersPanelButton.setAttribute("aria-pressed", String(!collapsed));
+  toggleLayersPanelButton.textContent = collapsed ? "Mostrar capas" : "Ocultar capas";
+  toggleLayersPanelButton.title = collapsed ? "Volver a mostrar capas y propiedades" : "Ocultar capas y propiedades para ampliar el lienzo";
+});
 removeSelectedImageButton?.addEventListener("click", event => {
   event.preventDefault();
   event.stopPropagation();
