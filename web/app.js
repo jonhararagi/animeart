@@ -3461,7 +3461,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v19";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v20";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -3489,7 +3489,8 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/png-export.mjs",
   "./domain/selection.mjs",
   "./domain/viewport.mjs",
-  "./domain/touch-gestures.mjs"
+  "./domain/touch-gestures.mjs",
+  "./domain/frame-scheduler.mjs"
 ];
 
 async function reportServiceWorkerReadiness() {
