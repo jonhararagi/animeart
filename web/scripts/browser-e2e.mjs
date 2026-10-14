@@ -654,7 +654,7 @@ try {
   assert(posterDocument.layers[2].text?.value==="SATURDAY · 20:00", "poster subtitle remains editable");
   await saveScreenshot("animeart-studio-poster-template.png");
 
-  // Real-browser Magic Eraser regression: tapping the connected background makes it transparent.
+  // Real-browser Magic Eraser regression: preview is cancelable, apply preserves source, and Restore paints original pixels back.
   const beforeMagicLayerCount = (await readDocument()).layers.length;
   await evaluate('(async () => { const source=document.createElement("canvas");source.width=64;source.height=64;const context=source.getContext("2d");context.fillStyle="#ffffff";context.fillRect(0,0,64,64);context.fillStyle="#d21e23";context.fillRect(2,2,10,10);const blob=await new Promise(resolve=>source.toBlob(resolve,"image/png"));const file=new File([blob],"magic-tap-fixture.png",{type:"image/png"});const transfer=new DataTransfer();transfer.items.add(file);const input=document.querySelector("#image-file-input");input.files=transfer.files;input.dispatchEvent(new Event("change",{bubbles:true}));return true;})()');
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length === ' + (beforeMagicLayerCount + 1), 10000);
@@ -662,18 +662,32 @@ try {
   const magicOriginalSource = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture").image.source');
   await click('[data-tool="magic-eraser"]');
   await click("#canvas");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture")?.image?.source !== ' + JSON.stringify(null), 10000);
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture")?.image?.source !== ' + JSON.stringify(magicOriginalSource), 10000);
-  const magicDiagnostics = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers?.find(item=>item.name==="magic-tap-fixture");const canvas=document.querySelector("#canvas"),rect=canvas.getBoundingClientRect();return {status:document.querySelector("#status").textContent,tool:document.querySelector("[data-tool=magic-eraser]")?.className,transform:layer?.transform,image:layer?.image?{width:layer.image.width,height:layer.image.height}:null,canvas:{left:rect.left,top:rect.top,width:rect.width,height:rect.height}}; })()');
-  assert(magicDiagnostics.status.includes("Magic Eraser removed the tapped color region"), "Magic Eraser tap applies a connected-region cutout; diagnostics=" + JSON.stringify(magicDiagnostics));
-  const magicPixels = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture");return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>{const canvas=document.createElement("canvas");canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;const context=canvas.getContext("2d",{willReadFrequently:true});context.drawImage(image,0,0);const pixels=context.getImageData(0,0,canvas.width,canvas.height).data;resolve({width:canvas.width,height:canvas.height,backgroundAlpha:pixels[(32*canvas.width+32)*4+3],subjectAlpha:pixels[(4*canvas.width+4)*4+3]});};image.onerror=()=>reject(new Error("Magic Eraser result did not decode"));image.src=layer.image.source;});})()');
+  await waitFor('document.querySelector("#magic-eraser-preview-dialog").open === true', 10000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture").image.source === '+JSON.stringify(magicOriginalSource)), "opening the Magic Eraser preview does not mutate the original layer");
+  const previewAlpha = await evaluate('(() => { const c=document.querySelector("#magic-eraser-after-preview"),d=c.getContext("2d").getImageData(0,0,c.width,c.height).data;return {alpha:d[(Math.floor(c.height/2)*c.width+Math.floor(c.width/2))*4+3],width:c.width,height:c.height}; })()');
+  assert(previewAlpha.alpha===0, "Magic Eraser preview shows the tapped connected background as transparent");
+  await click("#magic-eraser-cancel");
+  await waitFor('document.querySelector("#magic-eraser-preview-dialog").open === false');
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture").image.source === '+JSON.stringify(magicOriginalSource)), "canceling the Magic Eraser preview keeps the original source untouched");
+  await click("#canvas");
+  await waitFor('document.querySelector("#magic-eraser-preview-dialog").open === true', 10000);
+  await click("#magic-eraser-apply");
+  await waitFor('document.querySelector("#magic-eraser-preview-dialog").open === false');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture")?.image?.source !== '+JSON.stringify(magicOriginalSource), 10000);
+  const magicAfterApply = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture").image');
+  assert(magicAfterApply.restoreSource===magicOriginalSource, "applying Magic Eraser stores the original image source for the Restore brush");
+  const magicPixels = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture");return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>{const canvas=document.createElement("canvas");canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;const context=canvas.getContext("2d",{willReadFrequently:true});context.drawImage(image,0,0);const pixels=context.getImageData(0,0,canvas.width,canvas.height).data;resolve({width:canvas.width,height:canvas.height,backgroundAlpha:pixels[(32*canvas.width+32)*4+3],subjectAlpha:pixels[(4*canvas.width+4)*4+3]});};image.onerror=()=>reject(new Error("Magic Eraser result did not decode"));image.src=layer.source;});})()');
   assert(magicPixels.width===64&&magicPixels.height===64, "Magic Eraser keeps source dimensions");
-  assert(magicPixels.backgroundAlpha===0, "tap-seeded Magic Eraser removes the tapped connected background to transparency");
+  assert(magicPixels.backgroundAlpha===0, "applied Magic Eraser makes the tapped connected background transparent");
   assert(magicPixels.subjectAlpha===255, "Magic Eraser protects the differently colored subject");
+  await click('[data-tool="restore-brush"]');
+  await click("#canvas");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture").image.source !== '+JSON.stringify(magicAfterApply.source), 10000);
+  const restoredCenter = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture");return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>{const c=document.createElement("canvas");c.width=image.naturalWidth;c.height=image.naturalHeight;const x=c.getContext("2d");x.drawImage(image,0,0);resolve({alpha:x.getImageData(32,32,1,1).data[3],restoreSource:layer.image.restoreSource});};image.onerror=()=>reject(new Error("restored image did not decode"));image.src=layer.image.source;});})()');
+  assert(restoredCenter.alpha===255&&restoredCenter.restoreSource===magicOriginalSource, "Restore brush restores original pixels and keeps its source backup");
   await click("#undo");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer=>layer.name==="magic-tap-fixture"&&layer.image?.source)',10000);
-  assert(await evaluate('document.querySelector("[data-tool=magic-eraser]").classList.contains("active")'), "Magic Eraser remains visibly selected after undo");
-
+  const undoRestoredCenter = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture");return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>{const c=document.createElement("canvas");c.width=image.naturalWidth;c.height=image.naturalHeight;const x=c.getContext("2d");x.drawImage(image,0,0);resolve(x.getImageData(32,32,1,1).data[3]);};image.onerror=()=>reject(new Error("undo image did not decode"));image.src=layer.image.source;});})()');
+  assert(undoRestoredCenter===0, "Undo reverts a Restore brush stroke");
   // Local background-processing profiles are saved, reapplied and deleted in the real editor.
   await click("#remove-background");
   await waitFor('document.querySelector("#background-removal-dialog").open === true');
