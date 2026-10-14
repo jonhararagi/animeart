@@ -992,7 +992,7 @@ cropPreviewCanvas.addEventListener("pointerdown", event => {
   const point = cropPreviewPoint(event);
   if (!point) return;
   event.preventDefault();
-  cropPreviewDrag = { pointerId: event.pointerId, start: point };
+  cropPreviewDrag = { pointerId: event.pointerId, start: point, before: { x: Number(imageCropX.value), y: Number(imageCropY.value), width: Number(imageCropWidth.value), height: Number(imageCropHeight.value) } };
   cropPreviewCanvas.setPointerCapture(event.pointerId);
   updateCropInputs({ x: point.x, y: point.y, width: 1, height: 1 });
   drawCropPreview();
@@ -1006,7 +1006,15 @@ cropPreviewCanvas.addEventListener("pointermove", event => {
 });
 function finishCropPreviewDrag(event) {
   if (!cropPreviewDrag || cropPreviewDrag.pointerId !== event.pointerId) return;
+  const drag = cropPreviewDrag;
+  if (event.type === "pointerup") {
+    const point = cropPreviewPoint(event);
+    if (point) updateCropInputs(cropDragRectangle(drag.start, point));
+  } else {
+    updateCropInputs(drag.before);
+  }
   cropPreviewDrag = null;
+  drawCropPreview();
   if (cropPreviewCanvas.hasPointerCapture(event.pointerId)) cropPreviewCanvas.releasePointerCapture(event.pointerId);
 }
 cropPreviewCanvas.addEventListener("pointerup", finishCropPreviewDrag);
