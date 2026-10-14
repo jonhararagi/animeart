@@ -3185,3 +3185,13 @@ Corrección de inventario durante la integración: aunque la sincronización de 
 - En el mismo SHA pasaron Build, Test, Verify build output y Real browser E2E. Android CI para ese SHA quedó pendiente/cancelado al actualizar la rama; se espera la ejecución final en el HEAD más reciente.
 - El modo es una capa de usabilidad, no una arquitectura paralela. La manipulación directa continúa usando el canvas, el modelo de capas, el historial y las transformaciones existentes.
 - Límite aún abierto: no se ha añadido una restauración por pincel no destructiva ni una vista previa reversible específica para el Borrado mágico; no se debe declarar cerrada toda la petición Picsart hasta implementar y validar esas partes y probar táctilmente en un teléfono real.
+
+
+## AA-PICSART-UX-001 — Cierre del tramo de borrado seguro y restauración (2026-10-14)
+
+- Rama única de trabajo: `aa-picsart-ux-001`; PR único: https://github.com/jonhararagi/animeart/pull/74. No se modificó `main` ni se fusionó el PR.
+- El Borrado mágico ya no reemplaza píxeles al primer toque. Abre una comparación Antes/Después con `Aplicar borrado`, `Conservar original` y Cancelar. Cancelar no cambia el documento; Aplicar crea una operación de historial reversible.
+- Al aplicar el Borrado mágico se conserva `restoreSource` en el modelo de imagen cuando la copia original cabe en el límite de persistencia de 2 MB. El nuevo pincel `Restaurar` recupera píxeles originales bajo el trazo, mantiene la copia de respaldo y permite Deshacer. Si falta la copia o la imagen fue redimensionada, el editor informa el límite en lugar de fingir una restauración.
+- Los botones de Restaurar están disponibles en herramientas y dock móvil. Se agregó manejo explícito de cancelación del gesto táctil, vista previa con tablero de transparencia y aumento de caché offline a `v19`.
+- Se amplió el E2E real del navegador: vista previa, cancelación sin mutación, aplicación del borrado, persistencia de la fuente original, restauración del píxel central y Deshacer del trazo. Las CI del HEAD final deben determinar el estado real; no se reutiliza un PASS de un SHA anterior como prueba del HEAD actual.
+- Límites aún explícitos: el algoritmo sigue siendo borrado por región conectada de color, no segmentación semántica IA; la restauración requiere una copia original guardada y dimensiones idénticas; falta validación táctil en teléfono físico. Esto completa el tramo funcional de previsualización/restauración, no garantiza paridad total con Picsart ni declara el proyecto cerrado.
