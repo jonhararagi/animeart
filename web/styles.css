@@ -1538,3 +1538,50 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   .mobile-touch-dock { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; }
   .mobile-touch-dock button { padding-left: 2px; padding-right: 2px; font-size: .6rem; }
 }
+
+
+/* AA-EDITOR-UX-002 follow-up: put image entry points on the canvas itself. */
+.canvas-left-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  max-width: calc(100% - 110px);
+  pointer-events: auto;
+}
+.canvas-import-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.canvas-import-actions button {
+  min-height: 38px;
+  padding: 7px 11px;
+  border: 1px solid #486c83;
+  border-radius: 10px;
+  background: #111d2bea;
+  color: #f1f7ff;
+  font-size: .72rem;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px #0004;
+}
+.canvas-import-actions #canvas-import-images {
+  border-color: #3a94ad;
+  background: linear-gradient(140deg, #1c5260, #142b40);
+}
+.canvas-import-actions button:hover,
+.canvas-import-actions button:focus-visible {
+  border-color: #7fe6f5;
+  outline: 2px solid #7fe6f555;
+  outline-offset: 1px;
+}
+@media (max-width: 900px) {
+  .canvas-left-actions { display: contents; }
+  .canvas-import-actions { display: none; }
+  .canvas-view-menu { align-self: flex-start; }
+}
+@media (min-width: 901px) {
+  .canvas-left-actions #selection-indicator { max-width: min(32vw, 360px); }
+}
