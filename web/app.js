@@ -3798,8 +3798,8 @@ function load() {
     refreshHistoryControls();
     setSelection([state.document.layers[0].id], state.document.layers[0].id);
     state.dirty = false;
-    setStorageRecoveryPending(true, "Local project storage could not be read. Automatic saving is paused to protect existing data.");
-    status.textContent = "Local project storage unavailable";
+    setStorageRecoveryPending(true, "No se pudo leer el almacenamiento local. El guardado automático está pausado para proteger tus datos.");
+    status.textContent = "Almacenamiento local no disponible";
     return;
   }
   if (!raw) return;
