@@ -1,3 +1,27 @@
+# Estado actual · AA-EDITOR-UX-002 · 2026-10-15
+
+**TIMER:** 1–3 horas estimadas de trabajo activo, excluyendo espera de CI y validación en dispositivo.
+
+**Estado:** implementación en rama de prueba; pendiente validación automatizada en GitHub Actions. No integrar a `main` hasta que Web CI y Android CI verifiquen el HEAD exacto.
+
+**Rama autorizada:** `aa-editor-ux-002`, creada desde `main`. No reutilizar ni resetear ramas UX anteriores divergidas. Rama no integrada.
+
+**Cambios implementados en la rama:**
+- Hacer visibles al principio `Importar imágenes` y `Mis imágenes`, permitir elegir varias imágenes y añadir una acción a la barra móvil.
+- Ajustar el tamaño inicial de importación para que los elementos no dominen tanto el lienzo manteniendo sus proporciones.
+- Mover controles de transparencia y fondo a un menú compacto de Vista.
+- Añadir panel flotante contextual por capa con bloqueo, encajar imagen y subir/bajar en el orden.
+- Corregir la selección involuntaria de la imagen subyacente al dibujar/censurar sobre una capa de pintura.
+- Mostrar el tamaño del pincel al pasar por el lienzo.
+- Permitir mover el marco de recorte, ajustar ocho tiradores y restablecer el marco con una X pequeña.
+- Añadir pruebas de regresión UI/importación y actualizar caché de service worker a v23.
+
+**Evidencia real hasta este punto:** los cambios fueron guardados por GitHub connector en la rama. Todavía no se declara PASS de pruebas, navegador, CI ni teléfono. Los SHA de commits de edición están en el historial de `aa-editor-ux-002`; el siguiente paso es abrir PR y validar el HEAD exacto con Web CI + Android CI.
+
+**Criterio de aceptación:** seleccionar varias imágenes crea capas independientes encajadas; Biblioteca se encuentra desde el panel inicial y la barra móvil; Vista no ocupa la parte superior de forma permanente; el marco se puede mover/redimensionar/restablecer; dibujar y censurar siguen la ruta del puntero en una sola capa; bloquear una capa impide moverla accidentalmente; controles de adelante/atrás actualizan el apilamiento; pruebas Web y Android pasan. No integrar si hay fallos o evidencia incompleta.
+
+---
+
 ANIMEART — CONTINUITY
 
 DÍA:
