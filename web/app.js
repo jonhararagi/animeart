@@ -1226,7 +1226,7 @@ imageEditForm.addEventListener("submit", async event => {
     return;
   }
   if (state.storageRecoveryPending) {
-    status.textContent = "Saved project is protected. Choose Save to replace it explicitly.";
+    status.textContent = "El proyecto anterior está protegido. Pulsa Guardar para reemplazarlo de forma explícita.";
     return;
   }
   const applyButton = document.querySelector("#apply-image-edit");
@@ -1582,12 +1582,12 @@ function persistDocument({ markSaved = false } = {}) {
     persistDocumentSnapshot(localStorage, "animeart-web-document", state.document);
   } catch (error) {
     state.dirty = true;
-    status.textContent = error?.message || "Could not save project locally";
+    status.textContent = error?.message || "No se pudo guardar el proyecto localmente";
     return false;
   }
   state.dirty = !markSaved;
   if (markSaved) setStorageRecoveryPending(false);
-  status.textContent = markSaved ? "Saved locally" : "Local backup updated";
+  status.textContent = markSaved ? "Guardado localmente" : "Copia local actualizada";
   return true;
 }
 
@@ -3490,15 +3490,15 @@ function restoreStoredProject({ confirmDiscard = true } = {}) {
   try {
     raw = localStorage.getItem("animeart-web-document");
   } catch {
-    setStorageRecoveryPending(true, "Local project storage could not be read. Automatic saving is paused to protect existing data.");
-    status.textContent = "Local project storage unavailable";
+    setStorageRecoveryPending(true, "No se pudo leer el almacenamiento local. El guardado automático está pausado para proteger tus datos.");
+    status.textContent = "Almacenamiento local no disponible";
     return false;
   }
   if (!raw) {
-    status.textContent = "No local project to recover";
+    status.textContent = "No hay ningún proyecto local para recuperar";
     return false;
   }
-  if (confirmDiscard && state.dirty && !window.confirm("Discard changes since the last explicit save?")) return false;
+  if (confirmDiscard && state.dirty && !window.confirm("¿Descartar los cambios desde el último guardado explícito?")) return false;
   try {
     const saved = JSON.parse(raw);
     const restored = restoreStoredDocument(saved);
@@ -3516,8 +3516,8 @@ function restoreStoredProject({ confirmDiscard = true } = {}) {
     refreshDocument("Recovered local project");
     return true;
   } catch {
-    setStorageRecoveryPending(true, "The saved project could not be opened. Its original data is preserved. Automatic saving is paused. Create a new document, then choose Save only if you want to replace the saved project.");
-    status.textContent = "Stored project could not be recovered";
+    setStorageRecoveryPending(true, "No se pudo abrir el proyecto guardado. Los datos originales están protegidos y el guardado automático está pausado. Crea un documento nuevo y pulsa Guardar solo si deseas reemplazar el proyecto anterior.");
+    status.textContent = "No se pudo recuperar el proyecto guardado";
     return false;
   }
 }
