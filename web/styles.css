@@ -1591,3 +1591,106 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 .canvas-tools > .canvas-left-actions,
 .canvas-left-actions .canvas-import-actions { pointer-events: none; }
 .canvas-left-actions .canvas-import-actions button { pointer-events: auto; }
+
+
+/* AA-MOBILE-SIMPLE-001: canvas-first mobile layout; tools are opened only on demand. */
+@media (max-width: 920px) {
+  body {
+    grid-template-rows: 52px minmax(0, 1fr) auto !important;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+  .topbar {
+    height: 52px;
+    min-height: 52px;
+    padding: 0 10px;
+    gap: 8px;
+  }
+  .topbar .status { display: none; }
+  .topbar-actions { gap: 6px; }
+  .topbar-actions button { min-height: 38px; padding: 6px 9px; font-size: .75rem; }
+  .workspace {
+    grid-template-rows: minmax(0, 1fr) 0 0 !important;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .canvas-wrap {
+    grid-row: 1 !important;
+    min-height: 0;
+    height: 100%;
+  }
+  .canvas-wrap canvas { width: min(96%, 1200px); height: min(94%, 820px); }
+  .mobile-tools-toggle { display: none !important; }
+  .toolbar {
+    display: none !important;
+    grid-row: 3 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+  body.mobile-tools-open .workspace {
+    grid-template-rows: minmax(0, 1fr) 0 minmax(200px, 40dvh) !important;
+  }
+  body.mobile-tools-open .toolbar {
+    display: block !important;
+    grid-row: 3 !important;
+    min-height: 0 !important;
+    max-height: 40dvh !important;
+    padding: 8px !important;
+    overflow: auto !important;
+    border-top: 1px solid #34425a !important;
+  }
+  body.mobile-tools-open .mobile-tools-toggle { display: none !important; }
+  body.mobile-layers-open .workspace {
+    grid-template-rows: minmax(0, 1fr) 0 minmax(160px, 38dvh) !important;
+  }
+  body.mobile-layers-open .layers {
+    display: block !important;
+    grid-row: 3 !important;
+    max-height: 38dvh !important;
+    min-height: 0 !important;
+    overflow: auto !important;
+    padding: 9px 12px !important;
+  }
+  .mobile-touch-dock {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+    width: 100%;
+    min-height: 64px !important;
+    max-height: 72px !important;
+    padding: 5px 5px max(5px, env(safe-area-inset-bottom)) !important;
+    overflow: hidden !important;
+    border-top: 1px solid #3a4660;
+    background: #0c111d;
+    z-index: 10;
+  }
+  .mobile-touch-dock button {
+    min-width: 0 !important;
+    min-height: 48px !important;
+    padding: 4px 1px !important;
+    gap: 3px !important;
+    font-size: clamp(.58rem, 2.6vw, .72rem) !important;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .mobile-touch-dock button span:first-child { font-size: 1rem; }
+  .canvas-tools { inset: 5px 5px auto !important; gap: 5px; }
+  .canvas-left-actions { min-width: 0; }
+  #selection-indicator { display: none; }
+  .canvas-import-actions { gap: 4px; }
+  .canvas-import-actions button { min-height: 36px; padding: 5px 7px; font-size: .68rem; }
+  .canvas-view-menu > summary { min-height: 36px; padding: 5px 8px; }
+  .transparency-note { display: none; }
+  .easy-edit-heading, .editor-mode-switch, .editor-mode-hint,
+  .guided-edit-tools, .editing-help-card { display: none !important; }
+  .easy-edit-panel { padding: 0 !important; border: 0 !important; background: transparent !important; }
+  .easy-edit-grid { display: flex; flex-wrap: wrap; gap: 7px; overflow: visible; }
+  .easy-edit-grid button { flex: 1 1 calc(50% - 7px); min-height: 48px; }
+}
