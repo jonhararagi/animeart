@@ -700,10 +700,10 @@ test("selection status indicator never intercepts canvas pointer gestures", asyn
 
 test("AA-BOTTOM-BAR-BEGINNER-001 keeps five clear Spanish primary actions in the mobile bottom bar", async () => {
   const [html, css] = await Promise.all([readFile("index.html", "utf8"), readFile("styles.css", "utf8")]);
-  const dock = html.match(/<nav class="mobile-touch-dock"[\\s\\S]*?<\\/nav>/)?.[0] || "";
+  const dock = html.match(/<nav class="mobile-touch-dock"[\s\S]*?<\/nav>/)?.[0] || "";
   assert.match(dock, /aria-label="Herramientas principales"/);
   for (const label of ["Mover", "Dibujar", "Borrar", "Texto", "Más"]) assert.match(dock, new RegExp(label));
   assert.equal((dock.match(/data-touch-action=/g) || []).length, 5);
   assert.match(css, /AA-BOTTOM-BAR-BEGINNER-001/);
-  assert.match(css, /grid-template-columns:\\s*repeat\\(5, minmax\\(0, 1fr\\)\\)/);
+  assert.match(css, /grid-template-columns:\s*repeat\(5, minmax\(0, 1fr\)\)/);
 });
