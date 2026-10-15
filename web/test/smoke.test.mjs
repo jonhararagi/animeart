@@ -699,14 +699,14 @@ test("selection status indicator never intercepts canvas pointer gestures", asyn
 });
 
 
-test("AA-BOTTOM-BAR-BEGINNER-001 keeps five clear Spanish primary actions in the mobile bottom bar", async () => {
+test("AA-BOTTOM-BAR-BEGINNER-001 keeps six clear Spanish primary actions in the mobile bottom bar", async () => {
   const [html, css] = await Promise.all([readFile("index.html", "utf8"), readFile("styles.css", "utf8")]);
   const dock = html.match(/<nav class="mobile-touch-dock"[\s\S]*?<\/nav>/)?.[0] || "";
   assert.match(dock, /aria-label="Herramientas principales"/);
-  for (const label of ["Mover", "Dibujar", "Borrar", "Texto", "Más"]) assert.match(dock, new RegExp(label));
-  assert.equal((dock.match(/data-touch-action=/g) || []).length, 5);
+  for (const label of ["Mover", "Dibujar", "Borrar", "Texto", "Imágenes", "Más"]) assert.match(dock, new RegExp(label));
+  assert.equal((dock.match(/data-touch-action=/g) || []).length, 6);
   assert.match(css, /AA-BOTTOM-BAR-BEGINNER-001/);
-  assert.match(css, /grid-template-columns:\s*repeat\(5, minmax\(0, 1fr\)\)/);
+  assert.match(css, /grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\)/);
 });
 
 
@@ -734,4 +734,31 @@ test("AA-TEXT-EDITOR-001 opens a dedicated text dialog with typography, outline,
   assert.match(html, /Más opciones/);
   assert.match(html, /class="text-live-hint"/);
   assert.match(css, /AA-TEXT-EDITOR-002/);
+});
+
+
+test("AA-EDITOR-UX-002 surfaces image import/library, compact view options, layer actions and adjustable crop handles", async () => {
+  const [html, app, css, worker] = await Promise.all([
+    readFile("index.html", "utf8"), readFile("app.js", "utf8"),
+    readFile("styles.css", "utf8"), readFile("service-worker.js", "utf8")
+  ]);
+  assert.match(html, /id="quick-import-images"/);
+  assert.match(html, /id="quick-open-asset-library"/);
+  assert.match(html, /id="image-file-input".*multiple/);
+  assert.match(html, /<details class="canvas-view-menu">/);
+  assert.match(html, /id="selection-mini-lock"/);
+  assert.match(html, /id="selection-mini-back"/);
+  assert.match(html, /id="selection-mini-front"/);
+  assert.match(html, /id="crop-reset-selection"/);
+  assert.match(html, /data-touch-action="asset-library"/);
+  assert.match(app, /function cropPreviewHitHandle\\(/);
+  assert.match(app, /function moveCropRectangle\\(/);
+  assert.match(app, /function resizeCropRectangle\\(/);
+  assert.match(app, /!keepPaintingLayer/);
+  assert.match(app, /selection-mini-lock/);
+  assert.match(app, /quick-open-asset-library/);
+  assert.match(css, /\\.canvas-view-menu\\[open\\] \\.canvas-view-actions/);
+  assert.match(css, /\\.selection-mini-panel/);
+  assert.match(css, /\\.crop-reset-selection/);
+  assert.match(worker, /animeart-web-shell-v23/);
 });
