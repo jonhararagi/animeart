@@ -2538,6 +2538,8 @@ const mobileToolsToggle = document.querySelector("#mobile-tools-toggle");
 mobileToolsToggle?.addEventListener("click", event => {
   event.preventDefault();
   event.stopPropagation();
+  document.body.classList.remove("mobile-tools-open", "mobile-layers-open");
+  document.querySelectorAll('.mobile-touch-dock [data-touch-action="more"], .mobile-touch-dock [data-touch-action="layers"]').forEach(item => item.setAttribute("aria-expanded", "false"));
   const collapsed = document.body.classList.toggle("mobile-tools-collapsed");
   mobileToolsToggle.setAttribute("aria-expanded", String(!collapsed));
   mobileToolsToggle.setAttribute("aria-label", collapsed ? "Mostrar herramientas" : "Ocultar herramientas");
@@ -2561,7 +2563,10 @@ if (mobileDock) {
     if (action === "undo") { undo(); return; }
     if (action === "redo") { redo(); return; }
     if (action === "crop-image") {
-      document.body.classList.remove("mobile-tools-open", "mobile-layers-open");
+      document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
+      mobileToolsToggle?.setAttribute("aria-expanded", "true");
+      mobileToolsToggle?.setAttribute("aria-label", "Ocultar herramientas");
+      if (mobileToolsToggle) mobileToolsToggle.querySelector("span").textContent = "⌄";
       mobileDock.querySelectorAll('[data-touch-action="more"], [data-touch-action="layers"]').forEach(item => item.setAttribute("aria-expanded", "false"));
       const layer = selectedLayerExact();
       if (!layer || layer.contentType !== "image" || !layer.image) {
@@ -2589,14 +2594,20 @@ if (mobileDock) {
     if (action === "layers") {
       const open = document.body.classList.toggle("mobile-layers-open");
       button.setAttribute("aria-expanded", String(open));
-      document.body.classList.remove("mobile-tools-open");
+      document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed");
+      mobileToolsToggle?.setAttribute("aria-expanded", "true");
+      mobileToolsToggle?.setAttribute("aria-label", "Ocultar herramientas");
+      if (mobileToolsToggle) mobileToolsToggle.querySelector("span").textContent = "⌄";
       mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
       return;
     }
     if (action === "more") {
       const open = document.body.classList.toggle("mobile-tools-open");
       button.setAttribute("aria-expanded", String(open));
-      document.body.classList.remove("mobile-layers-open");
+      document.body.classList.remove("mobile-layers-open", "mobile-tools-collapsed");
+      mobileToolsToggle?.setAttribute("aria-expanded", String(!open));
+      mobileToolsToggle?.setAttribute("aria-label", open ? "Ocultar herramientas" : "Mostrar herramientas");
+      if (mobileToolsToggle) mobileToolsToggle.querySelector("span").textContent = open ? "⌄" : "⌃";
       mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
       return;
     }
