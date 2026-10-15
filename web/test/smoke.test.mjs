@@ -699,14 +699,16 @@ test("selection status indicator never intercepts canvas pointer gestures", asyn
 });
 
 
-test("AA-BOTTOM-BAR-BEGINNER-001 keeps six clear Spanish primary actions in the mobile bottom bar", async () => {
+test("AA-MOBILE-UX-004 keeps direct Spanish image/text/delete actions in the mobile dock", async () => {
   const [html, css] = await Promise.all([readFile("index.html", "utf8"), readFile("styles.css", "utf8")]);
   const dock = html.match(/<nav class="mobile-touch-dock"[\s\S]*?<\/nav>/)?.[0] || "";
   assert.match(dock, /aria-label="Herramientas principales"/);
-  for (const label of ["Mover", "Dibujar", "Borrar", "Texto", "Imágenes", "Más"]) assert.match(dock, new RegExp(label));
-  assert.equal((dock.match(/data-touch-action=/g) || []).length, 6);
-  assert.match(css, /AA-BOTTOM-BAR-BEGINNER-001/);
-  assert.match(css, /grid-template-columns:\s*repeat\(6, minmax\(0, 1fr\)\)/);
+  for (const label of ["Añadir", "Mover", "Dibujar", "Texto", "Eliminar", "Capas", "Más"]) assert.match(dock, new RegExp(label));
+  assert.equal((dock.match(/data-touch-action=/g) || []).length, 7);
+  assert.match(dock, /data-touch-action="import-image"/);
+  assert.match(dock, /data-touch-action="delete-selected"/);
+  assert.match(css, /AA-MOBILE-UX-004/);
+  assert.match(css, /grid-template-columns:\s*repeat\(7, minmax\(0, 1fr\)\)/);
 });
 
 
@@ -755,7 +757,9 @@ test("AA-EDITOR-UX-002 surfaces image import/library, compact view options, laye
   assert.match(html, /id="selection-mini-back"/);
   assert.match(html, /id="selection-mini-front"/);
   assert.match(html, /id="crop-reset-selection"/);
-  assert.match(html, /data-touch-action="asset-library"/);
+  assert.match(html, /data-touch-action="import-image"/);
+  assert.match(html, /data-touch-action="delete-selected"/);
+  assert.match(html, /id="selection-mini-delete"/);
   assert.ok(app.includes("function cropPreviewHitHandle("));
   assert.ok(app.includes("isFullImageSelection"), "the full-image frame remains a starting point for a new crop");
   assert.ok(app.includes("function moveCropRectangle("));
