@@ -203,76 +203,104 @@
         <p id="quick-recipe-status" class="quick-recipe-status" role="status" aria-live="polite">Select image layers, then choose a recipe.</p>
       </section>
 
-      <section id="text-panel" class="text-panel" aria-labelledby="text-title" hidden>
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">EDITABLE TYPOGRAPHY</p>
-            <h3 id="text-title">Text properties</h3>
+      <dialog id="text-edit-dialog" aria-labelledby="text-dialog-title">
+        <div class="text-dialog-topbar">
+          <div><p class="eyebrow">EDICIÓN DE TEXTO</p><h2 id="text-dialog-title">Texto y estilo</h2><p>Escribe, elige un estilo y ajusta el contorno o la sombra.</p></div>
+          <button type="button" id="close-text-edit" aria-label="Cerrar edición de texto">✕</button>
+        </div>
+        <section id="text-panel" class="text-panel" aria-labelledby="text-dialog-title" hidden>
+          <p id="text-layer-name" class="adjustment-layer-name">Elige una capa de texto para editarla</p>
+
+          <label class="text-field text-content-field" for="text-content">¿Qué quieres escribir?
+            <textarea id="text-content" rows="3" maxlength="500" spellcheck="false" placeholder="Escribe aquí tu frase…"></textarea>
+          </label>
+
+          <div class="text-style-presets" aria-label="Estilos rápidos de texto">
+            <button type="button" data-text-style-preset="comic"><span aria-hidden="true">💬</span><span>Cómic</span></button>
+            <button type="button" data-text-style-preset="poster"><span aria-hidden="true">📣</span><span>Cartel</span></button>
+            <button type="button" data-text-style-preset="manga"><span aria-hidden="true">📖</span><span>Manga</span></button>
+            <button type="button" data-text-style-preset="neon"><span aria-hidden="true">✨</span><span>Neón</span></button>
           </div>
-        </div>
-        <p id="text-layer-name" class="adjustment-layer-name">Select a text layer to edit</p>
-        <label class="text-field" for="text-content">Content
-          <textarea id="text-content" rows="3" maxlength="500" spellcheck="false"></textarea>
-        </label>
-        <label class="text-field" for="text-font-family">Font family
-          <select id="text-font-family">
-            <option value="Arial">Arial</option><option value="Arial Black">Arial Black</option><option value="Impact">Impact</option><option value="Palatino Linotype">Palatino Linotype</option><option value="Lucida Console">Lucida Console</option>
-            <option value="Georgia">Georgia</option>
-            <option value="Trebuchet MS">Trebuchet MS</option>
-            <option value="Verdana">Verdana</option>
-            <option value="Courier New">Courier New</option>
-            <option value="Impact">Impact (Meme)</option>
-            <option value="sans-serif">Sans serif</option>
-            <option value="serif">Serif</option>
-            <option value="monospace">Monospace</option>
-          </select>
-        </label>
-        <div class="text-inline-controls">
-          <label class="text-field" for="text-font-weight">Weight
-            <select id="text-font-weight"><option value="normal">Regular</option><option value="bold">Bold</option></select>
-          </label>
-          <label class="text-field" for="text-align">Align
-            <select id="text-align"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select>
-          </label>
-        </div>
-        <label class="text-field" for="text-font-size">Size <output id="text-font-size-value">48 px</output>
-          <input id="text-font-size" type="range" min="8" max="240" step="1" value="48">
-        </label>
-        <div class="text-inline-controls">
-          <label class="text-field text-color-field" for="text-color">Fill color
-            <input id="text-color" type="color" value="#172335">
-          </label>
-          <label class="text-field text-color-field" for="text-outline-color">Outline color
-            <input id="text-outline-color" type="color" value="#000000">
-          </label>
-        </div>
-        <label class="text-field" for="text-outline-width">Outline <output id="text-outline-width-value">0 px</output>
-          <input id="text-outline-width" type="range" min="0" max="24" step="1" value="0">
-        </label>
-        <div class="text-style-presets" aria-label="Text style presets"><button type="button" data-text-style-preset="comic">Comic</button><button type="button" data-text-style-preset="poster">Poster</button><button type="button" data-text-style-preset="manga">Manga</button><button type="button" data-text-style-preset="neon">Neon</button></div>
-        <div class="text-inline-controls"><label class="text-field" for="text-shadow-color">Shadow color<input id="text-shadow-color" type="color" value="#000000"></label><label class="text-field" for="text-shadow-blur">Shadow <output id="text-shadow-blur-value">0 px</output><input id="text-shadow-blur" type="range" min="0" max="48" value="0"></label></div>
-        <p class="adjustment-note">Text remains a native editable layer. Changes support undo/redo and are included in PNG export.</p>
-      </section>
+
+          <div class="text-simple-controls">
+            <label class="text-field" for="text-font-family">Tipo de letra
+              <select id="text-font-family">
+                <option value="Arial">Clara · Arial</option>
+                <option value="Arial Black">Gruesa · Arial Black</option>
+                <option value="Impact">Impactante · Impact</option>
+                <option value="Georgia">Elegante · Georgia</option>
+                <option value="Trebuchet MS">Redondeada · Trebuchet</option>
+                <option value="Verdana">Sencilla · Verdana</option>
+                <option value="Courier New">Máquina · Courier</option>
+                <option value="Palatino Linotype">Clásica · Palatino</option>
+                <option value="Lucida Console">Pixel · Lucida Console</option>
+                <option value="sans-serif">Sans serif</option>
+                <option value="serif">Serif</option>
+                <option value="monospace">Monoespaciada</option>
+              </select>
+            </label>
+            <label class="text-field" for="text-font-size">Tamaño de letra <output id="text-font-size-value">48 px</output>
+              <input id="text-font-size" type="range" min="8" max="240" step="1" value="48">
+            </label>
+            <label class="text-field text-color-field" for="text-color">Color de letra
+              <input id="text-color" type="color" value="#172335">
+            </label>
+          </div>
+
+          <details class="text-advanced-options">
+            <summary>Más opciones <span>Contorno, sombra y alineación</span></summary>
+            <div class="text-advanced-content">
+              <div class="text-inline-controls">
+                <label class="text-field" for="text-font-weight">Grosor de letra
+                  <select id="text-font-weight"><option value="normal">Normal</option><option value="bold">Negrita</option></select>
+                </label>
+                <label class="text-field" for="text-align">Alineación
+                  <select id="text-align"><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select>
+                </label>
+              </div>
+              <div class="text-style-section">
+                <h3>Contorno</h3>
+                <div class="text-inline-controls">
+                  <label class="text-field text-color-field" for="text-outline-color">Color del borde
+                    <input id="text-outline-color" type="color" value="#000000">
+                  </label>
+                  <label class="text-field" for="text-outline-width">Grosor <output id="text-outline-width-value">0 px</output>
+                    <input id="text-outline-width" type="range" min="0" max="24" step="1" value="0">
+                  </label>
+                </div>
+              </div>
+              <div class="text-style-section">
+                <h3>Sombra</h3>
+                <div class="text-inline-controls">
+                  <label class="text-field text-color-field" for="text-shadow-color">Color de sombra
+                    <input id="text-shadow-color" type="color" value="#000000">
+                  </label>
+                  <label class="text-field" for="text-shadow-blur">Suavidad <output id="text-shadow-blur-value">0 px</output>
+                    <input id="text-shadow-blur" type="range" min="0" max="48" value="0">
+                  </label>
+                </div>
+                <div class="text-inline-controls">
+                  <label class="text-field" for="text-shadow-x">Mover sombra a los lados <output id="text-shadow-x-value">0 px</output>
+                    <input id="text-shadow-x" type="range" min="-40" max="40" value="0">
+                  </label>
+                  <label class="text-field" for="text-shadow-y">Mover sombra arriba/abajo <output id="text-shadow-y-value">0 px</output>
+                    <input id="text-shadow-y" type="range" min="-40" max="40" value="0">
+                  </label>
+                </div>
+              </div>
+            </div>
+          </details>
+          <p class="text-live-hint" role="note">Los cambios se ven en el lienzo. Puedes deshacerlos y el texto seguirá editable al guardar el proyecto.</p>
+        </section>
+      </dialog>
     </aside>
   </main>
-  <nav class="mobile-touch-dock" aria-label="Mobile editing shortcuts">
-    <button type="button" data-touch-action="tool" data-tool="select" aria-pressed="true">🖐 Mover</button>
-    <button type="button" data-touch-action="crop-image" title="Seleccioná una imagen para recortarla">✂️ Recortar</button>
-    <button type="button" data-touch-action="tool" data-tool="brush" aria-pressed="false">🖌 Dibujar</button>
-    <button type="button" data-touch-action="tool" data-tool="eraser" aria-pressed="false" title="Borrar píxeles">🧽 Borrar</button>
-    <button type="button" data-touch-action="tool" data-tool="restore-brush" aria-pressed="false" title="Restaurar píxeles originales">🩹 Restaurar</button>
-    <button type="button" data-touch-action="tool" data-tool="magic-eraser" aria-pressed="false" title="Previsualizar borrado mágico">🪄 Mágico</button>
-    <button type="button" data-touch-action="undo">↶ Undo</button>
-    <button type="button" data-touch-action="redo">↷ Redo</button>
-    <button type="button" data-touch-action="import-image">🖼 Image</button>
-    <button type="button" data-touch-action="add-text">✏️ Text</button>
-    <button type="button" data-touch-action="more" aria-expanded="false">✨ Editar</button>
-    <button type="button" data-touch-action="zoom-out">🔍−</button>
-    <button type="button" data-touch-action="zoom-in">🔍+</button>
-    <button type="button" data-touch-action="layers" aria-expanded="false">🗂 Layers</button>
-
-    <button type="button" data-touch-action="export">📤 Export</button>
-    <button type="button" data-touch-action="appearance">🎨 Style</button>
+  <nav class="mobile-touch-dock" aria-label="Herramientas principales">
+    <button type="button" data-touch-action="tool" data-tool="select" aria-pressed="true"><span aria-hidden="true">🖐️</span><span>Mover</span></button>
+    <button type="button" data-touch-action="tool" data-tool="brush" aria-pressed="false"><span aria-hidden="true">🖌️</span><span>Dibujar</span></button>
+    <button type="button" data-touch-action="tool" data-tool="eraser" aria-pressed="false" title="Borrar píxeles"><span aria-hidden="true">🧽</span><span>Borrar</span></button>
+    <button type="button" data-touch-action="add-text"><span aria-hidden="true">🔤</span><span>Texto</span></button>
+    <button type="button" data-touch-action="more" aria-expanded="false"><span aria-hidden="true">☰</span><span>Más</span></button>
   </nav>
   <dialog id="poster-template-dialog" aria-labelledby="poster-template-title">
     <form id="poster-template-form" method="dialog">
