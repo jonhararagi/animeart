@@ -860,7 +860,7 @@ try {
   await cdp("Page.removeScriptToEvaluateOnNewDocument", { identifier: preload.identifier });
   await waitForServiceWorkerReadiness();
   assert(await evaluate('!["Recovered local project", "Saved locally"].includes(document.querySelector("#status").textContent)'), "read failure never reports successful recovery or save");
-  assert((await evaluate('document.querySelector("#storage-recovery-notice").textContent')).includes("could not be read"), "read failure displays the explicit storage-unavailable warning");
+  assert((await evaluate('document.querySelector("#storage-recovery-notice").textContent')).includes("No se pudo leer el almacenamiento local"), "read failure displays the localized storage-unavailable warning");
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(readFailurePayload)), "payload is exactly preserved after deterministic startup read failure");
   await click("#add-layer");
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(readFailurePayload)), "automatic writes remain paused after startup read failure");
