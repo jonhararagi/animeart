@@ -752,6 +752,7 @@ test("AA-EDITOR-UX-002 surfaces image import/library, compact view options, laye
   assert.match(html, /id="crop-reset-selection"/);
   assert.match(html, /data-touch-action="asset-library"/);
   assert.ok(app.includes("function cropPreviewHitHandle("));
+  assert.ok(app.includes("isFullImageSelection"), "the full-image frame remains a starting point for a new crop");
   assert.ok(app.includes("function moveCropRectangle("));
   assert.ok(app.includes("function resizeCropRectangle("));
   assert.match(app, /!keepPaintingLayer/);
