@@ -482,7 +482,8 @@ test("mobile dock actions call history directly and keep the active drawing tool
   ]);
   assert.match(html, /data-touch-action="tool" data-tool="brush" aria-pressed="false"><span aria-hidden="true">🖌️<\/span><span>Dibujar<\/span>/);
   assert.match(html, /data-touch-action="more" aria-expanded="false"><span aria-hidden="true">☰<\/span><span>Más<\/span>/);
-  assert.match(html, /data-edit-goal="crop"/);\n  assert.match(html, /id="crop-resize-image"/);
+  assert.match(html, /data-edit-goal="crop"/);
+  assert.match(html, /id="crop-resize-image"/);
   assert.match(js, /Primero seleccioná una imagen en el lienzo o en Capas; después tocá Recortar/);
   assert.match(js, /La imagen está bloqueada\. Desbloqueala desde Capas para poder recortarla/);
   assert.doesNotMatch(html, /data-touch-action="more" aria-expanded="false">More/);
