@@ -221,7 +221,6 @@ function updateSelectionIndicator() {
   updateSelectionMiniPanel(layer);
   const indicator = document.querySelector("#selection-indicator");
   if (!indicator) return;
-  const layer = selectedLayerExact();
   if (!layer) {
     indicator.dataset.kind = "none";
     indicator.textContent = "🖼️ Seleccioná una imagen para editar";
