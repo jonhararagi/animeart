@@ -1698,3 +1698,89 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   .easy-edit-grid { display: flex; flex-wrap: wrap; gap: 7px; overflow: visible; }
   .easy-edit-grid button { flex: 1 1 calc(50% - 7px); min-height: 48px; }
 }
+
+
+/* AA-MOBILE-UX-002: dedicated mobile task sheet, not the desktop tool grid squeezed down. */
+@media (max-width: 920px) {
+  body.mobile-tools-open .toolbar {
+    display: block !important;
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+    max-height: 40dvh !important;
+    padding: 10px 10px 12px !important;
+    overflow: auto !important;
+    border-top: 1px solid #38465f !important;
+    border-right: 0 !important;
+    border-radius: 16px 16px 0 0;
+    background: linear-gradient(180deg, #171f30, #101620 75%);
+    box-shadow: 0 -12px 32px rgb(0 0 0 / 28%);
+  }
+  body.mobile-tools-open .toolbar > :not(.easy-edit-panel) { display: none !important; }
+  body.mobile-tools-open .easy-edit-panel { display: block !important; }
+  body.mobile-tools-open .easy-edit-heading {
+    display: flex !important;
+    align-items: center;
+    gap: 9px;
+    margin: 0 0 10px;
+  }
+  body.mobile-tools-open .easy-edit-heading h2 {
+    margin: 0;
+    font-size: 1rem;
+    letter-spacing: -.02em;
+  }
+  body.mobile-tools-open .easy-edit-heading p { margin: 2px 0 0; font-size: .72rem; color: #aebbd0; }
+  body.mobile-tools-open .editor-mode-switch {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin: 0 0 10px;
+  }
+  body.mobile-tools-open .editor-mode-switch button {
+    min-height: 38px;
+    border-radius: 11px;
+    font-size: .74rem;
+  }
+  body.mobile-tools-open .editor-mode-switch button.active {
+    border-color: #66d9ee;
+    background: linear-gradient(135deg, #1a5364, #29264e);
+    color: #e7fcff;
+  }
+  body.mobile-tools-open .editor-mode-hint,
+  body.mobile-tools-open .guided-edit-tools,
+  body.mobile-tools-open .editing-help-card,
+  body.mobile-tools-open .asset-quick-actions { display: none !important; }
+  body.mobile-tools-open .easy-edit-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    overflow: visible;
+  }
+  body.mobile-tools-open .easy-edit-grid button {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: center;
+    align-items: center;
+    column-gap: 7px;
+    min-height: 54px;
+    padding: 8px 9px;
+    border: 1px solid #35445d;
+    border-radius: 12px;
+    background: linear-gradient(145deg, #202b40, #171e2c);
+    text-align: left;
+    white-space: normal;
+  }
+  body.mobile-tools-open .easy-edit-grid button > span {
+    grid-row: 1 / span 2;
+    font-size: 1.15rem;
+    text-align: center;
+  }
+  body.mobile-tools-open .easy-edit-grid button b { font-size: .74rem; line-height: 1.2; }
+  body.mobile-tools-open .easy-edit-grid button small {
+    margin-top: 2px;
+    color: #aebbd0;
+    font-size: .61rem;
+    line-height: 1.2;
+  }
+  body.mobile-tools-open .easy-edit-grid button:active { border-color: #71dff1; background: #233d52; }
+}
