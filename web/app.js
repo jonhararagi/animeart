@@ -32,6 +32,8 @@ const layerAdjustmentControls = document.querySelector("#layer-adjustment-contro
 const resetLayerAdjustmentsButton = document.querySelector("#reset-layer-adjustments");
 const adjustmentPresetButtons = [...document.querySelectorAll("[data-adjustment-preset]")];
 const textPanel = document.querySelector("#text-panel");
+const textEditDialog = document.querySelector("#text-edit-dialog");
+const closeTextEditButton = document.querySelector("#close-text-edit");
 const textContentInput = document.querySelector("#text-content");
 const textFontSizeInput = document.querySelector("#text-font-size");
 const textFontSizeValue = document.querySelector("#text-font-size-value");
@@ -44,6 +46,10 @@ const textOutlineWidthValue = document.querySelector("#text-outline-width-value"
 const textShadowColorInput = document.querySelector("#text-shadow-color");
 const textShadowBlurInput = document.querySelector("#text-shadow-blur");
 const textShadowBlurValue = document.querySelector("#text-shadow-blur-value");
+const textShadowXInput = document.querySelector("#text-shadow-x");
+const textShadowXValue = document.querySelector("#text-shadow-x-value");
+const textShadowYInput = document.querySelector("#text-shadow-y");
+const textShadowYValue = document.querySelector("#text-shadow-y-value");
 const textStylePresetButtons = [...document.querySelectorAll("[data-text-style-preset]")];
 const imageMaskPanel = document.querySelector("#image-mask-panel");
 const imageMaskInput = document.querySelector("#image-mask");
@@ -1279,8 +1285,12 @@ function renderLayerText() {
   textShadowColorInput.value = values.shadowColor;
   textShadowBlurInput.value = String(values.shadowBlur);
   textShadowBlurValue.textContent = values.shadowBlur + " px";
+  textShadowXInput.value = String(values.shadowOffsetX);
+  textShadowXValue.textContent = values.shadowOffsetX + " px";
+  textShadowYInput.value = String(values.shadowOffsetY);
+  textShadowYValue.textContent = values.shadowOffsetY + " px";
   textAlignInput.value = values.align;
-  for (const input of [textContentInput, textFontSizeInput, textFontFamilyInput, textFontWeightInput, textColorInput, textOutlineColorInput, textOutlineWidthInput, textAlignInput, textShadowColorInput, textShadowBlurInput]) {
+  for (const input of [textContentInput, textFontSizeInput, textFontFamilyInput, textFontWeightInput, textColorInput, textOutlineColorInput, textOutlineWidthInput, textAlignInput, textShadowColorInput, textShadowBlurInput, textShadowXInput, textShadowYInput]) {
     input.disabled = disabled;
   }
   textFontSizeInput.setAttribute("aria-label", "Font size for " + layer.name);
@@ -1359,6 +1369,12 @@ textOutlineColorInput.addEventListener("input",()=>updateTextPreview({outlineCol
 textOutlineWidthInput.addEventListener("input",()=>{const v=Number(textOutlineWidthInput.value);textOutlineWidthValue.textContent=v+" px";updateTextPreview({outlineWidth:v});});textOutlineWidthInput.addEventListener("change",()=>commitTextPreview("Text outline updated"));
 textShadowColorInput.addEventListener("input",()=>updateTextPreview({shadowColor:textShadowColorInput.value}));textShadowColorInput.addEventListener("change",()=>commitTextPreview("Text shadow color updated"));
 textShadowBlurInput.addEventListener("input",()=>{const v=Number(textShadowBlurInput.value);textShadowBlurValue.textContent=v+" px";updateTextPreview({shadowBlur:v});});textShadowBlurInput.addEventListener("change",()=>commitTextPreview("Text shadow updated"));
+textShadowXInput.addEventListener("input", () => { const v = Number(textShadowXInput.value); textShadowXValue.textContent = v + " px"; updateTextPreview({ shadowOffsetX: v }); });
+textShadowXInput.addEventListener("change", () => commitTextPreview("Text shadow horizontal offset updated"));
+textShadowYInput.addEventListener("input", () => { const v = Number(textShadowYInput.value); textShadowYValue.textContent = v + " px"; updateTextPreview({ shadowOffsetY: v }); });
+textShadowYInput.addEventListener("change", () => commitTextPreview("Text shadow vertical offset updated"));
+closeTextEditButton?.addEventListener("click", () => { commitTextPreview(); textEditDialog?.close(); });
+textEditDialog?.addEventListener("close", () => commitTextPreview());
 textStylePresetButtons.forEach(button=>button.addEventListener("click",()=>{const layer=selectedLayerExact();if(!layer||layer.contentType!=="text"||layer.locked)return;const p={comic:{fontFamily:"Impact",fontWeight:"bold",color:"#fff200",outlineColor:"#171717",outlineWidth:5,shadowColor:"#171717",shadowBlur:0,shadowOffsetX:5,shadowOffsetY:6},poster:{fontFamily:"Arial Black",fontWeight:"bold",color:"#ffffff",outlineColor:"#101014",outlineWidth:2,shadowColor:"#000000",shadowBlur:8,shadowOffsetX:2,shadowOffsetY:4},manga:{fontFamily:"Georgia",fontWeight:"bold",color:"#111111",outlineColor:"#ffffff",outlineWidth:0,shadowColor:"#777777",shadowBlur:1,shadowOffsetX:1,shadowOffsetY:2},neon:{fontFamily:"Arial Black",fontWeight:"bold",color:"#ffffff",outlineColor:"#f000c8",outlineWidth:3,shadowColor:"#00dfff",shadowBlur:18,shadowOffsetX:0,shadowOffsetY:0}}[button.dataset.textStylePreset];if(p){updateTextPreview(p);commitTextPreview(button.dataset.textStylePreset+" text style applied");}}));
 
 function renderImageMask(){if(!imageMaskPanel||!imageMaskInput)return;const layer=selectedLayerExact(),isImage=layer?.contentType==="image"&&Boolean(layer.image);imageMaskPanel.hidden=!isImage;imageMaskInput.disabled=!isImage||layer.locked;imageMaskInput.value=isImage?(layer.image.mask||"none"):"none";}
@@ -2581,7 +2597,16 @@ if (mobileDock) {
       return;
     }
     if (action === "import-image") { imageFileInput.click(); return; }
-    if (action === "add-text") { document.querySelector("#add-text-layer")?.click(); return; }
+    if (action === "add-text") {
+      const selected = selectedLayerExact();
+      if (selected?.contentType === "text" && textEditDialog) {
+        renderLayerText();
+        if (!textEditDialog.open) textEditDialog.showModal();
+      } else {
+        document.querySelector("#add-text-layer")?.click();
+      }
+      return;
+    }
     if (action === "export") { exportPngButton.click(); return; }
     if (action === "appearance") { document.querySelector("#appearance-open")?.click(); return; }
     if (action === "zoom-in" || action === "zoom-out") {
@@ -2818,6 +2843,7 @@ document.querySelector("#add-text-layer").addEventListener("click", () => {
   state.history.record(before, next);
   refreshDocument("Text layer added");
   persistDocument();
+  if (textEditDialog && !textEditDialog.open) textEditDialog.showModal();
 });
 
 document.querySelector("#add-sample-character").addEventListener("click", async event => {
@@ -3586,7 +3612,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v21";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v22";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
