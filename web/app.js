@@ -594,14 +594,17 @@ function drawNow() {
   ctx.restore();
   if (!transparencyPreview) drawSelectionOverlay();
   updateRemoveImageControl();
-  if (!transparencyPreview && state.tool === "censor-light" && state.censorCursorPoint) {
+  if (!transparencyPreview && ["censor-light", "brush", "eraser"].includes(state.tool) && state.censorCursorPoint) {
     const point = documentToScreenPoint(state.censorCursorPoint, state.document, state.viewport, canvasSize());
-    const radius = Number(document.querySelector("#censor-light-size").value) * state.viewport.zoom / 2;
+    const brushSize = state.tool === "censor-light"
+      ? Number(document.querySelector("#censor-light-size").value)
+      : Number(state.brush.size);
+    const radius = brushSize * state.viewport.zoom / 2;
     ctx.save();
     ctx.beginPath(); ctx.arc(point.x, point.y, Math.max(2, radius), 0, Math.PI * 2);
     ctx.strokeStyle = "#111318"; ctx.lineWidth = 3; ctx.stroke();
     ctx.beginPath(); ctx.arc(point.x, point.y, Math.max(2, radius), 0, Math.PI * 2);
-    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.strokeStyle = state.tool === "eraser" ? "#ff8a9a" : "#ffffff"; ctx.lineWidth = 1; ctx.stroke();
     ctx.restore();
   }
 }
@@ -863,6 +866,22 @@ function drawCropPreview() {
     context.lineTo(left + (right - left) * fraction, bottom);
     context.moveTo(left, top + (bottom - top) * fraction);
     context.lineTo(right, top + (bottom - top) * fraction);
+    context.stroke();
+  }
+  const centerX = (left + right) / 2;
+  const centerY = (top + bottom) / 2;
+  const handleSize = Math.max(6, Math.min(10, Math.min(width, height) / 55));
+  const handlePoints = [
+    [left, top], [centerX, top], [right, top], [right, centerY],
+    [right, bottom], [centerX, bottom], [left, bottom], [left, centerY]
+  ];
+  for (const [x, y] of handlePoints) {
+    context.fillStyle = "#f8fcff";
+    context.strokeStyle = "#17374c";
+    context.lineWidth = 1.5;
+    context.beginPath();
+    context.rect(x - handleSize / 2, y - handleSize / 2, handleSize, handleSize);
+    context.fill();
     context.stroke();
   }
 }
@@ -1179,6 +1198,19 @@ function finishCropPreviewDrag(event) {
 }
 cropPreviewCanvas.addEventListener("pointerup", finishCropPreviewDrag);
 cropPreviewCanvas.addEventListener("pointercancel", finishCropPreviewDrag);
+
+document.querySelector("#crop-reset-selection")?.addEventListener("click", () => {
+  if (!imageEditOriginalSize || currentImageEditMode() !== "crop") return;
+  updateCropInputs({
+    x: 0,
+    y: 0,
+    width: imageEditOriginalSize.width,
+    height: imageEditOriginalSize.height
+  });
+  cropAspectInput.value = "";
+  drawCropPreview();
+  if (cropPreviewHint) cropPreviewHint.textContent = "Marco restablecido a la imagen completa. Arrastrá para elegir o ajustar otro recorte.";
+});
 
 imageEditForm.addEventListener("submit", async event => {
   event.preventDefault();
@@ -2335,7 +2367,7 @@ canvas.addEventListener("pointerdown", event => {
 });
 
 canvas.addEventListener("pointermove", event => {
-  if (!state.drawing && state.tool === "censor-light") {
+  if (!state.drawing && ["censor-light", "brush", "eraser"].includes(state.tool)) {
     state.censorCursorPoint = pointFromEvent(event);
     redraw();
   }
@@ -3353,6 +3385,10 @@ function clearDropFeedback(message = null) {
 
 document.querySelector("#add-image-layer").addEventListener("click", () => {
   imageFileInput.click();
+});
+document.querySelector("#quick-import-images")?.addEventListener("click", () => imageFileInput.click());
+document.querySelector("#quick-open-asset-library")?.addEventListener("click", () => {
+  document.querySelector("#open-asset-library")?.click();
 });
 
 imageFileInput.addEventListener("change", async () => {
