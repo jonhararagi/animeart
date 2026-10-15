@@ -172,6 +172,7 @@
           <button id="selection-mini-back" type="button" title="Enviar una capa hacia atrás">↓ Atrás</button>
           <button id="selection-mini-front" type="button" title="Traer una capa hacia adelante">↑ Adelante</button>
           <button id="selection-mini-fit" type="button">Encajar</button>
+          <button id="selection-mini-delete" type="button" title="Eliminar el elemento seleccionado">🗑 Eliminar</button>
         </div>
       </section>
       <div class="transparency-shortcuts" aria-label="Acciones rápidas de transparencia">
@@ -312,17 +313,22 @@
               </div>
             </div>
           </details>
-          <p class="text-live-hint" role="note">Los cambios se ven en el lienzo. Puedes deshacerlos y el texto seguirá editable al guardar el proyecto.</p>
+          <p class="text-live-hint" role="note">Los cambios se ven en el lienzo. Pulsa Aplicar para terminar o Eliminar texto si no quieres conservarlo.</p>
+          <div class="text-dialog-actions" role="group" aria-label="Acciones del texto">
+            <button id="delete-text-layer" type="button" class="text-danger">🗑 Eliminar texto</button>
+            <button id="apply-text-layer" type="button" class="text-primary">✓ Aplicar al lienzo</button>
+          </div>
         </section>
       </dialog>
     </aside>
   </main>
   <nav class="mobile-touch-dock" aria-label="Herramientas principales">
+    <button type="button" data-touch-action="import-image" aria-label="Añadir imagen al lienzo" title="Añadir una imagen desde tu dispositivo"><span aria-hidden="true">＋</span><span>Añadir</span></button>
     <button type="button" data-touch-action="tool" data-tool="select" aria-pressed="true"><span aria-hidden="true">🖐️</span><span>Mover</span></button>
     <button type="button" data-touch-action="tool" data-tool="brush" aria-pressed="false"><span aria-hidden="true">🖌️</span><span>Dibujar</span></button>
-    <button type="button" data-touch-action="tool" data-tool="eraser" aria-pressed="false" title="Borrar píxeles"><span aria-hidden="true">🧽</span><span>Borrar</span></button>
     <button type="button" data-touch-action="add-text"><span aria-hidden="true">🔤</span><span>Texto</span></button>
-    <button type="button" data-touch-action="asset-library" title="Abrir tu biblioteca de imágenes"><span aria-hidden="true">▦</span><span>Imágenes</span></button>
+    <button type="button" data-touch-action="delete-selected" aria-label="Eliminar elemento seleccionado" title="Eliminar la imagen, el texto o la capa seleccionada"><span aria-hidden="true">🗑️</span><span>Eliminar</span></button>
+    <button type="button" data-touch-action="layers" aria-expanded="false" aria-label="Mostrar capas"><span aria-hidden="true">▤</span><span>Capas</span></button>
     <button type="button" data-touch-action="more" aria-expanded="false"><span aria-hidden="true">☰</span><span>Más</span></button>
   </nav>
   <dialog id="poster-template-dialog" aria-labelledby="poster-template-title">

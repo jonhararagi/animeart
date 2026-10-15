@@ -214,6 +214,14 @@ function updateSelectionMiniPanel(layer = selectedLayerExact()) {
 
   const fit = document.querySelector("#selection-mini-fit");
   if (fit) fit.disabled = layer.locked || layer.contentType !== "image" || !layer.image;
+  const remove = document.querySelector("#selection-mini-delete");
+  if (remove) remove.disabled = Boolean(layer.locked);
+  const mobileRemove = document.querySelector('.mobile-touch-dock [data-touch-action="delete-selected"]');
+  if (mobileRemove) mobileRemove.disabled = Boolean(layer.locked);
+  const textRemove = document.querySelector("#delete-text-layer");
+  if (textRemove) textRemove.disabled = layer.contentType !== "text" || Boolean(layer.locked);
+  const textApply = document.querySelector("#apply-text-layer");
+  if (textApply) textApply.disabled = layer.contentType !== "text" || Boolean(layer.locked);
 }
 
 function updateSelectionIndicator() {
@@ -1538,8 +1546,6 @@ textAlignInput.addEventListener("change", () => {
   updateTextPreview({ align: textAlignInput.value });
   commitTextPreview("Text alignment updated");
 });
-textOutlineColorInput.addEventListener("input",()=>updateTextPreview({outlineColor:textOutlineColorInput.value}));textOutlineColorInput.addEventListener("change",()=>commitTextPreview("Text outline color updated"));
-textOutlineWidthInput.addEventListener("input",()=>{const v=Number(textOutlineWidthInput.value);textOutlineWidthValue.textContent=v+" px";updateTextPreview({outlineWidth:v});});textOutlineWidthInput.addEventListener("change",()=>commitTextPreview("Text outline updated"));
 textShadowColorInput.addEventListener("input",()=>updateTextPreview({shadowColor:textShadowColorInput.value}));textShadowColorInput.addEventListener("change",()=>commitTextPreview("Text shadow color updated"));
 textShadowBlurInput.addEventListener("input",()=>{const v=Number(textShadowBlurInput.value);textShadowBlurValue.textContent=v+" px";updateTextPreview({shadowBlur:v});});textShadowBlurInput.addEventListener("change",()=>commitTextPreview("Text shadow updated"));
 textShadowXInput.addEventListener("input", () => { const v = Number(textShadowXInput.value); textShadowXValue.textContent = v + " px"; updateTextPreview({ shadowOffsetX: v }); });
@@ -1547,6 +1553,21 @@ textShadowXInput.addEventListener("change", () => commitTextPreview("Text shadow
 textShadowYInput.addEventListener("input", () => { const v = Number(textShadowYInput.value); textShadowYValue.textContent = v + " px"; updateTextPreview({ shadowOffsetY: v }); });
 textShadowYInput.addEventListener("change", () => commitTextPreview("Text shadow vertical offset updated"));
 closeTextEditButton?.addEventListener("click", () => { commitTextPreview(); textEditDialog?.close(); });
+document.querySelector("#apply-text-layer")?.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "text") {
+    textEditDialog?.close();
+    return;
+  }
+  commitTextPreview("Texto aplicado al lienzo");
+  textEditDialog?.close();
+  status.textContent = "Texto aplicado al lienzo. Podés moverlo o eliminarlo desde la barra inferior.";
+});
+document.querySelector("#delete-text-layer")?.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "text") return;
+  if (removeSelectedLayer()) textEditDialog?.close();
+});
 textEditDialog?.addEventListener("close", () => commitTextPreview());
 textStylePresetButtons.forEach(button=>button.addEventListener("click",()=>{const layer=selectedLayerExact();if(!layer||layer.contentType!=="text"||layer.locked)return;const p={comic:{fontFamily:"Impact",fontWeight:"bold",color:"#fff200",outlineColor:"#171717",outlineWidth:5,shadowColor:"#171717",shadowBlur:0,shadowOffsetX:5,shadowOffsetY:6},poster:{fontFamily:"Arial Black",fontWeight:"bold",color:"#ffffff",outlineColor:"#101014",outlineWidth:2,shadowColor:"#000000",shadowBlur:8,shadowOffsetX:2,shadowOffsetY:4},manga:{fontFamily:"Georgia",fontWeight:"bold",color:"#111111",outlineColor:"#ffffff",outlineWidth:0,shadowColor:"#777777",shadowBlur:1,shadowOffsetX:1,shadowOffsetY:2},neon:{fontFamily:"Arial Black",fontWeight:"bold",color:"#ffffff",outlineColor:"#f000c8",outlineWidth:3,shadowColor:"#00dfff",shadowBlur:18,shadowOffsetX:0,shadowOffsetY:0}}[button.dataset.textStylePreset];if(p){updateTextPreview(p);commitTextPreview(button.dataset.textStylePreset+" text style applied");}}));
 
@@ -1676,6 +1697,40 @@ function removeSelectedImage() {
   setSelection(nextSelection ? [nextSelection.id] : [], nextSelection?.id || null);
   state.history.record(before, next);
   refreshDocument("Imagen quitada: " + layer.name + ". Podés deshacer.");
+  persistDocument();
+  return true;
+}
+
+function removeSelectedLayer() {
+  const layer = selectedLayerExact();
+  if (!layer) {
+    status.textContent = "Primero seleccioná un elemento para eliminarlo.";
+    return false;
+  }
+  if (layer.locked) {
+    status.textContent = "Desbloqueá el elemento antes de eliminarlo.";
+    return false;
+  }
+  const before = cloneDocument(state.document);
+  let sourceDocument = state.document;
+  if (sourceDocument.layers.length <= 1) {
+    sourceDocument = addLayer(sourceDocument, createLayer("Capa vacía"));
+    if (!sourceDocument) {
+      status.textContent = "No se pudo preparar el lienzo para eliminar el elemento.";
+      return false;
+    }
+  }
+  const next = deleteLayer(sourceDocument, layer.id);
+  if (!next) {
+    status.textContent = "No se pudo eliminar el elemento seleccionado.";
+    return false;
+  }
+  if (state.textPreview?.layerId === layer.id) state.textPreview = null;
+  state.document = next;
+  const nextSelection = [...next.layers].reverse().find(item => item.contentType === "image") || next.layers.at(-1) || null;
+  setSelection(nextSelection ? [nextSelection.id] : [], nextSelection?.id || null);
+  state.history.record(before, next);
+  refreshDocument((layer.contentType === "text" ? "Texto eliminado: " : "Elemento eliminado: ") + layer.name + ". Podés deshacer.");
   persistDocument();
   return true;
 }
@@ -2213,7 +2268,7 @@ function fitSelectedImageToCanvas() {
   target.transform = { ...target.transform, ...fitImportedImageTransform(layer.image.width, layer.image.height, next.width, next.height) };
   state.document = next;
   state.history.record(before, next);
-  refreshDocument("Image fitted to canvas · resolution preserved");
+  refreshDocument("Imagen ajustada al lienzo · resolución conservada");
   persistDocument();
 }
 
@@ -2750,6 +2805,9 @@ if (mobileDock) {
       mobileDock.querySelectorAll('[data-touch-action="tool"]').forEach(item => {
         item.setAttribute("aria-pressed", String(item.dataset.tool === state.tool));
       });
+      document.body.classList.remove("mobile-tools-open", "mobile-layers-open", "mobile-tools-collapsed");
+      mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+      mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
       return;
     }
     if (action === "undo") { undo(); return; }
@@ -2772,7 +2830,20 @@ if (mobileDock) {
       cropResizeButton.click();
       return;
     }
-    if (action === "import-image") { imageFileInput.click(); return; }
+    if (action === "import-image") {
+      document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
+      mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+      mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
+      imageFileInput.click();
+      return;
+    }
+    if (action === "delete-selected") {
+      document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
+      mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+      mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
+      removeSelectedLayer();
+      return;
+    }
     if (action === "asset-library") {
       document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
       mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
@@ -2933,14 +3004,29 @@ function runEditGoal(goal) {
     censor: () => document.querySelector('.toolbar [data-tool="censor-light"]')?.click(),
     draw: () => document.querySelector('.toolbar [data-tool="brush"]')?.click(),
     text: () => document.querySelector("#add-text-layer").click(),
-    color: () => document.querySelector("#adjustments-title").scrollIntoView({block:"nearest"}),
-    layers: () => document.querySelector("#layers").scrollIntoView({block:"nearest"}),
+    color: () => {
+      if (window.matchMedia("(max-width: 920px)").matches && !document.body.classList.contains("mobile-layers-open")) mobileDock?.querySelector('[data-touch-action="layers"]')?.click();
+      document.querySelector("#adjustments-title")?.scrollIntoView({ block: "nearest" });
+    },
+    layers: () => {
+      if (window.matchMedia("(max-width: 920px)").matches) {
+        if (!document.body.classList.contains("mobile-layers-open")) mobileDock?.querySelector('[data-touch-action="layers"]')?.click();
+      } else {
+        document.querySelector("#layers")?.scrollIntoView({ block: "nearest" });
+      }
+    },
     undo: () => undoButton.click(),
     export: () => exportPngButton.click()
   };
   actions[goal]?.();
 }
-document.querySelectorAll("[data-edit-goal]").forEach(button => button.addEventListener("click", () => runEditGoal(button.dataset.editGoal)));
+document.querySelectorAll("[data-edit-goal]").forEach(button => button.addEventListener("click", () => {
+  runEditGoal(button.dataset.editGoal);
+  if (window.matchMedia("(max-width: 920px)").matches) {
+    document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed");
+    mobileDock?.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+  }
+}));
 document.querySelector("#show-edit-example").addEventListener("click", () => showGoalHelp(state.tool === "censor-light" ? "censor" : lastEditGoal));
 document.querySelector("#show-edit-example-action").addEventListener("click", () => runEditGoal(state.tool === "censor-light" ? "censor" : lastEditGoal));
 document.querySelector("#close-editing-help").addEventListener("click", () => { document.querySelector("#editing-help-card").hidden = true; });
@@ -2977,6 +3063,7 @@ document.querySelector("#selection-mini-fit")?.addEventListener("click", () => {
   if (!layer || layer.locked || layer.contentType !== "image" || !layer.image) return;
   document.querySelector("#fit-image-to-canvas")?.click();
 });
+document.querySelector("#selection-mini-delete")?.addEventListener("click", () => removeSelectedLayer());
 
 document.querySelector("#magic-eraser-apply")?.addEventListener("click", applyMagicErasePreview);
 document.querySelector("#magic-eraser-cancel")?.addEventListener("click", cancelMagicErasePreview);
@@ -3032,7 +3119,7 @@ document.querySelector("#add-text-layer").addEventListener("click", () => {
   const height = Math.max(180, state.document.height || canvas.height || 180);
   const layer = createTextLayer("Text " + index, {
     value: "Your text",
-    x: Math.round(width * 0.12),
+    x: Math.round(width * 0.5),
     y: Math.round(height * 0.5),
     fontSize: Math.max(24, Math.min(64, Math.round(height * 0.1))),
     fontFamily: "Arial",
@@ -3040,7 +3127,7 @@ document.querySelector("#add-text-layer").addEventListener("click", () => {
     color: "#ffffff",
     outlineColor: "#111318",
     outlineWidth: 2,
-    align: "left"
+    align: "center"
   });
   const before = cloneDocument(state.document);
   const next = addLayer(state.document, layer);

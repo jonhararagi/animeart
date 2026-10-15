@@ -791,3 +791,24 @@ test("AA-MOBILE-SIMPLE-001 keeps the mobile canvas primary and reveals tools on 
   assert.match(html, /data-touch-action="more"/);
   assert.match(worker, /animeart-web-shell-v25/);
 });
+
+
+test("AA-MOBILE-UX-004 exposes direct image insertion and selected-object deletion", async () => {
+  const html = await readFile("index.html", "utf8");
+  const js = await readFile("app.js", "utf8");
+  const css = await readFile("styles.css", "utf8");
+  assert.ok(html.includes('data-touch-action="import-image"'));
+  assert.ok(html.includes('data-touch-action="delete-selected"'));
+  assert.ok(html.includes('id="selection-mini-delete"'));
+  assert.ok(html.includes('id="apply-text-layer"'));
+  assert.ok(html.includes('id="delete-text-layer"'));
+  assert.ok(js.includes("function removeSelectedLayer()"));
+  assert.ok(js.includes("Texto aplicado al lienzo"));
+  assert.ok(css.includes("AA-MOBILE-UX-004"));
+});
+
+test("T_TEXT_EDITOR outline controls register only one input handler each", async () => {
+  const js = await readFile("app.js", "utf8");
+  assert.equal(js.split('textOutlineColorInput.addEventListener("input"').length - 1, 1);
+  assert.equal(js.split('textOutlineWidthInput.addEventListener("input"').length - 1, 1);
+});

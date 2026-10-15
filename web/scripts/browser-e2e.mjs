@@ -562,12 +562,23 @@ try {
   assert(await evaluate('document.querySelector("#text-font-family").value === "Arial"'), "real browser exposes the selected text layer font controls");
   assert(await evaluate('window.__animeArtTextDrawCount > 0'), "real browser Canvas renderer paints editable text");
   await saveScreenshot("animeart-studio-text-layer.png");
-  // The text editor is a modal; close it before using the workspace history controls.
-  await click("#close-text-edit");
+  assert(await evaluate('document.querySelector("#apply-text-layer").getBoundingClientRect().height >= 44'), "text editor offers a visible Apply action");
+  assert(await evaluate('document.querySelector("#delete-text-layer").getBoundingClientRect().height >= 44'), "text editor offers a visible Delete action");
+  await click("#apply-text-layer");
+  await waitFor('document.querySelector("#text-edit-dialog").open === false');
+  assert((await readDocument()).layers.some(layer => layer.id === textLayerId && layer.text?.value === "AnimeArt Studio"), "Apply keeps the selected text as an editable canvas layer");
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(textLayerId) + ')?.text?.value === "Your text"', 10000);
   await click("#redo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(textLayerId) + ')?.text?.value === "AnimeArt Studio"', 10000);
+
+  await click("#add-text-layer");
+  const disposableText = (await readDocument()).layers.at(-1);
+  assert(disposableText?.contentType === "text", "temporary text fixture is a normal editable layer");
+  await click("#delete-text-layer");
+  await waitFor('document.querySelector("#text-edit-dialog").open === false');
+  await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.id === ' + JSON.stringify(disposableText.id) + ')', 10000);
+  assert(!(await readDocument()).layers.some(layer => layer.id === disposableText.id), "Delete text removes the exact selected text layer");
 
   await evaluate('window.__animeArtStrokeTextCount = 0; const originalStrokeText = CanvasRenderingContext2D.prototype.strokeText; CanvasRenderingContext2D.prototype.strokeText = function(...args) { window.__animeArtStrokeTextCount += 1; return originalStrokeText.apply(this, args); };');
   await click("#add-meme-text");
@@ -903,13 +914,21 @@ try {
   assert(await evaluate('getComputedStyle(document.querySelector(".workspace")).gridTemplateColumns.split(" ").length === 1'), "mobile workspace uses a single canvas column instead of the desktop sidebars");
   assert(await evaluate('document.querySelector(".mobile-touch-dock").getBoundingClientRect().height >= 48'), "mobile quick-action dock has a usable touch target area");
   assert(await evaluate('Array.from(document.querySelectorAll(".mobile-touch-dock button")).every(el => { const r = el.getBoundingClientRect(); return r.width >= 44 && r.height >= 44; })'), "Xiaomi-sized quick-action buttons meet the 44px touch-target floor");
-  assert(await evaluate('document.querySelectorAll(".mobile-touch-dock [data-touch-action]").length >= 6'), "mobile quick-action dock exposes direct editing actions");
+  assert(await evaluate('document.querySelectorAll(".mobile-touch-dock [data-touch-action]").length >= 7'), "mobile dock exposes direct image, text, delete, layers and tool actions");
+  assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=import-image]")?.textContent.includes("Añadir")'), "mobile has a visible Add image action");
+  assert(await evaluate('Boolean(document.querySelector(".mobile-touch-dock [data-touch-action=delete-selected]"))'), "mobile has direct Delete selected object action");
+  assert(await evaluate('getComputedStyle(document.querySelector("#selection-mini-panel")).display === "none"'), "floating selection controls do not cover the mobile canvas");
+  await evaluate('(() => { const input = document.querySelector("#image-file-input"); window.__animeArtPickerOpenCount = 0; window.__animeArtOriginalPickerClick = input.click.bind(input); input.click = () => { window.__animeArtPickerOpenCount += 1; }; })()');
+  await click('.mobile-touch-dock [data-touch-action="import-image"]');
+  assert(await evaluate('window.__animeArtPickerOpenCount === 1'), "Add image opens the device image picker");
+  await evaluate('(() => { const input = document.querySelector("#image-file-input"); input.click = window.__animeArtOriginalPickerClick; })()');
   await saveScreenshot("animeart-studio-mobile-initial.png");
   await click('.mobile-touch-dock [data-touch-action="more"]');
   await waitFor('document.body.classList.contains("mobile-tools-open")');
   assert(await evaluate('getComputedStyle(document.querySelector(".easy-edit-grid")).display === "grid"'), "mobile More action opens the dedicated task-card panel");
   assert(await evaluate('getComputedStyle(document.querySelector(".easy-edit-grid")).gridTemplateColumns.split(" ").length === 2'), "mobile task cards use two columns");
   assert(await evaluate('document.querySelector(".easy-edit-heading").getBoundingClientRect().height > 0'), "mobile task sheet shows its own heading");
+  assert(await evaluate('getComputedStyle(document.querySelector(".asset-quick-actions")).display !== "none"'), "mobile task sheet exposes image import and library actions");
   assert(await evaluate('document.querySelector(".toolbar > :not(.easy-edit-panel)") === null || Array.from(document.querySelectorAll(".toolbar > :not(.easy-edit-panel)")).every(el => getComputedStyle(el).display === "none")'), "mobile task sheet hides desktop-only toolbar sections");
   await saveScreenshot("animeart-studio-mobile-tools.png");
   await click('.mobile-touch-dock [data-touch-action="more"]');

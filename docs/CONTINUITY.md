@@ -1,3 +1,21 @@
+# Estado actual · AA-MOBILE-UX-004 · 2026-10-15
+
+**TIMER:** 1–3 horas de trabajo activo estimado; CI y validación física en Xiaomi son variables.
+
+**Motivo:** el usuario informó que la APK anterior mostraba la imagen demasiado pequeña, muchos controles tapando el lienzo, no tenía una acción visible para importar imágenes y dejaba texto/objetos sin forma clara de aplicarlos o borrarlos.
+
+**Cambios en la rama existente `aa-editor-ux-002`:**
+- Barra inferior móvil: Añadir imagen, Mover, Dibujar, Texto, Eliminar, Capas y Más. Añadir abre el selector del dispositivo; la biblioteca queda dentro de Más.
+- El lienzo ocupa el espacio disponible de trabajo en móvil. Se ocultan los paneles flotantes de selección y el botón flotante de quitar imagen; la barra inferior tiene su propia fila.
+- La importación y Encajar colocan una imagen hasta el 90% del área útil del documento, preservando proporción y permitiendo ampliar recursos pequeños.
+- El editor de texto ofrece Aplicar al lienzo y Eliminar texto. El borrado del elemento seleccionado admite texto, trazos y otras capas, no sólo imágenes.
+- Las acciones móviles devuelven espacio al lienzo después de elegir una tarea; Capas/ajustes abre el inspector en vez de desplazar una zona oculta.
+- Se eliminan listeners duplicados de los controles de contorno de texto para evitar doble vista previa y commit.
+
+**Validación pendiente para este SHA:** Web unit tests y Chromium E2E deben cubrir Añadir, acciones móviles, aplicar/eliminar texto y disposición sin paneles flotantes. Android CI debe pasar sobre el mismo SHA que Web CI. La prueba física en el Xiaomi `24116RACCG` continúa pendiente y no se considera realizada por el emulador.
+
+---
+
 # Estado actual · AA-EDITOR-UX-002 · 2026-10-15
 
 **TIMER:** 1–3 horas de trabajo activo estimado; el tiempo de cola de CI y la validación física son variables.
@@ -8,7 +26,7 @@
 
 **Cambios implementados:**
 - Acciones persistentes `Importar` y `Biblioteca` junto al lienzo en escritorio; `Imágenes` en la barra inferior móvil; se conservan accesos en el panel fácil de usar.
-- Importación múltiple y tamaño inicial normalizado a un área útil del lienzo, preservando proporciones y permitiendo mayor escala a recursos pequeños.
+- Importación múltiple y tamaño inicial normalizado hasta el 90% del área útil del lienzo, preservando proporciones y permitiendo mayor escala a recursos pequeños.
 - Controles de transparencia y fondo agrupados en menú plegable `Vista`.
 - Panel flotante de capa seleccionada: bloquear/desbloquear, encajar imagen y ordenar adelante/atrás.
 - Enrutamiento de trazo para evitar cambiar a la imagen inferior mientras se dibuja/censura sobre una capa de pintura; indicador visible del tamaño del pincel.

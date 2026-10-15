@@ -147,7 +147,7 @@ export async function optimizeImageSource(source, {
 }
 
 
-export function fitImportedImageScale(imageWidth, imageHeight, documentWidth, documentHeight, fill = 0.72) {
+export function fitImportedImageScale(imageWidth, imageHeight, documentWidth, documentHeight, fill = 0.9) {
   const imageW = Number(imageWidth), imageH = Number(imageHeight);
   const canvasW = Number(documentWidth), canvasH = Number(documentHeight);
   const margin = Number(fill);
@@ -155,10 +155,10 @@ export function fitImportedImageScale(imageWidth, imageHeight, documentWidth, do
       imageW <= 0 || imageH <= 0 || canvasW <= 0 || canvasH <= 0 || margin <= 0 || margin > 1) {
     throw imageImportError("Image fit dimensions are invalid");
   }
-  return Math.max(0.01, Math.min(32, canvasW * margin / imageW, canvasH * margin / imageH));
+  return Math.max(0.01, Math.min(48, canvasW * margin / imageW, canvasH * margin / imageH));
 }
 
-export function fitImportedImageTransform(imageWidth, imageHeight, documentWidth, documentHeight, fill = 0.72) {
+export function fitImportedImageTransform(imageWidth, imageHeight, documentWidth, documentHeight, fill = 0.9) {
   const scale = fitImportedImageScale(imageWidth, imageHeight, documentWidth, documentHeight, fill);
   const canvasW = Number(documentWidth), canvasH = Number(documentHeight);
   const imageW = Number(imageWidth), imageH = Number(imageHeight);
