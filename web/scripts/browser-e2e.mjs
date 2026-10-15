@@ -391,6 +391,17 @@ try {
   assert(await evaluate('document.querySelector("#adjustment-brightness").value === "125"'), "real browser previews a non-destructive image adjustment");
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "e2e-fixture" && layer.adjustments?.brightness === 125)'), "real browser persists the image adjustment in the existing project document");
 
+  assert(await evaluate('document.querySelector("#selection-mini-panel").hidden === false'), "selecting an image exposes its floating layer-action panel");
+  await click("#selection-mini-lock");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "e2e-fixture")?.locked === true', 10000);
+  await click("#selection-mini-lock");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "e2e-fixture")?.locked === false', 10000);
+  const imageOrderBefore = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.findIndex(layer => layer.name === "e2e-fixture")');
+  await click("#selection-mini-back");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.findIndex(layer => layer.name === "e2e-fixture") < ' + imageOrderBefore, 10000);
+  await click("#selection-mini-front");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.findIndex(layer => layer.name === "e2e-fixture") === ' + imageOrderBefore, 10000);
+
 
 
 
@@ -465,8 +476,27 @@ try {
     { x: cropPreviewBounds.left + cropPreviewBounds.width * 0.15, y: cropPreviewBounds.top + cropPreviewBounds.height * 0.15 },
     { x: cropPreviewBounds.left + cropPreviewBounds.width * 0.42, y: cropPreviewBounds.top + cropPreviewBounds.height * 0.35 }
   );
-  const drawnCrop = await evaluate('(() => ({ x:Number(document.querySelector("#image-crop-x").value), y:Number(document.querySelector("#image-crop-y").value), width:Number(document.querySelector("#image-crop-width").value), height:Number(document.querySelector("#image-crop-height").value) }))()');
+  let drawnCrop = await evaluate('(() => ({ x:Number(document.querySelector("#image-crop-x").value), y:Number(document.querySelector("#image-crop-y").value), width:Number(document.querySelector("#image-crop-width").value), height:Number(document.querySelector("#image-crop-height").value) }))()');
   assert(drawnCrop.width > 1 && drawnCrop.height > 1 && drawnCrop.x >= 0 && drawnCrop.y >= 0, "dragging the preview creates a real pixel crop selection");
+
+  const moveCropStart = await evaluate('(() => { const r=document.querySelector("#crop-preview").getBoundingClientRect(); const x=Number(document.querySelector("#image-crop-x").value); const y=Number(document.querySelector("#image-crop-y").value); const w=Number(document.querySelector("#image-crop-width").value); const h=Number(document.querySelector("#image-crop-height").value); return { x:r.left+(x+w*0.5)/944*r.width, y:r.top+(y+h*0.5)/944*r.height }; })()');
+  await mouseDrag(moveCropStart, { x: moveCropStart.x + 8, y: moveCropStart.y + 6 });
+  const movedCrop = await evaluate('(() => ({ x:Number(document.querySelector("#image-crop-x").value), y:Number(document.querySelector("#image-crop-y").value), width:Number(document.querySelector("#image-crop-width").value), height:Number(document.querySelector("#image-crop-height").value) }))()');
+  assert(movedCrop.x > drawnCrop.x && movedCrop.y > drawnCrop.y && movedCrop.width === drawnCrop.width && movedCrop.height === drawnCrop.height, "dragging inside the crop frame moves it without changing its size");
+
+  const resizeCropStart = await evaluate('(() => { const r=document.querySelector("#crop-preview").getBoundingClientRect(); const x=Number(document.querySelector("#image-crop-x").value); const y=Number(document.querySelector("#image-crop-y").value); const w=Number(document.querySelector("#image-crop-width").value); const h=Number(document.querySelector("#image-crop-height").value); return { x:r.left+(x+w)/944*r.width, y:r.top+(y+h)/944*r.height }; })()');
+  await mouseDrag(resizeCropStart, { x: resizeCropStart.x + 8, y: resizeCropStart.y + 8 });
+  const resizedCrop = await evaluate('(() => ({ x:Number(document.querySelector("#image-crop-x").value), y:Number(document.querySelector("#image-crop-y").value), width:Number(document.querySelector("#image-crop-width").value), height:Number(document.querySelector("#image-crop-height").value) }))()');
+  assert(resizedCrop.width > movedCrop.width && resizedCrop.height > movedCrop.height, "dragging the lower-right crop handle resizes the existing frame");
+
+  await click("#crop-reset-selection");
+  assert(await evaluate('document.querySelector("#image-crop-x").value === "0" && document.querySelector("#image-crop-y").value === "0" && document.querySelector("#image-crop-width").value === "944" && document.querySelector("#image-crop-height").value === "944"'), "small X resets the crop frame to the complete image");
+  await mouseDrag(
+    { x: cropPreviewBounds.left + cropPreviewBounds.width * 0.15, y: cropPreviewBounds.top + cropPreviewBounds.height * 0.15 },
+    { x: cropPreviewBounds.left + cropPreviewBounds.width * 0.42, y: cropPreviewBounds.top + cropPreviewBounds.height * 0.35 }
+  );
+  drawnCrop = await evaluate('(() => ({ x:Number(document.querySelector("#image-crop-x").value), y:Number(document.querySelector("#image-crop-y").value), width:Number(document.querySelector("#image-crop-width").value), height:Number(document.querySelector("#image-crop-height").value) }))()');
+  assert(drawnCrop.width > 1 && drawnCrop.height > 1 && drawnCrop.x >= 0 && drawnCrop.y >= 0, "a fresh crop can be drawn after resetting the full-image frame");
   await evaluate('(() => { const ratio = document.querySelector("#image-crop-aspect"); ratio.value = "0.8"; ratio.dispatchEvent(new Event("change", { bubbles: true })); })()');
   assert(await evaluate('document.querySelector("#image-crop-width").value === "755" && document.querySelector("#image-crop-height").value === "944" && document.querySelector("#image-crop-x").value === "94"'), "4:5 aspect preset computes a centered crop within image bounds");
   await evaluate('(() => { const ratio = document.querySelector("#image-crop-aspect"); ratio.value = ""; ratio.dispatchEvent(new Event("change", { bubbles: true })); })()');
