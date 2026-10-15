@@ -892,6 +892,8 @@ try {
   await waitFor('document.querySelector("#canvas") !== null');
   await waitForServiceWorkerReadiness();
   assert(await evaluate('window.innerWidth <= 920'), "mobile E2E runs at a phone-sized 390px viewport");
+  assert(await evaluate('document.querySelector("#recovery-notice").hidden || document.querySelector("#recovery-notice").textContent.includes("No se pudo abrir el proyecto guardado")'), "mobile recovery warning is localized in Spanish");
+  assert(await evaluate('document.querySelector("#recovery-notice").hidden || document.querySelector("#recovery-notice").getBoundingClientRect().height <= 112'), "mobile recovery warning stays compact and preserves canvas space");
   assert(await evaluate('getComputedStyle(document.querySelector(".workspace")).gridTemplateColumns.split(" ").length === 1'), "mobile workspace uses a single canvas column instead of the desktop sidebars");
   assert(await evaluate('document.querySelector(".mobile-touch-dock").getBoundingClientRect().height >= 48'), "mobile quick-action dock has a usable touch target area");
   assert(await evaluate('document.querySelectorAll(".mobile-touch-dock [data-touch-action]").length >= 6'), "mobile quick-action dock exposes direct editing actions");
