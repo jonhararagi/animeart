@@ -840,7 +840,7 @@ try {
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "supported legacy project restores without recovery warning");
   assert(await evaluate('document.querySelector("#layers .layer-select").textContent.includes("Legacy Sketch")'), "legacy migration preserves the named layer through the real UI");
   await click("#save");
-  await waitFor('document.querySelector("#status").textContent === "Saved locally"');
+  await waitFor('document.querySelector("#status").textContent === "Guardado localmente"');
   const migratedLegacy = await readDocument();
   assert(migratedLegacy.version === 2, "explicit save serializes supported legacy project into the current version");
   assert(migratedLegacy.layers[0].name === "Legacy Sketch", "legacy migration preserves layer metadata");
