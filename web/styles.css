@@ -1386,3 +1386,155 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   #text-edit-dialog .text-advanced-options > summary { align-items: flex-start; flex-direction: column; gap: 4px; }
   #text-edit-dialog .text-advanced-options > summary span { text-align: left; padding-left: 18px; }
 }
+
+
+/* AA-EDITOR-UX-002: make image import, layer context and canvas view easy to discover. */
+.asset-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  min-width: 0;
+}
+.asset-quick-actions button {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-content: center;
+  align-items: center;
+  gap: 3px 6px;
+  min-height: 54px;
+  padding: 7px;
+  text-align: left;
+  border: 1px solid #3f5572;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #243b54, #182431);
+}
+.asset-quick-actions button > span { grid-row: span 2; color: #86e9f6; font-size: 1.2rem; text-align: center; }
+.asset-quick-actions button b { font-size: .7rem; line-height: 1.15; }
+.asset-quick-actions button small { color: #b0c3d8; font-size: .57rem; line-height: 1.2; }
+.asset-quick-actions button:hover { border-color: #70dced; background: #203c50; }
+
+.canvas-view-menu { position: relative; pointer-events: auto; }
+.canvas-view-menu > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 6px 12px;
+  list-style: none;
+  cursor: pointer;
+  border: 1px solid #43536b;
+  border-radius: 10px;
+  background: #111827f2;
+  color: #f3f6fc;
+  font-size: .76rem;
+  font-weight: 750;
+  box-shadow: 0 4px 16px #0005;
+  user-select: none;
+}
+.canvas-view-menu > summary::-webkit-details-marker { display: none; }
+.canvas-view-menu > summary::after { content: "⌄"; opacity: .8; }
+.canvas-view-menu[open] > summary::after { content: "⌃"; }
+.canvas-view-menu .canvas-view-actions {
+  display: none;
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 0;
+  width: min(290px, calc(100vw - 28px));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 9px;
+  border: 1px solid #3b4d66;
+  border-radius: 13px;
+  background: rgb(14 21 32 / 98%);
+  box-shadow: 0 14px 38px #000a;
+}
+.canvas-view-menu[open] .canvas-view-actions { display: grid; }
+.canvas-view-menu .canvas-view-actions button {
+  min-width: 0;
+  min-height: 36px;
+  padding: 7px 5px;
+  white-space: normal;
+  line-height: 1.25;
+  font-size: .68rem;
+}
+.selection-mini-panel {
+  position: absolute;
+  z-index: 8;
+  top: 58px;
+  right: 10px;
+  display: grid;
+  gap: 7px;
+  width: min(330px, calc(100% - 20px));
+  padding: 9px;
+  border: 1px solid #47798b;
+  border-radius: 12px;
+  color: #effaff;
+  background: rgb(13 25 38 / 96%);
+  box-shadow: 0 10px 30px #0008;
+  backdrop-filter: blur(12px);
+}
+.selection-mini-panel[hidden] { display: none !important; }
+#selection-mini-layer-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .73rem;
+  font-weight: 800;
+}
+.selection-mini-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+.selection-mini-actions button {
+  min-width: 0;
+  min-height: 33px;
+  padding: 5px 3px;
+  font-size: .65rem;
+  white-space: nowrap;
+}
+.selection-mini-actions button:disabled { opacity: .42; cursor: not-allowed; }
+.selection-mini-actions #selection-mini-lock[aria-pressed="true"] {
+  border-color: #f3c96b;
+  background: #3a3020;
+  color: #fff0c9;
+}
+
+.crop-preview-workspace { position: relative; }
+#crop-preview { cursor: grab; }
+#crop-preview:active { cursor: grabbing; }
+.crop-reset-selection {
+  position: absolute;
+  z-index: 3;
+  top: 7px;
+  right: 7px;
+  width: 25px;
+  height: 25px;
+  min-height: 25px;
+  padding: 0;
+  border: 1px solid #d7e6f8;
+  border-radius: 50%;
+  background: #111827d9;
+  color: #fff;
+  font-size: 17px;
+  line-height: 1;
+  box-shadow: 0 2px 7px #0007;
+}
+.crop-reset-selection:hover { border-color: #fca5a5; background: #7f1d1d; }
+
+@media (max-width: 920px) {
+  .asset-quick-actions button { min-height: 48px; }
+  .canvas-view-menu > summary { min-height: 32px; padding: 5px 9px; }
+  .selection-mini-panel { top: 48px; right: 5px; width: min(300px, calc(100% - 10px)); padding: 7px; }
+  .selection-mini-actions { gap: 4px; }
+  .selection-mini-actions button { min-height: 34px; font-size: .62rem; }
+  .crop-reset-selection { width: 23px; height: 23px; min-height: 23px; }
+}
+
+/* The extra dock entry is deliberate: the image library is now one tap away. */
+@media (max-width: 920px) {
+  .mobile-touch-dock { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; }
+  .mobile-touch-dock button { padding-left: 2px; padding-right: 2px; font-size: .6rem; }
+}
