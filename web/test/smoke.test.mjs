@@ -744,7 +744,12 @@ test("AA-EDITOR-UX-002 surfaces image import/library, compact view options, laye
   ]);
   assert.match(html, /id="quick-import-images"/);
   assert.match(html, /id="quick-open-asset-library"/);
+  assert.match(html, /id="canvas-import-images"/);
+  assert.match(html, /id="canvas-open-asset-library"/);
   assert.match(html, /id="image-file-input".*multiple/);
+  assert.match(html, /Recortar o cambiar tamaño/);
+  assert.match(html, /Proporción del recorte/);
+  assert.match(html, /id="cancel-image-edit">Cancelar/);
   assert.match(html, /<details class="canvas-view-menu">/);
   assert.match(html, /id="selection-mini-lock"/);
   assert.match(html, /id="selection-mini-back"/);
@@ -758,6 +763,8 @@ test("AA-EDITOR-UX-002 surfaces image import/library, compact view options, laye
   assert.match(app, /!keepPaintingLayer/);
   assert.match(app, /selection-mini-lock/);
   assert.match(app, /quick-open-asset-library/);
+  assert.match(app, /canvas-open-asset-library/);
+  assert.ok(css.includes(".canvas-import-actions"));
   assert.ok(css.includes(".canvas-view-menu[open] .canvas-view-actions"));
   assert.ok(css.includes(".selection-mini-panel"));
   assert.ok(css.includes(".crop-reset-selection"));
