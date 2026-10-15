@@ -155,7 +155,7 @@ export function fitImportedImageScale(imageWidth, imageHeight, documentWidth, do
       imageW <= 0 || imageH <= 0 || canvasW <= 0 || canvasH <= 0 || margin <= 0 || margin > 1) {
     throw imageImportError("Image fit dimensions are invalid");
   }
-  return Math.max(0.01, Math.min(4, canvasW * margin / imageW, canvasH * margin / imageH));
+  return Math.max(0.01, Math.min(32, canvasW * margin / imageW, canvasH * margin / imageH));
 }
 
 export function fitImportedImageTransform(imageWidth, imageHeight, documentWidth, documentHeight, fill = 0.72) {
