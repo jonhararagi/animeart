@@ -773,3 +773,16 @@ test("AA-EDITOR-UX-002 surfaces image import/library, compact view options, laye
   assert.ok(css.includes(".crop-reset-selection"));
   assert.match(worker, /animeart-web-shell-v23/);
 });
+
+
+test("AA-MOBILE-SIMPLE-001 keeps the mobile canvas primary and reveals tools on demand", async () => {
+  const css = await readFile("styles.css", "utf8");
+  const html = await readFile("index.html", "utf8");
+  const worker = await readFile("service-worker.js", "utf8");
+  assert.match(css, /AA-MOBILE-SIMPLE-001: canvas-first mobile layout/);
+  assert.match(css, /body\\.mobile-tools-open \\.workspace/);
+  assert.match(css, /grid-template-columns: repeat\\(6, minmax\\(0, 1fr\\)\\)/);
+  assert.match(html, /class="mobile-touch-dock"/);
+  assert.match(html, /data-touch-action="more"/);
+  assert.match(worker, /animeart-web-shell-v24/);
+});
