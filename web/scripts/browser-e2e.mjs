@@ -648,7 +648,7 @@ try {
   await waitFor('document.querySelector("#storage-recovery-notice").hidden === false');
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(incompatiblePayload)), "unsupported document version remains intact until explicit save");
   await click("#save");
-  await waitFor('document.querySelector("#status").textContent === "Saved locally"');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").version === 2 && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").width === 640 && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").height === 480');
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").version === 2'), "explicit Save replaces the incompatible version with a supported document");
   await cdp("Page.reload", { ignoreCache: true });
   await waitFor('document.readyState === "complete"');
