@@ -652,7 +652,7 @@ test("magic erase confirmation keeps the source intact on failure and preserves 
   assert.match(app, /applyButton\.disabled = true/);
   assert.match(html, /id="magic-eraser-apply"/);
   assert.match(css, /AA-EDITOR-WORKSPACE-002/);
-  assert.match(css, /body\.mobile-tools-open \.toolbar/);
+  assert.match(css, /body\.mobile-tools-open \.workspace/);
   assert.match(css, /\.mobile-touch-dock\s*\{\s*position: static/);
 });
 
@@ -780,8 +780,10 @@ test("AA-MOBILE-SIMPLE-001 keeps the mobile canvas primary and reveals tools on 
   const html = await readFile("index.html", "utf8");
   const worker = await readFile("service-worker.js", "utf8");
   assert.match(css, /AA-MOBILE-SIMPLE-001: canvas-first mobile layout/);
-  assert.match(css, /body\\.mobile-tools-open \\.workspace/);
-  assert.match(css, /grid-template-columns: repeat\\(6, minmax\\(0, 1fr\\)\\)/);
+  assert.match(css, /body\.mobile-tools-open \.workspace/);
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) !important/);
+  assert.match(css, /grid-column: 1 !important/);
+  assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(html, /class="mobile-touch-dock"/);
   assert.match(html, /data-touch-action="more"/);
   assert.match(worker, /animeart-web-shell-v24/);
