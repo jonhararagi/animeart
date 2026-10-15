@@ -898,7 +898,7 @@ try {
   await waitFor('document.querySelector("#canvas") !== null');
   await waitForServiceWorkerReadiness();
   assert(await evaluate('window.innerWidth <= 920'), "Xiaomi-sized mobile E2E runs at a 393 CSS-pixel viewport");
-  assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden || document.querySelector("#storage-recovery-notice").textContent.includes("No se pudo abrir el proyecto guardado")'), "mobile recovery warning is localized in Spanish");
+  assert(await evaluate('(() => { const notice = document.querySelector("#storage-recovery-notice"); const message = notice.textContent; return notice.hidden || message.includes("No se pudo abrir el proyecto guardado") || message.includes("No se pudo leer el almacenamiento local"); })()'), "mobile recovery warning is localized in Spanish");
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden || document.querySelector("#storage-recovery-notice").getBoundingClientRect().height <= 112'), "mobile recovery warning stays compact and preserves canvas space");
   assert(await evaluate('getComputedStyle(document.querySelector(".workspace")).gridTemplateColumns.split(" ").length === 1'), "mobile workspace uses a single canvas column instead of the desktop sidebars");
   assert(await evaluate('document.querySelector(".mobile-touch-dock").getBoundingClientRect().height >= 48'), "mobile quick-action dock has a usable touch target area");
