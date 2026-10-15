@@ -529,6 +529,8 @@ try {
   assert(await evaluate('document.querySelector("#text-font-family").value === "Arial"'), "real browser exposes the selected text layer font controls");
   assert(await evaluate('window.__animeArtTextDrawCount > 0'), "real browser Canvas renderer paints editable text");
   await saveScreenshot("animeart-studio-text-layer.png");
+  // The text editor is a modal; close it before using the workspace history controls.
+  await click("#close-text-edit");
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(textLayerId) + ')?.text?.value === "Your text"', 10000);
   await click("#redo");
