@@ -981,7 +981,7 @@ function syncImageEditMode() {
   const resize = currentImageEditMode() === "resize";
   imageCropFields.hidden = resize;
   imageResizeFields.hidden = !resize;
-  document.querySelector("#apply-image-edit").textContent = resize ? "Resize image" : "Crop image";
+  document.querySelector("#apply-image-edit").textContent = resize ? "Cambiar tamaño" : "Recortar imagen";
   drawCropPreview();
 }
 
@@ -3393,6 +3393,10 @@ document.querySelector("#add-image-layer").addEventListener("click", () => {
 });
 document.querySelector("#quick-import-images")?.addEventListener("click", () => imageFileInput.click());
 document.querySelector("#quick-open-asset-library")?.addEventListener("click", () => {
+  document.querySelector("#open-asset-library")?.click();
+});
+document.querySelector("#canvas-import-images")?.addEventListener("click", () => imageFileInput.click());
+document.querySelector("#canvas-open-asset-library")?.addEventListener("click", () => {
   document.querySelector("#open-asset-library")?.click();
 });
 
