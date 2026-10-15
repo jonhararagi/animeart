@@ -294,6 +294,8 @@ try {
   assert(canvas.width > 0 && canvas.height > 0, "canvas exists and has usable layout dimensions");
   assert(await evaluate(`getComputedStyle(document.querySelector("#canvas")).visibility !== "hidden" && getComputedStyle(document.querySelector("#canvas")).display !== "none"`), "canvas is visible");
   assert((await evaluate('document.querySelector("#status").textContent'))?.includes("CANVAS READY"), "editor reports canvas/service-worker readiness");
+  assert(await evaluate('document.querySelector("#canvas-import-images").getBoundingClientRect().width > 0 && document.querySelector("#canvas-open-asset-library").getBoundingClientRect().width > 0'), "image import and reusable library remain visible next to the canvas without scrolling");
+  assert(await evaluate('document.querySelector(".canvas-view-menu").open === false'), "transparency and canvas-background controls stay tucked inside the collapsed View menu");
 
   assert(await evaluate('document.querySelectorAll("#layers li").length === 1'), "initial editor state contains one drawing layer");
   await saveScreenshot("animeart-studio-initial.png");
@@ -468,6 +470,7 @@ try {
   const beforeCropSample = beforeCropDocument.layers.find(layer => layer.name === "battleworn_knight");
   await click("#crop-resize-image");
   await waitFor('document.querySelector("#image-edit-dialog").open === true');
+  assert(await evaluate('document.querySelector("#image-edit-title").textContent === "Recortar o cambiar tamaño"'), "crop dialog presents its primary actions in Spanish");
   await waitFor('document.querySelector("#crop-preview").width > 1', 15000);
   assert(await evaluate('document.querySelector("#image-crop-width").value === "944" && document.querySelector("#image-crop-height").value === "944"'), "crop dialog reads the selected image dimensions");
   assert(await evaluate('document.querySelector("#crop-preview").height > 1'), "crop dialog renders an actual image preview");
