@@ -311,6 +311,9 @@ test("imported image display scale fits the same canvas bounds regardless of sou
   assert.ok(Math.abs(portrait * 32000 - 972) < 0.001);
   assert.ok(square > 1, "ordinary phone images are enlarged to a useful canvas size");
   assert.ok(portrait < 1, "oversized images are fitted without changing source pixel dimensions");
+  const tinyImage = fitImportedImageScale(24, 24, 1080, 1350);
+  assert.equal(tinyImage, 32, "small icons can scale beyond 4x so they do not stay tiny beside large images");
+  assert.equal(tinyImage * 24, 768, "small square imports still use a useful, predictable canvas footprint");
   assert.throws(() => fitImportedImageScale(0, 20, 1080, 1350), /fit dimensions/i);
   const centered = fitImportedImageTransform(520, 520, 1080, 1350);
   assert.ok(Math.abs(centered.x - centered.scale * (1080 - 520) / 2) < 0.001);
