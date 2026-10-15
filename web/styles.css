@@ -1324,3 +1324,65 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   #text-edit-dialog .text-style-presets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #text-edit-dialog .text-style-presets button { min-height: 46px; }
 }
+
+
+/* AA-TEXT-EDITOR-002: beginner-first text controls, advanced styling stays folded */
+#text-edit-dialog { width: min(560px, calc(100vw - 20px)); }
+.text-dialog-topbar { padding: 16px 20px 13px; }
+.text-dialog-topbar h2 { font-size: 1.22rem; }
+.text-dialog-topbar > div > p:last-child { max-width: 34rem; }
+#text-edit-dialog .text-panel { gap: 15px; padding: 16px 20px 20px; }
+#text-edit-dialog .adjustment-layer-name {
+  width: fit-content; max-width: 100%; margin: 0; padding: 5px 9px;
+  border: 1px solid #343c4c; border-radius: 999px; background: #111722;
+  color: #aab7c9; font-size: .7rem;
+}
+#text-edit-dialog .text-content-field { gap: 8px; color: #f2eff8; font-size: .9rem; font-weight: 750; }
+#text-edit-dialog #text-content {
+  min-height: 86px; resize: vertical; padding: 12px 13px;
+  border: 1px solid #454057; border-radius: 12px;
+  background: #0f121a; color: #f7f5fc; font: inherit; font-size: 1rem; line-height: 1.5;
+}
+#text-edit-dialog #text-content::placeholder { color: #737b8d; }
+#text-edit-dialog .text-style-presets { gap: 8px; margin: 0; }
+#text-edit-dialog .text-style-presets button {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; min-height: 62px; border-radius: 12px; background: #201b2b;
+  border-color: #393149; font-size: .78rem;
+}
+#text-edit-dialog .text-style-presets button span:first-child { font-size: 1.15rem; }
+#text-edit-dialog .text-style-presets button:hover { border-color: #a78bfa; background: #2a2140; }
+#text-edit-dialog .text-simple-controls { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 13px 15px; }
+#text-edit-dialog .text-simple-controls > .text-field:first-child { grid-column: 1 / -1; }
+#text-edit-dialog .text-field { display: grid; align-content: start; gap: 7px; color: #cbd3e0; font-size: .78rem; font-weight: 650; }
+#text-edit-dialog .text-field output { justify-self: end; margin-top: -25px; color: #b8a2f7; font-size: .72rem; font-variant-numeric: tabular-nums; }
+#text-edit-dialog .text-field select,
+#text-edit-dialog .text-field input:not([type="range"]) {
+  width: 100%; min-height: 42px; padding: 8px 10px;
+  border: 1px solid #394357; border-radius: 10px; background: #111722; color: #f0edf7;
+}
+#text-edit-dialog .text-field input[type="color"] { min-height: 42px; padding: 4px; }
+#text-edit-dialog .text-field input[type="range"] { margin: 5px 0 0; accent-color: #b58cff; }
+#text-edit-dialog .text-advanced-options { border: 1px solid #363044; border-radius: 12px; background: #12111a; overflow: hidden; }
+#text-edit-dialog .text-advanced-options > summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 48px; padding: 12px 14px; cursor: pointer; color: #e7e0f4; font-size: .84rem; font-weight: 750;
+  list-style-position: inside;
+}
+#text-edit-dialog .text-advanced-options > summary span { color: #9892a8; font-size: .68rem; font-weight: 500; text-align: right; }
+#text-edit-dialog .text-advanced-content { display: grid; gap: 17px; padding: 14px; border-top: 1px solid #302a3b; }
+#text-edit-dialog .text-style-section { display: grid; gap: 10px; }
+#text-edit-dialog .text-style-section h3 { margin: 0; color: #c6b5fa; font-size: .8rem; }
+#text-edit-dialog .text-style-section .text-inline-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+#text-edit-dialog .text-live-hint { margin: 0; color: #8995a8; font-size: .72rem; line-height: 1.5; }
+@media (max-width: 620px) {
+  #text-edit-dialog { width: calc(100vw - 16px); max-height: 90dvh; }
+  .text-dialog-topbar { padding: 13px 14px 11px; }
+  #text-edit-dialog .text-panel { gap: 13px; padding: 13px 14px 15px; }
+  #text-edit-dialog .text-style-presets { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  #text-edit-dialog .text-style-presets button { min-height: 58px; font-size: .7rem; }
+  #text-edit-dialog .text-simple-controls { gap: 12px 10px; }
+  #text-edit-dialog .text-style-section .text-inline-controls { gap: 10px; }
+  #text-edit-dialog .text-advanced-options > summary { align-items: flex-start; flex-direction: column; gap: 4px; }
+  #text-edit-dialog .text-advanced-options > summary span { text-align: left; padding-left: 18px; }
+}
