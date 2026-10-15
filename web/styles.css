@@ -1612,12 +1612,14 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   .topbar-actions { gap: 6px; }
   .topbar-actions button { min-height: 38px; padding: 6px 9px; font-size: .75rem; }
   .workspace {
+    grid-template-columns: minmax(0, 1fr) !important;
     grid-template-rows: minmax(0, 1fr) 0 0 !important;
     height: 100%;
     min-height: 0;
     overflow: hidden;
   }
   .canvas-wrap {
+    grid-column: 1 !important;
     grid-row: 1 !important;
     min-height: 0;
     height: 100%;
@@ -1638,6 +1640,7 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   }
   body.mobile-tools-open .toolbar {
     display: block !important;
+    grid-column: 1 !important;
     grid-row: 3 !important;
     min-height: 0 !important;
     max-height: 40dvh !important;
@@ -1651,6 +1654,7 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   }
   body.mobile-layers-open .layers {
     display: block !important;
+    grid-column: 1 !important;
     grid-row: 3 !important;
     max-height: 38dvh !important;
     min-height: 0 !important;
