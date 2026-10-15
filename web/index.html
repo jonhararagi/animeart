@@ -146,7 +146,13 @@
     </aside>
     <section class="canvas-wrap" data-background="checkerboard" aria-label="Área de edición">
       <div class="canvas-tools" aria-label="Barra del lienzo">
-        <strong id="selection-indicator" tabindex="-1" data-kind="none" role="status" aria-live="polite">🖼️ Seleccioná una imagen para editar</strong>
+        <div class="canvas-left-actions">
+          <strong id="selection-indicator" tabindex="-1" data-kind="none" role="status" aria-live="polite">🖼️ Seleccioná una imagen para editar</strong>
+          <div class="canvas-import-actions" role="group" aria-label="Acciones rápidas de imagen">
+            <button type="button" id="canvas-import-images" title="Importar imágenes desde tu dispositivo">＋ Importar</button>
+            <button type="button" id="canvas-open-asset-library" title="Abrir tu biblioteca de imágenes reutilizables">▦ Biblioteca</button>
+          </div>
+        </div>
         <details class="canvas-view-menu">
           <summary aria-label="Abrir opciones de vista">⚙ Vista</summary>
           <div class="canvas-view-actions" aria-label="Opciones de visualización">
@@ -414,49 +420,49 @@
 
  aria-labelledby="image-edit-title">
     <form id="image-edit-form" method="dialog">
-      <h2 id="image-edit-title">Crop / Resize Image</h2>
-      <p id="image-edit-source-size" class="image-edit-source-size">Select an image layer first.</p>
-      <section class="crop-preview-workspace" aria-label="Visual crop selection">
+      <h2 id="image-edit-title">Recortar o cambiar tamaño</h2>
+      <p id="image-edit-source-size" class="image-edit-source-size">Seleccioná una capa de imagen para empezar.</p>
+      <section class="crop-preview-workspace" aria-label="Recorte visual">
         <canvas id="crop-preview" aria-label="Arrastrá dentro del marco para moverlo y usa los puntos blancos para redimensionarlo"></canvas>
         <button type="button" id="crop-reset-selection" class="crop-reset-selection" aria-label="Restablecer el marco de recorte a la imagen completa" title="Restablecer el recorte">×</button>
         <p id="crop-preview-hint">Arrastrá dentro del marco para moverlo. Usá los puntos blancos para cambiar el tamaño; tocá fuera para crear otro marco.</p>
       </section>
       <fieldset class="image-edit-mode">
-        <legend>Operation</legend>
-        <label><input type="radio" name="image-edit-mode" value="crop" checked> Crop pixels</label>
-        <label><input type="radio" name="image-edit-mode" value="resize"> Resize pixels</label>
+        <legend>Operación</legend>
+        <label><input type="radio" name="image-edit-mode" value="crop" checked> Recortar píxeles</label>
+        <label><input type="radio" name="image-edit-mode" value="resize"> Cambiar tamaño</label>
       </fieldset>
       <section id="image-crop-fields" class="image-edit-fields">
-        <p>Drag directly on the image or enter exact pixel coordinates.</p>
-        <label class="image-crop-aspect-field" for="image-crop-aspect">Crop ratio
+        <p>Arrastrá sobre la imagen o escribí las coordenadas exactas en píxeles.</p>
+        <label class="image-crop-aspect-field" for="image-crop-aspect">Proporción del recorte
           <select id="image-crop-aspect">
-            <option value="">Free selection</option>
-            <option value="1">Square · 1:1</option>
-            <option value="0.8">Portrait · 4:5</option>
-            <option value="1.25">Landscape · 5:4</option>
-            <option value="1.5">Photo · 3:2</option>
-            <option value="0.6666666667">Portrait · 2:3</option>
-            <option value="1.7777777778">Wide · 16:9</option>
-            <option value="0.5625">Story · 9:16</option>
+            <option value="">Libre</option>
+            <option value="1">Cuadrado · 1:1</option>
+            <option value="0.8">Vertical · 4:5</option>
+            <option value="1.25">Horizontal · 5:4</option>
+            <option value="1.5">Foto · 3:2</option>
+            <option value="0.6666666667">Vertical · 2:3</option>
+            <option value="1.7777777778">Panorámica · 16:9</option>
+            <option value="0.5625">Historia · 9:16</option>
           </select>
         </label>
         <div class="image-edit-grid">
-          <label for="image-crop-x">Left (X)<input id="image-crop-x" type="number" min="0" step="1" value="0" required></label>
-          <label for="image-crop-y">Top (Y)<input id="image-crop-y" type="number" min="0" step="1" value="0" required></label>
+          <label for="image-crop-x">Izquierda (X)<input id="image-crop-x" type="number" min="0" step="1" value="0" required></label>
+          <label for="image-crop-y">Arriba (Y)<input id="image-crop-y" type="number" min="0" step="1" value="0" required></label>
           <label for="image-crop-width">Width<input id="image-crop-width" type="number" min="1" step="1" required></label>
           <label for="image-crop-height">Height<input id="image-crop-height" type="number" min="1" step="1" required></label>
         </div>
       </section>
       <section id="image-resize-fields" class="image-edit-fields" hidden>
-        <p>Resizing re-samples the selected image. Transparent pixels are preserved.</p>
+        <p>El nuevo tamaño remuestrea la imagen y conserva los píxeles transparentes.</p>
         <div class="image-edit-grid">
-          <label for="image-resize-width">New width<input id="image-resize-width" type="number" min="1" max="8192" step="1" required></label>
-          <label for="image-resize-height">New height<input id="image-resize-height" type="number" min="1" max="8192" step="1" required></label>
+          <label for="image-resize-width">Nuevo ancho<input id="image-resize-width" type="number" min="1" max="8192" step="1" required></label>
+          <label for="image-resize-height">Nuevo alto<input id="image-resize-height" type="number" min="1" max="8192" step="1" required></label>
         </div>
-        <label class="image-edit-aspect" for="image-resize-keep-aspect"><input id="image-resize-keep-aspect" type="checkbox" checked> Keep aspect ratio and displayed size</label>
+        <label class="image-edit-aspect" for="image-resize-keep-aspect"><input id="image-resize-keep-aspect" type="checkbox" checked> Mantener la proporción y el tamaño visual</label>
       </section>
-      <p class="image-edit-note">Only the selected image layer changes. Undo and redo restore the previous pixels and transform.</p>
-      <div class="dialog-actions"><button type="button" id="cancel-image-edit">Cancel</button><button type="submit" id="apply-image-edit">Apply</button></div>
+      <p class="image-edit-note">Solo cambia la imagen seleccionada. Deshacer y rehacer restauran sus píxeles y posición anteriores.</p>
+      <div class="dialog-actions"><button type="button" id="cancel-image-edit">Cancelar</button><button type="submit" id="apply-image-edit">Aplicar</button></div>
     </form>
   </dialog>
   <dialog id="asset-library-dialog" aria-labelledby="asset-library-title">
