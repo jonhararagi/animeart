@@ -24,6 +24,10 @@
           <button type="button" data-editor-mode="interactive" aria-pressed="false">✋ Modo interactivo</button>
         </div>
         <p class="editor-mode-hint" id="editor-mode-hint">Simple: elegí una tarea. Para acomodar una imagen, tocala y arrastrala.</p>
+        <div class="asset-quick-actions" role="group" aria-label="Importar y organizar imágenes">
+          <button type="button" id="quick-import-images"><span aria-hidden="true">＋</span><b>Importar imágenes</b><small>Desde tu dispositivo</small></button>
+          <button type="button" id="quick-open-asset-library"><span aria-hidden="true">▦</span><b>Mis imágenes</b><small>Biblioteca reutilizable</small></button>
+        </div>
         <div class="easy-edit-grid">
           <button type="button" data-edit-goal="move"><span aria-hidden="true">🖐️</span><b>Mover / acomodar</b><small>Arrastra y cambia tamaño</small></button>
           <button type="button" data-edit-goal="fit"><span aria-hidden="true">🎯</span><b>Ajustar al lienzo</b><small>Centra y encaja la imagen</small></button>
@@ -105,7 +109,7 @@
       <button id="add-sample-character" title="Import the bundled CC0 1.0 character as a real image layer">+ CC0 Character Sample</button>
       <button id="open-asset-library" type="button" title="Store and reuse your own images">Asset Library</button>
       <a class="asset-source-link" href="./assets/ASSET_SOURCES.md" target="_blank" rel="noopener">Sample art source &amp; license</a>
-      <input id="image-file-input" type="file" accept="image/*" hidden>
+      <input id="image-file-input" type="file" accept="image/*" multiple hidden>
       <button id="new-document">New</button>
       <button id="recover-project">Recover local</button>
       <button id="save">Save locally</button>
@@ -141,17 +145,29 @@
       </details>
     </aside>
     <section class="canvas-wrap" data-background="checkerboard" aria-label="Área de edición">
-      <div class="canvas-tools" aria-label="Vista y transparencia">
+      <div class="canvas-tools" aria-label="Barra del lienzo">
         <strong id="selection-indicator" tabindex="-1" data-kind="none" role="status" aria-live="polite">🖼️ Seleccioná una imagen para editar</strong>
-        <div class="canvas-view-actions">
-          <button id="view-transparency" type="button" aria-pressed="true">✓ Viendo transparencia</button>
-          <button type="button" data-canvas-background="white" aria-pressed="false">Fondo blanco</button>
-          <button type="button" data-canvas-background="black" aria-pressed="false">Fondo negro</button>
-          <button type="button" data-canvas-background="gray" aria-pressed="false">Fondo gris</button>
-          <button type="button" data-canvas-background="checkerboard" aria-pressed="true">Cuadritos</button>
-          <button type="button" id="toggle-layers-panel" aria-pressed="true" title="Ocultar capas y propiedades para ampliar el lienzo">Ocultar capas</button>
-        </div>
+        <details class="canvas-view-menu">
+          <summary aria-label="Abrir opciones de vista">⚙ Vista</summary>
+          <div class="canvas-view-actions" aria-label="Opciones de visualización">
+            <button id="view-transparency" type="button" aria-pressed="true">✓ Ver transparencia</button>
+            <button type="button" data-canvas-background="white" aria-pressed="false">Fondo blanco</button>
+            <button type="button" data-canvas-background="black" aria-pressed="false">Fondo negro</button>
+            <button type="button" data-canvas-background="gray" aria-pressed="false">Fondo gris</button>
+            <button type="button" data-canvas-background="checkerboard" aria-pressed="true">Cuadriculado</button>
+            <button type="button" id="toggle-layers-panel" aria-pressed="true" title="Ocultar capas y propiedades para ampliar el lienzo">Ocultar capas</button>
+          </div>
+        </details>
       </div>
+      <section id="selection-mini-panel" class="selection-mini-panel" aria-label="Acciones del elemento seleccionado" hidden>
+        <strong id="selection-mini-layer-name">Elemento seleccionado</strong>
+        <div class="selection-mini-actions">
+          <button id="selection-mini-lock" type="button" aria-pressed="false">🔒 Bloquear</button>
+          <button id="selection-mini-back" type="button" title="Enviar una capa hacia atrás">↓ Atrás</button>
+          <button id="selection-mini-front" type="button" title="Traer una capa hacia adelante">↑ Adelante</button>
+          <button id="selection-mini-fit" type="button">Encajar</button>
+        </div>
+      </section>
       <div class="transparency-shortcuts" aria-label="Acciones rápidas de transparencia">
         <button type="button" id="quick-remove-image">✕ Quitar imagen</button>
         <button type="button" id="quick-remove-background">🪄 Quitar fondo</button>
@@ -300,6 +316,7 @@
     <button type="button" data-touch-action="tool" data-tool="brush" aria-pressed="false"><span aria-hidden="true">🖌️</span><span>Dibujar</span></button>
     <button type="button" data-touch-action="tool" data-tool="eraser" aria-pressed="false" title="Borrar píxeles"><span aria-hidden="true">🧽</span><span>Borrar</span></button>
     <button type="button" data-touch-action="add-text"><span aria-hidden="true">🔤</span><span>Texto</span></button>
+    <button type="button" data-touch-action="asset-library" title="Abrir tu biblioteca de imágenes"><span aria-hidden="true">▦</span><span>Imágenes</span></button>
     <button type="button" data-touch-action="more" aria-expanded="false"><span aria-hidden="true">☰</span><span>Más</span></button>
   </nav>
   <dialog id="poster-template-dialog" aria-labelledby="poster-template-title">
@@ -400,8 +417,9 @@
       <h2 id="image-edit-title">Crop / Resize Image</h2>
       <p id="image-edit-source-size" class="image-edit-source-size">Select an image layer first.</p>
       <section class="crop-preview-workspace" aria-label="Visual crop selection">
-        <canvas id="crop-preview" aria-label="Drag to select image crop"></canvas>
-        <p id="crop-preview-hint">Drag across the image to choose the crop area. Fine-tune pixel values below.</p>
+        <canvas id="crop-preview" aria-label="Arrastrá dentro del marco para moverlo y usa los puntos blancos para redimensionarlo"></canvas>
+        <button type="button" id="crop-reset-selection" class="crop-reset-selection" aria-label="Restablecer el marco de recorte a la imagen completa" title="Restablecer el recorte">×</button>
+        <p id="crop-preview-hint">Arrastrá dentro del marco para moverlo. Usá los puntos blancos para cambiar el tamaño; tocá fuera para crear otro marco.</p>
       </section>
       <fieldset class="image-edit-mode">
         <legend>Operation</legend>
