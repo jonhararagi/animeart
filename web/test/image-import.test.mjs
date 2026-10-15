@@ -307,8 +307,8 @@ test("large images are constrained to browser-safe raster dimensions while prese
 test("imported image display scale fits the same canvas bounds regardless of source resolution", () => {
   const square = fitImportedImageScale(520, 520, 1080, 1350);
   const portrait = fitImportedImageScale(3200, 32000, 1080, 1350);
-  assert.ok(Math.abs(square * 520 - 907.2) < 0.001);
-  assert.ok(Math.abs(portrait * 32000 - 1134) < 0.001);
+  assert.ok(Math.abs(square * 520 - 777.6) < 0.001);
+  assert.ok(Math.abs(portrait * 32000 - 972) < 0.001);
   assert.ok(square > 1, "ordinary phone images are enlarged to a useful canvas size");
   assert.ok(portrait < 1, "oversized images are fitted without changing source pixel dimensions");
   assert.throws(() => fitImportedImageScale(0, 20, 1080, 1350), /fit dimensions/i);
@@ -330,7 +330,7 @@ test("the real import transaction fits a square phone image to a stable canvas f
   );
   assert.equal(result.layer.image.width, 520);
   assert.equal(result.layer.image.height, 520);
-  assert.ok(Math.abs(result.layer.transform.scale - 1.7446153846) < 0.001);
+  assert.ok(Math.abs(result.layer.transform.scale - 1.4953846154) < 0.001);
   assert.ok(Math.abs(result.layer.transform.x - result.layer.transform.scale * (1080 - 520) / 2) < 0.001);
   assert.ok(Math.abs(result.layer.transform.y - result.layer.transform.scale * (1350 - 520) / 2) < 0.001);
   assert.equal(result.document.layers.at(-1).id, result.layer.id);
