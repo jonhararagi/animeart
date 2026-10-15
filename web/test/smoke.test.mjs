@@ -546,6 +546,12 @@ test("Android native export bridge and browser fallback are wired to the canonic
   assert.ok(activity.includes("Intent.ACTION_CREATE_DOCUMENT"));
   assert.match(worker, /\.\/domain\/background-removal-profiles\.mjs/);
   assert.match(worker, /animeart-web-shell-v22/);
+  assert.match(html, /¿Qué quieres escribir\?/);
+  assert.match(html, /class="text-simple-controls"/);
+  assert.match(html, /<details class="text-advanced-options">/);
+  assert.match(html, /Más opciones/);
+  assert.match(html, /class="text-live-hint"/);
+  assert.match(css, /AA-TEXT-EDITOR-002/);
 });
 
 test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size layer thumbnails", async () => {
