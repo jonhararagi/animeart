@@ -1174,3 +1174,71 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   .mobile-touch-dock button { min-width: 60px; font-size: .64rem; }
   body.mobile-layers-open .workspace { grid-template-rows: minmax(0, 1fr) 0 minmax(160px, 38dvh) !important; }
 }
+
+
+/* AA-UX-CLOSURE-001-R1: remove legacy fixed overlays that sat on top of the canvas/tools. */
+@media (max-width: 920px) {
+  body .workspace {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+  body .canvas-wrap {
+    position: relative !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    z-index: 0 !important;
+  }
+  body .mobile-tools-toggle {
+    position: relative !important;
+    inset: auto !important;
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    z-index: 2 !important;
+  }
+  body .toolbar,
+  body.mobile-tools-open .toolbar {
+    position: relative !important;
+    inset: auto !important;
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+  body .layers,
+  body.mobile-layers-open .layers {
+    position: relative !important;
+    inset: auto !important;
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+  body.mobile-layers-open .workspace {
+    grid-template-rows: minmax(0, 1fr) 0 minmax(160px, 38dvh) !important;
+  }
+  body.mobile-layers-open .layers {
+    display: block !important;
+    max-height: 38dvh !important;
+    overflow: auto !important;
+  }
+  body.mobile-tools-open .workspace {
+    grid-template-rows: minmax(0, 1fr) 40px minmax(190px, 34dvh) !important;
+  }
+  body.mobile-tools-open .toolbar {
+    display: block !important;
+    max-height: 34dvh !important;
+    overflow: auto !important;
+  }
+}
