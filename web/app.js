@@ -947,11 +947,11 @@ function cropDragRectangle(start, current) {
 function loadCropPreview(source) {
   imageEditPreviewImage = new Image();
   imageEditPreviewImage.onload = () => {
-    if (cropPreviewHint) cropPreviewHint.textContent = "Drag on the image to choose a crop. The exact pixel rectangle is editable below.";
+    if (cropPreviewHint) cropPreviewHint.textContent = "Arrastrá dentro del marco para moverlo y usá los puntos blancos para ajustar el recorte. Los valores exactos están debajo.";
     drawCropPreview();
   };
   imageEditPreviewImage.onerror = () => {
-    if (cropPreviewHint) cropPreviewHint.textContent = "Preview unavailable. The pixel fields can still be used.";
+    if (cropPreviewHint) cropPreviewHint.textContent = "No se pudo mostrar la vista previa. Podés usar los campos de píxeles de abajo.";
   };
   imageEditPreviewImage.src = source;
 }
