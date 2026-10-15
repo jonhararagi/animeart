@@ -1585,3 +1585,9 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 @media (min-width: 901px) {
   .canvas-left-actions #selection-indicator { max-width: min(32vw, 360px); }
 }
+
+
+/* Transparent toolbar wrappers must never block canvas pointer drags. */
+.canvas-tools > .canvas-left-actions,
+.canvas-left-actions .canvas-import-actions { pointer-events: none; }
+.canvas-left-actions .canvas-import-actions button { pointer-events: auto; }
