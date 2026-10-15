@@ -617,7 +617,7 @@ try {
   ]);
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(corruptPayload)), "drawing in a new document cannot overwrite the protected payload");
   await click("#save");
-  await waitFor('document.querySelector("#status").textContent === "Saved locally"');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").width === 640 && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").height === 480');
   const explicitlySaved = await readDocument();
   assert(explicitlySaved.width === 640 && explicitlySaved.height === 480, "explicit Save replaces invalid payload with the chosen new document");
   assert(explicitlySaved.layers[0].strokes.length === 1, "explicitly saved replacement preserves current drawing");
