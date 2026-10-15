@@ -1,24 +1,24 @@
 # Estado actual · AA-EDITOR-UX-002 · 2026-10-15
 
-**TIMER:** 1–3 horas estimadas de trabajo activo, excluyendo espera de CI y validación en dispositivo.
+**TIMER:** 1–3 horas de trabajo activo estimado; el tiempo de cola de CI y la validación física son variables.
 
-**Estado:** implementación en rama de prueba; pendiente validación automatizada en GitHub Actions. No integrar a `main` hasta que Web CI y Android CI verifiquen el HEAD exacto.
+**Estado:** implementación en rama de prueba y PR #83 abierta. No integrar a `main` hasta que Web CI y Android CI terminen con PASS sobre el mismo HEAD exacto. La verificación de teléfono físico sigue pendiente y no se debe declarar como realizada.
 
-**Rama autorizada:** `aa-editor-ux-002`, creada desde `main`. No reutilizar ni resetear ramas UX anteriores divergidas. Rama no integrada.
+**Rama autorizada:** `aa-editor-ux-002`, creada desde `main`. Las ramas UX anteriores estaban divergidas y no se reutilizaron ni resetearon.
 
-**Cambios implementados en la rama:**
-- Hacer visibles al principio `Importar imágenes` y `Mis imágenes`, permitir elegir varias imágenes y añadir una acción a la barra móvil.
-- Ajustar el tamaño inicial de importación para que los elementos no dominen tanto el lienzo manteniendo sus proporciones.
-- Mover controles de transparencia y fondo a un menú compacto de Vista.
-- Añadir panel flotante contextual por capa con bloqueo, encajar imagen y subir/bajar en el orden.
-- Corregir la selección involuntaria de la imagen subyacente al dibujar/censurar sobre una capa de pintura.
-- Mostrar el tamaño del pincel al pasar por el lienzo.
-- Permitir mover el marco de recorte, ajustar ocho tiradores y restablecer el marco con una X pequeña.
-- Añadir pruebas de regresión UI/importación y actualizar caché de service worker a v23.
+**Cambios implementados:**
+- Acciones persistentes `Importar` y `Biblioteca` junto al lienzo en escritorio; `Imágenes` en la barra inferior móvil; se conservan accesos en el panel fácil de usar.
+- Importación múltiple y tamaño inicial normalizado a un área útil del lienzo, preservando proporciones y permitiendo mayor escala a recursos pequeños.
+- Controles de transparencia y fondo agrupados en menú plegable `Vista`.
+- Panel flotante de capa seleccionada: bloquear/desbloquear, encajar imagen y ordenar adelante/atrás.
+- Enrutamiento de trazo para evitar cambiar a la imagen inferior mientras se dibuja/censura sobre una capa de pintura; indicador visible del tamaño del pincel.
+- Marco de recorte movible y redimensionable con ocho tiradores, X de restablecimiento y campos exactos. Textos del diálogo de recorte traducidos al español.
+- Pruebas de importación, UI y Chromium E2E, además de caché PWA v23.
 
-**Evidencia real hasta este punto:** los cambios fueron guardados por GitHub connector en la rama. Todavía no se declara PASS de pruebas, navegador, CI ni teléfono. Los SHA de commits de edición están en el historial de `aa-editor-ux-002`; el siguiente paso es abrir PR y validar el HEAD exacto con Web CI + Android CI.
+**Evidencia de CI en SHA previo:** Web CI #637 terminó PASS para `5285aef88563b9535b532b6b84074cd8bf2b6bcc`, incluida prueba real en Chromium para recorte y bloqueo/orden de capas. Esa ejecución no valida los cambios posteriores de accesos persistentes y traducciones. Las ejecuciones nuevas deben confirmarse sobre el HEAD más reciente del PR antes de considerar integración.
 
-**Criterio de aceptación:** seleccionar varias imágenes crea capas independientes encajadas; Biblioteca se encuentra desde el panel inicial y la barra móvil; Vista no ocupa la parte superior de forma permanente; el marco se puede mover/redimensionar/restablecer; dibujar y censurar siguen la ruta del puntero en una sola capa; bloquear una capa impide moverla accidentalmente; controles de adelante/atrás actualizan el apilamiento; pruebas Web y Android pasan. No integrar si hay fallos o evidencia incompleta.
+**Criterio de aceptación:** importar varias imágenes crea capas independientes y con tamaño útil; Biblioteca es encontrable sin desplazamiento; Vista permanece plegada; el marco se crea, se mueve, se redimensiona y se restablece; censura/dibujo siguen el puntero sin crear una capa nueva en cada trazo; mover/bloquear/reordenar capas funciona; CI Web y Android pasan en el mismo SHA. No declarar validación de dispositivo físico ni integrar sin evidencia completa.
+
 
 ---
 
