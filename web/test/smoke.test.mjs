@@ -765,6 +765,9 @@ test("AA-EDITOR-UX-002 surfaces image import/library, compact view options, laye
   assert.match(app, /quick-open-asset-library/);
   assert.match(app, /canvas-open-asset-library/);
   assert.ok(css.includes(".canvas-import-actions"));
+  assert.ok(css.includes(".canvas-tools > .canvas-left-actions,"));
+  assert.ok(css.includes("pointer-events: none;"));
+  assert.ok(css.includes(".canvas-left-actions .canvas-import-actions button { pointer-events: auto; }"));
   assert.ok(css.includes(".canvas-view-menu[open] .canvas-view-actions"));
   assert.ok(css.includes(".selection-mini-panel"));
   assert.ok(css.includes(".crop-reset-selection"));
