@@ -147,7 +147,7 @@ export async function optimizeImageSource(source, {
 }
 
 
-export function fitImportedImageScale(imageWidth, imageHeight, documentWidth, documentHeight, fill = 0.84) {
+export function fitImportedImageScale(imageWidth, imageHeight, documentWidth, documentHeight, fill = 0.72) {
   const imageW = Number(imageWidth), imageH = Number(imageHeight);
   const canvasW = Number(documentWidth), canvasH = Number(documentHeight);
   const margin = Number(fill);
@@ -158,7 +158,7 @@ export function fitImportedImageScale(imageWidth, imageHeight, documentWidth, do
   return Math.max(0.01, Math.min(4, canvasW * margin / imageW, canvasH * margin / imageH));
 }
 
-export function fitImportedImageTransform(imageWidth, imageHeight, documentWidth, documentHeight, fill = 0.84) {
+export function fitImportedImageTransform(imageWidth, imageHeight, documentWidth, documentHeight, fill = 0.72) {
   const scale = fitImportedImageScale(imageWidth, imageHeight, documentWidth, documentHeight, fill);
   const canvasW = Number(documentWidth), canvasH = Number(documentHeight);
   const imageW = Number(imageWidth), imageH = Number(imageHeight);
