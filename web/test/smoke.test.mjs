@@ -711,6 +711,13 @@ test("AA-BOTTOM-BAR-BEGINNER-001 keeps five clear Spanish primary actions in the
 
 
 test("AA-TEXT-EDITOR-001 opens a dedicated text dialog with typography, outline, and shadow controls", async () => {
+  const [html, js, css, worker] = await Promise.all([
+    readFile("index.html", "utf8"),
+    readFile("app.js", "utf8"),
+    readFile("styles.css", "utf8"),
+    readFile("service-worker.js", "utf8")
+  ]);
+  const app = js;
   assert.match(html, /<dialog id="text-edit-dialog" aria-labelledby="text-dialog-title">/);
   assert.match(html, /id="close-text-edit"/);
   for (const id of ["text-content", "text-font-family", "text-font-size", "text-color", "text-outline-color", "text-outline-width", "text-shadow-color", "text-shadow-blur", "text-shadow-x", "text-shadow-y"]) {
