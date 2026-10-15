@@ -3820,8 +3820,8 @@ function load() {
     refreshHistoryControls();
     setSelection([state.document.layers[0].id], state.document.layers[0].id);
     state.dirty = false;
-    setStorageRecoveryPending(true, "The saved project could not be opened. Its original data is preserved. Automatic saving is paused. Create a new document, then choose Save only if you want to replace the saved project.");
-    status.textContent = "Stored project could not be recovered";
+    setStorageRecoveryPending(true, "No se pudo abrir el proyecto guardado. Los datos originales están protegidos y el guardado automático está pausado. Crea un documento nuevo y pulsa Guardar solo si deseas reemplazar el proyecto anterior.");
+    status.textContent = "No se pudo recuperar el proyecto guardado";
   }
 }
 

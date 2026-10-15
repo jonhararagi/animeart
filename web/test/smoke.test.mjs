@@ -374,8 +374,8 @@ test("T062 invalid local projects pause automatic writes and require explicit re
   assert.match(html, /id="storage-recovery-notice"[^>]*role="alert"[^>]*hidden/);
   assert.match(js, /storageRecoveryPending: false/);
   assert.match(js, /if \(state\.storageRecoveryPending && !markSaved\)/);
-  assert.match(js, /setStorageRecoveryPending\(true, "The saved project could not be opened/);
-  assert.match(js, /setStorageRecoveryPending\(true, "Local project storage could not be read/);
+  assert.match(js, /setStorageRecoveryPending\(true, "No se pudo abrir el proyecto guardado/);
+  assert.match(js, /setStorageRecoveryPending\(true, "No se pudo leer el almacenamiento local/);
   assert.match(js, /persistDocument\(\{ markSaved: true \}\)/);
   assert.match(js, /if \(markSaved\) setStorageRecoveryPending\(false\)/);
   assert.doesNotMatch(js, /state\.document = restoreDocument\(saved\) \|\| createDocument\(\)/);
