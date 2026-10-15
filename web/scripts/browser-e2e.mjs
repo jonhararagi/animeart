@@ -885,6 +885,27 @@ try {
   await cdp("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await cdp("Emulation.setTouchEmulationEnabled", { enabled: false });
   assert(await evaluate('document.documentElement.dataset.cacheReady === "true"'), "real browser service worker cache contains the required offline shell");
+  // AA-MOBILE-UX-002: exercise the real phone-sized viewport and the dedicated task sheet.
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitFor('document.querySelector("#canvas") !== null');
+  await waitForServiceWorkerReadiness();
+  assert(await evaluate('window.innerWidth <= 920'), "mobile E2E runs at a phone-sized 390px viewport");
+  assert(await evaluate('getComputedStyle(document.querySelector(".workspace")).gridTemplateColumns.split(" ").length === 1'), "mobile workspace uses a single canvas column instead of the desktop sidebars");
+  assert(await evaluate('document.querySelector(".mobile-touch-dock").getBoundingClientRect().height >= 48'), "mobile quick-action dock has a usable touch target area");
+  assert(await evaluate('document.querySelectorAll(".mobile-touch-dock [data-touch-action]").length >= 6'), "mobile quick-action dock exposes direct editing actions");
+  await saveScreenshot("animeart-studio-mobile-initial.png");
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('document.body.classList.contains("mobile-tools-open")');
+  assert(await evaluate('getComputedStyle(document.querySelector(".easy-edit-grid")).display === "grid"'), "mobile More action opens the dedicated task-card panel");
+  assert(await evaluate('getComputedStyle(document.querySelector(".easy-edit-grid")).gridTemplateColumns.split(" ").length === 2'), "mobile task cards use two columns");
+  assert(await evaluate('document.querySelector(".easy-edit-heading").getBoundingClientRect().height > 0'), "mobile task sheet shows its own heading");
+  assert(await evaluate('document.querySelector(".toolbar > :not(.easy-edit-panel)") === null || Array.from(document.querySelectorAll(".toolbar > :not(.easy-edit-panel)")).every(el => getComputedStyle(el).display === "none")'), "mobile task sheet hides desktop-only toolbar sections");
+  await saveScreenshot("animeart-studio-mobile-tools.png");
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('!document.body.classList.contains("mobile-tools-open")');
+  assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height > 0'), "closing the mobile task sheet returns usable space to the canvas");
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {
   try { ws.close(); } catch {}
