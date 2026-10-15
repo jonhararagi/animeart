@@ -886,16 +886,17 @@ try {
   await cdp("Emulation.setTouchEmulationEnabled", { enabled: false });
   assert(await evaluate('document.documentElement.dataset.cacheReady === "true"'), "real browser service worker cache contains the required offline shell");
   // AA-MOBILE-UX-002: exercise the real phone-sized viewport and the dedicated task sheet.
-  await cdp("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 393, height: 873, deviceScaleFactor: 2.75, mobile: true });
   await cdp("Page.reload", { ignoreCache: true });
   await waitFor('document.readyState === "complete"');
   await waitFor('document.querySelector("#canvas") !== null');
   await waitForServiceWorkerReadiness();
-  assert(await evaluate('window.innerWidth <= 920'), "mobile E2E runs at a phone-sized 390px viewport");
+  assert(await evaluate('window.innerWidth <= 920'), "Xiaomi-sized mobile E2E runs at a 393 CSS-pixel viewport");
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden || document.querySelector("#storage-recovery-notice").textContent.includes("No se pudo abrir el proyecto guardado")'), "mobile recovery warning is localized in Spanish");
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden || document.querySelector("#storage-recovery-notice").getBoundingClientRect().height <= 112'), "mobile recovery warning stays compact and preserves canvas space");
   assert(await evaluate('getComputedStyle(document.querySelector(".workspace")).gridTemplateColumns.split(" ").length === 1'), "mobile workspace uses a single canvas column instead of the desktop sidebars");
   assert(await evaluate('document.querySelector(".mobile-touch-dock").getBoundingClientRect().height >= 48'), "mobile quick-action dock has a usable touch target area");
+  assert(await evaluate('Array.from(document.querySelectorAll(".mobile-touch-dock button")).every(el => { const r = el.getBoundingClientRect(); return r.width >= 44 && r.height >= 44; })'), "Xiaomi-sized quick-action buttons meet the 44px touch-target floor");
   assert(await evaluate('document.querySelectorAll(".mobile-touch-dock [data-touch-action]").length >= 6'), "mobile quick-action dock exposes direct editing actions");
   await saveScreenshot("animeart-studio-mobile-initial.png");
   await click('.mobile-touch-dock [data-touch-action="more"]');
