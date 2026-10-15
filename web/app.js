@@ -1096,7 +1096,13 @@ function cropPreviewHitHandle(point, rectangle) {
     }
   }
   if (nearest) return "resize-" + nearest;
-  if (point.x >= left && point.x <= right && point.y >= top && point.y <= bottom) return "move";
+  const isFullImageSelection =
+    rectangle.x === 0 && rectangle.y === 0 &&
+    rectangle.width >= imageEditOriginalSize.width &&
+    rectangle.height >= imageEditOriginalSize.height;
+  if (!isFullImageSelection &&
+      point.x >= left && point.x <= right &&
+      point.y >= top && point.y <= bottom) return "move";
   return "new";
 }
 
