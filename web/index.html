@@ -203,18 +203,23 @@
         <p id="quick-recipe-status" class="quick-recipe-status" role="status" aria-live="polite">Select image layers, then choose a recipe.</p>
       </section>
 
-      <section id="text-panel" class="text-panel" aria-labelledby="text-title" hidden>
+      <dialog id="text-edit-dialog" aria-labelledby="text-dialog-title">
+        <div class="text-dialog-topbar">
+          <div><p class="eyebrow">EDICIÓN DE TEXTO</p><h2 id="text-dialog-title">Texto y estilo</h2><p>Escribe, elige un estilo y ajusta el contorno o la sombra.</p></div>
+          <button type="button" id="close-text-edit" aria-label="Cerrar edición de texto">✕</button>
+        </div>
+        <section id="text-panel" class="text-panel" aria-labelledby="text-title" hidden>
         <div class="panel-heading">
           <div>
             <p class="eyebrow">EDITABLE TYPOGRAPHY</p>
-            <h3 id="text-title">Text properties</h3>
+            <h3 id="text-title">Contenido y tipografía</h3>
           </div>
         </div>
         <p id="text-layer-name" class="adjustment-layer-name">Select a text layer to edit</p>
-        <label class="text-field" for="text-content">Content
+        <label class="text-field" for="text-content">Texto
           <textarea id="text-content" rows="3" maxlength="500" spellcheck="false"></textarea>
         </label>
-        <label class="text-field" for="text-font-family">Font family
+        <label class="text-field" for="text-font-family">Fuente
           <select id="text-font-family">
             <option value="Arial">Arial</option><option value="Arial Black">Arial Black</option><option value="Impact">Impact</option><option value="Palatino Linotype">Palatino Linotype</option><option value="Lucida Console">Lucida Console</option>
             <option value="Georgia">Georgia</option>
@@ -228,31 +233,36 @@
           </select>
         </label>
         <div class="text-inline-controls">
-          <label class="text-field" for="text-font-weight">Weight
+          <label class="text-field" for="text-font-weight">Grosor
             <select id="text-font-weight"><option value="normal">Regular</option><option value="bold">Bold</option></select>
           </label>
-          <label class="text-field" for="text-align">Align
+          <label class="text-field" for="text-align">Alineación
             <select id="text-align"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select>
           </label>
         </div>
-        <label class="text-field" for="text-font-size">Size <output id="text-font-size-value">48 px</output>
+        <label class="text-field" for="text-font-size">Tamaño <output id="text-font-size-value">48 px</output>
           <input id="text-font-size" type="range" min="8" max="240" step="1" value="48">
         </label>
         <div class="text-inline-controls">
-          <label class="text-field text-color-field" for="text-color">Fill color
+          <label class="text-field text-color-field" for="text-color">Color de letra
             <input id="text-color" type="color" value="#172335">
           </label>
-          <label class="text-field text-color-field" for="text-outline-color">Outline color
+          <label class="text-field text-color-field" for="text-outline-color">Color del contorno
             <input id="text-outline-color" type="color" value="#000000">
           </label>
         </div>
-        <label class="text-field" for="text-outline-width">Outline <output id="text-outline-width-value">0 px</output>
+        <label class="text-field" for="text-outline-width">Grosor del contorno <output id="text-outline-width-value">0 px</output>
           <input id="text-outline-width" type="range" min="0" max="24" step="1" value="0">
         </label>
-        <div class="text-style-presets" aria-label="Text style presets"><button type="button" data-text-style-preset="comic">Comic</button><button type="button" data-text-style-preset="poster">Poster</button><button type="button" data-text-style-preset="manga">Manga</button><button type="button" data-text-style-preset="neon">Neon</button></div>
-        <div class="text-inline-controls"><label class="text-field" for="text-shadow-color">Shadow color<input id="text-shadow-color" type="color" value="#000000"></label><label class="text-field" for="text-shadow-blur">Shadow <output id="text-shadow-blur-value">0 px</output><input id="text-shadow-blur" type="range" min="0" max="48" value="0"></label></div>
-        <p class="adjustment-note">Text remains a native editable layer. Changes support undo/redo and are included in PNG export.</p>
+        <div class="text-style-presets" aria-label="Estilos rápidos de texto"><button type="button" data-text-style-preset="comic">Cómic</button><button type="button" data-text-style-preset="poster">Cartel</button><button type="button" data-text-style-preset="manga">Manga</button><button type="button" data-text-style-preset="neon">Neón</button></div>
+        <div class="text-inline-controls"><label class="text-field" for="text-shadow-color">Color de sombra<input id="text-shadow-color" type="color" value="#000000"></label><label class="text-field" for="text-shadow-blur">Desenfoque <output id="text-shadow-blur-value">0 px</output><input id="text-shadow-blur" type="range" min="0" max="48" value="0"></label></div>
+        <div class="text-inline-controls">
+          <label class="text-field" for="text-shadow-x">Desplazamiento horizontal <output id="text-shadow-x-value">0 px</output><input id="text-shadow-x" type="range" min="-40" max="40" value="0"></label>
+          <label class="text-field" for="text-shadow-y">Desplazamiento vertical <output id="text-shadow-y-value">0 px</output><input id="text-shadow-y" type="range" min="-40" max="40" value="0"></label>
+        </div>
+        <p class="adjustment-note">El texto sigue siendo una capa editable. Los cambios permiten deshacer/rehacer y se incluyen al exportar la imagen.</p>
       </section>
+      </dialog>
     </aside>
   </main>
   <nav class="mobile-touch-dock" aria-label="Herramientas principales">
