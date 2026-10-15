@@ -190,7 +190,35 @@ function setSelection(layerIds, anchorId = null) {
   updateSelectionIndicator();
 }
 
+function updateSelectionMiniPanel(layer = selectedLayerExact()) {
+  const panel = document.querySelector("#selection-mini-panel");
+  if (!panel) return;
+  panel.hidden = !layer;
+  if (!layer) return;
+
+  const name = document.querySelector("#selection-mini-layer-name");
+  if (name) name.textContent = layer.name + (layer.locked ? " · bloqueada" : "");
+
+  const lock = document.querySelector("#selection-mini-lock");
+  if (lock) {
+    lock.textContent = layer.locked ? "🔓 Desbloquear" : "🔒 Bloquear";
+    lock.setAttribute("aria-pressed", String(layer.locked));
+    lock.title = layer.locked ? "Desbloquear capa" : "Bloquear capa para no moverla por accidente";
+  }
+
+  const index = state.document.layers.findIndex(item => item.id === layer.id);
+  const back = document.querySelector("#selection-mini-back");
+  const front = document.querySelector("#selection-mini-front");
+  if (back) back.disabled = layer.locked || index <= 0;
+  if (front) front.disabled = layer.locked || index < 0 || index >= state.document.layers.length - 1;
+
+  const fit = document.querySelector("#selection-mini-fit");
+  if (fit) fit.disabled = layer.locked || layer.contentType !== "image" || !layer.image;
+}
+
 function updateSelectionIndicator() {
+  const layer = selectedLayerExact();
+  updateSelectionMiniPanel(layer);
   const indicator = document.querySelector("#selection-indicator");
   if (!indicator) return;
   const layer = selectedLayerExact();
@@ -759,6 +787,7 @@ function renderLayers() {
   renderLayerText();
   renderImageMask();
   refreshImageEditButton();
+  updateSelectionMiniPanel();
 }
 
 function cropPreviewClamp(value, maximum) {
@@ -1011,21 +1040,124 @@ for (const input of [imageCropX, imageCropY, imageCropWidth, imageCropHeight]) {
   input.addEventListener("input", drawCropPreview);
 }
 
+function currentCropRectangle() {
+  if (!imageEditOriginalSize) return { x: 0, y: 0, width: 1, height: 1 };
+  const maxWidth = imageEditOriginalSize.width;
+  const maxHeight = imageEditOriginalSize.height;
+  const width = Math.max(1, Math.min(maxWidth, Math.round(Number(imageCropWidth.value) || maxWidth)));
+  const height = Math.max(1, Math.min(maxHeight, Math.round(Number(imageCropHeight.value) || maxHeight)));
+  const x = Math.max(0, Math.min(maxWidth - width, Math.round(Number(imageCropX.value) || 0)));
+  const y = Math.max(0, Math.min(maxHeight - height, Math.round(Number(imageCropY.value) || 0)));
+  return { x, y, width, height };
+}
+
+function cropPreviewHitHandle(point, rectangle) {
+  const bounds = cropPreviewCanvas.getBoundingClientRect();
+  const toleranceX = Math.max(6, imageEditOriginalSize.width / Math.max(1, bounds.width) * 16);
+  const toleranceY = Math.max(6, imageEditOriginalSize.height / Math.max(1, bounds.height) * 16);
+  const left = rectangle.x;
+  const top = rectangle.y;
+  const right = left + rectangle.width;
+  const bottom = top + rectangle.height;
+  const midX = (left + right) / 2;
+  const midY = (top + bottom) / 2;
+  const handles = [
+    ["nw", left, top], ["n", midX, top], ["ne", right, top],
+    ["e", right, midY], ["se", right, bottom], ["s", midX, bottom],
+    ["sw", left, bottom], ["w", left, midY]
+  ];
+  let nearest = null;
+  let nearestDistance = Infinity;
+  for (const [name, x, y] of handles) {
+    const dx = (point.x - x) / toleranceX;
+    const dy = (point.y - y) / toleranceY;
+    const distance = dx * dx + dy * dy;
+    if (Math.abs(point.x - x) <= toleranceX && Math.abs(point.y - y) <= toleranceY && distance < nearestDistance) {
+      nearest = name;
+      nearestDistance = distance;
+    }
+  }
+  if (nearest) return "resize-" + nearest;
+  if (point.x >= left && point.x <= right && point.y >= top && point.y <= bottom) return "move";
+  return "new";
+}
+
+function moveCropRectangle(before, point, start) {
+  const maxWidth = imageEditOriginalSize.width;
+  const maxHeight = imageEditOriginalSize.height;
+  return {
+    ...before,
+    x: Math.max(0, Math.min(maxWidth - before.width, before.x + point.x - start.x)),
+    y: Math.max(0, Math.min(maxHeight - before.height, before.y + point.y - start.y))
+  };
+}
+
+function resizeCropRectangle(before, point, handle) {
+  const maxWidth = imageEditOriginalSize.width;
+  const maxHeight = imageEditOriginalSize.height;
+  const ratio = Number(cropAspectInput.value);
+  const fixedRatio = Number.isFinite(ratio) && ratio > 0;
+  const left = before.x;
+  const top = before.y;
+  const right = left + before.width;
+  const bottom = top + before.height;
+
+  if (["nw", "ne", "se", "sw"].includes(handle)) {
+    const anchors = {
+      nw: { x: right, y: bottom },
+      ne: { x: left, y: bottom },
+      se: { x: left, y: top },
+      sw: { x: right, y: top }
+    };
+    return cropDragRectangle(anchors[handle], point);
+  }
+
+  let x = left, y = top, width = before.width, height = before.height;
+  if (handle === "e" || handle === "w") {
+    const movingX = Math.max(0, Math.min(maxWidth, Math.round(point.x)));
+    if (handle === "e") width = Math.max(1, movingX - left);
+    else { width = Math.max(1, right - movingX); x = Math.min(right - 1, movingX); }
+    if (fixedRatio) {
+      height = Math.max(1, Math.min(maxHeight, Math.round(width / ratio)));
+      y = Math.round((top + bottom - height) / 2);
+    }
+  } else {
+    const movingY = Math.max(0, Math.min(maxHeight, Math.round(point.y)));
+    if (handle === "s") height = Math.max(1, movingY - top);
+    else { height = Math.max(1, bottom - movingY); y = Math.min(bottom - 1, movingY); }
+    if (fixedRatio) {
+      width = Math.max(1, Math.min(maxWidth, Math.round(height * ratio)));
+      x = Math.round((left + right - width) / 2);
+    }
+  }
+
+  width = Math.max(1, Math.min(maxWidth, width));
+  height = Math.max(1, Math.min(maxHeight, height));
+  x = Math.max(0, Math.min(maxWidth - width, x));
+  y = Math.max(0, Math.min(maxHeight - height, y));
+  return { x, y, width, height };
+}
+
 cropPreviewCanvas.addEventListener("pointerdown", event => {
   if (currentImageEditMode() !== "crop" || !imageEditPreviewImage || !imageEditOriginalSize) return;
   const point = cropPreviewPoint(event);
   if (!point) return;
   event.preventDefault();
-  cropPreviewDrag = { pointerId: event.pointerId, start: point, before: { x: Number(imageCropX.value), y: Number(imageCropY.value), width: Number(imageCropWidth.value), height: Number(imageCropHeight.value) } };
-  cropPreviewCanvas.setPointerCapture(event.pointerId);
-  updateCropInputs({ x: point.x, y: point.y, width: 1, height: 1 });
+  const before = currentCropRectangle();
+  const mode = cropPreviewHitHandle(point, before);
+  cropPreviewDrag = { pointerId: event.pointerId, start: point, before, mode };
+  try { cropPreviewCanvas.setPointerCapture(event.pointerId); } catch {}
+  if (mode === "new") updateCropInputs({ x: point.x, y: point.y, width: 1, height: 1 });
   drawCropPreview();
 });
 cropPreviewCanvas.addEventListener("pointermove", event => {
   if (!cropPreviewDrag || cropPreviewDrag.pointerId !== event.pointerId) return;
   const point = cropPreviewPoint(event);
   if (!point) return;
-  updateCropInputs(cropDragRectangle(cropPreviewDrag.start, point));
+  const drag = cropPreviewDrag;
+  if (drag.mode === "new") updateCropInputs(cropDragRectangle(drag.start, point));
+  else if (drag.mode === "move") updateCropInputs(moveCropRectangle(drag.before, point, drag.start));
+  else if (drag.mode.startsWith("resize-")) updateCropInputs(resizeCropRectangle(drag.before, point, drag.mode.slice(7)));
   drawCropPreview();
 });
 function finishCropPreviewDrag(event) {
@@ -1033,13 +1165,17 @@ function finishCropPreviewDrag(event) {
   const drag = cropPreviewDrag;
   if (event.type === "pointerup") {
     const point = cropPreviewPoint(event);
-    if (point) updateCropInputs(cropDragRectangle(drag.start, point));
+    if (point) {
+      if (drag.mode === "new") updateCropInputs(cropDragRectangle(drag.start, point));
+      else if (drag.mode === "move") updateCropInputs(moveCropRectangle(drag.before, point, drag.start));
+      else if (drag.mode.startsWith("resize-")) updateCropInputs(resizeCropRectangle(drag.before, point, drag.mode.slice(7)));
+    }
   } else {
     updateCropInputs(drag.before);
   }
   cropPreviewDrag = null;
   drawCropPreview();
-  if (cropPreviewCanvas.hasPointerCapture(event.pointerId)) cropPreviewCanvas.releasePointerCapture(event.pointerId);
+  try { if (cropPreviewCanvas.hasPointerCapture(event.pointerId)) cropPreviewCanvas.releasePointerCapture(event.pointerId); } catch {}
 }
 cropPreviewCanvas.addEventListener("pointerup", finishCropPreviewDrag);
 cropPreviewCanvas.addEventListener("pointercancel", finishCropPreviewDrag);
@@ -2149,8 +2285,11 @@ canvas.addEventListener("pointerdown", event => {
     candidate.visible && candidate.contentType === "image" && candidate.image &&
     hitTestLayer(candidate, pointerDocumentPoint, documentCenter(state.document))
   );
+  const currentSelection = selectedLayerExact();
+  const keepPaintingLayer = currentSelection?.contentType === "drawing" && !currentSelection.locked;
   if (hitImage && hitImage.id !== state.selectedLayerId &&
-      ["brush", "eraser", "censor-light"].includes(state.tool)) {
+      ["brush", "eraser", "censor-light"].includes(state.tool) &&
+      !keepPaintingLayer) {
     setSelection([hitImage.id], hitImage.id);
     renderLayers();
     redraw();
@@ -2597,6 +2736,12 @@ if (mobileDock) {
       return;
     }
     if (action === "import-image") { imageFileInput.click(); return; }
+    if (action === "asset-library") {
+      document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
+      mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+      document.querySelector("#open-asset-library")?.click();
+      return;
+    }
     if (action === "add-text") {
       const selected = selectedLayerExact();
       if (selected?.contentType === "text" && textEditDialog) {
@@ -2770,6 +2915,32 @@ helpToggle.addEventListener("change", () => {
 });
 
 undoButton.addEventListener("click", undo);
+
+document.querySelector("#selection-mini-lock")?.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (!layer) return;
+  applyLayerOperation(
+    (doc, id) => setLayerLocked(doc, id, !layer.locked),
+    layer.locked ? "Capa desbloqueada" : "Capa bloqueada",
+    { allowLocked: true }
+  );
+});
+document.querySelector("#selection-mini-back")?.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (!layer || layer.locked) return;
+  applyLayerOperation((doc, id) => reorderLayer(doc, id, "down"), "Capa enviada hacia atrás");
+});
+document.querySelector("#selection-mini-front")?.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (!layer || layer.locked) return;
+  applyLayerOperation((doc, id) => reorderLayer(doc, id, "up"), "Capa traída hacia adelante");
+});
+document.querySelector("#selection-mini-fit")?.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (!layer || layer.locked || layer.contentType !== "image" || !layer.image) return;
+  document.querySelector("#fit-image-to-canvas")?.click();
+});
+
 document.querySelector("#magic-eraser-apply")?.addEventListener("click", applyMagicErasePreview);
 document.querySelector("#magic-eraser-cancel")?.addEventListener("click", cancelMagicErasePreview);
 document.querySelector("#magic-eraser-cancel-secondary")?.addEventListener("click", cancelMagicErasePreview);
@@ -3185,13 +3356,21 @@ document.querySelector("#add-image-layer").addEventListener("click", () => {
 });
 
 imageFileInput.addEventListener("change", async () => {
-  const file = imageFileInput.files?.[0];
+  const files = [...(imageFileInput.files || [])].filter(file => file && (!file.type || file.type.startsWith("image/")));
   imageFileInput.value = "";
-  if (!file) {
-    status.textContent = "Import cancelled";
+  if (!files.length) {
+    status.textContent = "No se seleccionaron imágenes para importar";
     return;
   }
-  await importImageIntoEditor(file);
+  let imported = 0;
+  for (const file of files) {
+    if (await importImageIntoEditor(file, "Imagen importada")) imported += 1;
+  }
+  if (files.length > 1) {
+    status.textContent = imported === files.length
+      ? "✅ Importadas " + imported + " de " + files.length + " imágenes. Las encontrás en Capas."
+      : "Importadas " + imported + " de " + files.length + " imágenes. Revisa los avisos antes de continuar.";
+  }
 });
 
 canvas.addEventListener("dragenter", event => {
