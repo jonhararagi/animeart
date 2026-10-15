@@ -480,9 +480,9 @@ test("mobile dock actions call history directly and keep the active drawing tool
   const [html, js, css] = await Promise.all([
     readFile("index.html", "utf8"), readFile("app.js", "utf8"), readFile("styles.css", "utf8")
   ]);
-  assert.match(html, /data-tool="brush" aria-pressed="false">🖌 Dibujar/);
-  assert.match(html, /data-touch-action="more" aria-expanded="false">✨ Editar/);
-  assert.match(html, /data-touch-action="crop-image"/);
+  assert.match(html, /data-touch-action="tool" data-tool="brush" aria-pressed="false"><span aria-hidden="true">🖌️<\/span><span>Dibujar<\/span>/);
+  assert.match(html, /data-touch-action="more" aria-expanded="false"><span aria-hidden="true">☰<\/span><span>Más<\/span>/);
+  assert.match(html, /data-edit-goal="crop"/);\n  assert.match(html, /id="crop-resize-image"/);
   assert.match(js, /Primero seleccioná una imagen en el lienzo o en Capas; después tocá Recortar/);
   assert.match(js, /La imagen está bloqueada\. Desbloqueala desde Capas para poder recortarla/);
   assert.doesNotMatch(html, /data-touch-action="more" aria-expanded="false">More/);
@@ -501,10 +501,10 @@ test("editor appearance supports custom accent, workspace color and local wallpa
   assert.match(html, /id="appearance-open"/);
   assert.match(html, /id="appearance-dialog"/);
   assert.match(html, /id="appearance-wallpaper-file"/);
-  assert.match(html, /data-touch-action="appearance"/);
+  assert.match(html, /id="appearance-open"/);
   assert.match(app, /initializeAppearanceSettings\(\)/);
-  assert.match(app, /animeart-web-shell-v20/);
-  assert.match(worker, /animeart-web-shell-v20/);
+  assert.match(app, /animeart-web-shell-v21/);
+  assert.match(worker, /animeart-web-shell-v21/);
   assert.match(worker, /\.\/appearance-settings\.js/);
   assert.match(appearance, /animeart-editor-appearance-v1/);
   assert.match(appearance, /MAX_WALLPAPER_BYTES = 2 \* 1024 \* 1024/);
@@ -544,7 +544,7 @@ test("Android native export bridge and browser fallback are wired to the canonic
   assert.ok(activity.includes("NativeExportBridge"));
   assert.ok(activity.includes("Intent.ACTION_CREATE_DOCUMENT"));
   assert.match(worker, /\.\/domain\/background-removal-profiles\.mjs/);
-  assert.match(worker, /animeart-web-shell-v20/);
+  assert.match(worker, /animeart-web-shell-v21/);
 });
 
 test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size layer thumbnails", async () => {
@@ -556,7 +556,7 @@ test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size la
     readFile("domain/background-removal.mjs", "utf8")
   ]);
   assert.match(html, /data-tool="magic-eraser"/);
-  assert.match(html, /data-touch-action="tool" data-tool="magic-eraser"/);
+  assert.match(html, /data-tool="magic-eraser"/);
   assert.match(html, /id="fit-image-to-canvas"/);
   assert.match(app, /function finishMagicErase\(interaction\)/);
   assert.match(app, /seedPoints: \[\{ x, y \}\]/);
@@ -564,7 +564,7 @@ test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size la
   assert.match(css, /\.layer-thumbnail \{ flex: 0 0 56px; width: 56px; height: 56px/);
   assert.match(css, /\.layers #layers \.layer-select \{ min-height: 60px/);
   assert.match(removal, /seedPoints=\[\]/);
-  assert.match(worker, /animeart-web-shell-v20/);
+  assert.match(worker, /animeart-web-shell-v21/);
 });
 
 
@@ -589,8 +589,8 @@ test("AA-PICSART-UX-001 defaults to direct layer selection and exposes simple an
   assert.match(html, /data-editor-mode="interactive"/);
   assert.match(html, /data-tool="select" aria-pressed="true">🖐️ Seleccionar \/ mover/);
   assert.match(css, /\.editor-mode-switch button\.active/);
-  assert.match(worker, /animeart-web-shell-v20/);
-  assert.match(app, /animeart-web-shell-v20/);
+  assert.match(worker, /animeart-web-shell-v21/);
+  assert.match(app, /animeart-web-shell-v21/);
 });
 
 test("Magic Eraser tolerance is user-adjustable instead of hardcoded", async () => {
@@ -634,7 +634,7 @@ test("AA-PICSART-UX-001 magic erase is preview-first and supports pixel restorat
   assert.match(html, /id="magic-eraser-before-preview"/);
   assert.match(html, /id="magic-eraser-after-preview"/);
   assert.match(html, /data-tool="restore-brush"/);
-  assert.match(html, /data-touch-action="tool" data-tool="restore-brush"/);
+  assert.match(html, /data-tool="restore-brush"/);
   assert.match(model, /image\.restoreSource/);
   assert.match(operations, /replacement\.restoreSource/);
 });
