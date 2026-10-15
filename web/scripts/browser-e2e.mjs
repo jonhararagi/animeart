@@ -601,7 +601,7 @@ try {
   await waitFor('document.readyState === "complete"');
   await waitFor('document.querySelector("#storage-recovery-notice").hidden === false');
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(corruptPayload)), "corrupt project payload is preserved at startup");
-  assert((await evaluate('document.querySelector("#storage-recovery-notice").textContent')).includes("could not be opened"), "invalid project produces explicit recovery status");
+  assert((await evaluate('document.querySelector("#storage-recovery-notice").textContent')).includes("No se pudo abrir el proyecto guardado"), "invalid project produces explicit recovery status in Spanish");
 
   await click("#new-document");
   await waitFor('document.querySelector("#project-dialog").open === true');
