@@ -1059,9 +1059,16 @@ try {
   assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=asset-library]")?.textContent.includes("Galería")'), "mobile has a visible reusable Gallery action");
   assert(await evaluate('Boolean(document.querySelector(".mobile-touch-dock [data-touch-action=delete-selected]"))'), "mobile has direct Delete selected object action");
   assert(await evaluate('getComputedStyle(document.querySelector("#selection-mini-panel")).display === "none"'), "floating selection controls do not cover the mobile canvas");
+  const projectBeforePickerAttempt = await evaluate('localStorage.getItem("animeart-web-document")');
+  const layerCountBeforePickerAttempt = (await readLayerSummary()).length;
   await evaluate('(() => { const input = document.querySelector("#image-file-input"); window.__animeArtPickerOpenCount = 0; window.__animeArtOriginalPickerClick = input.click.bind(input); input.click = () => { window.__animeArtPickerOpenCount += 1; }; })()');
   await click('.mobile-touch-dock [data-touch-action="import-image"]');
-  assert(await evaluate('window.__animeArtPickerOpenCount === 1'), "Add image opens the device image picker");
+  assert(await evaluate('window.__animeArtPickerOpenCount === 1'), "Add image requests the native device image picker");
+  await evaluate('document.querySelector("#image-file-input").dispatchEvent(new Event("cancel", { bubbles: true }))');
+  assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(projectBeforePickerAttempt)),
+    "simulated picker cancellation leaves the saved project byte-for-byte unchanged");
+  assert((await readLayerSummary()).length === layerCountBeforePickerAttempt,
+    "simulated picker cancellation does not add or remove a layer");
   await evaluate('(() => { const input = document.querySelector("#image-file-input"); input.click = window.__animeArtOriginalPickerClick; })()');
   await click('.mobile-touch-dock [data-touch-action="asset-library"]');
   await waitFor('document.querySelector("#asset-library-dialog")?.open === true');
@@ -1121,6 +1128,27 @@ try {
   await saveScreenshot("animeart-studio-mobile-imported-image.png");
   console.log("MOBILE_IMPORTED_IMAGE_DIAGNOSTICS: " + JSON.stringify(await evaluate('(() => { const raw=localStorage.getItem("animeart-web-document"); const saved=JSON.parse(raw || "{}"); const layer=saved.layers?.find(entry=>entry.name==="e2e-mobile-import"); return { status:document.querySelector("#status")?.textContent||"", feedback:document.querySelector("#mobile-feedback")?.textContent||"", storedCharacters:raw?.length||0, layer:layer ? {name:layer.name,contentType:layer.contentType,width:layer.image?.width,height:layer.image?.height,mime:(/^data:([^;,]+)/.exec(layer.image?.source||"")||[])[1]||null,transform:layer.transform} : null }; })()')));
 
+  // Move the exact image introduced through the mobile file input, then verify history.
+  const importedTransformBeforeMove = JSON.stringify(mobilePngLayer.transform);
+  const importedCanvasCenter = await selectorCenter("#canvas");
+  await mouseStroke([
+    { x: importedCanvasCenter.x, y: importedCanvasCenter.y },
+    { x: importedCanvasCenter.x + 24, y: importedCanvasCenter.y + 18 }
+  ]);
+  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) !== ' + JSON.stringify(importedTransformBeforeMove), 10000);
+  const mobilePngMoved = (await readLayerSummary()).find(layer => layer.name === "e2e-mobile-import");
+  assert(JSON.stringify(mobilePngMoved?.transform) !== importedTransformBeforeMove,
+    "the image imported through the mobile file input can be dragged on the canvas");
+  const importedTransformAfterMove = JSON.stringify(mobilePngMoved.transform);
+  await saveScreenshot("animeart-studio-mobile-imported-image-moved.png");
+  await click("#undo");
+  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformBeforeMove), 10000);
+  assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
+    "undo restores the imported image transform without deleting its layer");
+  await click("#redo");
+  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterMove), 10000);
+  assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
+    "redo restores the moved imported image");
 
   await click('.mobile-touch-dock [data-touch-action="more"]');
   await waitFor('document.body.classList.contains("mobile-tools-open")');
