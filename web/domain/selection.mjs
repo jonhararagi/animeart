@@ -312,8 +312,11 @@ export function hitTestHandle(screenPoint, geometry, radius = 10) {
   if (!geometry || !screenPoint) return null;
   const closeHandle = geometry.closeHandle || geometry.corners?.[1];
   const resizeHandle = geometry.resizeHandle || geometry.corners?.[2];
+  const rotationHandle = geometry.rotationHandle;
   const closeDistance = closeHandle ? Math.hypot(screenPoint.x - closeHandle.x, screenPoint.y - closeHandle.y) : Infinity;
   const resizeDistance = resizeHandle ? Math.hypot(screenPoint.x - resizeHandle.x, screenPoint.y - resizeHandle.y) : Infinity;
+  const rotationDistance = rotationHandle ? Math.hypot(screenPoint.x - rotationHandle.x, screenPoint.y - rotationHandle.y) : Infinity;
+  if (rotationDistance <= radius) return "rotate";
   const hitsClose = closeDistance <= radius, hitsResize = resizeDistance <= radius;
   if (hitsClose && hitsResize) return closeDistance <= resizeDistance ? "close" : "scale-se";
   if (hitsClose) return "close";
