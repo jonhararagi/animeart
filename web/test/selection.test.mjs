@@ -248,7 +248,7 @@ test("Image Layer selection box exposes close and bottom-right resize handles", 
   const geometry = selectionGeometry(layer, viewport, { x: 200, y: 150 });
   assert.equal(hitTestHandle(geometry.closeHandle, geometry), "close");
   assert.equal(hitTestHandle(geometry.resizeHandle, geometry), "scale-se");
-  assert.equal(hitTestHandle(geometry.rotationHandle, geometry), null);
+  assert.equal(hitTestHandle(geometry.rotationHandle, geometry), "rotate");
   const polygonCenter = {
     x: geometry.corners.reduce((sum, point) => sum + point.x, 0) / 4,
     y: geometry.corners.reduce((sum, point) => sum + point.y, 0) / 4
