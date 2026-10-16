@@ -154,7 +154,7 @@ function normalizeLayer(layer, index) {
     transform: normalizeTransform(layer?.transform),
     contentType,
     isReference: contentType === "image" && layer?.isReference === true,
-    isBackground: contentType === "image" && layer?.isBackground === true,
+    ...(contentType === "image" && layer?.isBackground === true ? { isBackground: true } : {}),
     strokes,
     ...(image ? { image } : {}),
     ...(text ? { text } : {}),
