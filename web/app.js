@@ -628,6 +628,8 @@ function drawSelectionOverlay() {
       window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__ = {
         closeHandle: visibleHandles.closeHandle,
         resizeHandle: visibleHandles.resizeHandle,
+        rotationHandle: geometry.rotationHandle,
+        center: geometry.center,
         canvasSize: canvasSize(),
         kind: "layer"
       };
