@@ -1002,6 +1002,30 @@ try {
   await click("#shape-maker-cancel");
   await waitFor('document.querySelector("#shape-maker-dialog")?.open === false');
   assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height > 0'), "closing a shape window returns to the canvas without applying cancelled edits");
+  // AA-MOBILE-REDESIGN-004: exercise a genuine JPEG Blob through the same device file-input path.
+  const jpegLayerCountBefore = (await readLayerSummary()).length;
+  const jpegImport = await evaluate(`(async () => {
+    const source = document.createElement("canvas");
+    source.width = 3;
+    source.height = 2;
+    const context = source.getContext("2d");
+    context.fillStyle = "#ff4fd8";
+    context.fillRect(0, 0, source.width, source.height);
+    const blob = await new Promise(resolve => source.toBlob(resolve, "image/jpeg", 0.9));
+    if (!blob || blob.type !== "image/jpeg" || blob.size === 0) return { type: blob?.type || null, size: blob?.size || 0 };
+    const file = new File([blob], "e2e-fixture-jpeg.jpg", { type: "image/jpeg" });
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    const input = document.querySelector("#image-file-input");
+    input.files = transfer.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    return { type: blob.type, size: blob.size };
+  })()`);
+  assert(jpegImport.type === "image/jpeg" && jpegImport.size > 0, "browser generated a real JPEG fixture for import");
+  await waitFor("JSON.parse(localStorage.getItem(\"animeart-web-document\") || \"{}\").layers?.length === " + (jpegLayerCountBefore + 1), 10000);
+  const jpegLayer = (await readLayerSummary()).at(-1);
+  assert(jpegLayer?.contentType === "image", "real JPEG import creates an image layer");
+  assert(jpegLayer?.name === "e2e-fixture-jpeg", "real JPEG import preserves the filename as its layer name");
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {
   try { ws.close(); } catch {}
