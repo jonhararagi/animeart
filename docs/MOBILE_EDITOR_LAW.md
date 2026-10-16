@@ -20,7 +20,7 @@
 
 Se considera incumplido mientras el lienzo sea pequeño, la franja superior esté saturada, los controles se superpongan, la selección/importación falle o una herramienta clave no ofrezca un panel claro. CI verde por sí sola no equivale a aceptación.
 
-**Regla de implementación:** los cambios deben continuar en la rama de trabajo ya autorizada `aa-editor-ux-002` y su PR #83. No modificar `main` directamente, no crear ramas/PR duplicadas y no declarar realizada la prueba física sin evidencia.
+**Regla de implementación:** continuar sobre la rama autorizada activa `aa-mobile-redesign-004` y PR #85. No modificar `main` directamente, no crear ramas/PR duplicadas, no fusionar ni cerrar el PR sin autorización expresa y no declarar realizada la prueba física sin evidencia.
 
 ## Ventanas de estilo y objetos: se permiten y se recomiendan
 
@@ -30,3 +30,17 @@ No se debe evitar una ventana contextual solo por miedo a ocupar espacio. El lie
 - **Formas** es una herramienta accesible desde las tareas principales. Debe ofrecer figuras útiles (círculo, rectángulo, estrella, corazón, hexágono, triángulo, globo, rayo, nube), relleno, contorno, tamaño y sombra.
 - Las ventanas aplican cambios solo al confirmar. Cancelar, la X o Escape cierran sin aplicar modificaciones pendientes. Las operaciones confirmadas deben quedar en el historial y guardarse como parte del proyecto.
 - Las ventanas deben ser compactas, adaptarse al teléfono y no quitar al usuario el lienzo una vez cerradas. No se acepta una interfaz reducida a unos pocos botones por temor a agregar paneles útiles.
+
+
+## AA-MOBILE-TOP-SAFE-002 · selección simple y zona superior despejada
+
+En teléfonos, la franja superior que puede quedar debajo del recorte del sistema debe permanecer libre de controles del editor. La barra de herramientas, las acciones contextuales y las acciones frecuentes se ubican abajo, respetando la zona segura inferior y manteniendo el lienzo como protagonista.
+
+- Un objeto seleccionado presenta un marco claro, una **X en la esquina superior derecha** y un **tirador de redimensionado en la esquina inferior derecha**.
+- La X cierra la selección, pero **no elimina el objeto**. Eliminar sigue siendo una acción separada, con posibilidad de deshacer.
+- El tirador inferior cambia el tamaño mediante gesto táctil. Se retiran los cuatro manejadores pequeños y el mando de rotación superior para reducir los puntos que el usuario debe acertar.
+- Rotar sigue disponible como herramienta explícita. Los elementos PNG, imágenes y formas conservan su selección, movimiento, orden de capas y bloqueo.
+- La barra inferior ofrece Exportar junto con Añadir, Galería, Mover, Dibujar, Texto, Deshacer, Rehacer, Eliminar, Capas y Más.
+- Las pruebas deben cubrir las zonas seguras, el acierto de ambos manejadores y la accesibilidad de Exportar desde el dock. La comprobación de CI no se confunde con una prueba física en el Xiaomi 24116RACCG.
+
+**Criterio de aceptación:** el área superior táctil queda libre, ambos manejadores realizan acciones distintas y previsibles, cerrar no borra contenido y el código actualizado invalida la caché de la PWA para evitar que el teléfono siga cargando la interfaz anterior.
