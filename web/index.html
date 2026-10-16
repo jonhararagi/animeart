@@ -44,7 +44,7 @@
           <button type="button" data-edit-goal="draw"><span aria-hidden="true">🖌️</span><b>Dibujar</b><small>Pinta sobre la imagen</small></button>
           <button type="button" data-edit-goal="text"><span aria-hidden="true">🔤</span><b>Texto</b><small>Añade palabras o globos</small></button>
           <button type="button" data-edit-goal="shapes"><span aria-hidden="true">🔷</span><b>Formas</b><small>Figuras, borde y sombra</small></button>
-          <button type="button" data-edit-goal="object-style"><span aria-hidden="true">🎨</span><b>Estilo del objeto</b><small>Color, opacidad y efectos</small></button>
+          <button type="button" data-edit-goal="object-style"><span aria-hidden="true">🎨</span><b>Apariencia del elemento</b><small>Opacidad, color y forma</small></button>
           <button type="button" data-edit-goal="color"><span aria-hidden="true">🎨</span><b>Mejorar color</b><small>Brillo y contraste</small></button>
           <button type="button" data-edit-goal="layers"><span aria-hidden="true">🗂️</span><b>Capas</b><small>Ordena los elementos</small></button>
           <button type="button" data-edit-goal="undo"><span aria-hidden="true">↶</span><b>Deshacer</b><small>Vuelve un paso atrás</small></button>
@@ -185,7 +185,8 @@
           <button id="selection-mini-back" type="button" title="Enviar una capa hacia atrás">↓ Atrás</button>
           <button id="selection-mini-front" type="button" title="Traer una capa hacia adelante">↑ Adelante</button>
           <button id="selection-mini-fit" type="button">Encajar</button>
-          <button id="selection-mini-style" type="button" title="Editar colores, formas y efectos del objeto">🎨 Estilo</button>
+          <button id="selection-mini-background" type="button" aria-pressed="false" title="Fijar esta imagen como fondo del lienzo">🖼️ Como fondo</button>
+          <button id="selection-mini-style" type="button" title="Editar colores, formas y efectos del objeto">🎨 Apariencia</button>
           <button id="selection-mini-delete" type="button" title="Eliminar el elemento seleccionado">🗑 Eliminar</button>
         </div>
       </section>
@@ -490,8 +491,8 @@
   <dialog id="background-removal-dialog" aria-labelledby="background-removal-title">
     <section class="background-removal-shell">
       <header class="background-removal-header">
-        <div><p class="eyebrow">PIXEL EDITING · LOCAL ONLY</p><h2 id="background-removal-title">Remove Background</h2><p>Remove a flat-color background or refine the result with the manual erase brush.</p></div>
-        <button id="cancel-background-removal" type="button">Cancel</button>
+        <div><p class="eyebrow">EDICIÓN LOCAL</p><h2 id="background-removal-title">Quitar fondo</h2><p>Funciona mejor con fondos lisos. Primero detectá el color del fondo y revisá la vista previa antes de aplicar.</p></div>
+        <button id="cancel-background-removal" type="button">✕ Cancelar</button>
       </header>
       <div class="background-removal-workspace">
         <div class="background-removal-preview-wrap"><canvas id="background-removal-preview" aria-label="Background removal preview"></canvas></div>
@@ -509,28 +510,35 @@
             </div>
             <p class="profile-help">Profiles stay on this device. They save processing parameters, not a trained AI model.</p>
           </section>
-          <label class="text-field" for="background-removal-color">Background color
+          <label class="text-field" for="background-removal-color">Color del fondo
             <input id="background-removal-color" type="color" value="#ffffff">
           </label>
-          <button id="sample-background-color" type="button">Sample color from preview</button>
-          <label class="text-field" for="background-removal-tolerance">Color tolerance <output id="background-removal-tolerance-value">36</output>
+          <div class="background-removal-quick-actions" role="group" aria-label="Opciones rápidas para detectar el fondo">
+            <button id="background-auto-detect" type="button">🪄 Detectar fondo en esquina</button>
+            <button id="background-preset-white" type="button">Fondo blanco</button>
+            <button id="background-preset-dark" type="button">Fondo oscuro</button>
+            <button id="sample-background-color" type="button">🎯 Elegir color tocando la imagen</button>
+          </div>
+          <details class="background-removal-advanced"><summary>Más ajustes (bordes y borrado manual)</summary>
+          <label class="text-field" for="background-removal-tolerance">Tolerancia del color <output id="background-removal-tolerance-value">36</output>
             <input id="background-removal-tolerance" type="range" min="0" max="160" value="36">
           </label>
-          <label class="text-field" for="background-removal-feather">Edge softness <output id="background-removal-feather-value">18</output>
+          <label class="text-field" for="background-removal-feather">Suavidad del borde <output id="background-removal-feather-value">18</output>
             <input id="background-removal-feather" type="range" min="0" max="100" value="18">
           </label>
-          <label class="text-field" for="background-removal-edge-sensitivity">Ink edge protection <output id="background-removal-edge-sensitivity-value">42</output>
+          <label class="text-field" for="background-removal-edge-sensitivity">Protección de contornos <output id="background-removal-edge-sensitivity-value">42</output>
             <input id="background-removal-edge-sensitivity" type="range" min="0" max="120" value="42">
           </label>
-          <label class="background-removal-toggle"><input id="background-removal-protect-line-art" type="checkbox" checked> Protect dark outlines and strong color boundaries</label>
-          <label class="background-removal-toggle"><input id="background-removal-decontaminate" type="checkbox" checked> Clean background-color fringe on soft edges</label>
-          <label class="text-field" for="background-removal-brush-size">Erase brush <output id="background-removal-brush-size-value">28 px</output>
+          <label class="background-removal-toggle"><input id="background-removal-protect-line-art" type="checkbox" checked> Proteger líneas oscuras y bordes de color</label>
+          <label class="background-removal-toggle"><input id="background-removal-decontaminate" type="checkbox" checked> Limpiar halos del color de fondo</label>
+          <label class="text-field" for="background-removal-brush-size">Tamaño del borrador manual <output id="background-removal-brush-size-value">28 px</output>
             <input id="background-removal-brush-size" type="range" min="2" max="180" value="28">
           </label>
-          <label class="background-removal-toggle"><input id="background-removal-manual" type="checkbox"> Manual erase mode</label>
-          <div class="background-removal-actions"><button id="undo-background-erase" type="button" disabled>Undo erase stroke</button><button id="clear-background-erase" type="button">Clear erase strokes</button></div>
-          <p id="background-removal-status" role="status" aria-live="polite">Click “Sample color” then choose the background color in the preview.</p>
-          <button id="apply-background-removal" type="button">Apply transparency to layer</button>
+          <label class="background-removal-toggle"><input id="background-removal-manual" type="checkbox"> Activar borrado manual sobre la vista previa</label>
+          <div class="background-removal-actions"><button id="undo-background-erase" type="button" disabled>↶ Deshacer borrado</button><button id="clear-background-erase" type="button">Limpiar trazos</button></div>
+          </details>
+          <p id="background-removal-status role="status" aria-live="polite">Usá “Detectar fondo en esquina” o tocá “Elegir color” y después toca el fondo en la imagen.</p>
+          <button id="apply-background-removal" type="button">Aplicar transparencia a la imagen</button>
         </div>
       </div>
     </section>
@@ -556,12 +564,11 @@
 
  aria-labelledby="image-edit-title">
     <form id="image-edit-form" method="dialog">
-      <h2 id="image-edit-title">Recortar o cambiar tamaño</h2>
-      <p id="image-edit-source-size" class="image-edit-source-size">Seleccioná una capa de imagen para empezar.</p>
+      <header class="image-edit-header"><div><p class="eyebrow">RECORTE INTERACTIVO</p><h2 id="image-edit-title">✂️ Símbolo de recorte</h2><p id="image-edit-source-size" class="image-edit-source-size">Arrastrá el marco sobre la imagen para elegir qué conservar.</p></div><button type="button" id="close-image-edit" class="mini-dialog-close" aria-label="Cancelar recorte y cerrar">✕</button></header>
       <section class="crop-preview-workspace" aria-label="Recorte visual">
         <canvas id="crop-preview" aria-label="Arrastrá dentro del marco para moverlo y usa los puntos blancos para redimensionarlo"></canvas>
-        <button type="button" id="crop-reset-selection" class="crop-reset-selection" aria-label="Restablecer el marco de recorte a la imagen completa" title="Restablecer el recorte">×</button>
-        <p id="crop-preview-hint">Arrastrá dentro del marco para moverlo. Usá los puntos blancos para cambiar el tamaño; tocá fuera para crear otro marco.</p>
+        <button type="button" id="crop-reset-selection" class="crop-reset-selection" aria-label="Restablecer el marco de recorte a la imagen completa" title="Restablecer el marco">↺</button>
+        <p id="crop-preview-hint">Arrastrá dentro del marco para moverlo. Tiradores blancos = cambiar tamaño. ✕ cancela; Recortar aplica.</p>
       </section>
       <fieldset class="image-edit-mode">
         <legend>Operación</legend>
@@ -598,7 +605,7 @@
         <label class="image-edit-aspect" for="image-resize-keep-aspect"><input id="image-resize-keep-aspect" type="checkbox" checked> Mantener la proporción y el tamaño visual</label>
       </section>
       <p class="image-edit-note">Solo cambia la imagen seleccionada. Deshacer y rehacer restauran sus píxeles y posición anteriores.</p>
-      <div class="dialog-actions"><button type="button" id="cancel-image-edit">Cancelar</button><button type="submit" id="apply-image-edit">Aplicar</button></div>
+      <div class="dialog-actions"><button type="button" id="cancel-image-edit">✕ Cancelar</button><button type="submit" id="apply-image-edit">✂️ Recortar</button></div>
     </form>
   </dialog>
   <dialog id="asset-library-dialog" aria-labelledby="asset-library-title">
