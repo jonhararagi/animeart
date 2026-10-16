@@ -385,7 +385,6 @@ try {
   const dragStartScreen = await evaluate('(() => { const canvas = document.querySelector("#canvas"); const rect = canvas.getBoundingClientRect(); const doc = JSON.parse(localStorage.getItem("animeart-web-document")); const ids = ' + JSON.stringify(selectedLayerIds) + '; const points = doc.layers.filter(layer => ids.includes(layer.id)).flatMap(layer => layer.strokes.flatMap(stroke => stroke.points)); if (!points.length) return null; const minX = Math.min(...points.map(point => point.x)); const maxX = Math.max(...points.map(point => point.x)); const minY = Math.min(...points.map(point => point.y)); const maxY = Math.max(...points.map(point => point.y)); const point = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 }; const fitScale = Math.min(rect.width / doc.width, rect.height / doc.height); return { x: rect.left + rect.width / 2 + (point.x - doc.width / 2) * fitScale, y: rect.top + rect.height / 2 + (point.y - doc.height / 2) * fitScale }; })()');
   assert(Boolean(dragStartScreen), "multi-selection has a group-bounds interior hit point away from corner handles");
   await mouseDrag(dragStartScreen, { x: dragStartScreen.x + 50, y: dragStartScreen.y });
-  console.log("MULTI_SELECTION_TRACE", await evaluate('JSON.stringify(window.__animeArtSelectionTrace || null)'));
   const afterMulti = await readDocument();
   const multiDeltas = multiBefore.map(item => ({
     id: item.id,
