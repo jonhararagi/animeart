@@ -2093,18 +2093,6 @@ function beginSelectionInteraction(event) {
       groupScreenGeometry.closeHandle = groupScreenGeometry.corners[1];
       groupScreenGeometry.resizeHandle = groupScreenGeometry.corners[2];
       const groupHit = hitTestHandle(screenPoint, groupScreenGeometry, HANDLE_RADIUS);
-      window.__animeArtSelectionTrace = {
-        selectedCount: state.selectedLayerIds.length,
-        selectedHit,
-        groupHit,
-        screenPoint,
-        documentPoint,
-        groupCorners: groupScreenGeometry.corners,
-        closeHandle: groupScreenGeometry.closeHandle,
-        resizeHandle: groupScreenGeometry.resizeHandle,
-        layerIds: layers.map(layer => layer.id),
-        locked: layers.map(layer => layer.locked)
-      };
       if (groupHit === "close") {
         closeSelectionBox();
         return;
