@@ -2280,6 +2280,7 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   }
   body.mobile-tools-collapsed > .workspace { grid-template-rows: minmax(0, 1fr) 0 0 !important; }
   body.mobile-tools-collapsed > .workspace > .toolbar { display: none !important; }
+  body.mobile-tools-open > .workspace > .toolbar .easy-edit-heading { display: flex !important; }
   body > .workspace > .toolbar .easy-edit-heading,
   body > .workspace > .toolbar .editor-mode-switch,
   body > .workspace > .toolbar .editor-mode-hint,
