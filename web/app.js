@@ -25,6 +25,29 @@ const canvas = document.querySelector("#canvas");
 const removeSelectedImageButton = document.querySelector("#remove-selected-image");
 const ctx = canvas.getContext("2d", { alpha: true });
 const status = document.querySelector("#status");
+const mobileFeedback = document.querySelector("#mobile-feedback");
+let mobileFeedbackTimer = null;
+function showMobileFeedback(message, kind = "info") {
+  if (status) status.textContent = message;
+  if (!mobileFeedback) return;
+  mobileFeedback.textContent = message;
+  mobileFeedback.dataset.kind = kind;
+  mobileFeedback.hidden = false;
+  if (mobileFeedbackTimer) window.clearTimeout(mobileFeedbackTimer);
+  mobileFeedbackTimer = window.setTimeout(() => { mobileFeedback.hidden = true; }, kind === "error" ? 7000 : 3500);
+}
+function openImagePicker() {
+  if (!imageFileInput) {
+    showMobileFeedback("No se encontró el selector de imágenes. Recargá AnimeArt.", "error");
+    return;
+  }
+  try {
+    // Keep the picker activation on the original trusted click path used by Android WebView and E2E.
+    imageFileInput.click();
+  } catch {
+    showMobileFeedback("Android no pudo abrir la galería. Recargá la app e intentá otra vez.", "error");
+  }
+}
 const recoveryNotice = document.querySelector("#storage-recovery-notice");
 const layersEl = document.querySelector("#layers");
 const adjustmentLayerName = document.querySelector("#adjustment-layer-name");
@@ -3069,7 +3092,7 @@ if (mobileDock) {
       document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
       mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
       mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
-      imageFileInput.click();
+      openImagePicker();
       return;
     }
     if (action === "delete-selected") {
@@ -3711,8 +3734,9 @@ document.querySelector("#apply-recolor").addEventListener("click",async()=>{
  } catch(error){document.querySelector("#recolor-status").textContent=error.message||"Could not apply recolor";} finally{button.disabled=false;}
 });
 
-async function importImageIntoEditor(file, message = "Image imported") {
+async function importImageIntoEditor(file, message = "Imagen importada") {
   if (!file) return false;
+  showMobileFeedback("Importando imagen…", "info");
   try {
     const result = await applyImageFileImport(file, {
       document: state.document,
@@ -3727,10 +3751,13 @@ async function importImageIntoEditor(file, message = "Image imported") {
     state.document = result.document;
     setSelection([result.layer.id], result.layer.id);
     state.dirty = true;
-    refreshDocument(result.optimized ? `${message} (optimized locally)` : message);
+    refreshDocument(result.optimized ? `${message} (optimizada para el teléfono)` : message);
+    redraw();
+    showMobileFeedback(result.optimized ? "Imagen añadida y optimizada. Ya está en el lienzo." : "Imagen añadida al lienzo.", "success");
     return true;
   } catch (error) {
-    status.textContent = error?.message || "Image import failed";
+    const reason = error?.message || "No se pudo importar la imagen.";
+    showMobileFeedback("No se pudo añadir la imagen: " + reason, "error");
     return false;
   }
 }
@@ -3745,14 +3772,12 @@ function clearDropFeedback(message = null) {
   if (message) status.textContent = message;
 }
 
-document.querySelector("#add-image-layer").addEventListener("click", () => {
-  imageFileInput.click();
-});
-document.querySelector("#quick-import-images")?.addEventListener("click", () => imageFileInput.click());
+document.querySelector("#add-image-layer").addEventListener("click", openImagePicker);
+document.querySelector("#quick-import-images")?.addEventListener("click", openImagePicker);
 document.querySelector("#quick-open-asset-library")?.addEventListener("click", () => {
   document.querySelector("#open-asset-library")?.click();
 });
-document.querySelector("#canvas-import-images")?.addEventListener("click", () => imageFileInput.click());
+document.querySelector("#canvas-import-images")?.addEventListener("click", openImagePicker);
 document.querySelector("#canvas-open-asset-library")?.addEventListener("click", () => {
   document.querySelector("#open-asset-library")?.click();
 });
@@ -3760,10 +3785,7 @@ document.querySelector("#canvas-open-asset-library")?.addEventListener("click", 
 imageFileInput.addEventListener("change", async () => {
   const files = [...(imageFileInput.files || [])].filter(file => file && (!file.type || file.type.startsWith("image/")));
   imageFileInput.value = "";
-  if (!files.length) {
-    status.textContent = "No se seleccionaron imágenes para importar";
-    return;
-  }
+  if (!files.length) return;
   let imported = 0;
   for (const file of files) {
     if (await importImageIntoEditor(file, "Imagen importada")) imported += 1;
