@@ -3265,3 +3265,12 @@ Corrección de inventario durante la integración: aunque la sincronización de 
 - La brecha de producción que sí permanece es Android: `ProjectPersistence.loadDocument()` todavía convertía fallos en `null`, y `MainActivity` abría un documento vacío por defecto. El PR AA-RECOVERY-SAFETY-001 introduce `RecoveryResult.Missing/Loaded/Failed`, rechazo de documentos incompatibles, preservación del payload y decisión explícita antes de empezar un documento nuevo.
 - PR de integración: https://github.com/jonhararagi/animeart/pull/76. Rama `integration/animeart-recovery-safety-2026-10-14`. HEAD actual al iniciar esta reconciliación: `abd4468ef06c8203fcd2409c2866fa84fd8e1bdc`; esta modificación documental generará un nuevo HEAD y exige validar nuevamente ambos workflows sobre ese SHA final.
 - Estado: integración Android y documentación en revisión; no declarar PASS ni fusionar hasta que Web CI y Android CI del HEAD final terminen correctamente. La protección de recuperación no está integrada en `main` hasta el merge del PR.
+
+## AA-GALLERY-DOCK-001 — Acceso directo a biblioteca en el modelo móvil (2026-10-16)
+
+- Rama de trabajo existente: `aa-editor-ux-002`, PR #83. No se creó otra rama y no se modificó `main`.
+- La barra móvil ahora incluye `Galería` como acción primaria independiente de `Añadir`: una abre la biblioteca local reutilizable y la otra abre el selector de imágenes del dispositivo.
+- En teléfonos de más de 400 px CSS, el dock utiliza ocho acciones en una fila; en pantallas de hasta 400 px pasa a una cuadrícula de cuatro columnas y dos filas para conservar objetivos táctiles cómodos.
+- Se añadieron assertions al smoke test y al E2E de navegador real para la presencia de Galería y la apertura/cierre de la biblioteca. Se incrementó el caché de la PWA a `animeart-web-shell-v27` tanto en la aplicación como en el service worker, con sus assertions actualizadas.
+- TIMER: 1–2 horas activas para este tramo de accesibilidad y regresión; la CI y la validación física son dependencias aparte.
+- Estado al registrar el cambio: pendiente comprobar Web CI y Android CI sobre el HEAD resultante. La validación en emulador no sustituye la prueba táctil en el Xiaomi 24116RACCG.
