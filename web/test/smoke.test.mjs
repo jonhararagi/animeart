@@ -248,7 +248,7 @@ test("multi-format export UI uses the existing document renderer and local downl
 
 test("PNG export composes visible layers with opacity and transforms while ignoring lock state", async () => {
   const js = await readFile("app.js", "utf8");
-  assert.match(js, /for \(const layer of document\.layers\)/);
+  assert.match(js, /for \\(const layer of layersInRenderOrder\\)/);
   assert.match(js, /if \(!layer\.visible\) continue/);
   assert.match(js, /context\.globalAlpha = layer\.opacity/);
   assert.match(js, /transformForLayer: layer => layer\.transform/);
@@ -762,9 +762,10 @@ test("AA-EDITOR-UX-002 surfaces image import/library, compact view options, laye
   assert.match(html, /id="canvas-import-images"/);
   assert.match(html, /id="canvas-open-asset-library"/);
   assert.match(html, /id="image-file-input".*multiple/);
-  assert.match(html, /Recortar o cambiar tamaño/);
+  assert.match(html, /id="image-edit-title">✂️ Símbolo de recorte/);
   assert.match(html, /Proporción del recorte/);
-  assert.match(html, /id="cancel-image-edit">Cancelar/);
+  assert.match(html, /id="cancel-image-edit">✕ Cancelar/);
+  assert.match(html, /id="close-image-edit"/);
   assert.match(html, /<details class="canvas-view-menu">/);
   assert.match(html, /id="selection-mini-lock"/);
   assert.match(html, /id="selection-mini-back"/);
