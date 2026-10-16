@@ -2436,3 +2436,406 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   #remove-selected-image { display: none !important; }
   .mobile-feedback { bottom: calc(74px + env(safe-area-inset-bottom)) !important; }
 }
+
+
+/* AA-MOBILE-PICSART-UX-005: coherent phone-first canvas, contextual actions and a real scrollable tool dock. */
+@media (max-width: 920px) {
+  html, body {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden !important;
+    overscroll-behavior: none;
+  }
+  body {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: calc(48px + env(safe-area-inset-top)) minmax(0, 1fr) auto !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    background: #0b0d14 !important;
+  }
+  body > .topbar {
+    grid-row: 1 !important;
+    display: flex !important;
+    position: relative !important;
+    top: auto !important;
+    z-index: 30 !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    height: calc(48px + env(safe-area-inset-top)) !important;
+    min-height: calc(48px + env(safe-area-inset-top)) !important;
+    padding: env(safe-area-inset-top) 10px 0 !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    border: 0 !important;
+    border-bottom: 1px solid #242538 !important;
+    border-radius: 0 !important;
+    background: #10121d !important;
+    box-shadow: none !important;
+  }
+  body > .topbar .brand {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    font-size: .74rem !important;
+    letter-spacing: .11em !important;
+    gap: 7px !important;
+  }
+  body > .topbar .brand::before {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 9px !important;
+  }
+  body > .topbar .topbar-actions { display: none !important; }
+  body > .topbar .mobile-top-actions {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    align-items: center !important;
+    gap: 5px !important;
+  }
+  body > .topbar .mobile-top-actions button {
+    display: grid !important;
+    place-items: center !important;
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    padding: 0 !important;
+    border: 1px solid #393348 !important;
+    border-radius: 13px !important;
+    background: linear-gradient(145deg, #222031, #171722) !important;
+    color: #f7f2ff !important;
+    font-size: 1.28rem !important;
+    font-weight: 850 !important;
+    box-shadow: inset 0 1px 0 #ffffff0d !important;
+    touch-action: manipulation;
+  }
+  body > .workspace {
+    grid-row: 2 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+    isolation: isolate;
+  }
+  body > .workspace > .toolbar,
+  body > .workspace > .layers {
+    display: none !important;
+  }
+  body > .workspace > .canvas-wrap {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) auto !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background-color: #10121b !important;
+    box-shadow: none !important;
+  }
+  body > .workspace > .canvas-wrap > #canvas {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    touch-action: none;
+  }
+  body .canvas-tools,
+  body .canvas-left-actions,
+  body #selection-indicator,
+  body #remove-selected-image,
+  body .canvas-view-menu,
+  body .transparency-shortcuts,
+  body .transparency-note,
+  body .mobile-tools-toggle {
+    display: none !important;
+  }
+  body > .workspace > .canvas-wrap > .selection-mini-panel:not([hidden]) {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    position: relative !important;
+    inset: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    max-height: 62px !important;
+    margin: 0 !important;
+    padding: 7px 8px max(7px, env(safe-area-inset-bottom)) !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-top: 1px solid #393348 !important;
+    border-radius: 14px 14px 0 0 !important;
+    background: linear-gradient(180deg, #191722, #12121c) !important;
+    color: #f7f2ff !important;
+    box-shadow: 0 -6px 18px #0002 !important;
+    backdrop-filter: blur(18px);
+  }
+  body > .workspace > .canvas-wrap > .selection-mini-panel[hidden] {
+    display: none !important;
+  }
+  body .selection-mini-panel #selection-mini-layer-name {
+    flex: 0 1 92px !important;
+    width: 92px !important;
+    max-width: 92px !important;
+    min-width: 44px !important;
+    color: #c7c2d7 !important;
+    font-size: .6rem !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+  body .selection-mini-actions {
+    display: flex !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    gap: 5px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none;
+  }
+  body .selection-mini-actions::-webkit-scrollbar { display: none; }
+  body .selection-mini-actions button {
+    display: grid !important;
+    place-items: center !important;
+    flex: 0 0 42px !important;
+    width: 42px !important;
+    min-width: 42px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 0 !important;
+    border-radius: 12px !important;
+    font-size: 0 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+  }
+  body .selection-mini-actions button::before { font-size: 1.1rem !important; }
+  body #selection-mini-lock::before { content: "🔒"; }
+  body #selection-mini-lock[aria-pressed="true"]::before { content: "🔓"; }
+  body #selection-mini-back::before { content: "↙"; }
+  body #selection-mini-front::before { content: "↗"; }
+  body #selection-mini-fit::before { content: "⤢"; }
+  body #selection-mini-style::before { content: "✦"; }
+  body #selection-mini-delete::before { content: "🗑"; }
+  body .mobile-feedback {
+    position: fixed !important;
+    z-index: 90 !important;
+    top: calc(48px + env(safe-area-inset-top) + 8px) !important;
+    right: 10px !important;
+    bottom: auto !important;
+    left: 10px !important;
+    width: fit-content !important;
+    max-width: calc(100vw - 20px) !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+    padding: 7px 12px !important;
+    border: 1px solid #53446d !important;
+    border-radius: 999px !important;
+    background: rgb(31 25 43 / 94%) !important;
+    color: #f5ecff !important;
+    font-size: .72rem !important;
+    font-weight: 750 !important;
+    line-height: 1.3 !important;
+    box-shadow: 0 6px 20px #0005 !important;
+    text-align: center !important;
+    pointer-events: none !important;
+  }
+  body .mobile-feedback[hidden] { display: none !important; }
+  body > .mobile-touch-dock {
+    grid-row: 3 !important;
+    position: relative !important;
+    inset: auto !important;
+    display: flex !important;
+    flex: 0 0 auto !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 4px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: calc(78px + env(safe-area-inset-bottom)) !important;
+    max-height: calc(78px + env(safe-area-inset-bottom)) !important;
+    margin: 0 !important;
+    padding: 7px 7px max(7px, env(safe-area-inset-bottom)) !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    border: 0 !important;
+    border-top: 1px solid #393348 !important;
+    border-radius: 0 !important;
+    background: rgb(16 15 24 / 98%) !important;
+    box-shadow: 0 -8px 22px #0005 !important;
+    z-index: 60 !important;
+  }
+  body > .mobile-touch-dock::-webkit-scrollbar { display: none; }
+  body > .mobile-touch-dock button {
+    display: flex !important;
+    flex: 0 0 64px !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    width: 64px !important;
+    min-width: 64px !important;
+    max-width: 64px !important;
+    height: 60px !important;
+    min-height: 60px !important;
+    padding: 5px 2px !important;
+    border: 1px solid transparent !important;
+    border-radius: 13px !important;
+    background: transparent !important;
+    color: #c5c0d1 !important;
+    font-size: .62rem !important;
+    font-weight: 750 !important;
+    line-height: 1.1 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    scroll-snap-align: start;
+    touch-action: pan-x manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body > .mobile-touch-dock button span:first-child {
+    display: block !important;
+    font-size: 1.22rem !important;
+    line-height: 1 !important;
+  }
+  body > .mobile-touch-dock button span:last-child {
+    display: block !important;
+    max-width: 100% !important;
+    font-size: inherit !important;
+    letter-spacing: -.02em !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  body > .mobile-touch-dock button[aria-pressed="true"] {
+    border-color: #9a6cf2 !important;
+    background: linear-gradient(155deg, #322449, #1c1b2c) !important;
+    color: #ffffff !important;
+  }
+  body > .mobile-touch-dock button:disabled { opacity: .35 !important; }
+  body.mobile-tools-open > .workspace,
+  body.mobile-layers-open > .workspace {
+    grid-template-rows: minmax(0, 1fr) minmax(180px, 38dvh) !important;
+  }
+  body.mobile-tools-open > .workspace > .toolbar,
+  body.mobile-layers-open > .workspace > .layers {
+    display: block !important;
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    position: relative !important;
+    inset: auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: 38dvh !important;
+    margin: 0 !important;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom)) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    border: 0 !important;
+    border-top: 1px solid #3b354a !important;
+    border-radius: 17px 17px 0 0 !important;
+    background: linear-gradient(180deg, #1a1724, #11121c 85%) !important;
+    box-shadow: 0 -8px 24px #0003 !important;
+    overscroll-behavior: contain;
+  }
+  body.mobile-tools-open > .workspace > .layers { display: none !important; }
+  body.mobile-layers-open > .workspace > .toolbar { display: none !important; }
+  body.mobile-tools-open > .workspace > .canvas-wrap > .selection-mini-panel,
+  body.mobile-layers-open > .workspace > .canvas-wrap > .selection-mini-panel {
+    display: none !important;
+  }
+  body.mobile-tools-open > .workspace .easy-edit-panel {
+    display: grid !important;
+    gap: 10px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+  body.mobile-tools-open > .workspace .easy-edit-heading h2 { font-size: 1rem !important; }
+  body.mobile-tools-open > .workspace .easy-edit-heading p,
+  body.mobile-tools-open > .workspace .editor-mode-hint { font-size: .68rem !important; }
+  body.mobile-tools-open > .workspace .asset-quick-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+  body.mobile-tools-open > .workspace .asset-quick-actions button {
+    min-height: 48px !important;
+    padding: 8px !important;
+    border-radius: 12px !important;
+  }
+  body.mobile-tools-open > .workspace .easy-edit-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    overflow: visible !important;
+    padding: 0 0 4px !important;
+  }
+  body.mobile-tools-open > .workspace .easy-edit-grid button {
+    display: grid !important;
+    grid-template-columns: 27px minmax(0, 1fr) !important;
+    grid-template-rows: auto auto !important;
+    align-items: center !important;
+    min-width: 0 !important;
+    min-height: 54px !important;
+    padding: 8px !important;
+    border-radius: 12px !important;
+    text-align: left !important;
+    white-space: normal !important;
+  }
+  body.mobile-tools-open > .workspace .easy-edit-grid button > span { grid-row: 1 / span 2 !important; }
+  body.mobile-tools-open > .workspace .easy-edit-grid button b { font-size: .71rem !important; line-height: 1.2 !important; }
+  body.mobile-tools-open > .workspace .easy-edit-grid button small { font-size: .59rem !important; line-height: 1.2 !important; }
+  body.mobile-layers-open > .workspace > .layers { overflow-y: auto !important; }
+  body.mobile-layers-open > .workspace > .layers h2 { margin: 0 0 8px !important; font-size: 1rem !important; }
+  body.mobile-layers-open > .workspace > .layers #layers {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 6px !important;
+  }
+  body.mobile-layers-open > .workspace > .layers #layers li { min-height: 54px !important; }
+  body.mobile-tools-open .mobile-touch-dock [data-touch-action="more"],
+  body.mobile-layers-open .mobile-touch-dock [data-touch-action="layers"] {
+    border-color: #9164e8 !important;
+    background: #2c2240 !important;
+    color: #ffffff !important;
+  }
+}
+@media (max-width: 380px) {
+  body > .mobile-touch-dock button { flex-basis: 60px !important; width: 60px !important; min-width: 60px !important; }
+  body > .topbar .brand { font-size: .66rem !important; }
+  body > .topbar .mobile-top-actions button { width: 42px !important; min-width: 42px !important; flex-basis: 42px !important; }
+}
