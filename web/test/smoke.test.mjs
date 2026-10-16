@@ -833,3 +833,17 @@ test("AA-MOBILE-PICSART-PANEL-LAW keeps the phone editor canvas-first with unive
   assert.match(html, /data-touch-action="import-image"/);
   assert.match(html, /data-touch-action="more"/);
 });
+
+
+test("AA-MOBILE-CONTEXT-PANEL-001 opens drawing controls as a dedicated bottom sheet instead of a desktop toolbar", async () => {
+  const html = await readFile("index.html", "utf8");
+  const app = await readFile("app.js", "utf8");
+  const css = await readFile("styles.css", "utf8");
+  assert.match(html, /id="mobile-context-heading"/);
+  assert.match(html, /id="mobile-context-close"/);
+  assert.match(app, /function openMobileContextPanel\(/);
+  assert.match(app, /openMobileContextPanel\("draw"\)/);
+  assert.match(css, /AA-MOBILE-CONTEXT-PANEL-001/);
+  assert.match(css, /mobile-draw-panel-open/);
+  assert.match(css, /\.toolbar > \.brush-control:not\(\.magic-tolerance-control\)/);
+});
