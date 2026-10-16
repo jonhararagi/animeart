@@ -1289,7 +1289,8 @@ try {
   // AA-MOBILE-REDESIGN-004: verify that mobile rotation and flip controls mutate the selected image and can be restored.
   await click('.mobile-touch-dock [data-touch-action="layers"]');
   await waitFor('document.body.classList.contains("mobile-layers-open")');
-  await click('#layers li button.layer-select');
+  const selectedImportedRow = await evaluate('(() => { const doc=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const layer=doc.layers?.find(item=>item.name==="e2e-mobile-import"); const row=layer ? document.querySelector("#layers li[data-layer-id=\\\"" + layer.id + "\\\"] button.layer-select") : null; row?.click(); return Boolean(row); })()');
+  assert(selectedImportedRow, "mobile layer list can select the exact imported image for transform tests");
   await waitFor('document.querySelector("#selection-mini-panel").hidden === false');
   const mobileTransformBeforeButtonRotate = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation');
   await click('.mobile-touch-dock [data-touch-action="rotate-right"]');
