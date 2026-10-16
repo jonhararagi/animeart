@@ -100,6 +100,7 @@ async function waitForDevTools() {
 const wsUrl = await waitForDevTools();
 const ws = new WebSocket(wsUrl);
 const pending = new Map();
+const browserDiagnostics = [];
 let nextId = 1;
 
 const cdp = (method, params = {}) => new Promise((resolveCdp, rejectCdp) => {
@@ -110,7 +111,18 @@ const cdp = (method, params = {}) => new Promise((resolveCdp, rejectCdp) => {
 
 ws.addEventListener("message", event => {
   const message = JSON.parse(event.data);
-  if (!message.id) return;
+  if (!message.id) {
+    if (message.method === "Runtime.exceptionThrown") {
+      const details = message.params?.exceptionDetails;
+      browserDiagnostics.push({kind:"exception",text:details?.text||"",description:details?.exception?.description||"",url:details?.url||"",line:details?.lineNumber});
+    } else if (message.method === "Runtime.consoleAPICalled" && message.params?.type === "error") {
+      browserDiagnostics.push({kind:"console.error",args:(message.params.args||[]).map(arg=>arg.value??arg.description??arg.type).join(" ")});
+    } else if (message.method === "Log.entryAdded" && message.params?.entry?.level === "error") {
+      const entry=message.params.entry;
+      browserDiagnostics.push({kind:"browser.log",text:entry.text||"",url:entry.url||"",line:entry.lineNumber});
+    }
+    return;
+  }
   const waiter = pending.get(message.id);
   if (!waiter) return;
   pending.delete(message.id);
@@ -122,6 +134,16 @@ await new Promise((resolveWs, rejectWs) => {
   ws.addEventListener("open", resolveWs, { once: true });
   ws.addEventListener("error", rejectWs, { once: true });
 });
+
+// Subscribe before reloading so syntax/runtime failures during module startup are not lost.
+await cdp("Runtime.enable");
+await cdp("Log.enable");
+await cdp("Page.enable");
+await cdp("Page.addScriptToEvaluateOnNewDocument", {source:
+  'window.addEventListener("error", event => console.error("ANIMEART_WINDOW_ERROR", event.message, event.filename, event.lineno, event.colno));' +
+  'window.addEventListener("unhandledrejection", event => console.error("ANIMEART_UNHANDLED_REJECTION", event.reason?.stack || String(event.reason)));'
+});
+await cdp("Page.reload", {ignoreCache:true});
 
 const evaluate = async (expression) => {
   const result = await cdp("Runtime.evaluate", {
@@ -287,13 +309,20 @@ try {
   await cdp("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   await waitFor(`document.readyState === "complete"`);
   await waitFor(`document.querySelector("#canvas") !== null`);
-  await waitForServiceWorkerReadiness();
+  try {
+    await waitForServiceWorkerReadiness();
+  } catch (error) {
+    console.error("ANIMEART_BROWSER_DIAGNOSTICS " + JSON.stringify(browserDiagnostics));
+    throw error;
+  }
 
   assert(await evaluate("document.title") === "AnimeArt Studio | Image Editor", "real browser loaded the AnimeArt Studio entrypoint");
   const canvas = await selectorCenter("#canvas");
   assert(canvas.width > 0 && canvas.height > 0, "canvas exists and has usable layout dimensions");
   assert(await evaluate(`getComputedStyle(document.querySelector("#canvas")).visibility !== "hidden" && getComputedStyle(document.querySelector("#canvas")).display !== "none"`), "canvas is visible");
   assert((await evaluate('document.querySelector("#status").textContent'))?.includes("CANVAS READY"), "editor reports canvas/service-worker readiness");
+  assert(await evaluate('document.querySelector("#canvas-import-images").getBoundingClientRect().width > 0 && document.querySelector("#canvas-open-asset-library").getBoundingClientRect().width > 0'), "image import and reusable library remain visible next to the canvas without scrolling");
+  assert(await evaluate('document.querySelector(".canvas-view-menu").open === false'), "transparency and canvas-background controls stay tucked inside the collapsed View menu");
 
   assert(await evaluate('document.querySelectorAll("#layers li").length === 1'), "initial editor state contains one drawing layer");
   await saveScreenshot("animeart-studio-initial.png");
@@ -391,6 +420,17 @@ try {
   assert(await evaluate('document.querySelector("#adjustment-brightness").value === "125"'), "real browser previews a non-destructive image adjustment");
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "e2e-fixture" && layer.adjustments?.brightness === 125)'), "real browser persists the image adjustment in the existing project document");
 
+  assert(await evaluate('document.querySelector("#selection-mini-panel").hidden === false'), "selecting an image exposes its floating layer-action panel");
+  await click("#selection-mini-lock");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "e2e-fixture")?.locked === true', 10000);
+  await click("#selection-mini-lock");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "e2e-fixture")?.locked === false', 10000);
+  const imageOrderBefore = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.findIndex(layer => layer.name === "e2e-fixture")');
+  await click("#selection-mini-back");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.findIndex(layer => layer.name === "e2e-fixture") < ' + imageOrderBefore, 10000);
+  await click("#selection-mini-front");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.findIndex(layer => layer.name === "e2e-fixture") === ' + imageOrderBefore, 10000);
+
 
 
 
@@ -457,6 +497,7 @@ try {
   const beforeCropSample = beforeCropDocument.layers.find(layer => layer.name === "battleworn_knight");
   await click("#crop-resize-image");
   await waitFor('document.querySelector("#image-edit-dialog").open === true');
+  assert(await evaluate('document.querySelector("#image-edit-title").textContent === "Recortar o cambiar tamaño"'), "crop dialog presents its primary actions in Spanish");
   await waitFor('document.querySelector("#crop-preview").width > 1', 15000);
   assert(await evaluate('document.querySelector("#image-crop-width").value === "944" && document.querySelector("#image-crop-height").value === "944"'), "crop dialog reads the selected image dimensions");
   assert(await evaluate('document.querySelector("#crop-preview").height > 1'), "crop dialog renders an actual image preview");
@@ -465,8 +506,27 @@ try {
     { x: cropPreviewBounds.left + cropPreviewBounds.width * 0.15, y: cropPreviewBounds.top + cropPreviewBounds.height * 0.15 },
     { x: cropPreviewBounds.left + cropPreviewBounds.width * 0.42, y: cropPreviewBounds.top + cropPreviewBounds.height * 0.35 }
   );
-  const drawnCrop = await evaluate('(() => ({ x:Number(document.querySelector("#image-crop-x").value), y:Number(document.querySelector("#image-crop-y").value), width:Number(document.querySelector("#image-crop-width").value), height:Number(document.querySelector("#image-crop-height").value) }))()');
+  let drawnCrop = await evaluate('(() => ({ x:Number(document.querySelector("#image-crop-x").value), y:Number(document.querySelector("#image-crop-y").value), width:Number(document.querySelector("#image-crop-width").value), height:Number(document.querySelector("#image-crop-height").value) }))()');
   assert(drawnCrop.width > 1 && drawnCrop.height > 1 && drawnCrop.x >= 0 && drawnCrop.y >= 0, "dragging the preview creates a real pixel crop selection");
+
+  const moveCropStart = await evaluate('(() => { const r=document.querySelector("#crop-preview").getBoundingClientRect(); const x=Number(document.querySelector("#image-crop-x").value); const y=Number(document.querySelector("#image-crop-y").value); const w=Number(document.querySelector("#image-crop-width").value); const h=Number(document.querySelector("#image-crop-height").value); return { x:r.left+(x+w*0.5)/944*r.width, y:r.top+(y+h*0.5)/944*r.height }; })()');
+  await mouseDrag(moveCropStart, { x: moveCropStart.x + 8, y: moveCropStart.y + 6 });
+  const movedCrop = await evaluate('(() => ({ x:Number(document.querySelector("#image-crop-x").value), y:Number(document.querySelector("#image-crop-y").value), width:Number(document.querySelector("#image-crop-width").value), height:Number(document.querySelector("#image-crop-height").value) }))()');
+  assert(movedCrop.x > drawnCrop.x && movedCrop.y > drawnCrop.y && movedCrop.width === drawnCrop.width && movedCrop.height === drawnCrop.height, "dragging inside the crop frame moves it without changing its size");
+
+  const resizeCropStart = await evaluate('(() => { const r=document.querySelector("#crop-preview").getBoundingClientRect(); const x=Number(document.querySelector("#image-crop-x").value); const y=Number(document.querySelector("#image-crop-y").value); const w=Number(document.querySelector("#image-crop-width").value); const h=Number(document.querySelector("#image-crop-height").value); return { x:r.left+(x+w)/944*r.width, y:r.top+(y+h)/944*r.height }; })()');
+  await mouseDrag(resizeCropStart, { x: resizeCropStart.x + 8, y: resizeCropStart.y + 8 });
+  const resizedCrop = await evaluate('(() => ({ x:Number(document.querySelector("#image-crop-x").value), y:Number(document.querySelector("#image-crop-y").value), width:Number(document.querySelector("#image-crop-width").value), height:Number(document.querySelector("#image-crop-height").value) }))()');
+  assert(resizedCrop.width > movedCrop.width && resizedCrop.height > movedCrop.height, "dragging the lower-right crop handle resizes the existing frame");
+
+  await click("#crop-reset-selection");
+  assert(await evaluate('document.querySelector("#image-crop-x").value === "0" && document.querySelector("#image-crop-y").value === "0" && document.querySelector("#image-crop-width").value === "944" && document.querySelector("#image-crop-height").value === "944"'), "small X resets the crop frame to the complete image");
+  await mouseDrag(
+    { x: cropPreviewBounds.left + cropPreviewBounds.width * 0.15, y: cropPreviewBounds.top + cropPreviewBounds.height * 0.15 },
+    { x: cropPreviewBounds.left + cropPreviewBounds.width * 0.42, y: cropPreviewBounds.top + cropPreviewBounds.height * 0.35 }
+  );
+  drawnCrop = await evaluate('(() => ({ x:Number(document.querySelector("#image-crop-x").value), y:Number(document.querySelector("#image-crop-y").value), width:Number(document.querySelector("#image-crop-width").value), height:Number(document.querySelector("#image-crop-height").value) }))()');
+  assert(drawnCrop.width > 1 && drawnCrop.height > 1 && drawnCrop.x >= 0 && drawnCrop.y >= 0, "a fresh crop can be drawn after resetting the full-image frame");
   await evaluate('(() => { const ratio = document.querySelector("#image-crop-aspect"); ratio.value = "0.8"; ratio.dispatchEvent(new Event("change", { bubbles: true })); })()');
   assert(await evaluate('document.querySelector("#image-crop-width").value === "755" && document.querySelector("#image-crop-height").value === "944" && document.querySelector("#image-crop-x").value === "94"'), "4:5 aspect preset computes a centered crop within image bounds");
   await evaluate('(() => { const ratio = document.querySelector("#image-crop-aspect"); ratio.value = ""; ratio.dispatchEvent(new Event("change", { bubbles: true })); })()');
@@ -529,12 +589,23 @@ try {
   assert(await evaluate('document.querySelector("#text-font-family").value === "Arial"'), "real browser exposes the selected text layer font controls");
   assert(await evaluate('window.__animeArtTextDrawCount > 0'), "real browser Canvas renderer paints editable text");
   await saveScreenshot("animeart-studio-text-layer.png");
-  // The text editor is a modal; close it before using the workspace history controls.
-  await click("#close-text-edit");
+  assert(await evaluate('document.querySelector("#apply-text-layer").getBoundingClientRect().height >= 44'), "text editor offers a visible Apply action");
+  assert(await evaluate('document.querySelector("#delete-text-layer").getBoundingClientRect().height >= 44'), "text editor offers a visible Delete action");
+  await click("#apply-text-layer");
+  await waitFor('document.querySelector("#text-edit-dialog").open === false');
+  assert((await readDocument()).layers.some(layer => layer.id === textLayerId && layer.text?.value === "AnimeArt Studio"), "Apply keeps the selected text as an editable canvas layer");
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(textLayerId) + ')?.text?.value === "Your text"', 10000);
   await click("#redo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(textLayerId) + ')?.text?.value === "AnimeArt Studio"', 10000);
+
+  await click("#add-text-layer");
+  const disposableText = (await readDocument()).layers.at(-1);
+  assert(disposableText?.contentType === "text", "temporary text fixture is a normal editable layer");
+  await click("#delete-text-layer");
+  await waitFor('document.querySelector("#text-edit-dialog").open === false');
+  await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.id === ' + JSON.stringify(disposableText.id) + ')', 10000);
+  assert(!(await readDocument()).layers.some(layer => layer.id === disposableText.id), "Delete text removes the exact selected text layer");
 
   await evaluate('window.__animeArtStrokeTextCount = 0; const originalStrokeText = CanvasRenderingContext2D.prototype.strokeText; CanvasRenderingContext2D.prototype.strokeText = function(...args) { window.__animeArtStrokeTextCount += 1; return originalStrokeText.apply(this, args); };');
   await click("#add-meme-text");
@@ -568,7 +639,7 @@ try {
   await waitFor('document.readyState === "complete"');
   await waitFor('document.querySelector("#storage-recovery-notice").hidden === false');
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(corruptPayload)), "corrupt project payload is preserved at startup");
-  assert((await evaluate('document.querySelector("#storage-recovery-notice").textContent')).includes("could not be opened"), "invalid project produces explicit recovery status");
+  assert((await evaluate('document.querySelector("#storage-recovery-notice").textContent')).includes("No se pudo abrir el proyecto guardado"), "invalid project produces explicit recovery status in Spanish");
 
   await click("#new-document");
   await waitFor('document.querySelector("#project-dialog").open === true');
@@ -584,7 +655,7 @@ try {
   ]);
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(corruptPayload)), "drawing in a new document cannot overwrite the protected payload");
   await click("#save");
-  await waitFor('document.querySelector("#status").textContent === "Saved locally"');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").width === 640 && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").height === 480');
   const explicitlySaved = await readDocument();
   assert(explicitlySaved.width === 640 && explicitlySaved.height === 480, "explicit Save replaces invalid payload with the chosen new document");
   assert(explicitlySaved.layers[0].strokes.length === 1, "explicitly saved replacement preserves current drawing");
@@ -614,8 +685,14 @@ try {
   await waitFor('document.readyState === "complete"');
   await waitFor('document.querySelector("#storage-recovery-notice").hidden === false');
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(incompatiblePayload)), "unsupported document version remains intact until explicit save");
+  await click("#new-document");
+  await waitFor('document.querySelector("#project-dialog").open === true');
+  await evaluate('(() => { document.querySelector("#document-width").value = "640"; document.querySelector("#document-height").value = "480"; })()');
+  await click('#project-form button[type="submit"]');
+  await waitFor('document.querySelector("#status").textContent === "New document created"');
+  assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(incompatiblePayload)), "creating a replacement document cannot overwrite the unsupported source before explicit Save");
   await click("#save");
-  await waitFor('document.querySelector("#status").textContent === "Saved locally"');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").version === 2 && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").width === 640 && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").height === 480');
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").version === 2'), "explicit Save replaces the incompatible version with a supported document");
   await cdp("Page.reload", { ignoreCache: true });
   await waitFor('document.readyState === "complete"');
@@ -768,7 +845,7 @@ try {
   assert(await evaluate('document.querySelectorAll("#layers li").length === ' + pendingLayerCount), "rejected image import does not report success or commit a layer");
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "warning remains visible after rejected image import");
   await click("#save");
-  await waitFor('document.querySelector("#status").textContent === "Saved locally"');
+  await waitFor('document.querySelector("#status").textContent === "Guardado localmente"');
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "successful retry clears the recovery warning only after storage succeeds");
   const quotaRecoverySaved = await readDocument();
   assert(quotaRecoverySaved.version === 2 && quotaRecoverySaved.layers.length === pendingLayerCount, "successful retry stores the selected in-memory replacement document");
@@ -801,7 +878,7 @@ try {
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "supported legacy project restores without recovery warning");
   assert(await evaluate('document.querySelector("#layers .layer-select").textContent.includes("Legacy Sketch")'), "legacy migration preserves the named layer through the real UI");
   await click("#save");
-  await waitFor('document.querySelector("#status").textContent === "Saved locally"');
+  await waitFor('document.querySelector("#status").textContent === "Guardado localmente"');
   const migratedLegacy = await readDocument();
   assert(migratedLegacy.version === 2, "explicit save serializes supported legacy project into the current version");
   assert(migratedLegacy.layers[0].name === "Legacy Sketch", "legacy migration preserves layer metadata");
@@ -821,7 +898,7 @@ try {
   await cdp("Page.removeScriptToEvaluateOnNewDocument", { identifier: preload.identifier });
   await waitForServiceWorkerReadiness();
   assert(await evaluate('!["Recovered local project", "Saved locally"].includes(document.querySelector("#status").textContent)'), "read failure never reports successful recovery or save");
-  assert((await evaluate('document.querySelector("#storage-recovery-notice").textContent')).includes("could not be read"), "read failure displays the explicit storage-unavailable warning");
+  assert((await evaluate('document.querySelector("#storage-recovery-notice").textContent')).includes("No se pudo leer el almacenamiento local"), "read failure displays the localized storage-unavailable warning");
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(readFailurePayload)), "payload is exactly preserved after deterministic startup read failure");
   await click("#add-layer");
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(readFailurePayload)), "automatic writes remain paused after startup read failure");
@@ -852,6 +929,64 @@ try {
   await cdp("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await cdp("Emulation.setTouchEmulationEnabled", { enabled: false });
   assert(await evaluate('document.documentElement.dataset.cacheReady === "true"'), "real browser service worker cache contains the required offline shell");
+  // AA-MOBILE-UX-002: exercise the real phone-sized viewport and the dedicated task sheet.
+  await cdp("Emulation.setDeviceMetricsOverride", { width: 393, height: 873, deviceScaleFactor: 2.75, mobile: true });
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitFor('document.querySelector("#canvas") !== null');
+  await waitForServiceWorkerReadiness();
+  assert(await evaluate('window.innerWidth <= 920'), "Xiaomi-sized mobile E2E runs at a 393 CSS-pixel viewport");
+  assert(await evaluate('(() => { const notice = document.querySelector("#storage-recovery-notice"); const message = notice.textContent; return notice.hidden || message.includes("No se pudo abrir el proyecto guardado") || message.includes("No se pudo leer el almacenamiento local"); })()'), "mobile recovery warning is localized in Spanish");
+  assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden || document.querySelector("#storage-recovery-notice").getBoundingClientRect().height <= 112'), "mobile recovery warning stays compact and preserves canvas space");
+  assert(await evaluate('getComputedStyle(document.querySelector(".workspace")).gridTemplateColumns.split(" ").length === 1'), "mobile workspace uses a single canvas column instead of the desktop sidebars");
+  assert(await evaluate('document.querySelector(".mobile-touch-dock").getBoundingClientRect().height >= 48'), "mobile quick-action dock has a usable touch target area");
+  assert(await evaluate('Array.from(document.querySelectorAll(".mobile-touch-dock button")).every(el => { const r = el.getBoundingClientRect(); return r.width >= 44 && r.height >= 44; })'), "Xiaomi-sized quick-action buttons meet the 44px touch-target floor");
+  assert(await evaluate('document.querySelectorAll(".mobile-touch-dock [data-touch-action]").length >= 8'), "mobile dock exposes the dedicated gallery plus editing actions");
+  assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=import-image]")?.textContent.includes("Añadir")'), "mobile has a visible Add image action");
+  assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=asset-library]")?.textContent.includes("Galería")'), "mobile has a visible reusable Gallery action");
+  assert(await evaluate('Boolean(document.querySelector(".mobile-touch-dock [data-touch-action=delete-selected]"))'), "mobile has direct Delete selected object action");
+  assert(await evaluate('getComputedStyle(document.querySelector("#selection-mini-panel")).display === "none"'), "floating selection controls do not cover the mobile canvas");
+  await evaluate('(() => { const input = document.querySelector("#image-file-input"); window.__animeArtPickerOpenCount = 0; window.__animeArtOriginalPickerClick = input.click.bind(input); input.click = () => { window.__animeArtPickerOpenCount += 1; }; })()');
+  await click('.mobile-touch-dock [data-touch-action="import-image"]');
+  assert(await evaluate('window.__animeArtPickerOpenCount === 1'), "Add image opens the device image picker");
+  await evaluate('(() => { const input = document.querySelector("#image-file-input"); input.click = window.__animeArtOriginalPickerClick; })()');
+  await click('.mobile-touch-dock [data-touch-action="asset-library"]');
+  await waitFor('document.querySelector("#asset-library-dialog")?.open === true');
+  await click("#close-asset-library");
+  await waitFor('document.querySelector("#asset-library-dialog")?.open === false');
+  await saveScreenshot("animeart-studio-mobile-initial.png");
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('document.body.classList.contains("mobile-tools-open")');
+  assert(await evaluate('getComputedStyle(document.querySelector(".easy-edit-grid")).display === "grid"'), "mobile More action opens the dedicated task-card panel");
+  assert(await evaluate('getComputedStyle(document.querySelector(".easy-edit-grid")).gridTemplateColumns.split(" ").length === 2'), "mobile task cards use two columns");
+  assert(await evaluate('document.querySelector(".easy-edit-heading").getBoundingClientRect().height > 0'), "mobile task sheet shows its own heading");
+  assert(await evaluate('getComputedStyle(document.querySelector(".asset-quick-actions")).display !== "none"'), "mobile task sheet exposes image import and library actions");
+  assert(await evaluate('document.querySelector(".toolbar > :not(.easy-edit-panel)") === null || Array.from(document.querySelectorAll(".toolbar > :not(.easy-edit-panel)")).every(el => getComputedStyle(el).display === "none")'), "mobile task sheet hides desktop-only toolbar sections");
+  await saveScreenshot("animeart-studio-mobile-tools.png");
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('!document.body.classList.contains("mobile-tools-open")');
+  assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height > 0'), "closing the mobile task sheet returns usable space to the canvas");
+
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('document.body.classList.contains("mobile-tools-open")');
+  const layerCountBeforeShape = await evaluate('document.querySelectorAll("#layers li").length');
+  await click('[data-edit-goal="shapes"]');
+  await waitFor('document.querySelector("#shape-maker-dialog")?.open === true');
+  await evaluate('(() => { document.querySelector("#shape-maker-kind").value="star"; document.querySelector("#shape-maker-fill").value="#ff4fd8"; document.querySelector("#shape-maker-shadow-blur").value="12"; document.querySelector("#shape-maker-fill").dispatchEvent(new Event("input",{bubbles:true})); document.querySelector("#shape-maker-shadow-blur").dispatchEvent(new Event("input",{bubbles:true})); })()');
+  assert(await evaluate('document.querySelector("#shape-maker-preview").src.startsWith("data:image/svg+xml")'), "shape style window previews an SVG figure locally");
+  await click("#shape-maker-apply");
+  await waitFor('document.querySelector("#shape-maker-dialog")?.open === false');
+  assert(await evaluate('document.querySelectorAll("#layers li").length === ' + (layerCountBeforeShape + 1)), "confirming Formas creates one selectable layer");
+  assert(await evaluate('document.querySelector("#selection-mini-layer-name").textContent.includes("Forma")'), "new shape becomes the selected editable object");
+
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('document.body.classList.contains("mobile-tools-open")');
+  await click('[data-edit-goal="object-style"]');
+  await waitFor('document.querySelector("#shape-maker-dialog")?.open === true');
+  assert(await evaluate('document.querySelector("#shape-maker-apply").textContent.includes("Aplicar cambios")'), "selected vector shape opens its contextual edit window");
+  await click("#shape-maker-cancel");
+  await waitFor('document.querySelector("#shape-maker-dialog")?.open === false');
+  assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height > 0'), "closing a shape window returns to the canvas without applying cancelled edits");
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {
   try { ws.close(); } catch {}

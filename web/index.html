@@ -12,6 +12,11 @@
   <header class="topbar">
     <div class="brand">ANIMEART</div>
     <div class="topbar-actions"><button id="editor-mode-toggle" type="button" aria-label="Cambiar modo de edición">Modo simple</button><button id="appearance-open" type="button" aria-label="Personalizar apariencia">Apariencia</button><div class="status" id="status">Editor local</div></div>
+    <div class="mobile-top-actions" role="group" aria-label="Acciones del editor">
+      <button type="button" data-mobile-top-action="undo" aria-label="Deshacer" title="Deshacer">↶</button>
+      <button type="button" data-mobile-top-action="redo" aria-label="Rehacer" title="Rehacer">↷</button>
+      <button type="button" data-mobile-top-action="export" aria-label="Guardar o exportar imagen" title="Guardar o exportar">↓</button>
+    </div>
   </header>
   <div id="storage-recovery-notice" class="recovery-notice" role="alert" hidden></div>
   <main class="workspace">
@@ -24,6 +29,10 @@
           <button type="button" data-editor-mode="interactive" aria-pressed="false">✋ Modo interactivo</button>
         </div>
         <p class="editor-mode-hint" id="editor-mode-hint">Simple: elegí una tarea. Para acomodar una imagen, tocala y arrastrala.</p>
+        <div class="asset-quick-actions" role="group" aria-label="Importar y organizar imágenes">
+          <button type="button" id="quick-import-images"><span aria-hidden="true">＋</span><b>Importar imágenes</b><small>Desde tu dispositivo</small></button>
+          <button type="button" id="quick-open-asset-library"><span aria-hidden="true">▦</span><b>Mis imágenes</b><small>Biblioteca reutilizable</small></button>
+        </div>
         <div class="easy-edit-grid">
           <button type="button" data-edit-goal="move"><span aria-hidden="true">🖐️</span><b>Mover / acomodar</b><small>Arrastra y cambia tamaño</small></button>
           <button type="button" data-edit-goal="fit"><span aria-hidden="true">🎯</span><b>Ajustar al lienzo</b><small>Centra y encaja la imagen</small></button>
@@ -33,10 +42,13 @@
           <button type="button" data-edit-goal="censor"><span aria-hidden="true">✨</span><b>Luz de censura</b><small>Cubre con luz brillante</small></button>
           <button type="button" data-edit-goal="draw"><span aria-hidden="true">🖌️</span><b>Dibujar</b><small>Pinta sobre la imagen</small></button>
           <button type="button" data-edit-goal="text"><span aria-hidden="true">🔤</span><b>Texto</b><small>Añade palabras o globos</small></button>
+          <button type="button" data-edit-goal="shapes"><span aria-hidden="true">🔷</span><b>Formas</b><small>Figuras, borde y sombra</small></button>
+          <button type="button" data-edit-goal="object-style"><span aria-hidden="true">🎨</span><b>Estilo del objeto</b><small>Color, opacidad y efectos</small></button>
           <button type="button" data-edit-goal="color"><span aria-hidden="true">🎨</span><b>Mejorar color</b><small>Brillo y contraste</small></button>
           <button type="button" data-edit-goal="layers"><span aria-hidden="true">🗂️</span><b>Capas</b><small>Ordena los elementos</small></button>
           <button type="button" data-edit-goal="undo"><span aria-hidden="true">↶</span><b>Deshacer</b><small>Vuelve un paso atrás</small></button>
           <button type="button" data-edit-goal="export"><span aria-hidden="true">💾</span><b>Guardar / Exportar</b><small>Conserva tu edición</small></button>
+          <button type="button" data-edit-goal="appearance"><span aria-hidden="true">⚙️</span><b>Apariencia</b><small>Personaliza el editor</small></button>
         </div>
         <div class="guided-edit-tools">
           <label class="guided-toggle"><input id="editing-help-enabled" type="checkbox" checked> Ayúdame a editar</label>
@@ -50,6 +62,10 @@
           <ol id="editing-help-steps" hidden></ol>
         </section>
       </section>
+      <div id="mobile-context-heading" class="mobile-context-heading" hidden>
+        <div><strong id="mobile-context-title">Dibujar</strong><p id="mobile-context-description">Elegí color, tamaño y efecto.</p></div>
+        <button id="mobile-context-close" type="button" aria-label="Cerrar panel de dibujo" title="Cerrar panel">⌄</button>
+      </div>
       <details class="more-tools">
         <summary>Más herramientas</summary>
         <div class="more-tools-content">
@@ -105,7 +121,7 @@
       <button id="add-sample-character" title="Import the bundled CC0 1.0 character as a real image layer">+ CC0 Character Sample</button>
       <button id="open-asset-library" type="button" title="Store and reuse your own images">Asset Library</button>
       <a class="asset-source-link" href="./assets/ASSET_SOURCES.md" target="_blank" rel="noopener">Sample art source &amp; license</a>
-      <input id="image-file-input" type="file" accept="image/*" hidden>
+      <input id="image-file-input" type="file" accept="image/*" multiple hidden>
       <button id="new-document">New</button>
       <button id="recover-project">Recover local</button>
       <button id="save">Save locally</button>
@@ -141,17 +157,37 @@
       </details>
     </aside>
     <section class="canvas-wrap" data-background="checkerboard" aria-label="Área de edición">
-      <div class="canvas-tools" aria-label="Vista y transparencia">
-        <strong id="selection-indicator" tabindex="-1" data-kind="none" role="status" aria-live="polite">🖼️ Seleccioná una imagen para editar</strong>
-        <div class="canvas-view-actions">
-          <button id="view-transparency" type="button" aria-pressed="true">✓ Viendo transparencia</button>
-          <button type="button" data-canvas-background="white" aria-pressed="false">Fondo blanco</button>
-          <button type="button" data-canvas-background="black" aria-pressed="false">Fondo negro</button>
-          <button type="button" data-canvas-background="gray" aria-pressed="false">Fondo gris</button>
-          <button type="button" data-canvas-background="checkerboard" aria-pressed="true">Cuadritos</button>
-          <button type="button" id="toggle-layers-panel" aria-pressed="true" title="Ocultar capas y propiedades para ampliar el lienzo">Ocultar capas</button>
+      <div class="canvas-tools" aria-label="Barra del lienzo">
+        <div class="canvas-left-actions">
+          <strong id="selection-indicator" tabindex="-1" data-kind="none" role="status" aria-live="polite">🖼️ Seleccioná una imagen para editar</strong>
+          <div class="canvas-import-actions" role="group" aria-label="Acciones rápidas de imagen">
+            <button type="button" id="canvas-import-images" title="Importar imágenes desde tu dispositivo">＋ Importar</button>
+            <button type="button" id="canvas-open-asset-library" title="Abrir tu biblioteca de imágenes reutilizables">▦ Biblioteca</button>
+          </div>
         </div>
+        <details class="canvas-view-menu">
+          <summary aria-label="Abrir opciones de vista">⚙ Vista</summary>
+          <div class="canvas-view-actions" aria-label="Opciones de visualización">
+            <button id="view-transparency" type="button" aria-pressed="true">✓ Ver transparencia</button>
+            <button type="button" data-canvas-background="white" aria-pressed="false">Fondo blanco</button>
+            <button type="button" data-canvas-background="black" aria-pressed="false">Fondo negro</button>
+            <button type="button" data-canvas-background="gray" aria-pressed="false">Fondo gris</button>
+            <button type="button" data-canvas-background="checkerboard" aria-pressed="true">Cuadriculado</button>
+            <button type="button" id="toggle-layers-panel" aria-pressed="true" title="Ocultar capas y propiedades para ampliar el lienzo">Ocultar capas</button>
+          </div>
+        </details>
       </div>
+      <section id="selection-mini-panel" class="selection-mini-panel" aria-label="Acciones del elemento seleccionado" hidden>
+        <strong id="selection-mini-layer-name">Elemento seleccionado</strong>
+        <div class="selection-mini-actions">
+          <button id="selection-mini-lock" type="button" aria-pressed="false">🔒 Bloquear</button>
+          <button id="selection-mini-back" type="button" title="Enviar una capa hacia atrás">↓ Atrás</button>
+          <button id="selection-mini-front" type="button" title="Traer una capa hacia adelante">↑ Adelante</button>
+          <button id="selection-mini-fit" type="button">Encajar</button>
+          <button id="selection-mini-style" type="button" title="Editar colores, formas y efectos del objeto">🎨 Estilo</button>
+          <button id="selection-mini-delete" type="button" title="Eliminar el elemento seleccionado">🗑 Eliminar</button>
+        </div>
+      </section>
       <div class="transparency-shortcuts" aria-label="Acciones rápidas de transparencia">
         <button type="button" id="quick-remove-image">✕ Quitar imagen</button>
         <button type="button" id="quick-remove-background">🪄 Quitar fondo</button>
@@ -290,18 +326,132 @@
               </div>
             </div>
           </details>
-          <p class="text-live-hint" role="note">Los cambios se ven en el lienzo. Puedes deshacerlos y el texto seguirá editable al guardar el proyecto.</p>
+          <p class="text-live-hint" role="note">Los cambios se ven en el lienzo. Pulsa Aplicar para terminar o Eliminar texto si no quieres conservarlo.</p>
+          <div class="text-dialog-actions" role="group" aria-label="Acciones del texto">
+            <button id="delete-text-layer" type="button" class="text-danger">🗑 Eliminar texto</button>
+            <button id="apply-text-layer" type="button" class="text-primary">✓ Aplicar al lienzo</button>
+          </div>
         </section>
       </dialog>
     </aside>
   </main>
   <nav class="mobile-touch-dock" aria-label="Herramientas principales">
+    <button type="button" data-touch-action="import-image" aria-label="Añadir imagen al lienzo" title="Añadir una imagen desde tu dispositivo"><span aria-hidden="true">＋</span><span>Añadir</span></button>
+    <button type="button" data-touch-action="asset-library" aria-label="Abrir galería de recursos" title="Abrir tu biblioteca de imágenes reutilizables"><span aria-hidden="true">▦</span><span>Galería</span></button>
     <button type="button" data-touch-action="tool" data-tool="select" aria-pressed="true"><span aria-hidden="true">🖐️</span><span>Mover</span></button>
     <button type="button" data-touch-action="tool" data-tool="brush" aria-pressed="false"><span aria-hidden="true">🖌️</span><span>Dibujar</span></button>
-    <button type="button" data-touch-action="tool" data-tool="eraser" aria-pressed="false" title="Borrar píxeles"><span aria-hidden="true">🧽</span><span>Borrar</span></button>
     <button type="button" data-touch-action="add-text"><span aria-hidden="true">🔤</span><span>Texto</span></button>
+    <button type="button" data-touch-action="delete-selected" aria-label="Eliminar elemento seleccionado" title="Eliminar la imagen, el texto o la capa seleccionada"><span aria-hidden="true">🗑️</span><span>Eliminar</span></button>
+    <button type="button" data-touch-action="layers" aria-expanded="false" aria-label="Mostrar capas"><span aria-hidden="true">▤</span><span>Capas</span></button>
     <button type="button" data-touch-action="more" aria-expanded="false"><span aria-hidden="true">☰</span><span>Más</span></button>
   </nav>
+  <dialog id="object-style-dialog" aria-labelledby="object-style-title">
+    <section class="mini-editor-dialog">
+      <header class="mini-dialog-header">
+        <div><p class="eyebrow">ESTILO CONTEXTUAL</p><h2 id="object-style-title">Estilo del objeto</h2><p id="object-style-description">Ajusta este elemento sin perder de vista el lienzo.</p></div>
+        <button id="object-style-close" type="button" class="mini-dialog-close" aria-label="Cerrar estilo del objeto">×</button>
+      </header>
+      <div class="mini-dialog-body">
+        <p id="object-style-layer-name" class="object-style-name">Elemento seleccionado</p>
+        <label class="mini-style-field" for="object-style-opacity">Opacidad <output id="object-style-opacity-value">100%</output>
+          <input id="object-style-opacity" type="range" min="0" max="100" step="1" value="100">
+        </label>
+        <section id="object-style-image-options" class="mini-style-section" hidden>
+          <h3>Imagen y recorte</h3>
+          <label class="mini-style-field" for="object-style-mask">Forma del recorte
+            <select id="object-style-mask">
+              <option value="none">Original</option><option value="circle">Círculo</option><option value="rounded">Esquinas redondeadas</option><option value="star">Estrella</option><option value="heart">Corazón</option><option value="hexagon">Hexágono</option>
+            </select>
+          </label>
+          <h3>Color y luz</h3>
+          <label class="mini-style-field" for="object-style-brightness">Brillo <output id="object-style-brightness-value">100%</output>
+            <input id="object-style-brightness" type="range" min="0" max="200" step="1" value="100">
+          </label>
+          <label class="mini-style-field" for="object-style-contrast">Contraste <output id="object-style-contrast-value">100%</output>
+            <input id="object-style-contrast" type="range" min="0" max="200" step="1" value="100">
+          </label>
+          <label class="mini-style-field" for="object-style-saturation">Saturación <output id="object-style-saturation-value">100%</output>
+            <input id="object-style-saturation" type="range" min="0" max="200" step="1" value="100">
+          </label>
+          <button id="object-style-recolor" type="button" class="mini-style-secondary">🌈 Reemplazar un color</button>
+        </section>
+        <section id="object-style-drawing-options" class="mini-style-section" hidden>
+          <h3>Trazos de esta capa</h3>
+          <label class="mini-style-field" for="object-style-drawing-color">Color del trazo
+            <input id="object-style-drawing-color" type="color" value="#ff4fd8">
+          </label>
+          <label class="mini-style-field" for="object-style-drawing-size">Grosor <output id="object-style-drawing-size-value">5 px</output>
+            <input id="object-style-drawing-size" type="range" min="1" max="100" step="1" value="5">
+          </label>
+          <label class="mini-style-field" for="object-style-drawing-effect">Efecto del trazo
+            <select id="object-style-drawing-effect"><option value="normal">Normal</option><option value="soft">Aerógrafo suave</option><option value="glow">Resplandor</option><option value="neon">Neón</option></select>
+          </label>
+          <p class="mini-style-note">Aplicar actualiza los trazos de esta capa y no altera los borrados.</p>
+        </section>
+        <p id="object-style-status" class="mini-style-note" role="status" aria-live="polite">Los cambios se guardan como una operación que puedes deshacer.</p>
+        <div class="mini-dialog-actions">
+          <button id="object-style-cancel" type="button">Cancelar</button>
+          <button id="object-style-apply" type="button" class="mini-primary">Aplicar cambios</button>
+        </div>
+      </div>
+    </section>
+  </dialog>
+
+  <dialog id="shape-maker-dialog" aria-labelledby="shape-maker-title">
+    <section class="mini-editor-dialog shape-maker-shell">
+      <header class="mini-dialog-header">
+        <div><p class="eyebrow">OBJETOS EDITABLES</p><h2 id="shape-maker-title">Añadir forma</h2><p id="shape-maker-description">Elige una figura, personaliza color, contorno y sombra.</p></div>
+        <button id="shape-maker-close" type="button" class="mini-dialog-close" aria-label="Cerrar editor de formas">×</button>
+      </header>
+      <div class="mini-dialog-body">
+        <div class="shape-maker-grid">
+          <div class="shape-maker-fields">
+            <label class="mini-style-field" for="shape-maker-kind">Forma
+              <select id="shape-maker-kind">
+                <option value="rectangle">Rectángulo</option><option value="rounded">Rectángulo redondeado</option><option value="circle">Círculo</option><option value="ellipse">Óvalo</option><option value="star">Estrella</option><option value="heart">Corazón</option><option value="hexagon">Hexágono</option><option value="triangle">Triángulo</option><option value="speech">Globo de diálogo</option><option value="lightning">Rayo</option><option value="cloud">Nube</option>
+              </select>
+            </label>
+            <div class="mini-style-pair">
+              <label class="mini-style-field" for="shape-maker-width">Ancho (px)<input id="shape-maker-width" type="number" min="80" max="1600" step="10" value="320"></label>
+              <label class="mini-style-field" for="shape-maker-height">Alto (px)<input id="shape-maker-height" type="number" min="80" max="1600" step="10" value="240"></label>
+            </div>
+            <div class="mini-style-pair">
+              <label class="mini-style-field" for="shape-maker-fill">Relleno<input id="shape-maker-fill" type="color" value="#ff4fd8"></label>
+              <label class="mini-style-field" for="shape-maker-stroke">Contorno<input id="shape-maker-stroke" type="color" value="#ffffff"></label>
+            </div>
+            <label class="mini-style-field" for="shape-maker-stroke-width">Grosor del contorno <output id="shape-maker-stroke-width-value">4 px</output>
+              <input id="shape-maker-stroke-width" type="range" min="0" max="32" step="1" value="4">
+            </label>
+            <div class="mini-style-pair">
+              <label class="mini-style-field" for="shape-maker-shadow-color">Color de sombra<input id="shape-maker-shadow-color" type="color" value="#171324"></label>
+              <label class="mini-style-field" for="shape-maker-shadow-blur">Desenfoque <output id="shape-maker-shadow-blur-value">12 px</output>
+                <input id="shape-maker-shadow-blur" type="range" min="0" max="48" step="1" value="12">
+              </label>
+            </div>
+            <div class="mini-style-pair">
+              <label class="mini-style-field" for="shape-maker-shadow-x">Sombra X <output id="shape-maker-shadow-x-value">3 px</output>
+                <input id="shape-maker-shadow-x" type="range" min="-40" max="40" step="1" value="3">
+              </label>
+              <label class="mini-style-field" for="shape-maker-shadow-y">Sombra Y <output id="shape-maker-shadow-y-value">5 px</output>
+                <input id="shape-maker-shadow-y" type="range" min="-40" max="40" step="1" value="5">
+              </label>
+            </div>
+          </div>
+          <div class="shape-maker-preview-column">
+            <p>Vista previa</p>
+            <div class="shape-maker-preview"><img id="shape-maker-preview" alt="Vista previa de la forma y sus efectos"></div>
+            <p class="mini-style-note">La figura se agrega como una capa editable: puedes moverla, girarla, cambiar su tamaño, orden y opacidad.</p>
+          </div>
+        </div>
+        <p id="shape-maker-status" class="mini-style-note" role="status" aria-live="polite">Nada se añade hasta que pulses el botón de confirmar.</p>
+        <div class="mini-dialog-actions">
+          <button id="shape-maker-cancel" type="button">Cancelar</button>
+          <button id="shape-maker-apply" type="button" class="mini-primary">Añadir forma</button>
+        </div>
+      </div>
+    </section>
+  </dialog>
+
   <dialog id="poster-template-dialog" aria-labelledby="poster-template-title">
     <form id="poster-template-form" method="dialog">
       <h2 id="poster-template-title">Create a poster</h2>
@@ -397,48 +547,49 @@
 
  aria-labelledby="image-edit-title">
     <form id="image-edit-form" method="dialog">
-      <h2 id="image-edit-title">Crop / Resize Image</h2>
-      <p id="image-edit-source-size" class="image-edit-source-size">Select an image layer first.</p>
-      <section class="crop-preview-workspace" aria-label="Visual crop selection">
-        <canvas id="crop-preview" aria-label="Drag to select image crop"></canvas>
-        <p id="crop-preview-hint">Drag across the image to choose the crop area. Fine-tune pixel values below.</p>
+      <h2 id="image-edit-title">Recortar o cambiar tamaño</h2>
+      <p id="image-edit-source-size" class="image-edit-source-size">Seleccioná una capa de imagen para empezar.</p>
+      <section class="crop-preview-workspace" aria-label="Recorte visual">
+        <canvas id="crop-preview" aria-label="Arrastrá dentro del marco para moverlo y usa los puntos blancos para redimensionarlo"></canvas>
+        <button type="button" id="crop-reset-selection" class="crop-reset-selection" aria-label="Restablecer el marco de recorte a la imagen completa" title="Restablecer el recorte">×</button>
+        <p id="crop-preview-hint">Arrastrá dentro del marco para moverlo. Usá los puntos blancos para cambiar el tamaño; tocá fuera para crear otro marco.</p>
       </section>
       <fieldset class="image-edit-mode">
-        <legend>Operation</legend>
-        <label><input type="radio" name="image-edit-mode" value="crop" checked> Crop pixels</label>
-        <label><input type="radio" name="image-edit-mode" value="resize"> Resize pixels</label>
+        <legend>Operación</legend>
+        <label><input type="radio" name="image-edit-mode" value="crop" checked> Recortar píxeles</label>
+        <label><input type="radio" name="image-edit-mode" value="resize"> Cambiar tamaño</label>
       </fieldset>
       <section id="image-crop-fields" class="image-edit-fields">
-        <p>Drag directly on the image or enter exact pixel coordinates.</p>
-        <label class="image-crop-aspect-field" for="image-crop-aspect">Crop ratio
+        <p>Arrastrá sobre la imagen o escribí las coordenadas exactas en píxeles.</p>
+        <label class="image-crop-aspect-field" for="image-crop-aspect">Proporción del recorte
           <select id="image-crop-aspect">
-            <option value="">Free selection</option>
-            <option value="1">Square · 1:1</option>
-            <option value="0.8">Portrait · 4:5</option>
-            <option value="1.25">Landscape · 5:4</option>
-            <option value="1.5">Photo · 3:2</option>
-            <option value="0.6666666667">Portrait · 2:3</option>
-            <option value="1.7777777778">Wide · 16:9</option>
-            <option value="0.5625">Story · 9:16</option>
+            <option value="">Libre</option>
+            <option value="1">Cuadrado · 1:1</option>
+            <option value="0.8">Vertical · 4:5</option>
+            <option value="1.25">Horizontal · 5:4</option>
+            <option value="1.5">Foto · 3:2</option>
+            <option value="0.6666666667">Vertical · 2:3</option>
+            <option value="1.7777777778">Panorámica · 16:9</option>
+            <option value="0.5625">Historia · 9:16</option>
           </select>
         </label>
         <div class="image-edit-grid">
-          <label for="image-crop-x">Left (X)<input id="image-crop-x" type="number" min="0" step="1" value="0" required></label>
-          <label for="image-crop-y">Top (Y)<input id="image-crop-y" type="number" min="0" step="1" value="0" required></label>
+          <label for="image-crop-x">Izquierda (X)<input id="image-crop-x" type="number" min="0" step="1" value="0" required></label>
+          <label for="image-crop-y">Arriba (Y)<input id="image-crop-y" type="number" min="0" step="1" value="0" required></label>
           <label for="image-crop-width">Width<input id="image-crop-width" type="number" min="1" step="1" required></label>
           <label for="image-crop-height">Height<input id="image-crop-height" type="number" min="1" step="1" required></label>
         </div>
       </section>
       <section id="image-resize-fields" class="image-edit-fields" hidden>
-        <p>Resizing re-samples the selected image. Transparent pixels are preserved.</p>
+        <p>El nuevo tamaño remuestrea la imagen y conserva los píxeles transparentes.</p>
         <div class="image-edit-grid">
-          <label for="image-resize-width">New width<input id="image-resize-width" type="number" min="1" max="8192" step="1" required></label>
-          <label for="image-resize-height">New height<input id="image-resize-height" type="number" min="1" max="8192" step="1" required></label>
+          <label for="image-resize-width">Nuevo ancho<input id="image-resize-width" type="number" min="1" max="8192" step="1" required></label>
+          <label for="image-resize-height">Nuevo alto<input id="image-resize-height" type="number" min="1" max="8192" step="1" required></label>
         </div>
-        <label class="image-edit-aspect" for="image-resize-keep-aspect"><input id="image-resize-keep-aspect" type="checkbox" checked> Keep aspect ratio and displayed size</label>
+        <label class="image-edit-aspect" for="image-resize-keep-aspect"><input id="image-resize-keep-aspect" type="checkbox" checked> Mantener la proporción y el tamaño visual</label>
       </section>
-      <p class="image-edit-note">Only the selected image layer changes. Undo and redo restore the previous pixels and transform.</p>
-      <div class="dialog-actions"><button type="button" id="cancel-image-edit">Cancel</button><button type="submit" id="apply-image-edit">Apply</button></div>
+      <p class="image-edit-note">Solo cambia la imagen seleccionada. Deshacer y rehacer restauran sus píxeles y posición anteriores.</p>
+      <div class="dialog-actions"><button type="button" id="cancel-image-edit">Cancelar</button><button type="submit" id="apply-image-edit">Aplicar</button></div>
     </form>
   </dialog>
   <dialog id="asset-library-dialog" aria-labelledby="asset-library-title">

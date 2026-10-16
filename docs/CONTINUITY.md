@@ -1,3 +1,51 @@
+# LEY PERMANENTE DE DISEÑO MÓVIL
+
+La especificación vinculante del editor móvil está en [docs/MOBILE_EDITOR_LAW.md](./MOBILE_EDITOR_LAW.md). Tiene prioridad sobre notas de continuidad anteriores que contradigan esta estructura: lienzo grande y centrado, cabecera mínima, herramientas principales abajo y paneles contextuales inferiores. Todo cambio futuro debe respetarla y validar el flujo en teléfono sin confundir CI/emulador con una prueba física.
+
+---
+
+# Estado actual · AA-MOBILE-UX-004 · 2026-10-15
+
+**TIMER:** 1–3 horas de trabajo activo estimado; CI y validación física en Xiaomi son variables.
+
+**Motivo:** el usuario informó que la APK anterior mostraba la imagen demasiado pequeña, muchos controles tapando el lienzo, no tenía una acción visible para importar imágenes y dejaba texto/objetos sin forma clara de aplicarlos o borrarlos.
+
+**Cambios en la rama existente `aa-editor-ux-002`:**
+- Barra inferior móvil: Añadir imagen, Mover, Dibujar, Texto, Eliminar, Capas y Más. Añadir abre el selector del dispositivo; la biblioteca queda dentro de Más.
+- El lienzo ocupa el espacio disponible de trabajo en móvil. Se ocultan los paneles flotantes de selección y el botón flotante de quitar imagen; la barra inferior tiene su propia fila.
+- La importación y Encajar colocan una imagen hasta el 90% del área útil del documento, preservando proporción y permitiendo ampliar recursos pequeños.
+- El editor de texto ofrece Aplicar al lienzo y Eliminar texto. El borrado del elemento seleccionado admite texto, trazos y otras capas, no sólo imágenes.
+- Las acciones móviles devuelven espacio al lienzo después de elegir una tarea; Capas/ajustes abre el inspector en vez de desplazar una zona oculta.
+- Se eliminan listeners duplicados de los controles de contorno de texto para evitar doble vista previa y commit.
+
+**Validación pendiente para este SHA:** Web unit tests y Chromium E2E deben cubrir Añadir, acciones móviles, aplicar/eliminar texto y disposición sin paneles flotantes. Android CI debe pasar sobre el mismo SHA que Web CI. La prueba física en el Xiaomi `24116RACCG` continúa pendiente y no se considera realizada por el emulador.
+
+---
+
+# Estado actual · AA-EDITOR-UX-002 · 2026-10-15
+
+**TIMER:** 1–3 horas de trabajo activo estimado; el tiempo de cola de CI y la validación física son variables.
+
+**Estado:** implementación en rama de prueba y PR #83 abierta. No integrar a `main` hasta que Web CI y Android CI terminen con PASS sobre el mismo HEAD exacto. La verificación de teléfono físico sigue pendiente y no se debe declarar como realizada.
+
+**Rama autorizada:** `aa-editor-ux-002`, creada desde `main`. Las ramas UX anteriores estaban divergidas y no se reutilizaron ni resetearon.
+
+**Cambios implementados:**
+- Acciones persistentes `Importar` y `Biblioteca` junto al lienzo en escritorio; `Imágenes` en la barra inferior móvil; se conservan accesos en el panel fácil de usar.
+- Importación múltiple y tamaño inicial normalizado hasta el 90% del área útil del lienzo, preservando proporciones y permitiendo mayor escala a recursos pequeños.
+- Controles de transparencia y fondo agrupados en menú plegable `Vista`.
+- Panel flotante de capa seleccionada: bloquear/desbloquear, encajar imagen y ordenar adelante/atrás.
+- Enrutamiento de trazo para evitar cambiar a la imagen inferior mientras se dibuja/censura sobre una capa de pintura; indicador visible del tamaño del pincel.
+- Marco de recorte movible y redimensionable con ocho tiradores, X de restablecimiento y campos exactos. Textos del diálogo de recorte traducidos al español.
+- Pruebas de importación, UI y Chromium E2E, además de caché PWA v23.
+
+**Evidencia de CI en SHA previo:** Web CI #637 terminó PASS para `5285aef88563b9535b532b6b84074cd8bf2b6bcc`, incluida prueba real en Chromium para recorte y bloqueo/orden de capas. Esa ejecución no valida los cambios posteriores de accesos persistentes y traducciones. Las ejecuciones nuevas deben confirmarse sobre el HEAD más reciente del PR antes de considerar integración.
+
+**Criterio de aceptación:** importar varias imágenes crea capas independientes y con tamaño útil; Biblioteca es encontrable sin desplazamiento; Vista permanece plegada; el marco se crea, se mueve, se redimensiona y se restablece; censura/dibujo siguen el puntero sin crear una capa nueva en cada trazo; mover/bloquear/reordenar capas funciona; CI Web y Android pasan en el mismo SHA. No declarar validación de dispositivo físico ni integrar sin evidencia completa.
+
+
+---
+
 ANIMEART — CONTINUITY
 
 DÍA:
@@ -3217,3 +3265,23 @@ Corrección de inventario durante la integración: aunque la sincronización de 
 - La brecha de producción que sí permanece es Android: `ProjectPersistence.loadDocument()` todavía convertía fallos en `null`, y `MainActivity` abría un documento vacío por defecto. El PR AA-RECOVERY-SAFETY-001 introduce `RecoveryResult.Missing/Loaded/Failed`, rechazo de documentos incompatibles, preservación del payload y decisión explícita antes de empezar un documento nuevo.
 - PR de integración: https://github.com/jonhararagi/animeart/pull/76. Rama `integration/animeart-recovery-safety-2026-10-14`. HEAD actual al iniciar esta reconciliación: `abd4468ef06c8203fcd2409c2866fa84fd8e1bdc`; esta modificación documental generará un nuevo HEAD y exige validar nuevamente ambos workflows sobre ese SHA final.
 - Estado: integración Android y documentación en revisión; no declarar PASS ni fusionar hasta que Web CI y Android CI del HEAD final terminen correctamente. La protección de recuperación no está integrada en `main` hasta el merge del PR.
+
+## AA-GALLERY-DOCK-001 — Acceso directo a biblioteca en el modelo móvil (2026-10-16)
+
+- Rama de trabajo existente: `aa-editor-ux-002`, PR #83. No se creó otra rama y no se modificó `main`.
+- La barra móvil ahora incluye `Galería` como acción primaria independiente de `Añadir`: una abre la biblioteca local reutilizable y la otra abre el selector de imágenes del dispositivo.
+- En teléfonos de más de 400 px CSS, el dock utiliza ocho acciones en una fila; en pantallas de hasta 400 px pasa a una cuadrícula de cuatro columnas y dos filas para conservar objetivos táctiles cómodos.
+- Se añadieron assertions al smoke test y al E2E de navegador real para la presencia de Galería y la apertura/cierre de la biblioteca. Se incrementó el caché de la PWA a `animeart-web-shell-v27` tanto en la aplicación como en el service worker, con sus assertions actualizadas.
+- TIMER: 1–2 horas activas para este tramo de accesibilidad y regresión; la CI y la validación física son dependencias aparte.
+- Estado al registrar el cambio: pendiente comprobar Web CI y Android CI sobre el HEAD resultante. La validación en emulador no sustituye la prueba táctil en el Xiaomi 24116RACCG.
+
+
+
+## AA-PICSART-CONTEXT-OBJECT-001 — Ventanas de estilo y creador de formas (2026-10-16)
+
+- Rama existente: `aa-editor-ux-002`, PR #83. La implementación continúa en esa rama; no se abre una rama duplicada ni se modifica `main`.
+- La tarea `Formas` abre una ventana contextual para crear figuras locales como rectángulos, rectángulos redondeados, círculos, óvalos, estrellas, corazones, hexágonos, triángulos, globos, rayos y nubes. Permite definir relleno, ancho/alto, contorno/grosor y sombra (color, desenfoque y desplazamiento).
+- Las figuras se crean como capas de imagen SVG con metadatos de forma, de modo que siguen siendo seleccionables, movibles, escalables, girables, reordenables y editables desde la misma ventana. Los cambios se guardan en historial y se conservan al persistir/exportar el proyecto.
+- La tarjeta `Estilo del objeto` enruta al editor adecuado: texto reutiliza el editor tipográfico existente; formas SVG vuelven a su ventana de forma; imágenes exponen opacidad, máscara, brillo/contraste/saturación y acceso a reemplazo de color; las capas de trazos permiten cambiar el estilo de sus trazos existentes sin alterar borrados.
+- Las ventanas incluyen X, Cancelar y confirmación explícita. Los cambios del creador de formas no se aplican hasta confirmar; cancelar cierra sin sustituir la capa. Se actualiza la caché PWA a `animeart-web-shell-v28` y se incorporan tests estáticos/E2E que crean una estrella, confirman una capa y comprueban la cancelación del editor.
+- TIMER: 2–4 horas activas estimadas para esta iteración, más CI y prueba física. La aceptación depende de CI sobre el nuevo HEAD, revisión de la forma exportada y prueba táctil en Xiaomi 24116RACCG. No declarar PASS de CI ni validar físicamente antes de disponer de evidencia.
