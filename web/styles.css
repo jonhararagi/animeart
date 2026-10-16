@@ -1858,3 +1858,122 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 #text-edit-dialog .text-primary { border-color:#45bfd6; background:linear-gradient(140deg,#155e75,#29264e); color:#f0fdff; font-weight:850; }
 #text-edit-dialog .text-dialog-actions { display:grid; grid-template-columns:minmax(0,.95fr) minmax(0,1.2fr); gap:8px; }
 #text-edit-dialog .text-dialog-actions button { min-height:46px; font-weight:800; }
+
+
+/* AA-MOBILE-PICSART-PANEL-LAW: approved mobile structure, canvas first and tools below. */
+.mobile-top-actions { display: none; }
+@media (max-width: 920px) {
+  body {
+    grid-template-rows: calc(48px + env(safe-area-inset-top)) minmax(0, 1fr) auto !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    padding-bottom: 0 !important;
+  }
+  body > .topbar {
+    height: calc(48px + env(safe-area-inset-top)) !important;
+    min-height: calc(48px + env(safe-area-inset-top)) !important;
+    padding: env(safe-area-inset-top) 9px 0 !important;
+    gap: 7px !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    box-shadow: none !important;
+  }
+  body > .topbar .brand { font-size: .72rem !important; letter-spacing: .08em !important; gap: 6px !important; }
+  body > .topbar .brand::before { width: 27px !important; height: 27px !important; }
+  body > .topbar .topbar-actions { display: none !important; }
+  body > .topbar .mobile-top-actions {
+    display: flex !important;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 5px;
+  }
+  body > .topbar .mobile-top-actions button {
+    display: grid;
+    place-items: center;
+    width: 37px;
+    height: 37px;
+    min-height: 37px !important;
+    padding: 0 !important;
+    border-radius: 11px;
+    background: #182131;
+    font-size: 1.2rem;
+    font-weight: 800;
+    touch-action: manipulation;
+  }
+  body > .workspace {
+    min-height: 0 !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    gap: 0 !important;
+  }
+  body > .workspace > .canvas-wrap {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    display: grid !important;
+    place-items: center !important;
+  }
+  body > .workspace > .canvas-wrap > #canvas {
+    display: block !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    touch-action: none;
+  }
+  body > .mobile-touch-dock {
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    grid-row: 3 !important;
+    padding: 5px 5px max(5px, env(safe-area-inset-bottom)) !important;
+    min-height: calc(66px + env(safe-area-inset-bottom)) !important;
+    max-height: calc(74px + env(safe-area-inset-bottom)) !important;
+    border-top: 1px solid #39455d !important;
+    background: #0c111d !important;
+    box-shadow: 0 -5px 20px #0005 !important;
+    z-index: 60 !important;
+  }
+  body > .mobile-touch-dock button { min-height: 50px !important; }
+  body.mobile-tools-open > .workspace {
+    grid-template-rows: minmax(0, 1fr) minmax(220px, 38dvh) 0 !important;
+  }
+  body.mobile-tools-open > .workspace > .toolbar {
+    grid-row: 2 !important;
+    max-height: 38dvh !important;
+    min-height: 0 !important;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom)) !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    border: 1px solid #35445d !important;
+    border-bottom: 0 !important;
+    border-radius: 18px 18px 0 0 !important;
+    background: linear-gradient(180deg, #171f30, #101620 75%) !important;
+    box-shadow: 0 -12px 32px rgb(0 0 0 / 28%) !important;
+  }
+  body.mobile-tools-open > .workspace > .toolbar .easy-edit-heading { margin-bottom: 9px !important; }
+  body.mobile-tools-open > .workspace > .toolbar .easy-edit-grid { gap: 8px !important; }
+  body.mobile-tools-open > .workspace > .toolbar .easy-edit-grid button { min-height: 52px !important; }
+  body.mobile-tools-open .canvas-tools > .canvas-view-menu { display: block !important; }
+  body.mobile-tools-open .canvas-tools { z-index: 3 !important; }
+  body.mobile-tools-open > .workspace > .layers { display: none !important; }
+  body.mobile-layers-open > .workspace {
+    grid-template-rows: minmax(0, 1fr) minmax(150px, 32dvh) 0 !important;
+  }
+  body.mobile-layers-open > .workspace > .layers {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    display: block !important;
+    max-height: 32dvh !important;
+    min-height: 0 !important;
+    overflow: auto !important;
+    border: 1px solid #35445d !important;
+    border-bottom: 0 !important;
+    border-radius: 18px 18px 0 0 !important;
+    background: #111827 !important;
+  }
+  body.mobile-layers-open > .workspace > .toolbar { display: none !important; }
+}
