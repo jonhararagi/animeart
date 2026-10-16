@@ -2845,3 +2845,102 @@ body > .mobile-touch-dock .mobile-export-format select { width: 100%; min-width:
   body > .topbar .brand { font-size: .66rem !important; }
   body > .topbar .mobile-top-actions button { width: 44px !important; min-width: 44px !important; flex-basis: 44px !important; }
 }
+
+
+/* AA-MOBILE-REDESIGN-004 follow-up: resilient touch-first dialogs and clear controls */
+#image-edit-dialog,
+#text-edit-dialog,
+#background-removal-dialog {
+  box-sizing: border-box;
+  max-height: calc(100dvh - 16px);
+  max-width: calc(100vw - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.image-edit-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.image-edit-header h2 { margin: 0 0 6px; }
+.image-edit-header p { margin: 4px 0; }
+#close-image-edit,
+#close-text-edit,
+#cancel-image-edit,
+#cancel-background-removal,
+#apply-image-edit,
+#apply-background-removal {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+#text-edit-dialog .text-dialog-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 8px 0;
+  background: var(--panel, #111722);
+}
+#text-edit-dialog .text-dialog-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  padding: 10px 0 max(10px, env(safe-area-inset-bottom));
+  background: var(--panel, #111722);
+}
+#text-edit-dialog textarea,
+#text-edit-dialog select,
+#text-edit-dialog input,
+#image-edit-dialog input,
+#image-edit-dialog select {
+  max-width: 100%;
+  touch-action: manipulation;
+}
+.background-removal-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+.background-removal-quick-actions button,
+.background-removal-advanced > summary {
+  min-height: 44px;
+}
+.background-removal-advanced {
+  border: 1px solid var(--border, #343b4a);
+  border-radius: 12px;
+  padding: 8px 10px;
+  margin: 10px 0;
+}
+.background-removal-advanced > summary {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 700;
+  touch-action: manipulation;
+}
+#selection-mini-background[aria-pressed="true"] {
+  border-color: var(--accent, #8f7cff);
+  background: color-mix(in srgb, var(--accent, #8f7cff) 18%, transparent);
+}
+.crop-reset-selection {
+  min-width: 44px;
+  min-height: 44px;
+  font-size: 24px;
+}
+@media (max-width: 920px) {
+  #image-edit-dialog,
+  #text-edit-dialog,
+  #background-removal-dialog {
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+    margin: auto;
+    padding: 14px;
+  }
+  .image-edit-header { gap: 8px; }
+  .background-removal-quick-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #text-edit-dialog .text-dialog-actions { gap: 8px; }
+  #text-edit-dialog .text-dialog-actions button { min-height: 46px; }
+}
