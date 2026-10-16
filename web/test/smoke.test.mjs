@@ -504,8 +504,8 @@ test("editor appearance supports custom accent, workspace color and local wallpa
   assert.match(html, /id="appearance-wallpaper-file"/);
   assert.match(html, /id="appearance-open"/);
   assert.match(app, /initializeAppearanceSettings\(\)/);
-  assert.match(app, /animeart-web-shell-v28/);
-  assert.match(worker, /animeart-web-shell-v28/);
+  assert.match(app, /animeart-web-shell-v29/);
+  assert.match(worker, /animeart-web-shell-v29/);
   assert.match(worker, /\.\/appearance-settings\.js/);
   assert.match(appearance, /animeart-editor-appearance-v1/);
   assert.match(appearance, /MAX_WALLPAPER_BYTES = 2 \* 1024 \* 1024/);
@@ -545,7 +545,7 @@ test("Android native export bridge and browser fallback are wired to the canonic
   assert.ok(activity.includes("NativeExportBridge"));
   assert.ok(activity.includes("Intent.ACTION_CREATE_DOCUMENT"));
   assert.match(worker, /\.\/domain\/background-removal-profiles\.mjs/);
-  assert.match(worker, /animeart-web-shell-v28/);
+  assert.match(worker, /animeart-web-shell-v29/);
 });
 
 test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size layer thumbnails", async () => {
@@ -565,7 +565,7 @@ test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size la
   assert.match(css, /\.layer-thumbnail \{ flex: 0 0 56px; width: 56px; height: 56px/);
   assert.match(css, /\.layers #layers \.layer-select \{ min-height: 60px/);
   assert.match(removal, /seedPoints=\[\]/);
-  assert.match(worker, /animeart-web-shell-v28/);
+  assert.match(worker, /animeart-web-shell-v29/);
 });
 
 
@@ -590,8 +590,8 @@ test("AA-PICSART-UX-001 defaults to direct layer selection and exposes simple an
   assert.match(html, /data-editor-mode="interactive"/);
   assert.match(html, /data-tool="select" aria-pressed="true">🖐️ Seleccionar \/ mover/);
   assert.match(css, /\.editor-mode-switch button\.active/);
-  assert.match(worker, /animeart-web-shell-v28/);
-  assert.match(app, /animeart-web-shell-v28/);
+  assert.match(worker, /animeart-web-shell-v29/);
+  assert.match(app, /animeart-web-shell-v29/);
 });
 
 test("Magic Eraser tolerance is user-adjustable instead of hardcoded", async () => {
@@ -699,17 +699,13 @@ test("selection status indicator never intercepts canvas pointer gestures", asyn
 });
 
 
-test("AA-MOBILE-UX-004 keeps direct Spanish image/text/history/delete actions in the mobile dock", async () => {
+test("AA-MOBILE-UX-004 keeps image, text, history, export and delete in the bottom dock", async () => {
   const [html, css] = await Promise.all([readFile("index.html", "utf8"), readFile("styles.css", "utf8")]);
   const dock = html.match(/<nav class="mobile-touch-dock"[\s\S]*?<\/nav>/)?.[0] || "";
   assert.match(dock, /aria-label="Herramientas principales"/);
-  for (const label of ["Añadir", "Galería", "Mover", "Dibujar", "Texto", "Deshacer", "Rehacer", "Eliminar", "Capas", "Más"]) assert.match(dock, new RegExp(label));
-  assert.equal((dock.match(/data-touch-action=/g) || []).length, 10);
-  assert.match(dock, /data-touch-action="import-image"/);
-  assert.match(dock, /data-touch-action="asset-library"/);
-  assert.match(dock, /data-touch-action="undo"/);
-  assert.match(dock, /data-touch-action="redo"/);
-  assert.match(dock, /data-touch-action="delete-selected"/);
+  for (const label of ["Añadir", "Galería", "Mover", "Dibujar", "Texto", "Deshacer", "Rehacer", "Exportar", "Eliminar", "Capas", "Más"]) assert.match(dock, new RegExp(label));
+  assert.equal((dock.match(/data-touch-action=/g) || []).length, 11);
+  for (const action of ["import-image", "asset-library", "undo", "redo", "export", "delete-selected"]) assert.match(dock, new RegExp('data-touch-action="' + action + '"'));
   assert.match(css, /AA-MOBILE-UX-004/);
   assert.match(css, /AA-GALLERY-DOCK-001/);
   assert.match(css, /grid-template-columns:\s*repeat\(8, minmax\(0, 1fr\)\)/);
@@ -732,8 +728,8 @@ test("AA-TEXT-EDITOR-001 opens a dedicated text dialog with typography, outline,
   for (const preset of ["comic", "poster", "manga", "neon"]) assert.match(html, new RegExp('data-text-style-preset="' + preset + '"'));
   assert.match(js, /textEditDialog\.showModal\(\)/);
   assert.match(css, /#text-edit-dialog/);
-  assert.match(app, /animeart-web-shell-v28/);
-  assert.match(worker, /animeart-web-shell-v28/);
+  assert.match(app, /animeart-web-shell-v29/);
+  assert.match(worker, /animeart-web-shell-v29/);
   assert.match(html, /¿Qué quieres escribir\?/);
   assert.match(html, /class="text-simple-controls"/);
   assert.match(html, /<details class="text-advanced-options">/);
@@ -779,7 +775,7 @@ test("AA-EDITOR-UX-002 surfaces image import/library, compact view options, laye
   assert.ok(css.includes(".canvas-view-menu[open] .canvas-view-actions"));
   assert.ok(css.includes(".selection-mini-panel"));
   assert.ok(css.includes(".crop-reset-selection"));
-  assert.match(worker, /animeart-web-shell-v28/);
+  assert.match(worker, /animeart-web-shell-v29/);
 });
 
 
@@ -797,7 +793,7 @@ test("AA-MOBILE-SIMPLE-001 keeps the mobile canvas primary and reveals tools on 
   assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(html, /class="mobile-touch-dock"/);
   assert.match(html, /data-touch-action="more"/);
-  assert.match(worker, /animeart-web-shell-v28/);
+  assert.match(worker, /animeart-web-shell-v29/);
 });
 
 
@@ -834,7 +830,7 @@ test("AA-PICSART-CONTEXT-OBJECT-001 provides closable style and shape windows wi
   assert.match(app,/function openSelectedObjectStyle\(/);
   assert.match(app,/shapeMakerDialog\.close\(\)/);
   assert.match(css,/AA-PICSART-CONTEXT-OBJECT-001/);
-  assert.match(worker,/animeart-web-shell-v28/);
+  assert.match(worker,/animeart-web-shell-v29/);
 });
 
 test("T_TEXT_EDITOR outline controls register only one input handler each", async () => {
@@ -844,19 +840,21 @@ test("T_TEXT_EDITOR outline controls register only one input handler each", asyn
 });
 
 
-test("AA-MOBILE-PICSART-PANEL-LAW keeps the phone editor canvas-first with universal actions above and tools below", async () => {
+test("AA-MOBILE-PICSART-PANEL-LAW keeps mobile actions below the phone safe area", async () => {
   const html = await readFile("index.html", "utf8");
   const app = await readFile("app.js", "utf8");
   const css = await readFile("styles.css", "utf8");
   assert.match(html, /class="mobile-top-actions"/);
-  for (const action of ["undo", "redo", "export"]) {
-    assert.match(html, new RegExp('data-mobile-top-action="' + action + '"'));
-  }
+  for (const action of ["undo", "redo", "export"]) assert.match(html, new RegExp('data-mobile-top-action="' + action + '"'));
   assert.match(app, /AA-MOBILE-PICSART-PANEL-LAW/);
   assert.match(css, /AA-MOBILE-PICSART-PANEL-LAW: approved mobile structure/);
-  assert.match(css, /grid-template-rows: minmax\(0, 1fr\) minmax\(220px, 38dvh\) 0 !important/);
+  assert.match(css, /AA-MOBILE-TOP-SAFE-002/);
+  assert.match(css, /--aa-mobile-safe-top: max\(env\(safe-area-inset-top, 0px\), 30px\)/);
+  assert.match(css, /body > \.topbar\s*\{\s*display: none !important/);
+  assert.match(css, /grid-template-rows: var\(--aa-mobile-safe-top\) minmax\(0, 1fr\) auto !important/);
   assert.match(css, /env\(safe-area-inset-bottom\)/);
   assert.match(html, /data-touch-action="import-image"/);
+  assert.match(html, /data-touch-action="export"/);
   assert.match(html, /data-touch-action="more"/);
 });
 
