@@ -847,3 +847,12 @@ test("AA-MOBILE-CONTEXT-PANEL-001 opens drawing controls as a dedicated bottom s
   assert.match(css, /mobile-draw-panel-open/);
   assert.match(css, /\.toolbar > \.brush-control:not\(\.magic-tolerance-control\)/);
 });
+
+
+test("AA-MOBILE-PICSART-PANEL-LAW keeps appearance settings reachable after compacting the top bar", async () => {
+  const html = await readFile("index.html", "utf8");
+  const app = await readFile("app.js", "utf8");
+  assert.match(html, /data-edit-goal="appearance"/);
+  assert.match(html, /Personaliza el editor/);
+  assert.match(app, /appearance: \(\) => document\.querySelector\("#appearance-open"\)\?\.click\(\)/);
+});
