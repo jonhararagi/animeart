@@ -143,7 +143,7 @@ await cdp("Page.addScriptToEvaluateOnNewDocument", {source:
   'window.addEventListener("error", event => console.error("ANIMEART_WINDOW_ERROR", event.message, event.filename, event.lineno, event.colno));' +
   'window.addEventListener("unhandledrejection", event => console.error("ANIMEART_UNHANDLED_REJECTION", event.reason?.stack || String(event.reason)));'
 });
-await cdp("Page.reload", {ignoreCache:true});
+await cdp("Page.navigate", {url: `http://${HOST}:${PORT}/index.html`});
 
 const evaluate = async (expression) => {
   const result = await cdp("Runtime.evaluate", {
