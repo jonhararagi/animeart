@@ -127,10 +127,19 @@ export function setLayerBackground(document, layerId, isBackground) {
   const layer = next.layers.find(item => item.id === layerId);
   if (!layer || layer.contentType !== "image" || !layer.image) return null;
   if (isBackground) {
+    const previousBackgroundIds = [];
     for (const candidate of next.layers) {
       if (candidate.isBackground) {
         delete candidate.isBackground;
         candidate.locked = false;
+        if (candidate.id !== layerId) previousBackgroundIds.push(candidate.id);
+      }
+    }
+    // Any old fixed background becomes a normal foreground image before the new one is pinned.
+    for (const previousId of previousBackgroundIds) {
+      const previousIndex = next.layers.findIndex(item => item.id === previousId);
+      if (previousIndex >= 0 && previousIndex < next.layers.length - 1) {
+        next.layers.push(next.layers.splice(previousIndex, 1)[0]);
       }
     }
     layer.isBackground = true;
@@ -140,6 +149,11 @@ export function setLayerBackground(document, layerId, isBackground) {
   } else {
     delete layer.isBackground;
     layer.locked = false;
+    // Restoring an image to normal layer mode also brings it to the foreground.
+    const index = next.layers.findIndex(item => item.id === layerId);
+    if (index >= 0 && index < next.layers.length - 1) {
+      next.layers.push(next.layers.splice(index, 1)[0]);
+    }
   }
   return next;
 }
