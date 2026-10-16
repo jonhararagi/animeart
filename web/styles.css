@@ -2838,6 +2838,8 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 }
 @media (max-width: 380px) {
   body > .mobile-touch-dock button { flex-basis: 60px !important; width: 60px !important; min-width: 60px !important; }
+  body > .mobile-touch-dock .mobile-export-format { flex: 0 0 76px; display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 2px; color: #aab7c9; font-size: .62rem; }
+  body > .mobile-touch-dock .mobile-export-format select { width: 100%; min-width: 0; min-height: 30px; padding: 3px; color: #f0f4fb; background: #1b2330; border: 1px solid #3a475b; border-radius: 7px; }
   body > .topbar .brand { font-size: .66rem !important; }
   body > .topbar .mobile-top-actions button { width: 44px !important; min-width: 44px !important; flex-basis: 44px !important; }
 }
