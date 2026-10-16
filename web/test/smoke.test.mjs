@@ -700,7 +700,9 @@ test("selection status indicator never intercepts canvas pointer gestures", asyn
 
 
 test("AA-MOBILE-PICSART-UX-005 keeps image, text, history, export and delete in the bottom dock", async () => {
-  const [html, css] = await Promise.all([readFile("index.html", "utf8"), readFile("styles.css", "utf8")]);
+  const [html, css, js] = await Promise.all([
+    readFile("index.html", "utf8"), readFile("styles.css", "utf8"), readFile("app.js", "utf8")
+  ]);
   const dock = html.match(/<nav class="mobile-touch-dock"[\s\S]*?<\/nav>/)?.[0] || "";
   assert.match(dock, /aria-label="Herramientas principales"/);
   for (const label of ["Añadir", "Galería", "Mover", "Dibujar", "Texto", "Deshacer", "Rehacer", "Exportar", "Eliminar", "Capas", "Más"]) assert.match(dock, new RegExp(label));
