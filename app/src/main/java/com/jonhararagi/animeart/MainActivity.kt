@@ -157,14 +157,45 @@ class MainActivity : ComponentActivity() {
                 ): Boolean {
                     pendingFileChooser?.onReceiveValue(null)
                     pendingFileChooser = filePathCallback
+                    val acceptTypes = fileChooserParams.acceptTypes
+                        .flatMap { it.split(",") }
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() }
+                    val mimeTypes = acceptTypes.filter { it.contains("/") }.distinct()
+                    val preferredMime = mimeTypes.firstOrNull() ?: "*/*"
+                    val documentPickerIntent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = preferredMime
+                        if (mimeTypes.size > 1) putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes.toTypedArray())
+                        putExtra(
+                            Intent.EXTRA_ALLOW_MULTIPLE,
+                            fileChooserParams.mode == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE
+                        )
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                    }
                     return try {
-                        fileChooserLauncher.launch(fileChooserParams.createIntent())
+                        // ACTION_OPEN_DOCUMENT is more consistent across Android/OEM file providers
+                        // than WebView's generic ACTION_GET_CONTENT chooser and grants access only
+                        // to the items the user explicitly selects. No broad storage permission needed.
+                        fileChooserLauncher.launch(documentPickerIntent)
                         true
-                    } catch (error: Exception) {
-                        pendingFileChooser = null
-                        filePathCallback.onReceiveValue(null)
-                        Log.e("AnimeArtFilePicker", "Could not open Android file picker", error)
-                        false
+                    } catch (documentPickerError: Exception) {
+                        Log.w("AnimeArtFilePicker", "Document picker unavailable; trying WebView default picker", documentPickerError)
+                        try {
+                            fileChooserLauncher.launch(fileChooserParams.createIntent())
+                            true
+                        } catch (fallbackError: Exception) {
+                            pendingFileChooser = null
+                            filePathCallback.onReceiveValue(null)
+                            Log.e("AnimeArtFilePicker", "Could not open Android image/file picker", fallbackError)
+                            Toast.makeText(
+                                this@MainActivity,
+                                "No se pudo abrir el selector de archivos. Comprueba que haya una app de archivos instalada.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            false
+                        }
                     }
                 }
             }
