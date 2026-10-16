@@ -816,3 +816,20 @@ test("T_TEXT_EDITOR outline controls register only one input handler each", asyn
   assert.equal(js.split('textOutlineColorInput.addEventListener("input"').length - 1, 1);
   assert.equal(js.split('textOutlineWidthInput.addEventListener("input"').length - 1, 1);
 });
+
+
+test("AA-MOBILE-PICSART-PANEL-LAW keeps the phone editor canvas-first with universal actions above and tools below", async () => {
+  const html = await readFile("index.html", "utf8");
+  const app = await readFile("app.js", "utf8");
+  const css = await readFile("styles.css", "utf8");
+  assert.match(html, /class="mobile-top-actions"/);
+  for (const action of ["undo", "redo", "export"]) {
+    assert.match(html, new RegExp('data-mobile-top-action="' + action + '"'));
+  }
+  assert.match(app, /AA-MOBILE-PICSART-PANEL-LAW/);
+  assert.match(css, /AA-MOBILE-PICSART-PANEL-LAW: approved mobile structure/);
+  assert.match(css, /grid-template-rows: minmax\(0, 1fr\) minmax\(220px, 38dvh\) 0 !important/);
+  assert.match(css, /env\(safe-area-inset-bottom\)/);
+  assert.match(html, /data-touch-action="import-image"/);
+  assert.match(html, /data-touch-action="more"/);
+});
