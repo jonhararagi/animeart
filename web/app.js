@@ -2892,6 +2892,18 @@ if (mobileDock) {
   });
 }
 
+// AA-MOBILE-PICSART-PANEL-LAW: universal actions stay in the compact top bar on phones.
+document.querySelectorAll("[data-mobile-top-action]").forEach(button => {
+  button.addEventListener("click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    const action = button.dataset.mobileTopAction;
+    if (action === "undo") undo();
+    else if (action === "redo") redo();
+    else if (action === "export") exportPngButton?.click();
+  });
+});
+
 function setInteractionMode(mode) {
   state.interactionMode = mode === "interactive" ? "interactive" : "simple";
   const modeToggle = document.querySelector("#editor-mode-toggle");
