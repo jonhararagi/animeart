@@ -2127,6 +2127,17 @@ function beginSelectionInteraction(event) {
   const rawSelectedGeometry = selected ? selectionGeometry(selected, screenViewportForDocument(state.document, state.viewport, canvasSize()), documentCenter(state.document)) : null;
   const selectedGeometry = clampSelectionHandles(rawSelectedGeometry, canvasSize(), selectionHandleInset());
   const selectedHit = hitTestHandle(screenPoint, selectedGeometry, HANDLE_RADIUS);
+  if (window.__ANIMEART_E2E_DIAGNOSTICS__) {
+    window.__ANIMEART_LAST_SELECTION_POINTER__ = {
+      point: screenPoint,
+      hit: selectedHit,
+      layerId: selected?.id || null,
+      selectedLayerIds: [...state.selectedLayerIds],
+      rotationHandle: selectedGeometry?.rotationHandle || null,
+      closeHandle: selectedGeometry?.closeHandle || null,
+      resizeHandle: selectedGeometry?.resizeHandle || null
+    };
+  }
   // In multi-selection, prefer the group bounds before interpreting the anchor layer's X.
   // Otherwise a group-interior drag can overlap the active layer's own close handle.
   if (selectedHit === "close" && state.selectedLayerIds.length <= 1) {
