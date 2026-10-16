@@ -100,6 +100,7 @@ async function waitForDevTools() {
 const wsUrl = await waitForDevTools();
 const ws = new WebSocket(wsUrl);
 const pending = new Map();
+const browserDiagnostics = [];
 let nextId = 1;
 
 const cdp = (method, params = {}) => new Promise((resolveCdp, rejectCdp) => {
@@ -110,7 +111,18 @@ const cdp = (method, params = {}) => new Promise((resolveCdp, rejectCdp) => {
 
 ws.addEventListener("message", event => {
   const message = JSON.parse(event.data);
-  if (!message.id) return;
+  if (!message.id) {
+    if (message.method === "Runtime.exceptionThrown") {
+      const details = message.params?.exceptionDetails;
+      browserDiagnostics.push({kind:"exception",text:details?.text||"",description:details?.exception?.description||"",url:details?.url||"",line:details?.lineNumber});
+    } else if (message.method === "Runtime.consoleAPICalled" && message.params?.type === "error") {
+      browserDiagnostics.push({kind:"console.error",args:(message.params.args||[]).map(arg=>arg.value??arg.description??arg.type).join(" ")});
+    } else if (message.method === "Log.entryAdded" && message.params?.entry?.level === "error") {
+      const entry=message.params.entry;
+      browserDiagnostics.push({kind:"browser.log",text:entry.text||"",url:entry.url||"",line:entry.lineNumber});
+    }
+    return;
+  }
   const waiter = pending.get(message.id);
   if (!waiter) return;
   pending.delete(message.id);
@@ -122,6 +134,16 @@ await new Promise((resolveWs, rejectWs) => {
   ws.addEventListener("open", resolveWs, { once: true });
   ws.addEventListener("error", rejectWs, { once: true });
 });
+
+// Subscribe before reloading so syntax/runtime failures during module startup are not lost.
+await cdp("Runtime.enable");
+await cdp("Log.enable");
+await cdp("Page.enable");
+await cdp("Page.addScriptToEvaluateOnNewDocument", {source:
+  'window.addEventListener("error", event => console.error("ANIMEART_WINDOW_ERROR", event.message, event.filename, event.lineno, event.colno));' +
+  'window.addEventListener("unhandledrejection", event => console.error("ANIMEART_UNHANDLED_REJECTION", event.reason?.stack || String(event.reason)));'
+});
+await cdp("Page.reload", {ignoreCache:true});
 
 const evaluate = async (expression) => {
   const result = await cdp("Runtime.evaluate", {
@@ -287,7 +309,12 @@ try {
   await cdp("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   await waitFor(`document.readyState === "complete"`);
   await waitFor(`document.querySelector("#canvas") !== null`);
-  await waitForServiceWorkerReadiness();
+  try {
+    await waitForServiceWorkerReadiness();
+  } catch (error) {
+    console.error("ANIMEART_BROWSER_DIAGNOSTICS " + JSON.stringify(browserDiagnostics));
+    throw error;
+  }
 
   assert(await evaluate("document.title") === "AnimeArt Studio | Image Editor", "real browser loaded the AnimeArt Studio entrypoint");
   const canvas = await selectorCenter("#canvas");
