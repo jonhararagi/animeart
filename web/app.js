@@ -56,6 +56,7 @@ const resetLayerAdjustmentsButton = document.querySelector("#reset-layer-adjustm
 const adjustmentPresetButtons = [...document.querySelectorAll("[data-adjustment-preset]")];
 const textPanel = document.querySelector("#text-panel");
 const textEditDialog = document.querySelector("#text-edit-dialog");
+let newlyCreatedTextLayerId = null;
 const closeTextEditButton = document.querySelector("#close-text-edit");
 const textContentInput = document.querySelector("#text-content");
 const textFontSizeInput = document.querySelector("#text-font-size");
@@ -1630,7 +1631,27 @@ textShadowXInput.addEventListener("input", () => { const v = Number(textShadowXI
 textShadowXInput.addEventListener("change", () => commitTextPreview("Text shadow horizontal offset updated"));
 textShadowYInput.addEventListener("input", () => { const v = Number(textShadowYInput.value); textShadowYValue.textContent = v + " px"; updateTextPreview({ shadowOffsetY: v }); });
 textShadowYInput.addEventListener("change", () => commitTextPreview("Text shadow vertical offset updated"));
-closeTextEditButton?.addEventListener("click", () => textEditDialog?.close());
+function cancelNewlyCreatedTextLayer() {
+  const id = newlyCreatedTextLayerId;
+  newlyCreatedTextLayerId = null;
+  if (!id) return false;
+  const layer = state.document.layers.find(item => item.id === id && item.contentType === "text");
+  if (!layer) return false;
+  setSelection([layer.id], layer.id);
+  const removed = removeSelectedLayer();
+  if (textEditDialog?.open) textEditDialog.close();
+  return removed;
+}
+closeTextEditButton?.addEventListener("click", () => {
+  if (newlyCreatedTextLayerId) { cancelNewlyCreatedTextLayer(); return; }
+  textEditDialog?.close();
+});
+textEditDialog?.addEventListener("cancel", event => {
+  if (newlyCreatedTextLayerId) {
+    event.preventDefault();
+    cancelNewlyCreatedTextLayer();
+  }
+});
 document.querySelector("#apply-text-layer")?.addEventListener("click", () => {
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "text") {
@@ -1638,12 +1659,14 @@ document.querySelector("#apply-text-layer")?.addEventListener("click", () => {
     return;
   }
   commitTextPreview("Texto aplicado al lienzo");
+  newlyCreatedTextLayerId = null;
   textEditDialog?.close();
   status.textContent = "Texto aplicado al lienzo. Podés moverlo o eliminarlo desde la barra inferior.";
 });
 document.querySelector("#delete-text-layer")?.addEventListener("click", () => {
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "text") return;
+  newlyCreatedTextLayerId = null;
   if (removeSelectedLayer()) textEditDialog?.close();
 });
 textEditDialog?.addEventListener("close", () => {
@@ -3757,6 +3780,7 @@ document.querySelector("#add-text-layer").addEventListener("click", () => {
   if (!next) return;
   state.document = next;
   state.textPreview = null;
+  newlyCreatedTextLayerId = layer.id;
   setSelection([layer.id], layer.id);
   state.history.record(before, next);
   refreshDocument("Text layer added");
