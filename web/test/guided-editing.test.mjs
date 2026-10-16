@@ -42,11 +42,16 @@ test("selection and transparency controls are visible and explicitly wired", asy
  assert.match(css, /\.canvas-wrap\[data-background="gray"\] canvas/);
 });
 
-test("touching a different image selects it before the next edit to avoid changing the wrong layer", async () => {
+test("first brush touch on a different image keeps the gesture and starts the edit", async () => {
  const app = await readFile("app.js","utf8");
  assert.match(app, /const hitImage = \[\.\.\.state\.document\.layers\]\.reverse\(\)/);
- assert.match(app, /setSelection\(\[hitImage\.id\], hitImage\.id\)/);
- assert.match(app, /Imagen seleccionada\. Volvé a tocar para usar/);
+ const start = app.indexOf('if (hitImage && hitImage.id !== state.selectedLayerId');
+ const end = app.indexOf('let layer = selectedLayer();', start);
+ assert.ok(start >= 0 && end > start, "image hit handling is present");
+ const branch = app.slice(start, end);
+ assert.match(branch, /setSelection\(\[hitImage\.id\], hitImage\.id\)/);
+ assert.match(branch, /keep processing this same pointer gesture/);
+ assert.doesNotMatch(branch, /\breturn\s*;/, "first touch must not exit before creating the brush stroke");
 });
 
 
