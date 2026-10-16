@@ -706,7 +706,7 @@ test("AA-MOBILE-PICSART-UX-005 keeps image, text, history, export and delete in 
   const dock = html.match(/<nav class="mobile-touch-dock"[\s\S]*?<\/nav>/)?.[0] || "";
   assert.match(dock, /aria-label="Herramientas principales"/);
   for (const label of ["Añadir", "Galería", "Mover", "Dibujar", "Texto", "Deshacer", "Rehacer", "Exportar", "Eliminar", "Capas", "Más"]) assert.match(dock, new RegExp(label));
-  assert.equal((dock.match(/data-touch-action=/g) || []).length, 11);
+  assert.equal((dock.match(/data-touch-action=/g) || []).length, 15);
   for (const action of ["import-image", "asset-library", "undo", "redo", "export", "delete-selected"]) assert.match(dock, new RegExp('data-touch-action="' + action + '"'));
   assert.match(css, /AA-MOBILE-UX-004/);
   assert.match(css, /AA-GALLERY-DOCK-001/);
@@ -719,7 +719,9 @@ test("AA-MOBILE-PICSART-UX-005 keeps image, text, history, export and delete in 
   assert.match(js, /const visibleHandles = clampSelectionHandles\(geometry, canvasSize\(\), selectionHandleInset\(\)\)/);
   assert.match(js, /drawObjectSelectionHandle\(visibleHandles\.closeHandle, "close"\)/);
   assert.match(js, /drawObjectSelectionHandle\(visibleHandles\.resizeHandle, "resize"\)/);
-  assert.doesNotMatch(js, /drawObjectSelectionHandle\(geometry\.rotationHandle/);
+  for (const action of ["rotate-left", "rotate-right", "flip-horizontal", "flip-vertical"]) assert.match(dock, new RegExp(`data-touch-action="${action}"`));
+  assert.match(html, /id="mobile-export-format"/);
+  assert.match(js, /drawObjectSelectionHandle\(rotationHandle, "rotate"\)/);
 });
 
 
