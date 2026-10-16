@@ -943,7 +943,7 @@ try {
     diagnostics.layersImmediatelyAfterChange = JSON.parse(raw || "{}").layers?.length ?? 0;
     diagnostics.storedCharactersImmediatelyAfterChange = raw?.length ?? 0;
     return { type: blob.type, size: blob.size, immediate: diagnostics };
-  })`);
+  })()`);
   console.log("JPEG_FIXTURE_RESULT: " + JSON.stringify(jpegImport));
   assert(jpegImport.type === "image/jpeg" && jpegImport.size > 0, "browser generated a real JPEG fixture for import: " + JSON.stringify({ type: jpegImport.type, size: jpegImport.size, immediate: jpegImport.immediate }));
   assert(jpegImport.immediate?.changeObserved === true, "JPEG change event reached the file-input listener path");
@@ -971,7 +971,7 @@ try {
       feedback: document.querySelector("#mobile-feedback")?.textContent || "",
       diagnostics: window.__animeArtJpegImportDiagnostics || null,
       storedCharacters: raw?.length ?? 0, saved };
-  })`);
+  })()`);
   if (jpegPersistenceFailure) {
     throw new Error("JPEG import did not persist a new image layer; diagnostics=" +
       JSON.stringify(jpegFinalDiagnostics) + "; waitFailure=" + jpegPersistenceFailure);
@@ -1102,7 +1102,7 @@ try {
       files: window.__animeArtMobilePngChange.files,
       immediateStatus: document.querySelector("#status")?.textContent || ""
     };
-  })`);
+  })()`);
   assert(mobilePng.type === "image/png" && mobilePng.size > 0, "mobile E2E creates a genuine PNG fixture");
   assert(mobilePng.changeObserved && mobilePng.files?.[0]?.name === "e2e-mobile-import.png" &&
     mobilePng.files?.[0]?.type === "image/png" && mobilePng.files?.[0]?.size === mobilePng.size,
