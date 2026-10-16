@@ -699,14 +699,16 @@ test("selection status indicator never intercepts canvas pointer gestures", asyn
 });
 
 
-test("AA-MOBILE-UX-004 keeps direct Spanish image/text/delete actions in the mobile dock", async () => {
+test("AA-MOBILE-UX-004 keeps direct Spanish image/text/history/delete actions in the mobile dock", async () => {
   const [html, css] = await Promise.all([readFile("index.html", "utf8"), readFile("styles.css", "utf8")]);
   const dock = html.match(/<nav class="mobile-touch-dock"[\s\S]*?<\/nav>/)?.[0] || "";
   assert.match(dock, /aria-label="Herramientas principales"/);
-  for (const label of ["Añadir", "Galería", "Mover", "Dibujar", "Texto", "Eliminar", "Capas", "Más"]) assert.match(dock, new RegExp(label));
-  assert.equal((dock.match(/data-touch-action=/g) || []).length, 8);
+  for (const label of ["Añadir", "Galería", "Mover", "Dibujar", "Texto", "Deshacer", "Rehacer", "Eliminar", "Capas", "Más"]) assert.match(dock, new RegExp(label));
+  assert.equal((dock.match(/data-touch-action=/g) || []).length, 10);
   assert.match(dock, /data-touch-action="import-image"/);
   assert.match(dock, /data-touch-action="asset-library"/);
+  assert.match(dock, /data-touch-action="undo"/);
+  assert.match(dock, /data-touch-action="redo"/);
   assert.match(dock, /data-touch-action="delete-selected"/);
   assert.match(css, /AA-MOBILE-UX-004/);
   assert.match(css, /AA-GALLERY-DOCK-001/);
