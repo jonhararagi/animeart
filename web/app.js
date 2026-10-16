@@ -3077,7 +3077,8 @@ function runEditGoal(goal) {
       }
     },
     undo: () => undoButton.click(),
-    export: () => exportPngButton.click()
+    export: () => exportPngButton.click(),
+    appearance: () => document.querySelector("#appearance-open")?.click()
   };
   actions[goal]?.();
 }
