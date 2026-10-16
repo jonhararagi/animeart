@@ -1058,6 +1058,7 @@ try {
   assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=import-image]")?.textContent.includes("Añadir")'), "mobile has a visible Add image action");
   assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=asset-library]")?.textContent.includes("Galería")'), "mobile has a visible reusable Gallery action");
   assert(await evaluate('Boolean(document.querySelector(".mobile-touch-dock [data-touch-action=delete-selected]"))'), "mobile has direct Delete selected object action");
+  assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=undo]")?.textContent.includes("Deshacer") && document.querySelector(".mobile-touch-dock [data-touch-action=redo]")?.textContent.includes("Rehacer")'), "mobile dock exposes localized Undo and Redo actions");
   assert(await evaluate('getComputedStyle(document.querySelector("#selection-mini-panel")).display === "none"'), "floating selection controls do not cover the mobile canvas");
   const projectBeforePickerAttempt = await evaluate('localStorage.getItem("animeart-web-document")');
   const layerCountBeforePickerAttempt = (await readLayerSummary()).length;
@@ -1141,11 +1142,13 @@ try {
     "the image imported through the mobile file input can be dragged on the canvas");
   const importedTransformAfterMove = JSON.stringify(mobilePngMoved.transform);
   await saveScreenshot("animeart-studio-mobile-imported-image-moved.png");
-  await click("#undo");
+  await click('.mobile-touch-dock [data-touch-action="undo"]');
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformBeforeMove), 10000);
   assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
-    "undo restores the imported image transform without deleting its layer");
-  await click("#redo");
+    "mobile Undo restores the imported image transform without deleting its layer");
+  assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=redo]")?.disabled === false'),
+    "mobile Redo becomes enabled after undoing the image movement");
+  await click('.mobile-touch-dock [data-touch-action="redo"]');
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterMove), 10000);
   assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
     "redo restores the moved imported image");
