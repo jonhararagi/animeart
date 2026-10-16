@@ -6,6 +6,8 @@ import { extname, join, normalize, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { inflateSync } from "node:zlib";
 import { createServer as createPortProbe } from "node:net";
+import { multiSelectionGeometry } from "../domain/selection.mjs";
+import { documentCenter, documentToScreenPoint } from "../domain/canvas-space.mjs";
 
 const ROOT = resolve(process.env.ANIMEART_E2E_ROOT || "dist");
 const PORT = Number(process.env.ANIMEART_E2E_PORT || 4173);
@@ -365,10 +367,11 @@ try {
   assert(documentState.layers.length === 2, "real layer control creates a second layer");
   const secondLayerId = documentState.layers.at(-1).id;
   await click('[data-tool="brush"]');
+  const secondCanvasCenter = await selectorCenter("#canvas");
   await mouseStroke([
-    { x: c.x + 120, y: c.y - 80 },
-    { x: c.x + 160, y: c.y - 20 },
-    { x: c.x + 200, y: c.y + 40 }
+    { x: secondCanvasCenter.x - 180, y: secondCanvasCenter.y - 125 },
+    { x: secondCanvasCenter.x, y: secondCanvasCenter.y },
+    { x: secondCanvasCenter.x + 180, y: secondCanvasCenter.y + 125 }
   ]);
   documentState = await readDocument();
   assert(documentState.layers.find(layer => layer.id === secondLayerId)?.strokes.length === 1, "second layer accepts real pointer drawing");
@@ -382,8 +385,21 @@ try {
 
   const beforeMulti = await readDocument();
   const multiBefore = selectedLayerIds.map(id => ({ id, x: beforeMulti.layers.find(layer => layer.id === id).transform.x }));
-  const dragStartScreen = await evaluate('(() => { const canvas = document.querySelector("#canvas"); const rect = canvas.getBoundingClientRect(); const doc = JSON.parse(localStorage.getItem("animeart-web-document")); const ids = ' + JSON.stringify(selectedLayerIds) + '; const points = doc.layers.filter(layer => ids.includes(layer.id)).flatMap(layer => layer.strokes.flatMap(stroke => stroke.points)); if (!points.length) return null; const minX = Math.min(...points.map(point => point.x)); const maxX = Math.max(...points.map(point => point.x)); const minY = Math.min(...points.map(point => point.y)); const maxY = Math.max(...points.map(point => point.y)); const point = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 }; const fitScale = Math.min(rect.width / doc.width, rect.height / doc.height); return { x: rect.left + rect.width / 2 + (point.x - doc.width / 2) * fitScale, y: rect.top + rect.height / 2 + (point.y - doc.height / 2) * fitScale }; })()');
-  assert(Boolean(dragStartScreen), "multi-selection has a group-bounds interior hit point away from corner handles");
+  const selectedModels = beforeMulti.layers.filter(layer => selectedLayerIds.includes(layer.id));
+  const groupGeometry = multiSelectionGeometry(selectedModels, documentCenter(beforeMulti));
+  assert(Boolean(groupGeometry), "multi-selection computes bounds from the selected layer geometry");
+  const canvasMetrics = await evaluate('(() => { const rect = document.querySelector("#canvas").getBoundingClientRect(); return {left:rect.left,top:rect.top,width:rect.width,height:rect.height}; })()');
+  const screenSize = { width: canvasMetrics.width, height: canvasMetrics.height };
+  const testViewport = { zoom: 1, panX: 0, panY: 0 };
+  const groupCornersOnScreen = groupGeometry.corners.map(point => documentToScreenPoint(point, beforeMulti, testViewport, screenSize));
+  const boundsOnScreen = {
+    width: Math.max(...groupCornersOnScreen.map(point => point.x)) - Math.min(...groupCornersOnScreen.map(point => point.x)),
+    height: Math.max(...groupCornersOnScreen.map(point => point.y)) - Math.min(...groupCornersOnScreen.map(point => point.y))
+  };
+  assert(boundsOnScreen.width > 60 && boundsOnScreen.height > 60,
+    "multi-selection E2E fixture has a draggable interior larger than the touch handles: " + JSON.stringify(boundsOnScreen));
+  const groupCenterOnScreen = documentToScreenPoint(groupGeometry.center, beforeMulti, testViewport, screenSize);
+  const dragStartScreen = { x: canvasMetrics.left + groupCenterOnScreen.x, y: canvasMetrics.top + groupCenterOnScreen.y };
   await evaluate("window.__ANIMEART_E2E_DIAGNOSTICS__ = true");
   await mouseDrag(dragStartScreen, { x: dragStartScreen.x + 50, y: dragStartScreen.y });
   console.log("MULTI_SELECTION_INTERACTION_DIAGNOSTICS", JSON.stringify(browserDiagnostics.filter(item => /AA_MULTI_POINTER/.test(item.args || ""))));
@@ -1050,20 +1066,26 @@ try {
   await waitFor('document.readyState === "complete"');
   await waitFor('document.querySelector("#canvas") !== null');
   await waitForServiceWorkerReadiness();
-  assert(await evaluate('window.innerWidth <= 920'), "Xiaomi-sized mobile E2E runs at a 393 CSS-pixel viewport");
-  assert(await evaluate('getComputedStyle(document.querySelector(".topbar")).display === "none"'), "mobile layout leaves the phone status-bar region free of app controls");
+  assert(await evaluate('window.innerWidth === 393 && window.innerHeight === 873'), "Xiaomi-sized mobile E2E runs at a 393 × 873 CSS-pixel viewport");
+  assert(await evaluate('getComputedStyle(document.querySelector(".topbar")).display !== "none" && document.querySelector(".topbar").getBoundingClientRect().height >= 48'), "mobile uses a compact header below the system-safe area");
+  assert(await evaluate('getComputedStyle(document.querySelector(".mobile-top-actions")).display !== "none" && Array.from(document.querySelectorAll(".mobile-top-actions button")).every(el => { const r = el.getBoundingClientRect(); return r.width >= 42 && r.height >= 42; })'), "mobile header actions are compact and touch-sized");
   assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=export]") !== null'), "mobile export remains reachable in the bottom dock");
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "mobile editor starts without stale storage-recovery warning");
-  assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height > 0'), "clean mobile workspace retains usable canvas space");
+  assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height >= 600 && document.querySelector("#canvas").getBoundingClientRect().height >= 500'), "the canvas is the dominant workspace, not a small panel");
   assert(await evaluate('getComputedStyle(document.querySelector(".workspace")).gridTemplateColumns.split(" ").length === 1'), "mobile workspace uses a single canvas column instead of the desktop sidebars");
-  assert(await evaluate('document.querySelector(".mobile-touch-dock").getBoundingClientRect().height >= 48'), "mobile quick-action dock has a usable touch target area");
+  assert(await evaluate('document.querySelector(".mobile-touch-dock").getBoundingClientRect().height >= 72'), "mobile quick-action dock has a usable touch target area");
   assert(await evaluate('Array.from(document.querySelectorAll(".mobile-touch-dock button")).every(el => { const r = el.getBoundingClientRect(); return r.width >= 44 && r.height >= 44; })'), "Xiaomi-sized quick-action buttons meet the 44px touch-target floor");
-  assert(await evaluate('document.querySelectorAll(".mobile-touch-dock [data-touch-action]").length >= 8'), "mobile dock exposes the dedicated gallery plus editing actions");
+  assert(await evaluate('getComputedStyle(document.querySelector(".mobile-touch-dock")).overflowX === "auto" && document.querySelector(".mobile-touch-dock").scrollWidth > document.querySelector(".mobile-touch-dock").clientWidth'), "the 11-tool bottom dock scrolls horizontally instead of clipping buttons");
+  assert(await evaluate('document.querySelectorAll(".mobile-touch-dock [data-touch-action]").length === 11'), "mobile dock exposes all eleven editing actions");
+  await evaluate('document.querySelector(".mobile-touch-dock").scrollLeft = 0');
+  assert(await evaluate('(() => { const dock=document.querySelector(".mobile-touch-dock").getBoundingClientRect(); const add=document.querySelector(".mobile-touch-dock [data-touch-action=import-image]").getBoundingClientRect(); return add.left >= dock.left && add.right <= dock.right; })()'), "the primary Add image action is visible without horizontal scrolling");
+  assert(await evaluate('document.querySelector("#selection-mini-panel").hidden === true'), "empty canvas does not show a useless layer-action panel");
+  await saveScreenshot("animeart-studio-mobile-home.png");
   assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=import-image]")?.textContent.includes("Añadir")'), "mobile has a visible Add image action");
   assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=asset-library]")?.textContent.includes("Galería")'), "mobile has a visible reusable Gallery action");
   assert(await evaluate('Boolean(document.querySelector(".mobile-touch-dock [data-touch-action=delete-selected]"))'), "mobile has direct Delete selected object action");
   assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=undo]")?.textContent.includes("Deshacer") && document.querySelector(".mobile-touch-dock [data-touch-action=redo]")?.textContent.includes("Rehacer")'), "mobile dock exposes localized Undo and Redo actions");
-  assert(await evaluate('getComputedStyle(document.querySelector("#selection-mini-panel")).display === "none"'), "floating selection controls do not cover the mobile canvas");
+  assert(await evaluate('document.querySelector("#selection-mini-panel").hidden === true'), "no selected-object panel is shown for an empty canvas");
   const projectBeforePickerAttempt = await evaluate('localStorage.getItem("animeart-web-document")');
   const layerCountBeforePickerAttempt = (await readLayerSummary()).length;
   await evaluate('(() => { const input = document.querySelector("#image-file-input"); window.__animeArtPickerOpenCount = 0; window.__animeArtOriginalPickerClick = input.click.bind(input); input.click = () => { window.__animeArtPickerOpenCount += 1; }; })()');
@@ -1079,6 +1101,7 @@ try {
   await waitFor('document.querySelector("#asset-library-dialog")?.open === true');
   await click("#close-asset-library");
   await waitFor('document.querySelector("#asset-library-dialog")?.open === false');
+  await evaluate('document.querySelector(".mobile-touch-dock").scrollLeft = 0');
   await saveScreenshot("animeart-studio-mobile-initial.png");
 
   // Import a real PNG Blob through the mobile file input and capture the resulting editor state.
@@ -1130,6 +1153,13 @@ try {
   await waitFor('(() => { const c = document.querySelector("#canvas"); const p = c.getContext("2d").getImageData(Math.floor(c.width / 2), Math.floor(c.height / 2), 1, 1).data; return p[2] > 160 && p[1] > 120 && p[0] < 100 && p[3] > 0; })()', 10000);
   assert(await evaluate('document.querySelector("#mobile-feedback").textContent.includes("Imagen añadida al lienzo")'),
     "mobile image import produces localized success feedback");
+  await waitFor('document.querySelector("#selection-mini-panel").hidden === false', 10000);
+  assert(await evaluate('(() => { const canvas=document.querySelector("#canvas").getBoundingClientRect(); const panel=document.querySelector("#selection-mini-panel").getBoundingClientRect(); return panel.height >= 44 && panel.top >= canvas.bottom - 2 && panel.bottom <= window.innerHeight; })()'),
+    "selected-object actions sit in a separate touch row below the canvas instead of floating over artwork");
+  assert(await evaluate('getComputedStyle(document.querySelector("#remove-selected-image")).display === "none"'),
+    "mobile uses the canvas X selection handle instead of a second floating delete control");
+  await waitFor('document.querySelector("#mobile-feedback").hidden === true', 5000);
+  await evaluate('document.querySelector(".mobile-touch-dock").scrollLeft = 0');
   await saveScreenshot("animeart-studio-mobile-imported-image.png");
   console.log("MOBILE_IMPORTED_IMAGE_DIAGNOSTICS: " + JSON.stringify(await evaluate('(() => { const raw=localStorage.getItem("animeart-web-document"); const saved=JSON.parse(raw || "{}"); const layer=saved.layers?.find(entry=>entry.name==="e2e-mobile-import"); return { status:document.querySelector("#status")?.textContent||"", feedback:document.querySelector("#mobile-feedback")?.textContent||"", storedCharacters:raw?.length||0, layer:layer ? {name:layer.name,contentType:layer.contentType,width:layer.image?.width,height:layer.image?.height,mime:(/^data:([^;,]+)/.exec(layer.image?.source||"")||[])[1]||null,transform:layer.transform} : null }; })()')));
 
@@ -1145,6 +1175,7 @@ try {
   assert(JSON.stringify(mobilePngMoved?.transform) !== importedTransformBeforeMove,
     "the image imported through the mobile file input can be dragged on the canvas");
   const importedTransformAfterMove = JSON.stringify(mobilePngMoved.transform);
+  await evaluate('document.querySelector(".mobile-touch-dock").scrollLeft = 0');
   await saveScreenshot("animeart-studio-mobile-imported-image-moved.png");
   await click('.mobile-touch-dock [data-touch-action="undo"]');
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformBeforeMove), 10000);

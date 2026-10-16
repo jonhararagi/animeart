@@ -84,6 +84,8 @@ const textAlignInput = document.querySelector("#text-align");
 const textLayerName = document.querySelector("#text-layer-name");
 const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
+const mobileTopUndoButton = document.querySelector('.mobile-top-actions [data-mobile-top-action="undo"]');
+const mobileTopRedoButton = document.querySelector('.mobile-top-actions [data-mobile-top-action="redo"]');
 const mobileUndoButton = document.querySelector('.mobile-touch-dock [data-touch-action="undo"]');
 const mobileRedoButton = document.querySelector('.mobile-touch-dock [data-touch-action="redo"]');
 const imageFileInput = document.querySelector("#image-file-input");
@@ -222,8 +224,13 @@ function setSelection(layerIds, anchorId = null) {
 function updateSelectionMiniPanel(layer = selectedLayerExact()) {
   const panel = document.querySelector("#selection-mini-panel");
   if (!panel) return;
-  panel.hidden = !layer;
-  if (!layer) return;
+  const hasEditableContent = Boolean(layer && (
+    (layer.contentType === "image" && layer.image) ||
+    (layer.contentType === "text" && layer.text) ||
+    (Array.isArray(layer.strokes) && layer.strokes.some(stroke => Array.isArray(stroke.points) && stroke.points.length > 0))
+  ));
+  panel.hidden = !hasEditableContent;
+  if (!hasEditableContent) return;
 
   const name = document.querySelector("#selection-mini-layer-name");
   if (name) name.textContent = layer.name + (layer.locked ? " · bloqueada" : "");
@@ -516,7 +523,7 @@ function drawDocument({ context = ctx, document = state.document, center = docum
 
 function drawObjectSelectionHandle(point, kind) {
   if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
-  const radius = 19;
+  const radius = window.matchMedia("(max-width: 920px)").matches ? 20 : 19;
   ctx.save();
   ctx.beginPath();
   ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
@@ -1835,6 +1842,8 @@ function refreshHistoryControls() {
   const canRedo = state.history.canRedo();
   undoButton.disabled = !canUndo;
   redoButton.disabled = !canRedo;
+  if (mobileTopUndoButton) mobileTopUndoButton.disabled = !canUndo;
+  if (mobileTopRedoButton) mobileTopRedoButton.disabled = !canRedo;
   if (mobileUndoButton) mobileUndoButton.disabled = !canUndo;
   if (mobileRedoButton) mobileRedoButton.disabled = !canRedo;
 }
@@ -4243,7 +4252,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v29";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v30";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
