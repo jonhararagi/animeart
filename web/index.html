@@ -42,6 +42,8 @@
           <button type="button" data-edit-goal="censor"><span aria-hidden="true">✨</span><b>Luz de censura</b><small>Cubre con luz brillante</small></button>
           <button type="button" data-edit-goal="draw"><span aria-hidden="true">🖌️</span><b>Dibujar</b><small>Pinta sobre la imagen</small></button>
           <button type="button" data-edit-goal="text"><span aria-hidden="true">🔤</span><b>Texto</b><small>Añade palabras o globos</small></button>
+          <button type="button" data-edit-goal="shapes"><span aria-hidden="true">🔷</span><b>Formas</b><small>Figuras, borde y sombra</small></button>
+          <button type="button" data-edit-goal="object-style"><span aria-hidden="true">🎨</span><b>Estilo del objeto</b><small>Color, opacidad y efectos</small></button>
           <button type="button" data-edit-goal="color"><span aria-hidden="true">🎨</span><b>Mejorar color</b><small>Brillo y contraste</small></button>
           <button type="button" data-edit-goal="layers"><span aria-hidden="true">🗂️</span><b>Capas</b><small>Ordena los elementos</small></button>
           <button type="button" data-edit-goal="undo"><span aria-hidden="true">↶</span><b>Deshacer</b><small>Vuelve un paso atrás</small></button>
@@ -182,6 +184,7 @@
           <button id="selection-mini-back" type="button" title="Enviar una capa hacia atrás">↓ Atrás</button>
           <button id="selection-mini-front" type="button" title="Traer una capa hacia adelante">↑ Adelante</button>
           <button id="selection-mini-fit" type="button">Encajar</button>
+          <button id="selection-mini-style" type="button" title="Editar colores, formas y efectos del objeto">🎨 Estilo</button>
           <button id="selection-mini-delete" type="button" title="Eliminar el elemento seleccionado">🗑 Eliminar</button>
         </div>
       </section>
@@ -342,6 +345,113 @@
     <button type="button" data-touch-action="layers" aria-expanded="false" aria-label="Mostrar capas"><span aria-hidden="true">▤</span><span>Capas</span></button>
     <button type="button" data-touch-action="more" aria-expanded="false"><span aria-hidden="true">☰</span><span>Más</span></button>
   </nav>
+  <dialog id="object-style-dialog" aria-labelledby="object-style-title">
+    <section class="mini-editor-dialog">
+      <header class="mini-dialog-header">
+        <div><p class="eyebrow">ESTILO CONTEXTUAL</p><h2 id="object-style-title">Estilo del objeto</h2><p id="object-style-description">Ajusta este elemento sin perder de vista el lienzo.</p></div>
+        <button id="object-style-close" type="button" class="mini-dialog-close" aria-label="Cerrar estilo del objeto">×</button>
+      </header>
+      <div class="mini-dialog-body">
+        <p id="object-style-layer-name" class="object-style-name">Elemento seleccionado</p>
+        <label class="mini-style-field" for="object-style-opacity">Opacidad <output id="object-style-opacity-value">100%</output>
+          <input id="object-style-opacity" type="range" min="0" max="100" step="1" value="100">
+        </label>
+        <section id="object-style-image-options" class="mini-style-section" hidden>
+          <h3>Imagen y recorte</h3>
+          <label class="mini-style-field" for="object-style-mask">Forma del recorte
+            <select id="object-style-mask">
+              <option value="none">Original</option><option value="circle">Círculo</option><option value="rounded">Esquinas redondeadas</option><option value="star">Estrella</option><option value="heart">Corazón</option><option value="hexagon">Hexágono</option>
+            </select>
+          </label>
+          <h3>Color y luz</h3>
+          <label class="mini-style-field" for="object-style-brightness">Brillo <output id="object-style-brightness-value">100%</output>
+            <input id="object-style-brightness" type="range" min="0" max="200" step="1" value="100">
+          </label>
+          <label class="mini-style-field" for="object-style-contrast">Contraste <output id="object-style-contrast-value">100%</output>
+            <input id="object-style-contrast" type="range" min="0" max="200" step="1" value="100">
+          </label>
+          <label class="mini-style-field" for="object-style-saturation">Saturación <output id="object-style-saturation-value">100%</output>
+            <input id="object-style-saturation" type="range" min="0" max="200" step="1" value="100">
+          </label>
+          <button id="object-style-recolor" type="button" class="mini-style-secondary">🌈 Reemplazar un color</button>
+        </section>
+        <section id="object-style-drawing-options" class="mini-style-section" hidden>
+          <h3>Trazos de esta capa</h3>
+          <label class="mini-style-field" for="object-style-drawing-color">Color del trazo
+            <input id="object-style-drawing-color" type="color" value="#ff4fd8">
+          </label>
+          <label class="mini-style-field" for="object-style-drawing-size">Grosor <output id="object-style-drawing-size-value">5 px</output>
+            <input id="object-style-drawing-size" type="range" min="1" max="100" step="1" value="5">
+          </label>
+          <label class="mini-style-field" for="object-style-drawing-effect">Efecto del trazo
+            <select id="object-style-drawing-effect"><option value="normal">Normal</option><option value="soft">Aerógrafo suave</option><option value="glow">Resplandor</option><option value="neon">Neón</option></select>
+          </label>
+          <p class="mini-style-note">Aplicar actualiza los trazos de esta capa y no altera los borrados.</p>
+        </section>
+        <p id="object-style-status" class="mini-style-note" role="status" aria-live="polite">Los cambios se guardan como una operación que puedes deshacer.</p>
+        <div class="mini-dialog-actions">
+          <button id="object-style-cancel" type="button">Cancelar</button>
+          <button id="object-style-apply" type="button" class="mini-primary">Aplicar cambios</button>
+        </div>
+      </div>
+    </section>
+  </dialog>
+
+  <dialog id="shape-maker-dialog" aria-labelledby="shape-maker-title">
+    <section class="mini-editor-dialog shape-maker-shell">
+      <header class="mini-dialog-header">
+        <div><p class="eyebrow">OBJETOS EDITABLES</p><h2 id="shape-maker-title">Añadir forma</h2><p id="shape-maker-description">Elige una figura, personaliza color, contorno y sombra.</p></div>
+        <button id="shape-maker-close" type="button" class="mini-dialog-close" aria-label="Cerrar editor de formas">×</button>
+      </header>
+      <div class="mini-dialog-body">
+        <div class="shape-maker-grid">
+          <div class="shape-maker-fields">
+            <label class="mini-style-field" for="shape-maker-kind">Forma
+              <select id="shape-maker-kind">
+                <option value="rectangle">Rectángulo</option><option value="rounded">Rectángulo redondeado</option><option value="circle">Círculo</option><option value="ellipse">Óvalo</option><option value="star">Estrella</option><option value="heart">Corazón</option><option value="hexagon">Hexágono</option><option value="triangle">Triángulo</option><option value="speech">Globo de diálogo</option><option value="lightning">Rayo</option><option value="cloud">Nube</option>
+              </select>
+            </label>
+            <div class="mini-style-pair">
+              <label class="mini-style-field" for="shape-maker-width">Ancho (px)<input id="shape-maker-width" type="number" min="80" max="1600" step="10" value="320"></label>
+              <label class="mini-style-field" for="shape-maker-height">Alto (px)<input id="shape-maker-height" type="number" min="80" max="1600" step="10" value="240"></label>
+            </div>
+            <div class="mini-style-pair">
+              <label class="mini-style-field" for="shape-maker-fill">Relleno<input id="shape-maker-fill" type="color" value="#ff4fd8"></label>
+              <label class="mini-style-field" for="shape-maker-stroke">Contorno<input id="shape-maker-stroke" type="color" value="#ffffff"></label>
+            </div>
+            <label class="mini-style-field" for="shape-maker-stroke-width">Grosor del contorno <output id="shape-maker-stroke-width-value">4 px</output>
+              <input id="shape-maker-stroke-width" type="range" min="0" max="32" step="1" value="4">
+            </label>
+            <div class="mini-style-pair">
+              <label class="mini-style-field" for="shape-maker-shadow-color">Color de sombra<input id="shape-maker-shadow-color" type="color" value="#171324"></label>
+              <label class="mini-style-field" for="shape-maker-shadow-blur">Desenfoque <output id="shape-maker-shadow-blur-value">12 px</output>
+                <input id="shape-maker-shadow-blur" type="range" min="0" max="48" step="1" value="12">
+              </label>
+            </div>
+            <div class="mini-style-pair">
+              <label class="mini-style-field" for="shape-maker-shadow-x">Sombra X <output id="shape-maker-shadow-x-value">3 px</output>
+                <input id="shape-maker-shadow-x" type="range" min="-40" max="40" step="1" value="3">
+              </label>
+              <label class="mini-style-field" for="shape-maker-shadow-y">Sombra Y <output id="shape-maker-shadow-y-value">5 px</output>
+                <input id="shape-maker-shadow-y" type="range" min="-40" max="40" step="1" value="5">
+              </label>
+            </div>
+          </div>
+          <div class="shape-maker-preview-column">
+            <p>Vista previa</p>
+            <div class="shape-maker-preview"><img id="shape-maker-preview" alt="Vista previa de la forma y sus efectos"></div>
+            <p class="mini-style-note">La figura se agrega como una capa editable: puedes moverla, girarla, cambiar su tamaño, orden y opacidad.</p>
+          </div>
+        </div>
+        <p id="shape-maker-status" class="mini-style-note" role="status" aria-live="polite">Nada se añade hasta que pulses el botón de confirmar.</p>
+        <div class="mini-dialog-actions">
+          <button id="shape-maker-cancel" type="button">Cancelar</button>
+          <button id="shape-maker-apply" type="button" class="mini-primary">Añadir forma</button>
+        </div>
+      </div>
+    </section>
+  </dialog>
+
   <dialog id="poster-template-dialog" aria-labelledby="poster-template-title">
     <form id="poster-template-form" method="dialog">
       <h2 id="poster-template-title">Create a poster</h2>

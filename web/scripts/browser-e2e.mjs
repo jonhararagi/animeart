@@ -939,6 +939,27 @@ try {
   await click('.mobile-touch-dock [data-touch-action="more"]');
   await waitFor('!document.body.classList.contains("mobile-tools-open")');
   assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height > 0'), "closing the mobile task sheet returns usable space to the canvas");
+
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('document.body.classList.contains("mobile-tools-open")');
+  const layerCountBeforeShape = await evaluate('document.querySelectorAll("#layers li").length');
+  await click('[data-edit-goal="shapes"]');
+  await waitFor('document.querySelector("#shape-maker-dialog")?.open === true');
+  await evaluate('(() => { document.querySelector("#shape-maker-kind").value="star"; document.querySelector("#shape-maker-fill").value="#ff4fd8"; document.querySelector("#shape-maker-shadow-blur").value="12"; document.querySelector("#shape-maker-fill").dispatchEvent(new Event("input",{bubbles:true})); document.querySelector("#shape-maker-shadow-blur").dispatchEvent(new Event("input",{bubbles:true})); })()');
+  assert(await evaluate('document.querySelector("#shape-maker-preview").src.startsWith("data:image/svg+xml")'), "shape style window previews an SVG figure locally");
+  await click("#shape-maker-apply");
+  await waitFor('document.querySelector("#shape-maker-dialog")?.open === false');
+  assert(await evaluate('document.querySelectorAll("#layers li").length === ' + (layerCountBeforeShape + 1)), "confirming Formas creates one selectable layer");
+  assert(await evaluate('document.querySelector("#selection-mini-layer-name").textContent.includes("Forma")'), "new shape becomes the selected editable object");
+
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('document.body.classList.contains("mobile-tools-open")');
+  await click('[data-edit-goal="object-style"]');
+  await waitFor('document.querySelector("#shape-maker-dialog")?.open === true');
+  assert(await evaluate('document.querySelector("#shape-maker-apply").textContent.includes("Aplicar cambios")'), "selected vector shape opens its contextual edit window");
+  await click("#shape-maker-cancel");
+  await waitFor('document.querySelector("#shape-maker-dialog")?.open === false');
+  assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height > 0'), "closing a shape window returns to the canvas without applying cancelled edits");
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {
   try { ws.close(); } catch {}

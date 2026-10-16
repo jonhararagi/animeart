@@ -3274,3 +3274,14 @@ Corrección de inventario durante la integración: aunque la sincronización de 
 - Se añadieron assertions al smoke test y al E2E de navegador real para la presencia de Galería y la apertura/cierre de la biblioteca. Se incrementó el caché de la PWA a `animeart-web-shell-v27` tanto en la aplicación como en el service worker, con sus assertions actualizadas.
 - TIMER: 1–2 horas activas para este tramo de accesibilidad y regresión; la CI y la validación física son dependencias aparte.
 - Estado al registrar el cambio: pendiente comprobar Web CI y Android CI sobre el HEAD resultante. La validación en emulador no sustituye la prueba táctil en el Xiaomi 24116RACCG.
+
+
+
+## AA-PICSART-CONTEXT-OBJECT-001 — Ventanas de estilo y creador de formas (2026-10-16)
+
+- Rama existente: `aa-editor-ux-002`, PR #83. La implementación continúa en esa rama; no se abre una rama duplicada ni se modifica `main`.
+- La tarea `Formas` abre una ventana contextual para crear figuras locales como rectángulos, rectángulos redondeados, círculos, óvalos, estrellas, corazones, hexágonos, triángulos, globos, rayos y nubes. Permite definir relleno, ancho/alto, contorno/grosor y sombra (color, desenfoque y desplazamiento).
+- Las figuras se crean como capas de imagen SVG con metadatos de forma, de modo que siguen siendo seleccionables, movibles, escalables, girables, reordenables y editables desde la misma ventana. Los cambios se guardan en historial y se conservan al persistir/exportar el proyecto.
+- La tarjeta `Estilo del objeto` enruta al editor adecuado: texto reutiliza el editor tipográfico existente; formas SVG vuelven a su ventana de forma; imágenes exponen opacidad, máscara, brillo/contraste/saturación y acceso a reemplazo de color; las capas de trazos permiten cambiar el estilo de sus trazos existentes sin alterar borrados.
+- Las ventanas incluyen X, Cancelar y confirmación explícita. Los cambios del creador de formas no se aplican hasta confirmar; cancelar cierra sin sustituir la capa. Se actualiza la caché PWA a `animeart-web-shell-v28` y se incorporan tests estáticos/E2E que crean una estrella, confirman una capa y comprueban la cancelación del editor.
+- TIMER: 2–4 horas activas estimadas para esta iteración, más CI y prueba física. La aceptación depende de CI sobre el nuevo HEAD, revisión de la forma exportada y prueba táctil en Xiaomi 24116RACCG. No declarar PASS de CI ni validar físicamente antes de disponer de evidencia.

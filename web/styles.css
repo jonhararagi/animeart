@@ -2051,3 +2051,61 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   }
   body > .mobile-touch-dock button { min-height: 44px !important; font-size: clamp(.58rem, 2.8vw, .68rem) !important; }
 }
+
+/* AA-PICSART-CONTEXT-OBJECT-001: compact closable windows for object styling and shapes. */
+#object-style-dialog, #shape-maker-dialog {
+  width:min(720px,calc(100vw - 20px)); max-width:720px; max-height:88dvh;
+  padding:0; overflow:auto; overscroll-behavior:contain;
+  border:1px solid #55446d; border-radius:18px; background:#17141e; color:var(--text);
+  box-shadow:0 28px 100px #000c;
+}
+#object-style-dialog::backdrop, #shape-maker-dialog::backdrop { background:rgb(2 5 11 / 76%); backdrop-filter:blur(4px); }
+.mini-editor-dialog { display:grid; gap:0; min-width:0; }
+.mini-dialog-header {
+  display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:15px 16px 13px;
+  border-bottom:1px solid #3a3248; background:linear-gradient(135deg,rgb(124 58 237 / 17%),rgb(255 79 216 / 7%));
+}
+.mini-dialog-header h2 { margin:0 0 4px; font-size:1.08rem; line-height:1.25; }
+.mini-dialog-header p:not(.eyebrow) { margin:0; color:#b9b1c7; font-size:.74rem; line-height:1.4; }
+.mini-dialog-header .eyebrow { margin:0 0 4px; color:#c4a7ff; font-size:.62rem; font-weight:850; letter-spacing:.12em; }
+.mini-dialog-close { flex:0 0 40px; width:40px; min-width:40px; height:40px; min-height:40px; padding:0; border-radius:12px; font-size:1.25rem; font-weight:800; }
+.mini-dialog-close:hover { border-color:#fb7185; background:#512434; }
+.mini-dialog-body { display:grid; gap:12px; padding:14px 16px 16px; }
+.object-style-name { margin:0; color:#d7c7f7; font-size:.77rem; font-weight:800; overflow-wrap:anywhere; }
+.mini-style-section { display:grid; gap:10px; padding:12px; border:1px solid #332b42; border-radius:14px; background:#12111a; }
+.mini-style-section[hidden] { display:none !important; }
+.mini-style-section h3 { margin:0; color:#c4b5fd; font-size:.79rem; }
+.mini-style-field { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:7px 12px; min-width:0; color:#d6d0e1; font-size:.76rem; font-weight:700; }
+.mini-style-field input[type="range"], .mini-style-field select, .mini-style-field input[type="color"], .mini-style-field input[type="number"] { grid-column:1/-1; width:100%; min-width:0; }
+.mini-style-field input[type="range"] { accent-color:#d17bff; margin:0; }
+.mini-style-field input[type="color"] { height:38px; min-height:38px; padding:3px; border:1px solid #49415b; border-radius:9px; background:#111722; }
+.mini-style-field input[type="number"], .mini-style-field select { min-height:42px; padding:8px 10px; border:1px solid #49415b; border-radius:9px; background:#111722; color:#f8f4ff; font:inherit; }
+.mini-style-field output { color:#d4b5ff; font-size:.7rem; font-variant-numeric:tabular-nums; }
+.mini-style-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; min-width:0; }
+.mini-style-pair > .mini-style-field { min-width:0; }
+.mini-style-note { margin:0; color:#a49ab5; font-size:.69rem; line-height:1.45; }
+.mini-style-secondary { min-height:43px; border-color:#55416e; background:#261d35; color:#f4eaff; font-weight:800; }
+.mini-dialog-actions { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.25fr); gap:8px; padding-top:9px; border-top:1px solid #332b42; }
+.mini-dialog-actions button { min-width:0; min-height:46px; padding:8px 10px; font-size:.78rem; font-weight:800; }
+.mini-dialog-actions .mini-primary { border-color:#9e79e8; background:linear-gradient(135deg,#6136a7,#8a3f94); color:#fff; }
+.shape-maker-shell .mini-dialog-body { gap:12px; }
+.shape-maker-grid { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(180px,.85fr); align-items:start; gap:14px; min-width:0; }
+.shape-maker-fields { display:grid; gap:10px; min-width:0; }
+.shape-maker-preview-column { display:grid; gap:8px; min-width:0; }
+.shape-maker-preview-column > p:first-child { margin:0; color:#ded6ee; font-size:.76rem; font-weight:800; }
+.shape-maker-preview { display:grid; place-items:center; width:100%; min-height:190px; padding:10px; overflow:hidden; border:1px solid #413750; border-radius:14px; background:repeating-conic-gradient(#31293c 0% 25%,#201a29 0% 50%) 50%/18px 18px; }
+.shape-maker-preview img { display:block; width:100%; height:190px; object-fit:contain; }
+#object-style-apply:disabled { opacity:.45; cursor:not-allowed; }
+@media(max-width:540px) {
+  #object-style-dialog, #shape-maker-dialog { width:calc(100vw - 12px); max-height:92dvh; border-radius:15px; }
+  .mini-dialog-header { padding:12px 12px 10px; gap:8px; }
+  .mini-dialog-header h2 { font-size:1rem; }
+  .mini-dialog-close { flex-basis:38px; width:38px; min-width:38px; height:38px; min-height:38px; }
+  .mini-dialog-body { padding:11px 12px 12px; gap:10px; }
+  .shape-maker-grid { grid-template-columns:minmax(0,1fr); gap:11px; }
+  .shape-maker-preview-column { grid-row:1; }
+  .shape-maker-preview { min-height:100px; max-height:110px; }
+  .shape-maker-preview img { height:100px; }
+  .mini-style-pair { gap:8px; }
+  .mini-dialog-actions button { min-height:48px; }
+}

@@ -1574,6 +1574,199 @@ textStylePresetButtons.forEach(button=>button.addEventListener("click",()=>{cons
 function renderImageMask(){if(!imageMaskPanel||!imageMaskInput)return;const layer=selectedLayerExact(),isImage=layer?.contentType==="image"&&Boolean(layer.image);imageMaskPanel.hidden=!isImage;imageMaskInput.disabled=!isImage||layer.locked;imageMaskInput.value=isImage?(layer.image.mask||"none"):"none";}
 imageMaskInput.addEventListener("change",()=>{const layer=selectedLayerExact();if(!layer||layer.contentType!=="image"||!layer.image||layer.locked)return;const before=cloneDocument(state.document),next=setImageMask(state.document,layer.id,imageMaskInput.value);if(!next)return;state.document=next;state.history.record(before,next);refreshDocument("Image mask updated");persistDocument();});
 
+
+const SHAPE_MAKER_KINDS = new Set(["rectangle","rounded","circle","ellipse","star","heart","hexagon","triangle","speech","lightning","cloud"]);
+const shapeFieldIds = ["shape-maker-kind","shape-maker-width","shape-maker-height","shape-maker-fill","shape-maker-stroke","shape-maker-stroke-width","shape-maker-shadow-color","shape-maker-shadow-blur","shape-maker-shadow-x","shape-maker-shadow-y"];
+const shapeLabels = {rectangle:"Rectángulo",rounded:"Rectángulo redondeado",circle:"Círculo",ellipse:"Óvalo",star:"Estrella",heart:"Corazón",hexagon:"Hexágono",triangle:"Triángulo",speech:"Globo de diálogo",lightning:"Rayo",cloud:"Nube"};
+function shapeMakerValues() {
+  const number = (id, fallback, min, max) => Math.max(min, Math.min(max, Math.round(Number(document.querySelector("#"+id).value) || fallback)));
+  return {
+    kind: SHAPE_MAKER_KINDS.has(document.querySelector("#shape-maker-kind").value) ? document.querySelector("#shape-maker-kind").value : "rectangle",
+    width: number("shape-maker-width",320,80,1600),
+    height: number("shape-maker-height",240,80,1600),
+    fill: /^#[0-9a-f]{6}$/i.test(document.querySelector("#shape-maker-fill").value) ? document.querySelector("#shape-maker-fill").value : "#ff4fd8",
+    stroke: /^#[0-9a-f]{6}$/i.test(document.querySelector("#shape-maker-stroke").value) ? document.querySelector("#shape-maker-stroke").value : "#ffffff",
+    strokeWidth: number("shape-maker-stroke-width",4,0,32),
+    shadowColor: /^#[0-9a-f]{6}$/i.test(document.querySelector("#shape-maker-shadow-color").value) ? document.querySelector("#shape-maker-shadow-color").value : "#171324",
+    shadowBlur: number("shape-maker-shadow-blur",12,0,48),
+    shadowX: number("shape-maker-shadow-x",3,-40,40),
+    shadowY: number("shape-maker-shadow-y",5,-40,40)
+  };
+}
+function setShapeMakerValues(values = {}) {
+  const v = {kind:"rectangle",width:320,height:240,fill:"#ff4fd8",stroke:"#ffffff",strokeWidth:4,shadowColor:"#171324",shadowBlur:12,shadowX:3,shadowY:5,...values};
+  document.querySelector("#shape-maker-kind").value = SHAPE_MAKER_KINDS.has(v.kind) ? v.kind : "rectangle";
+  for (const key of ["width","height","fill","stroke"]) document.querySelector("#shape-maker-"+key).value = String(v[key]);
+  document.querySelector("#shape-maker-stroke-width").value = String(v.strokeWidth);
+  document.querySelector("#shape-maker-shadow-color").value = String(v.shadowColor);
+  document.querySelector("#shape-maker-shadow-blur").value = String(v.shadowBlur);
+  document.querySelector("#shape-maker-shadow-x").value = String(v.shadowX);
+  document.querySelector("#shape-maker-shadow-y").value = String(v.shadowY);
+  syncShapeMakerOutputs();
+}
+function syncShapeMakerOutputs() {
+  for (const [id,suffix] of [["shape-maker-stroke-width"," px"],["shape-maker-shadow-blur"," px"],["shape-maker-shadow-x"," px"],["shape-maker-shadow-y"," px"]]) {
+    const output = document.querySelector("#"+id+"-value");
+    if (output) output.textContent = document.querySelector("#"+id).value+suffix;
+  }
+}
+function shapeSvgSource(values) {
+  const {kind,width,height,fill,stroke,strokeWidth,shadowColor,shadowBlur,shadowX,shadowY}=values;
+  const inset=Math.min(Math.floor(Math.min(width,height)*.16),Math.max(5,Math.ceil(strokeWidth/2+2)));
+  const left=inset,top=inset,innerWidth=Math.max(1,width-inset*2),innerHeight=Math.max(1,height-inset*2);
+  const right=left+innerWidth,bottom=top+innerHeight,cx=width/2,cy=height/2;
+  const polygon=points=>points.map(p=>p.map(n=>Number(n.toFixed(2))).join(",")).join(" ");
+  let geometry="";
+  if(kind==="rectangle") geometry=`<rect x="${left}" y="${top}" width="${innerWidth}" height="${innerHeight}" />`;
+  else if(kind==="rounded") geometry=`<rect x="${left}" y="${top}" width="${innerWidth}" height="${innerHeight}" rx="${Math.min(innerWidth,innerHeight)*.16}" />`;
+  else if(kind==="circle"||kind==="ellipse") geometry=`<ellipse cx="${cx}" cy="${cy}" rx="${innerWidth/2}" ry="${innerHeight/2}" />`;
+  else if(kind==="star") {
+    const points=[]; for(let i=0;i<10;i++){const radius=Math.min(innerWidth,innerHeight)/2*(i%2===0?1:.43);const angle=-Math.PI/2+i*Math.PI/5;points.push([cx+Math.cos(angle)*radius,cy+Math.sin(angle)*radius]);}
+    geometry=`<polygon points="${polygon(points)}" />`;
+  } else if(kind==="heart") {
+    geometry=`<path d="M ${cx} ${bottom-2} C ${cx-innerWidth*.12} ${top+innerHeight*.68}, ${left} ${top+innerHeight*.48}, ${left+innerWidth*.07} ${top+innerHeight*.27} C ${left+innerWidth*.13} ${top+innerHeight*.02}, ${cx-innerWidth*.12} ${top}, ${cx} ${top+innerHeight*.23} C ${cx+innerWidth*.12} ${top}, ${right-innerWidth*.13} ${top+innerHeight*.02}, ${right-innerWidth*.07} ${top+innerHeight*.27} C ${right} ${top+innerHeight*.48}, ${cx+innerWidth*.12} ${top+innerHeight*.68}, ${cx} ${bottom-2} Z" />`;
+  } else if(kind==="hexagon") {
+    geometry=`<polygon points="${polygon([[left+innerWidth*.25,top],[right-innerWidth*.25,top],[right,top+innerHeight*.5],[right-innerWidth*.25,bottom],[left+innerWidth*.25,bottom],[left,top+innerHeight*.5]])}" />`;
+  } else if(kind==="triangle") {
+    geometry=`<polygon points="${polygon([[cx,top],[right,bottom],[left,bottom]])}" />`;
+  } else if(kind==="speech") {
+    const tail=Math.min(innerHeight*.22,innerWidth*.18),radius=Math.min(24,innerWidth*.12,innerHeight*.12);
+    geometry=`<path d="M ${left+radius} ${top} H ${right-radius} Q ${right} ${top} ${right} ${top+radius} V ${bottom-tail-radius} Q ${right} ${bottom-tail} ${right-radius} ${bottom-tail} H ${left+innerWidth*.38} L ${left+innerWidth*.22} ${bottom} L ${left+innerWidth*.2} ${bottom-tail} H ${left+radius} Q ${left} ${bottom-tail} ${left} ${bottom-tail-radius} V ${top+radius} Q ${left} ${top} ${left+radius} ${top} Z" />`;
+  } else if(kind==="lightning") {
+    geometry=`<polygon points="${polygon([[left+innerWidth*.56,top],[left+innerWidth*.19,top+innerHeight*.54],[left+innerWidth*.45,top+innerHeight*.54],[left+innerWidth*.35,bottom],[right-innerWidth*.1,top+innerHeight*.39],[left+innerWidth*.61,top+innerHeight*.39]])}" />`;
+  } else {
+    geometry=`<path d="M ${left+innerWidth*.18} ${bottom} C ${left-innerWidth*.05} ${bottom} ${left-innerWidth*.02} ${top+innerHeight*.6} ${left+innerWidth*.17} ${top+innerHeight*.55} C ${left+innerWidth*.1} ${top+innerHeight*.2} ${left+innerWidth*.42} ${top-innerHeight*.04} ${cx} ${top+innerHeight*.28} C ${right-innerWidth*.05} ${top+innerHeight*.12} ${right+innerWidth*.06} ${top+innerHeight*.48} ${right-innerWidth*.82} ${top+innerHeight*.59} C ${right+innerWidth*.05} ${bottom-innerHeight*.03} ${right-innerWidth*.1} ${bottom} ${right-innerWidth*.18} ${bottom} Z" />`;
+  }
+  const shadowFilter=`<filter id="aa-shadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="${shadowX}" dy="${shadowY}" stdDeviation="${shadowBlur/2}" flood-color="${shadowColor}" flood-opacity=".68"/></filter>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" data-aa-shape="${kind}" data-aa-fill="${fill}" data-aa-stroke="${stroke}" data-aa-stroke-width="${strokeWidth}" data-aa-shadow-color="${shadowColor}" data-aa-shadow-blur="${shadowBlur}" data-aa-shadow-x="${shadowX}" data-aa-shadow-y="${shadowY}"><defs>${shadowFilter}</defs><g fill="${fill}" stroke="${strokeWidth>0?stroke:"none"}" stroke-width="${strokeWidth}" stroke-linejoin="round" filter="url(#aa-shadow)">${geometry}</g></svg>`;
+}
+function shapeSourceUrl(values) { return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(shapeSvgSource(values)); }
+function readShapeMetadata(source) {
+  if(typeof source!=="string"||!source.startsWith("data:image/svg+xml")) return null;
+  try {
+    const comma=source.indexOf(",");
+    const svg=decodeURIComponent(source.slice(comma+1));
+    const get=name=>svg.match(new RegExp(name+'="([^"]*)"'))?.[1] ?? null;
+    const kind=get("data-aa-shape");
+    if(!kind||!SHAPE_MAKER_KINDS.has(kind))return null;
+    const num=(key,fallback)=>{const value=Number(get(key));return Number.isFinite(value)?value:fallback;};
+    const colour=(key,fallback)=>/^#[0-9a-f]{6}$/i.test(get(key)||"")?get(key):fallback;
+    return {kind,width:num("width",320),height:num("height",240),fill:colour("data-aa-fill","#ff4fd8"),stroke:colour("data-aa-stroke","#ffffff"),strokeWidth:num("data-aa-stroke-width",4),shadowColor:colour("data-aa-shadow-color","#171324"),shadowBlur:num("data-aa-shadow-blur",12),shadowX:num("data-aa-shadow-x",3),shadowY:num("data-aa-shadow-y",5)};
+  } catch { return null; }
+}
+function previewShapeMaker() {
+  const values=shapeMakerValues(),source=shapeSourceUrl(values);
+  if(shapeMakerPreview)shapeMakerPreview.src=source;
+  const description=document.querySelector("#shape-maker-description");
+  if(description)description.textContent=shapeEditingLayerId?"Actualiza la forma seleccionada; puedes cancelar sin cambiarla.":"Elige una figura, personaliza color, contorno y sombra.";
+  syncShapeMakerOutputs();
+}
+function openShapeMaker(layer = null) {
+  shapeEditingLayerId=null;
+  let values;
+  const meta=layer?.contentType==="image"&&layer.image?readShapeMetadata(layer.image.source):null;
+  if(meta) { shapeEditingLayerId=layer.id; values=meta; }
+  else {
+    const docWidth=Math.max(320,Number(state.document.width)||800),docHeight=Math.max(240,Number(state.document.height)||600);
+    values={kind:"rounded",width:Math.min(720,Math.max(160,Math.round(docWidth*.36))),height:Math.min(720,Math.max(140,Math.round(docHeight*.34))),fill:"#ff4fd8",stroke:"#ffffff",strokeWidth:4,shadowColor:"#171324",shadowBlur:12,shadowX:3,shadowY:5};
+  }
+  setShapeMakerValues(values);
+  document.querySelector("#shape-maker-title").textContent=shapeEditingLayerId?"Editar forma":"Añadir forma";
+  document.querySelector("#shape-maker-apply").textContent=shapeEditingLayerId?"Aplicar cambios":"Añadir forma";
+  document.querySelector("#shape-maker-status").textContent=shapeEditingLayerId?"Los cambios se aplicarán solo al confirmar.":"La forma será una capa separada que podrás mover, redimensionar y ordenar.";
+  previewShapeMaker();
+  if(window.matchMedia("(max-width: 920px)").matches) {
+    document.body.classList.remove("mobile-tools-open","mobile-tools-collapsed","mobile-layers-open");
+    mobileDock?.querySelectorAll('[data-touch-action="more"],[data-touch-action="layers"]').forEach(item=>item.setAttribute("aria-expanded","false"));
+  }
+  if(!shapeMakerDialog.open)shapeMakerDialog.showModal();
+}
+function selectedShapeMetadata(layer=selectedLayerExact()) {
+  return layer?.contentType==="image"&&layer.image?readShapeMetadata(layer.image.source):null;
+}
+function openSelectedObjectStyle() {
+  const layer=selectedLayerExact();
+  if(!layer){status.textContent="Seleccioná primero un objeto en el lienzo o en Capas.";return;}
+  if(layer.contentType==="text") {
+    renderLayerText();
+    if(textEditDialog&&!textEditDialog.open)textEditDialog.showModal();
+    return;
+  }
+  if(selectedShapeMetadata(layer)){openShapeMaker(layer);return;}
+  const locked=Boolean(layer.locked),isImage=layer.contentType==="image"&&Boolean(layer.image);
+  document.querySelector("#object-style-layer-name").textContent=layer.name+(locked?" · bloqueada":"");
+  document.querySelector("#object-style-description").textContent=isImage?"Recorte, opacidad y ajustes de color para esta imagen.":"Color, grosor y efecto de los trazos de esta capa.";
+  document.querySelector("#object-style-image-options").hidden=!isImage;
+  document.querySelector("#object-style-drawing-options").hidden=isImage;
+  document.querySelector("#object-style-opacity").value=String(Math.round(layer.opacity*100));
+  document.querySelector("#object-style-opacity-value").textContent=Math.round(layer.opacity*100)+"%";
+  document.querySelector("#object-style-opacity").disabled=locked;
+  const imageControls=["object-style-mask","object-style-brightness","object-style-contrast","object-style-saturation"];
+  imageControls.forEach(id=>{const input=document.querySelector("#"+id);if(input)input.disabled=locked;});
+  const adjustments=normalizeLayerAdjustments(layer.adjustments||{});
+  document.querySelector("#object-style-mask").value=isImage?(layer.image.mask||"none"):"none";
+  for(const key of ["brightness","contrast","saturation"]){const input=document.querySelector("#object-style-"+key);input.value=String(adjustments[key]);document.querySelector("#object-style-"+key+"-value").textContent=adjustments[key]+"%";}
+  const visibleStroke=(layer.strokes||[]).find(stroke=>stroke.tool!=="eraser");
+  document.querySelector("#object-style-drawing-color").value=visibleStroke?.color||state.brush.color;
+  document.querySelector("#object-style-drawing-size").value=String(visibleStroke?.size||state.brush.size);
+  document.querySelector("#object-style-drawing-effect").value=visibleStroke?.effect||state.brush.effect;
+  for(const id of ["object-style-drawing-color","object-style-drawing-size","object-style-drawing-effect"])document.querySelector("#"+id).disabled=locked;
+  document.querySelector("#object-style-drawing-size-value").textContent=(visibleStroke?.size||state.brush.size)+" px";
+  document.querySelector("#object-style-apply").disabled=locked;
+  document.querySelector("#object-style-recolor").disabled=locked||!isImage;
+  document.querySelector("#object-style-status").textContent=locked?"Está bloqueado. Desbloquéalo desde Capas para cambiarlo.":"Puedes cancelar sin alterar el objeto.";
+  if(window.matchMedia("(max-width: 920px)").matches) {
+    document.body.classList.remove("mobile-tools-open","mobile-tools-collapsed","mobile-layers-open");
+    mobileDock?.querySelectorAll('[data-touch-action="more"],[data-touch-action="layers"]').forEach(item=>item.setAttribute("aria-expanded","false"));
+  }
+  if(!objectStyleDialog.open)objectStyleDialog.showModal();
+}
+for(const id of shapeFieldIds)document.querySelector("#"+id)?.addEventListener("input",previewShapeMaker);
+document.querySelector("#shape-maker-close")?.addEventListener("click",()=>shapeMakerDialog.close());
+document.querySelector("#shape-maker-cancel")?.addEventListener("click",()=>shapeMakerDialog.close());
+shapeMakerDialog?.addEventListener("close",()=>{shapeEditingLayerId=null;});
+document.querySelector("#shape-maker-apply")?.addEventListener("click",()=>{
+  const values=shapeMakerValues(),source=shapeSourceUrl(values);
+  if(source.length>2_000_000){document.querySelector("#shape-maker-status").textContent="La forma excede el límite local. Reduce su tamaño o los efectos.";return;}
+  const editingId=shapeEditingLayerId;
+  if(editingId) {
+    const current=state.document.layers.find(item=>item.id===editingId);
+    if(!current||current.locked||current.contentType!=="image"){status.textContent="La capa cambió o está bloqueada; no se aplicaron cambios.";return;}
+    const before=cloneDocument(state.document),next=replaceImageLayer(state.document,editingId,{source,width:values.width,height:values.height});
+    if(!next){document.querySelector("#shape-maker-status").textContent="No se pudo actualizar la forma. Comprueba su tamaño.";return;}
+    imageCache.delete(current.image.source);state.document=next;state.history.record(before,next);setSelection([editingId],editingId);
+    refreshDocument("Forma actualizada");persistDocument();shapeMakerDialog.close();return;
+  }
+  const layer=createImageLayer("Forma · "+(shapeLabels[values.kind]||"Figura"),values.width,values.height,source);
+  const before=cloneDocument(state.document),next=addLayer(state.document,layer);
+  if(!next){document.querySelector("#shape-maker-status").textContent="No se pudo agregar la forma a este proyecto.";return;}
+  state.document=next;state.textPreview=null;setSelection([layer.id],layer.id);state.history.record(before,next);
+  refreshDocument("Forma añadida: "+(shapeLabels[values.kind]||"Figura"));persistDocument();shapeMakerDialog.close();
+});
+document.querySelector("#object-style-close")?.addEventListener("click",()=>objectStyleDialog.close());
+document.querySelector("#object-style-cancel")?.addEventListener("click",()=>objectStyleDialog.close());
+document.querySelector("#object-style-recolor")?.addEventListener("click",()=>{objectStyleDialog.close();recolorButton?.click();});
+document.querySelector("#object-style-opacity")?.addEventListener("input",event=>{document.querySelector("#object-style-opacity-value").textContent=event.currentTarget.value+"%";});
+for(const key of ["brightness","contrast","saturation"])document.querySelector("#object-style-"+key)?.addEventListener("input",event=>{document.querySelector("#object-style-"+key+"-value").textContent=event.currentTarget.value+"%";});
+document.querySelector("#object-style-drawing-size")?.addEventListener("input",event=>{document.querySelector("#object-style-drawing-size-value").textContent=event.currentTarget.value+" px";});
+document.querySelector("#object-style-apply")?.addEventListener("click",()=>{
+  const layer=selectedLayerExact();if(!layer||layer.locked)return;
+  const before=cloneDocument(state.document);
+  let next=setLayerOpacity(state.document,layer.id,Number(document.querySelector("#object-style-opacity").value)/100);
+  if(layer.contentType==="image"&&layer.image) {
+    next=setImageMask(next,layer.id,document.querySelector("#object-style-mask").value)||next;
+    next=setLayerAdjustments(next,layer.id,normalizeLayerAdjustments({...layer.adjustments,brightness:Number(document.querySelector("#object-style-brightness").value),contrast:Number(document.querySelector("#object-style-contrast").value),saturation:Number(document.querySelector("#object-style-saturation").value)}))||next;
+  } else if(layer.contentType==="drawing") {
+    const draft=cloneDocument(next),target=draft.layers.find(item=>item.id===layer.id);
+    const colour=document.querySelector("#object-style-drawing-color").value,size=Number(document.querySelector("#object-style-drawing-size").value),effect=document.querySelector("#object-style-drawing-effect").value;
+    target.strokes=target.strokes.map(stroke=>stroke.tool==="eraser"?stroke:{...stroke,color:colour,size,effect});
+    next=draft;setBrushColor(colour);setBrushSize(size);setBrushEffect(effect);syncBrushControls();
+  }
+  state.document=next;state.history.record(before,next);state.dirty=true;refreshDocument("Estilo aplicado: "+layer.name);persistDocument();objectStyleDialog.close();
+});
+document.querySelector("#selection-mini-style")?.addEventListener("click",openSelectedObjectStyle);
+
+
 function setStorageRecoveryPending(pending, message = "") {
   state.storageRecoveryPending = pending;
   state.storageRecoveryMessage = pending ? message : "";
@@ -3015,6 +3208,8 @@ const helpGoals = {
   censor: ["Luz de censura", "Elige Luz de censura, ajusta tamaño y color y arrastra sobre la zona. Para cubrirla por completo usa opacidad al 100%."],
   draw: ["Dibujar", "Elige un color y arrastra sobre la imagen para pintar en una capa separada."],
   text: ["Texto", "Pulsa Texto, escribe en el inspector y ajusta el estilo. La capa de texto sigue editable."],
+  shapes: ["Formas", "Añade rectángulos, círculos, estrellas, corazones, globos y otras figuras. Define relleno, contorno y sombra antes de insertarlas como capas."],
+  "object-style": ["Estilo del objeto", "Selecciona texto, una imagen, una forma o una capa de trazos para abrir sus controles específicos. Cada ventana se puede cerrar sin aplicar cambios."],
   color: ["Mejorar color", "Selecciona una imagen y ajusta brillo, contraste o saturación en Image adjustments."],
   layers: ["Capas", "Toca una capa para seleccionarla. Cambia el orden, visibilidad y opacidad con los controles disponibles."],
   undo: ["Deshacer", "Pulsa Deshacer para volver un paso atrás. Rehacer recupera el cambio."],
@@ -3066,6 +3261,8 @@ function runEditGoal(goal) {
     censor: () => document.querySelector('.toolbar [data-tool="censor-light"]')?.click(),
     draw: () => document.querySelector('.toolbar [data-tool="brush"]')?.click(),
     text: () => document.querySelector("#add-text-layer").click(),
+    shapes: () => openShapeMaker(),
+    "object-style": () => openSelectedObjectStyle(),
     color: () => {
       if (window.matchMedia("(max-width: 920px)").matches && !document.body.classList.contains("mobile-layers-open")) mobileDock?.querySelector('[data-touch-action="layers"]')?.click();
       document.querySelector("#adjustments-title")?.scrollIntoView({ block: "nearest" });
@@ -3992,7 +4189,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v27";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v28";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",

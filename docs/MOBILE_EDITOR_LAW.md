@@ -22,3 +22,11 @@ Se considera incumplido mientras el lienzo sea pequeño, la franja superior est�
 
 **Regla de implementación:** los cambios deben continuar en la rama de trabajo ya autorizada `aa-editor-ux-002` y su PR #83. No modificar `main` directamente, no crear ramas/PR duplicadas y no declarar realizada la prueba física sin evidencia.
 
+## Ventanas de estilo y objetos: se permiten y se recomiendan
+
+No se debe evitar una ventana contextual solo por miedo a ocupar espacio. El lienzo sigue siendo el centro, pero las herramientas de edición ricas deben estar disponibles en ventanas modales pequeñas, cómodas de cerrar con una X, Cancelar o Escape.
+
+- El objeto seleccionado debe tener una entrada clara a **Estilo**. El contenido depende de su tipo: texto abre tipografía, color, contorno y sombra; imagen ofrece recorte por forma, opacidad, ajustes de color y recoloración; los trazos permiten modificar su color, grosor y efecto.
+- **Formas** es una herramienta accesible desde las tareas principales. Debe ofrecer figuras útiles (círculo, rectángulo, estrella, corazón, hexágono, triángulo, globo, rayo, nube), relleno, contorno, tamaño y sombra.
+- Las ventanas aplican cambios solo al confirmar. Cancelar, la X o Escape cierran sin aplicar modificaciones pendientes. Las operaciones confirmadas deben quedar en el historial y guardarse como parte del proyecto.
+- Las ventanas deben ser compactas, adaptarse al teléfono y no quitar al usuario el lienzo una vez cerradas. No se acepta una interfaz reducida a unos pocos botones por temor a agregar paneles útiles.
