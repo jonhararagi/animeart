@@ -376,6 +376,34 @@ try {
   documentState = await readDocument();
   assert(documentState.layers.find(layer => layer.id === secondLayerId)?.strokes.length === 1, "second layer accepts real pointer drawing");
 
+  // Keep the live pointer-drawing assertions above, then seed a known-size geometry
+  // for the separate multi-selection drag test. This prevents browser scroll/layout
+  // changes from making a real stroke only a few CSS pixels wide.
+  const multiGeometryFixture = structuredClone(await readDocument());
+  multiGeometryFixture.width = 800;
+  multiGeometryFixture.height = 600;
+  const firstMultiLayer = multiGeometryFixture.layers.find(layer => layer.id === documentState.layers[0].id);
+  const secondMultiLayer = multiGeometryFixture.layers.find(layer => layer.id === secondLayerId);
+  if (!firstMultiLayer || !secondMultiLayer) throw new Error("Could not prepare deterministic multi-selection layers");
+  firstMultiLayer.transform = { x: 0, y: 0, scale: 1, rotation: 0 };
+  secondMultiLayer.transform = { x: 0, y: 0, scale: 1, rotation: 0 };
+  firstMultiLayer.strokes = [{
+    ...(firstMultiLayer.strokes[0] || {}),
+    tool: "brush", size: 12, color: "#12e0f6", opacity: 1,
+    points: [{ x: 100, y: 120 }, { x: 220, y: 170 }, { x: 320, y: 260 }]
+  }];
+  secondMultiLayer.strokes = [{
+    ...(secondMultiLayer.strokes[0] || {}),
+    tool: "brush", size: 12, color: "#ff4fd8", opacity: 1,
+    points: [{ x: 460, y: 300 }, { x: 560, y: 390 }, { x: 700, y: 460 }]
+  }];
+  await evaluate("localStorage.setItem('animeart-web-document', " + JSON.stringify(JSON.stringify(multiGeometryFixture)) + ")");
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length === 2');
+  await waitForServiceWorkerReadiness();
+  documentState = await readDocument();
+
   const initialLayerId = documentState.layers[0].id;
   await click('[data-tool="select"]');
   await click(layerButtonSelector(initialLayerId));
