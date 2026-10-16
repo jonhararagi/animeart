@@ -338,3 +338,38 @@ test("the real import transaction fits a square phone image to a stable canvas f
   assert.ok(Math.abs(result.layer.transform.y - result.layer.transform.scale * (1350 - 520) / 2) < 0.001);
   assert.equal(result.document.layers.at(-1).id, result.layer.id);
 });
+
+test("importing into a blank document initializes a useful canvas and remains undoable", async () => {
+  const document = createDocument();
+  const history = new DocumentHistory(document);
+  const persisted = { value: null };
+  const result = await applyImageFileImport(
+    { name: "first-image.png", type: "image/png", size: 100 },
+    {
+      document,
+      history,
+      persist(next) { persisted.value = JSON.stringify(next); },
+      Reader: FakeReader,
+      ImageCtor: FakeImage
+    }
+  );
+
+  assert.equal(result.document.width, 17);
+  assert.equal(result.document.height, 11);
+  assert.equal(result.layer.image.width, 17);
+  assert.equal(result.layer.image.height, 11);
+  assert.equal(result.layer.transform.scale, 0.9);
+  assert.equal(result.layer.transform.x, 0);
+  assert.equal(result.layer.transform.y, 0);
+  assert.equal(JSON.parse(persisted.value).width, 17);
+  assert.equal(JSON.parse(persisted.value).height, 11);
+
+  const undone = history.undo(result.document);
+  assert.equal(undone.width, 0);
+  assert.equal(undone.height, 0);
+  assert.equal(undone.layers.length, 1);
+  const redone = history.redo(undone);
+  assert.equal(redone.width, 17);
+  assert.equal(redone.height, 11);
+  assert.equal(redone.layers.at(-1).name, "first-image");
+});
