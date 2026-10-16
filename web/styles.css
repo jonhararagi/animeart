@@ -3032,3 +3032,6 @@ body > .mobile-touch-dock .mobile-export-format select { width: 100%; min-width:
   .censor-dialog-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #censor-dialog-apply { grid-column: 1 / -1; }
 }
+
+/* Keep legacy censor controls out of the general drawing panel; the dedicated dialog owns them now. */
+.censor-light-controls[hidden] { display: none !important; }
