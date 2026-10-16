@@ -1240,8 +1240,7 @@ try {
   await waitFor('document.querySelector("#selection-mini-panel").hidden === true');
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="e2e-mobile-import")'),
     "the clamped mobile X closes selection without deleting the imported image");
-  await click('[aria-label="Select e2e-mobile-import"]');
-  await waitFor('document.querySelector("#selection-mini-panel").hidden === false');
+  // Selection is deliberately closed here; Undo/Redo must remain available from the mobile dock.
   await click('.mobile-touch-dock [data-touch-action="undo"]');
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformBeforeMove), 10000);
   assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
