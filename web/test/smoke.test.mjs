@@ -716,8 +716,9 @@ test("AA-MOBILE-PICSART-UX-005 keeps image, text, history, export and delete in 
   assert.match(css, /flex:\s*0 0 64px/);
   assert.match(css, /selection-mini-panel:not\(\[hidden\]\)/);
   assert.match(js, /const hasEditableContent = Boolean\(layer &&/);
-  assert.match(js, /drawObjectSelectionHandle\(geometry\.closeHandle, "close"\)/);
-  assert.match(js, /drawObjectSelectionHandle\(geometry\.resizeHandle, "resize"\)/);
+  assert.match(js, /const visibleHandles = clampSelectionHandles\(geometry, canvasSize\(\), selectionHandleInset\(\)\)/);
+  assert.match(js, /drawObjectSelectionHandle\(visibleHandles\.closeHandle, "close"\)/);
+  assert.match(js, /drawObjectSelectionHandle\(visibleHandles\.resizeHandle, "resize"\)/);
   assert.doesNotMatch(js, /drawObjectSelectionHandle\(geometry\.rotationHandle/);
 });
 

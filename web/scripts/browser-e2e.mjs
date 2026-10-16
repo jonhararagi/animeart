@@ -1143,6 +1143,8 @@ try {
   await waitFor('document.querySelector("#asset-library-dialog")?.open === false');
   await evaluate('document.querySelector(".mobile-touch-dock").scrollLeft = 0');
   await saveScreenshot("animeart-studio-mobile-initial.png");
+  // Enable handle-position evidence before importing, so the actual redraw records the visible geometry.
+  await evaluate('window.__ANIMEART_E2E_DIAGNOSTICS__ = true');
 
   // Import a real PNG Blob through the mobile file input and capture the resulting editor state.
   const mobileLayerCountBefore = (await readLayerSummary()).length;
