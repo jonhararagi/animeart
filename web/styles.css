@@ -1929,6 +1929,7 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
     right: auto !important;
     bottom: auto !important;
     grid-row: 3 !important;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
     padding: 5px 5px max(5px, env(safe-area-inset-bottom)) !important;
     min-height: calc(66px + env(safe-area-inset-bottom)) !important;
     max-height: calc(74px + env(safe-area-inset-bottom)) !important;
