@@ -468,13 +468,17 @@ try {
   assert(lifecycle.length === lifecycleCountBeforeDuplicate, "real layer delete removes the duplicated layer");
 
   const imageLayerCountBefore = lifecycle.length;
-  const imported = await evaluate('(() => { const bytes = Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="), char => char.charCodeAt(0)); const file = new File([bytes], "e2e-fixture.png", { type: "image/png" }); const transfer = new DataTransfer(); transfer.items.add(file); const input = document.querySelector("#image-file-input"); input.files = transfer.files; input.dispatchEvent(new Event("change", { bubbles: true })); return true; })()');
-  assert(imported === true, "real browser file input accepted an image file");
+  const imported = await evaluate('(async () => { const source=document.createElement("canvas"); source.width=640; source.height=480; const context=source.getContext("2d",{willReadFrequently:true}); context.fillStyle="#ff4fd8"; context.fillRect(48,56,320,240); const blob=await new Promise(resolve=>source.toBlob(resolve,"image/png")); if(!blob||blob.type!=="image/png"||blob.size===0) return {accepted:false,type:blob?.type||null,size:blob?.size||0}; const file=new File([blob],"e2e-fixture.png",{type:"image/png"}); const transfer=new DataTransfer(); transfer.items.add(file); const input=document.querySelector("#image-file-input"); input.files=transfer.files; input.dispatchEvent(new Event("change",{bubbles:true})); return {accepted:true,type:blob.type,size:blob.size,width:source.width,height:source.height,transparentAlpha:context.getImageData(0,0,1,1).data[3],subjectAlpha:context.getImageData(60,80,1,1).data[3]}; })()');
+  assert(imported?.accepted === true && imported.type === "image/png" && imported.size > 0, "real browser file input accepted a genuine PNG Blob with transparent pixels");
+  assert(imported.width === 640 && imported.height === 480 && imported.transparentAlpha === 0 && imported.subjectAlpha === 255, "PNG fixture has representative dimensions, transparent background and opaque image content");
   await waitFor("JSON.parse(localStorage.getItem(\"animeart-web-document\") || \"{}\").layers?.length === " + (imageLayerCountBefore + 1), 10000);
   const afterImport = await readLayerSummary();
   const importedLayer = afterImport.at(-1);
   assert(importedLayer?.contentType === "image", "real browser image import creates an image layer");
   assert(importedLayer?.name === "e2e-fixture", "real browser image import preserves the image layer name");
+  assert(importedLayer?.image?.width === 640 && importedLayer?.image?.height === 480 && importedLayer?.image?.mime === "image/png", "PNG import preserves decoded dimensions and PNG MIME type");
+  const importedPngPixels = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="e2e-fixture"); if(!layer?.image?.source) return Promise.resolve({decodeError:true}); return new Promise(resolve=>{ const image=new Image(); image.onload=()=>{ const sample=document.createElement("canvas"); sample.width=image.naturalWidth; sample.height=image.naturalHeight; const context=sample.getContext("2d",{willReadFrequently:true}); context.drawImage(image,0,0); resolve({width:sample.width,height:sample.height,transparentAlpha:context.getImageData(0,0,1,1).data[3],subjectAlpha:context.getImageData(60,80,1,1).data[3]}); }; image.onerror=()=>resolve({decodeError:true}); image.src=layer.image.source; }); })()');
+  assert(importedPngPixels.width === 640 && importedPngPixels.height === 480 && importedPngPixels.transparentAlpha === 0 && importedPngPixels.subjectAlpha === 255, "persisted PNG decodes with real transparency and retained subject pixels");
   await click('[aria-label="Select e2e-fixture"]');
   await evaluate('(() => { const slider = document.querySelector("#adjustment-brightness"); slider.value = "125"; slider.dispatchEvent(new Event("input", { bubbles: true })); slider.dispatchEvent(new Event("change", { bubbles: true })); })()');
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "e2e-fixture" && layer.adjustments?.brightness === 125)', 10000);
@@ -961,11 +965,18 @@ try {
     if (status) observer.observe(status, { childList: true, subtree: true, characterData: true });
     if (feedback) observer.observe(feedback, { childList: true, subtree: true, characterData: true });
     const source = document.createElement("canvas");
-    source.width = 3;
-    source.height = 2;
+    source.width = 1280;
+    source.height = 960;
     const context = source.getContext("2d");
-    context.fillStyle = "#ff4fd8";
+    context.fillStyle = "#142033";
     context.fillRect(0, 0, source.width, source.height);
+    const gradient = context.createLinearGradient(0, 0, source.width, source.height);
+    gradient.addColorStop(0, "#ff4fd8");
+    gradient.addColorStop(1, "#12657b");
+    context.fillStyle = gradient;
+    context.fillRect(40, 40, source.width - 80, source.height - 80);
+    context.fillStyle = "#f8e7ff";
+    context.fillRect(160, 150, 240, 180);
     const blob = await new Promise(resolve => source.toBlob(resolve, "image/jpeg", 0.9));
     if (!blob || blob.type !== "image/jpeg" || blob.size === 0) {
       return { type: blob?.type || null, size: blob?.size || 0, immediate: diagnostics };
@@ -988,10 +999,10 @@ try {
     diagnostics.immediateFeedback = feedback?.textContent || "";
     diagnostics.layersImmediatelyAfterChange = JSON.parse(raw || "{}").layers?.length ?? 0;
     diagnostics.storedCharactersImmediatelyAfterChange = raw?.length ?? 0;
-    return { type: blob.type, size: blob.size, immediate: diagnostics };
+    return { type: blob.type, size: blob.size, width: source.width, height: source.height, immediate: diagnostics };
   })()`);
   console.log("JPEG_FIXTURE_RESULT: " + JSON.stringify(jpegImport));
-  assert(jpegImport.type === "image/jpeg" && jpegImport.size > 0, "browser generated a real JPEG fixture for import: " + JSON.stringify({ type: jpegImport.type, size: jpegImport.size, immediate: jpegImport.immediate }));
+  assert(jpegImport.type === "image/jpeg" && jpegImport.size > 0 && jpegImport.width === 1280 && jpegImport.height === 960, "browser generated a representative 1280×960 JPEG fixture for import: " + JSON.stringify({ type: jpegImport.type, size: jpegImport.size, width: jpegImport.width, height: jpegImport.height, immediate: jpegImport.immediate }));
   assert(jpegImport.immediate?.changeObserved === true, "JPEG change event reached the file-input listener path");
   assert(jpegImport.immediate?.files?.[0]?.name === "e2e-fixture-jpeg.jpg" &&
     jpegImport.immediate?.files?.[0]?.type === "image/jpeg" &&
@@ -1025,7 +1036,7 @@ try {
   const jpegLayer = (await readLayerSummary()).at(-1);
   assert(jpegLayer?.contentType === "image", "real JPEG import creates an image layer");
   assert(jpegLayer?.name === "e2e-fixture-jpeg", "real JPEG import preserves the filename as its layer name");
-  assert(jpegLayer?.image?.width === 3 && jpegLayer?.image?.height === 2 && jpegLayer?.image?.mime === "image/jpeg",
+  assert(jpegLayer?.image?.width === 1280 && jpegLayer?.image?.height === 960 && jpegLayer?.image?.mime === "image/jpeg",
     "real JPEG import persists decoded dimensions and original JPEG MIME data");
   assert(await evaluate('document.querySelector("#selection-mini-layer-name").textContent.includes("e2e-fixture-jpeg")'),
     "real JPEG import selects the new image layer");
@@ -1095,8 +1106,9 @@ try {
   await waitFor('document.querySelector("#canvas") !== null');
   await waitForServiceWorkerReadiness();
   assert(await evaluate('window.innerWidth === 393 && window.innerHeight === 873'), "Xiaomi-sized mobile E2E runs at a 393 × 873 CSS-pixel viewport");
-  assert(await evaluate('getComputedStyle(document.querySelector(".topbar")).display !== "none" && document.querySelector(".topbar").getBoundingClientRect().height >= 48'), "mobile uses a compact header below the system-safe area");
-  assert(await evaluate('getComputedStyle(document.querySelector(".mobile-top-actions")).display !== "none" && Array.from(document.querySelectorAll(".mobile-top-actions button")).every(el => { const r = el.getBoundingClientRect(); return r.width >= 42 && r.height >= 42; })'), "mobile header actions are compact and touch-sized");
+  assert(await evaluate('(() => { const header=document.querySelector(".topbar"); const style=getComputedStyle(header); const r=header.getBoundingClientRect(); const workspace=document.querySelector(".workspace").getBoundingClientRect(); return style.display!=="none" && style.visibility!=="hidden" && Number(style.opacity)>0 && r.height>=48 && r.width>=innerWidth*.95 && r.top>=0 && r.bottom<=innerHeight && r.bottom<=workspace.top+1; })()'), "mobile header is actually visible inside the viewport and does not overlap the workspace");
+  assert(await evaluate('(() => { const brand=document.querySelector(".topbar .brand"); const style=getComputedStyle(brand); const r=brand.getBoundingClientRect(); return style.display!=="none" && style.visibility!=="hidden" && Number(style.opacity)>0 && r.width>=60 && r.height>=24; })()'), "AnimeArt branding is visible in the mobile header");
+  assert(await evaluate('(() => { const actions=document.querySelector(".mobile-top-actions"); const style=getComputedStyle(actions); return style.display!=="none" && style.visibility!=="hidden" && Array.from(actions.querySelectorAll("button")).every(el => { const r=el.getBoundingClientRect(); const s=getComputedStyle(el); return s.display!=="none" && s.visibility!=="hidden" && r.width>=44 && r.height>=44; }); })()'), "mobile header actions are visible and meet the 44px touch-target floor");
   assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=export]") !== null'), "mobile export remains reachable in the bottom dock");
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "mobile editor starts without stale storage-recovery warning");
   assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height >= 600 && document.querySelector("#canvas").getBoundingClientRect().height >= 500'), "the canvas is the dominant workspace, not a small panel");
