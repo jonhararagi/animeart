@@ -2795,16 +2795,52 @@ mobileToolsToggle?.addEventListener("click", event => {
 });
 
 const mobileDock = document.querySelector(".mobile-touch-dock");
+const mobileContextHeading = document.querySelector("#mobile-context-heading");
+function closeMobileContextPanel() {
+  document.body.classList.remove("mobile-draw-panel-open");
+  if (mobileContextHeading) mobileContextHeading.hidden = true;
+}
+function openMobileContextPanel(panel = "draw") {
+  document.body.classList.remove("mobile-layers-open", "mobile-tools-collapsed");
+  document.body.classList.add("mobile-tools-open", "mobile-draw-panel-open");
+  if (mobileContextHeading) mobileContextHeading.hidden = false;
+  const title = document.querySelector("#mobile-context-title");
+  const description = document.querySelector("#mobile-context-description");
+  if (title) title.textContent = panel === "erase" ? "Borrar" : "Dibujar";
+  if (description) description.textContent = panel === "erase"
+    ? "Ajustá el borrador y deslizá sobre la zona que querés quitar."
+    : "Elegí el color, el grosor y el efecto. Después dibujá sobre el lienzo.";
+  document.querySelector('.mobile-touch-dock [data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+  document.querySelector('.mobile-touch-dock [data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
+  mobileToolsToggle?.setAttribute("aria-expanded", "true");
+  mobileToolsToggle?.setAttribute("aria-label", "Ocultar herramientas");
+  if (mobileToolsToggle) mobileToolsToggle.querySelector("span").textContent = "⌄";
+}
+document.querySelector("#mobile-context-close")?.addEventListener("click", () => {
+  closeMobileContextPanel();
+  document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed");
+});
 if (mobileDock) {
   mobileDock.addEventListener("click", event => {
     const button = event.target.closest("[data-touch-action]");
     if (!button) return;
     const action = button.dataset.touchAction;
     if (action === "tool") {
+      const wasDrawingPanelOpen = document.body.classList.contains("mobile-draw-panel-open");
       document.querySelector('.toolbar [data-tool="' + button.dataset.tool + '"]')?.click();
       mobileDock.querySelectorAll('[data-touch-action="tool"]').forEach(item => {
         item.setAttribute("aria-pressed", String(item.dataset.tool === state.tool));
       });
+      if (button.dataset.tool === "brush") {
+        if (wasDrawingPanelOpen) {
+          closeMobileContextPanel();
+          document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
+        } else {
+          openMobileContextPanel("draw");
+        }
+        return;
+      }
+      closeMobileContextPanel();
       document.body.classList.remove("mobile-tools-open", "mobile-layers-open", "mobile-tools-collapsed");
       mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
       mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
@@ -2831,6 +2867,7 @@ if (mobileDock) {
       return;
     }
     if (action === "import-image") {
+      closeMobileContextPanel();
       document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
       mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
       mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
@@ -2838,6 +2875,7 @@ if (mobileDock) {
       return;
     }
     if (action === "delete-selected") {
+      closeMobileContextPanel();
       document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
       mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
       mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
@@ -2845,6 +2883,7 @@ if (mobileDock) {
       return;
     }
     if (action === "asset-library") {
+      closeMobileContextPanel();
       document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
       mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
       document.querySelector("#open-asset-library")?.click();
@@ -2870,6 +2909,7 @@ if (mobileDock) {
       return;
     }
     if (action === "layers") {
+      closeMobileContextPanel();
       const open = document.body.classList.toggle("mobile-layers-open");
       button.setAttribute("aria-expanded", String(open));
       document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed");
@@ -2880,7 +2920,11 @@ if (mobileDock) {
       return;
     }
     if (action === "more") {
-      const open = document.body.classList.toggle("mobile-tools-open");
+      const wasDrawingPanelOpen = document.body.classList.contains("mobile-draw-panel-open");
+      const wasToolsOpen = document.body.classList.contains("mobile-tools-open");
+      closeMobileContextPanel();
+      const open = wasDrawingPanelOpen ? true : !wasToolsOpen;
+      document.body.classList.toggle("mobile-tools-open", open);
       button.setAttribute("aria-expanded", String(open));
       document.body.classList.remove("mobile-layers-open", "mobile-tools-collapsed");
       mobileToolsToggle?.setAttribute("aria-expanded", String(!open));
@@ -3033,8 +3077,14 @@ function runEditGoal(goal) {
   actions[goal]?.();
 }
 document.querySelectorAll("[data-edit-goal]").forEach(button => button.addEventListener("click", () => {
-  runEditGoal(button.dataset.editGoal);
+  const goal = button.dataset.editGoal;
+  runEditGoal(goal);
   if (window.matchMedia("(max-width: 920px)").matches) {
+    if (goal === "draw") {
+      openMobileContextPanel("draw");
+      return;
+    }
+    closeMobileContextPanel();
     document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed");
     mobileDock?.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
   }
