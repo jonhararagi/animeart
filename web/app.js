@@ -2074,7 +2074,9 @@ function beginSelectionInteraction(event) {
   const selected = selectedLayerExact();
   const selectedGeometry = selected ? selectionGeometry(selected, screenViewportForDocument(state.document, state.viewport, canvasSize()), documentCenter(state.document)) : null;
   const selectedHit = hitTestHandle(screenPoint, selectedGeometry, HANDLE_RADIUS);
-  if (selectedHit === "close") {
+  // In multi-selection, prefer the group bounds before interpreting the anchor layer's X.
+  // Otherwise a group-interior drag can overlap the active layer's own close handle.
+  if (selectedHit === "close" && state.selectedLayerIds.length <= 1) {
     closeSelectionBox();
     return;
   }
