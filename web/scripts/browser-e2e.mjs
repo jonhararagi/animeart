@@ -562,7 +562,7 @@ try {
   const beforeCropSample = beforeCropDocument.layers.find(layer => layer.name === "battleworn_knight");
   await click("#crop-resize-image");
   await waitFor('document.querySelector("#image-edit-dialog").open === true');
-  assert(await evaluate('document.querySelector("#image-edit-title").textContent === "Recortar o cambiar tamaño"'), "crop dialog presents its primary actions in Spanish");
+  assert(await evaluate('document.querySelector("#image-edit-title").textContent.includes("Símbolo de recorte") && document.querySelector("#apply-image-edit").textContent.includes("Recortar") && document.querySelector("#close-image-edit").textContent.includes("✕")'), "crop dialog presents a clear crop action and X cancel control in Spanish");
   await waitFor('document.querySelector("#crop-preview").width > 1', 15000);
   assert(await evaluate('document.querySelector("#image-crop-width").value === "944" && document.querySelector("#image-crop-height").value === "944"'), "crop dialog reads the selected image dimensions");
   assert(await evaluate('document.querySelector("#crop-preview").height > 1'), "crop dialog renders an actual image preview");
