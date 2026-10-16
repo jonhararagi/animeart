@@ -537,9 +537,32 @@
           <label class="background-removal-toggle"><input id="background-removal-manual" type="checkbox"> Activar borrado manual sobre la vista previa</label>
           <div class="background-removal-actions"><button id="undo-background-erase" type="button" disabled>↶ Deshacer borrado</button><button id="clear-background-erase" type="button">Limpiar trazos</button></div>
           </details>
-          <p id="background-removal-status role="status" aria-live="polite">Usá “Detectar fondo en esquina” o tocá “Elegir color” y después toca el fondo en la imagen.</p>
+          <p id="background-removal-status" role="status" aria-live="polite">Usá “Detectar fondo en esquina” o tocá “Elegir color” y después toca el fondo en la imagen.</p>
           <button id="apply-background-removal" type="button">Aplicar transparencia a la imagen</button>
         </div>
+      </div>
+    </section>
+  </dialog>
+  <dialog id="censor-light-dialog" aria-labelledby="censor-dialog-title">
+    <section class="censor-dialog-shell">
+      <header class="censor-dialog-header">
+        <div><p class="eyebrow">EFECTO SOBRE UNA SOLA IMAGEN</p><h2 id="censor-dialog-title">✨ Luz de censura</h2><p id="censor-dialog-image-name">Elegí una imagen del lienzo para empezar.</p></div>
+        <button id="censor-dialog-close" type="button" class="mini-dialog-close" aria-label="Cancelar efecto">✕</button>
+      </header>
+      <p class="censor-dialog-help">Pintá directamente sobre la vista previa. El original no cambia hasta pulsar Aplicar.</p>
+      <div class="censor-dialog-preview-wrap"><canvas id="censor-image-preview" aria-label="Vista previa: arrastrá el dedo para pintar un efecto de luz"></canvas></div>
+      <div class="censor-dialog-controls">
+        <label for="censor-dialog-color">Color de luz<input id="censor-dialog-color" type="color" value="#ffffff"></label>
+        <label for="censor-dialog-size">Grosor <output id="censor-dialog-size-value">36 px</output><input id="censor-dialog-size" type="range" min="2" max="320" value="36"></label>
+        <label for="censor-dialog-opacity">Intensidad <output id="censor-dialog-opacity-value">90%</output><input id="censor-dialog-opacity" type="range" min="5" max="100" value="90"></label>
+        <label for="censor-dialog-softness">Borde suave <output id="censor-dialog-softness-value">35%</output><input id="censor-dialog-softness" type="range" min="0" max="100" value="35"></label>
+        <label for="censor-dialog-glow">Resplandor <output id="censor-dialog-glow-value">55%</output><input id="censor-dialog-glow" type="range" min="0" max="100" value="55"></label>
+      </div>
+      <p id="censor-dialog-status" role="status" aria-live="polite">Deslizá sobre la imagen para pintar. Deshacer quita el último trazo.</p>
+      <div class="dialog-actions censor-dialog-actions">
+        <button id="censor-dialog-cancel" type="button">✕ Cancelar</button>
+        <button id="censor-dialog-undo" type="button" disabled>↶ Deshacer trazo</button>
+        <button id="censor-dialog-apply" type="button">✓ Aplicar a la imagen</button>
       </div>
     </section>
   </dialog>
