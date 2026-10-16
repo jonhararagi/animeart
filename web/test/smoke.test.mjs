@@ -823,6 +823,9 @@ test("AA-PICSART-CONTEXT-OBJECT-001 provides closable style and shape windows wi
   }
   for (const goal of ["shapes","object-style"]) assert.match(html,new RegExp('data-edit-goal="' + goal + '"'));
   assert.match(html,/id="selection-mini-style"/);
+  assert.match(app,/const objectStyleDialog = document\.querySelector\("#object-style-dialog"\)/);
+  assert.match(app,/const shapeMakerDialog = document\.querySelector\("#shape-maker-dialog"\)/);
+  assert.match(app,/const shapeMakerPreview = document\.querySelector\("#shape-maker-preview"\)/);
   for (const kind of ["rectangle","rounded","circle","ellipse","star","heart","hexagon","triangle","speech","lightning","cloud"]) assert.match(app,new RegExp('"' + kind + '"'));
   assert.match(app,/function shapeSvgSource\(/);
   assert.match(app,/function readShapeMetadata\(/);
