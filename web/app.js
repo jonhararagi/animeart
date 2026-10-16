@@ -84,6 +84,8 @@ const textAlignInput = document.querySelector("#text-align");
 const textLayerName = document.querySelector("#text-layer-name");
 const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
+const mobileUndoButton = document.querySelector('.mobile-touch-dock [data-touch-action="undo"]');
+const mobileRedoButton = document.querySelector('.mobile-touch-dock [data-touch-action="redo"]');
 const imageFileInput = document.querySelector("#image-file-input");
 const cropResizeButton = document.querySelector("#crop-resize-image");
 const removeBackgroundButton = document.querySelector("#remove-background");
@@ -1833,8 +1835,12 @@ function persistDocument({ markSaved = false } = {}) {
 }
 
 function refreshHistoryControls() {
-  undoButton.disabled = !state.history.canUndo();
-  redoButton.disabled = !state.history.canRedo();
+  const canUndo = state.history.canUndo();
+  const canRedo = state.history.canRedo();
+  undoButton.disabled = !canUndo;
+  redoButton.disabled = !canRedo;
+  if (mobileUndoButton) mobileUndoButton.disabled = !canUndo;
+  if (mobileRedoButton) mobileRedoButton.disabled = !canRedo;
 }
 
 function syncSelection() {
