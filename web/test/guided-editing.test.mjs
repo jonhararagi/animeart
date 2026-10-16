@@ -78,6 +78,9 @@ test("censor light uses a cancellable per-image preview instead of the drawing t
  for (const id of ["censor-light-dialog","censor-image-preview","censor-dialog-cancel","censor-dialog-undo","censor-dialog-apply"]) {
   assert.ok(html.includes('id="' + id + '"'), "missing censor dialog control: " + id);
  }
+ assert.match(html, /class="censor-light-controls"[^>]*hidden/);
+ assert.match(html, /<details class="background-removal-advanced">/);
+ assert.ok(html.includes('id="background-auto-detect"'));
  assert.match(app, /async function openCensorLightDialog\(\)/);
  assert.match(app, /function closeCensorLightDialog\(\)/);
  assert.match(app, /censor: \(\) => openCensorLightDialog\(\)/);
