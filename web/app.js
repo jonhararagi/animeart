@@ -514,6 +514,35 @@ function drawDocument({ context = ctx, document = state.document, center = docum
   }
 }
 
+function drawObjectSelectionHandle(point, kind) {
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
+  const radius = 19;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = kind === "close" ? "#e74f78" : "#7058f5";
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#ffffff";
+  ctx.stroke();
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  if (kind === "close") {
+    ctx.moveTo(point.x - 5.5, point.y - 5.5); ctx.lineTo(point.x + 5.5, point.y + 5.5);
+    ctx.moveTo(point.x + 5.5, point.y - 5.5); ctx.lineTo(point.x - 5.5, point.y + 5.5);
+  } else {
+    ctx.moveTo(point.x - 6, point.y - 6); ctx.lineTo(point.x + 6, point.y + 6);
+    ctx.moveTo(point.x - 6, point.y - 6); ctx.lineTo(point.x - 6, point.y - 1);
+    ctx.moveTo(point.x - 6, point.y - 6); ctx.lineTo(point.x - 1, point.y - 6);
+    ctx.moveTo(point.x + 6, point.y + 6); ctx.lineTo(point.x + 6, point.y + 1);
+    ctx.moveTo(point.x + 6, point.y + 6); ctx.lineTo(point.x + 1, point.y + 6);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawSelectionOverlay() {
   const selectedLayers = selectedLayersExact();
   if (selectedLayers.length > 1) {
@@ -526,7 +555,9 @@ function drawSelectionOverlay() {
       const corners = geometry.corners.map(point => documentToScreenPoint(point, state.document, state.viewport, viewportSize));
       const groupGeometry = {
         corners,
-        center: documentToScreenPoint(geometry.center, state.document, state.viewport, viewportSize)
+        center: documentToScreenPoint(geometry.center, state.document, state.viewport, viewportSize),
+        closeHandle: corners[1],
+        resizeHandle: corners[2]
       };
       ctx.save();
       ctx.setLineDash([6, 4]);
@@ -536,28 +567,9 @@ function drawSelectionOverlay() {
       corners.forEach((corner, index) => index === 0 ? ctx.moveTo(corner.x, corner.y) : ctx.lineTo(corner.x, corner.y));
       ctx.closePath();
       ctx.stroke();
-      const topMid = { x: (corners[0].x + corners[1].x) / 2, y: (corners[0].y + corners[1].y) / 2 };
-      const outward = { x: topMid.x - groupGeometry.center.x, y: topMid.y - groupGeometry.center.y };
-      const length = Math.hypot(outward.x, outward.y) || 1;
-      groupGeometry.rotationHandle = { x: topMid.x + outward.x / length * 32, y: topMid.y + outward.y / length * 32 };
       ctx.setLineDash([]);
-      for (const corner of corners) {
-        ctx.fillStyle = "#ffffff";
-        ctx.strokeStyle = "#2f80ed";
-        ctx.beginPath();
-        ctx.rect(corner.x - 5, corner.y - 5, 10, 10);
-        ctx.fill();
-        ctx.stroke();
-      }
-      ctx.beginPath();
-      ctx.moveTo(topMid.x, topMid.y);
-      ctx.lineTo(groupGeometry.rotationHandle.x, groupGeometry.rotationHandle.y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(groupGeometry.rotationHandle.x, groupGeometry.rotationHandle.y, 5, 0, Math.PI * 2);
-      ctx.fillStyle = "#ffffff";
-      ctx.fill();
-      ctx.stroke();
+      drawObjectSelectionHandle(groupGeometry.closeHandle, "close");
+      drawObjectSelectionHandle(groupGeometry.resizeHandle, "resize");
       ctx.restore();
     }
   }
@@ -587,24 +599,8 @@ function drawSelectionOverlay() {
       continue;
     }
     ctx.setLineDash([]);
-    const topMid = { x: (geometry.corners[0].x + geometry.corners[1].x) / 2, y: (geometry.corners[0].y + geometry.corners[1].y) / 2 };
-    ctx.beginPath();
-    ctx.moveTo(topMid.x, topMid.y);
-    ctx.lineTo(geometry.rotationHandle.x, geometry.rotationHandle.y);
-    ctx.stroke();
-    for (const corner of geometry.corners) {
-      ctx.fillStyle = "#ffffff";
-      ctx.strokeStyle = "#2f80ed";
-      ctx.beginPath();
-      ctx.rect(corner.x - 5, corner.y - 5, 10, 10);
-      ctx.fill();
-      ctx.stroke();
-    }
-    ctx.beginPath();
-    ctx.arc(geometry.rotationHandle.x, geometry.rotationHandle.y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = "#ffffff";
-    ctx.fill();
-    ctx.stroke();
+    drawObjectSelectionHandle(geometry.closeHandle, "close");
+    drawObjectSelectionHandle(geometry.resizeHandle, "resize");
     ctx.restore();
   }
 }
@@ -2065,11 +2061,23 @@ function updateTransformPreview(event) {
   redraw();
 }
 
+function closeSelectionBox() {
+  setSelection([], null);
+  const message = "Selección cerrada. El elemento sigue en el lienzo.";
+  if (window.matchMedia("(max-width: 920px)").matches) showMobileFeedback(message);
+  else status.textContent = message;
+  redraw();
+}
+
 function beginSelectionInteraction(event) {
   const screenPoint = screenPointFromEvent(event);
   const selected = selectedLayerExact();
   const selectedGeometry = selected ? selectionGeometry(selected, screenViewportForDocument(state.document, state.viewport, canvasSize()), documentCenter(state.document)) : null;
   const selectedHit = hitTestHandle(screenPoint, selectedGeometry, HANDLE_RADIUS);
+  if (selectedHit === "close") {
+    closeSelectionBox();
+    return;
+  }
   if (state.selectedLayerIds.length > 1) {
     const layers = selectedLayersExact();
     const documentPoint = screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize());
@@ -2080,11 +2088,13 @@ function beginSelectionInteraction(event) {
       center: documentToScreenPoint(groupDocumentGeometry.center, state.document, state.viewport, canvasSize())
     } : null;
     if (groupScreenGeometry) {
-      const topMid = { x: (groupScreenGeometry.corners[0].x + groupScreenGeometry.corners[1].x) / 2, y: (groupScreenGeometry.corners[0].y + groupScreenGeometry.corners[1].y) / 2 };
-      const outward = { x: topMid.x - groupScreenGeometry.center.x, y: topMid.y - groupScreenGeometry.center.y };
-      const length = Math.hypot(outward.x, outward.y) || 1;
-      groupScreenGeometry.rotationHandle = { x: topMid.x + outward.x / length * 32, y: topMid.y + outward.y / length * 32 };
+      groupScreenGeometry.closeHandle = groupScreenGeometry.corners[1];
+      groupScreenGeometry.resizeHandle = groupScreenGeometry.corners[2];
       const groupHit = hitTestHandle(screenPoint, groupScreenGeometry, HANDLE_RADIUS);
+      if (groupHit === "close") {
+        closeSelectionBox();
+        return;
+      }
       // A hit inside the group bounds is itself a valid drag target. Do not
       // depend on a second per-layer hit test, which can miss edge pixels.
       if (groupHit === "move") {
@@ -3074,6 +3084,13 @@ if (mobileDock) {
     }
     if (action === "undo") { undo(); return; }
     if (action === "redo") { redo(); return; }
+    if (action === "export") {
+      closeMobileContextPanel();
+      document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
+      mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+      exportPngButton?.click();
+      return;
+    }
     if (action === "crop-image") {
       closeMobileContextPanel();
       document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
@@ -3199,7 +3216,7 @@ function setInteractionMode(mode) {
   if (details && state.interactionMode === "interactive") details.open = false;
   try { sessionStorage.setItem("animeart-editor-mode-v1", state.interactionMode); } catch {}
   status.textContent = state.interactionMode === "interactive"
-    ? "Modo interactivo: tocá un elemento para moverlo; usá las esquinas para cambiar tamaño y el control superior para rotar."
+    ? "Modo interactivo: mové el elemento desde dentro del marco, usá el tirador inferior para cambiar tamaño y la herramienta Rotar para girarlo."
     : "Modo simple: elegí una tarea guiada. También podés tocar y arrastrar una imagen para acomodarla.";
 }
 document.querySelectorAll("[data-editor-mode]").forEach(button => button.addEventListener("click", () => setInteractionMode(button.dataset.editorMode)));
