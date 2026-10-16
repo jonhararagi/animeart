@@ -85,3 +85,13 @@ test("censor light uses a cancellable per-image preview instead of the drawing t
  assert.match(app, /replaceImageLayer\(state\.document, layer\.id/);
  assert.match(css, /#censor-image-preview[\s\S]*?touch-action: none/);
 });
+
+
+test("canceling the new-text dialog removes the provisional text layer", async () => {
+ const app = await readFile("app.js","utf8");
+ assert.match(app, /function cancelNewlyCreatedTextLayer\(\)/);
+ assert.match(app, /newlyCreatedTextLayerId = layer\.id/);
+ assert.match(app, /if \(newlyCreatedTextLayerId\) \{ cancelNewlyCreatedTextLayer\(\); return; \}/);
+ assert.match(app, /event\.preventDefault\(\);\s*cancelNewlyCreatedTextLayer\(\)/);
+ assert.match(app, /newlyCreatedTextLayerId = null;\s*textEditDialog\?\.close\(\)/);
+});
