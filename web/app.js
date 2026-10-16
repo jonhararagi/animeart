@@ -3066,6 +3066,201 @@ for (const [key, input] of Object.entries(censorInputs)) {
   });
 }
 
+const censorDialog = document.querySelector("#censor-light-dialog");
+const censorPreviewCanvas = document.querySelector("#censor-image-preview");
+const censorPreviewContext = censorPreviewCanvas?.getContext("2d");
+let censorDialogSession = null;
+let censorDialogPointer = null;
+
+function drawCensorDialogPreview() {
+  const session = censorDialogSession;
+  const context = censorPreviewContext;
+  if (!session || !context || !session.image) return;
+  const { width, height, layer } = session;
+  if (censorPreviewCanvas.width !== width) censorPreviewCanvas.width = width;
+  if (censorPreviewCanvas.height !== height) censorPreviewCanvas.height = height;
+  context.clearRect(0, 0, width, height);
+  drawImageLayer(layer, context);
+  for (const stroke of session.strokes) {
+    if (!stroke.points.length) continue;
+    context.save();
+    context.globalCompositeOperation = "source-over";
+    context.globalAlpha = stroke.opacity;
+    context.strokeStyle = stroke.color;
+    context.lineWidth = stroke.size;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.shadowColor = stroke.color;
+    context.shadowBlur = stroke.size * (stroke.softness / 100 * 0.5 + stroke.glow / 100 * 1.25);
+    context.beginPath();
+    context.moveTo(stroke.points[0].x, stroke.points[0].y);
+    for (const point of stroke.points.slice(1)) context.lineTo(point.x, point.y);
+    context.stroke();
+    context.restore();
+  }
+  const undo = document.querySelector("#censor-dialog-undo");
+  if (undo) undo.disabled = session.strokes.length === 0;
+}
+
+function censorDialogPoint(event) {
+  if (!censorPreviewCanvas || !censorDialogSession) return null;
+  const rect = censorPreviewCanvas.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return null;
+  return {
+    x: Math.max(0, Math.min(censorDialogSession.width, (event.clientX - rect.left) / rect.width * censorDialogSession.width)),
+    y: Math.max(0, Math.min(censorDialogSession.height, (event.clientY - rect.top) / rect.height * censorDialogSession.height))
+  };
+}
+
+async function openCensorLightDialog() {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image) {
+    status.textContent = "Primero seleccioná la imagen a la que querés aplicar Luz de censura.";
+    document.querySelector("#selection-indicator")?.focus?.();
+    return;
+  }
+  if (layer.locked) {
+    status.textContent = "La imagen está fijada/bloqueada. Desfijala antes de aplicar Luz de censura.";
+    return;
+  }
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const cached = imageCache.get(layer.image.source);
+      if (cached?.complete && cached.naturalWidth > 0) { resolve(cached); return; }
+      const candidate = cached || new Image();
+      candidate.onload = () => resolve(candidate);
+      candidate.onerror = () => reject(new Error("No se pudo cargar la imagen seleccionada."));
+      candidate.src = layer.image.source;
+      imageCache.set(layer.image.source, candidate);
+    });
+    const width = layer.image.width;
+    const height = layer.image.height;
+    if (width * height > 16_000_000) throw new RangeError("Para evitar bloqueos, Luz de censura limita esta operación a 16 megapíxeles. Reducí el tamaño de la imagen y volvé a intentarlo.");
+    censorDialogSession = {
+      layerId: layer.id,
+      source: layer.image.source,
+      layer: { ...layer, image: { ...layer.image } },
+      image,
+      width,
+      height,
+      strokes: []
+    };
+    document.querySelector("#censor-dialog-image-name").textContent = layer.name + " · " + width + " × " + height + " px";
+    document.querySelector("#censor-dialog-color").value = "#ffffff";
+    document.querySelector("#censor-dialog-size").value = "36";
+    document.querySelector("#censor-dialog-size-value").textContent = "36 px";
+    document.querySelector("#censor-dialog-opacity").value = "90";
+    document.querySelector("#censor-dialog-opacity-value").textContent = "90%";
+    document.querySelector("#censor-dialog-softness").value = "35";
+    document.querySelector("#censor-dialog-softness-value").textContent = "35%";
+    document.querySelector("#censor-dialog-glow").value = "55";
+    document.querySelector("#censor-dialog-glow-value").textContent = "55%";
+    document.querySelector("#censor-dialog-status").textContent = "Deslizá sobre la imagen para pintar. Nada se cambia hasta pulsar Aplicar.";
+    if (!censorDialog.open) censorDialog.showModal();
+    drawCensorDialogPreview();
+  } catch (error) {
+    censorDialogSession = null;
+    status.textContent = error?.message || "No se pudo abrir Luz de censura.";
+  }
+}
+
+function closeCensorLightDialog() {
+  censorDialogPointer = null;
+  censorDialogSession = null;
+  if (censorDialog?.open) censorDialog.close();
+}
+
+for (const [id, suffix] of [["size"," px"],["opacity","%"],["softness","%"],["glow","%"]]) {
+  document.querySelector("#censor-dialog-" + id)?.addEventListener("input", event => {
+    document.querySelector("#censor-dialog-" + id + "-value").textContent = event.currentTarget.value + suffix;
+  });
+}
+censorPreviewCanvas?.addEventListener("pointerdown", event => {
+  if (!censorDialogSession) return;
+  const point = censorDialogPoint(event);
+  if (!point) return;
+  event.preventDefault();
+  const stroke = {
+    color: document.querySelector("#censor-dialog-color").value,
+    size: Number(document.querySelector("#censor-dialog-size").value),
+    opacity: Number(document.querySelector("#censor-dialog-opacity").value) / 100,
+    softness: Number(document.querySelector("#censor-dialog-softness").value),
+    glow: Number(document.querySelector("#censor-dialog-glow").value),
+    points: [point]
+  };
+  censorDialogSession.strokes.push(stroke);
+  censorDialogPointer = event.pointerId;
+  try { censorPreviewCanvas.setPointerCapture(event.pointerId); } catch {}
+  drawCensorDialogPreview();
+});
+censorPreviewCanvas?.addEventListener("pointermove", event => {
+  if (censorDialogPointer !== event.pointerId || !censorDialogSession) return;
+  const point = censorDialogPoint(event);
+  if (!point) return;
+  const stroke = censorDialogSession.strokes.at(-1);
+  if (!stroke) return;
+  stroke.points.push(point);
+  drawCensorDialogPreview();
+});
+function finishCensorDialogStroke(event) {
+  if (censorDialogPointer !== event.pointerId) return;
+  censorDialogPointer = null;
+  try { if (censorPreviewCanvas.hasPointerCapture(event.pointerId)) censorPreviewCanvas.releasePointerCapture(event.pointerId); } catch {}
+  drawCensorDialogPreview();
+}
+censorPreviewCanvas?.addEventListener("pointerup", finishCensorDialogStroke);
+censorPreviewCanvas?.addEventListener("pointercancel", finishCensorDialogStroke);
+document.querySelector("#censor-dialog-undo")?.addEventListener("click", () => {
+  if (!censorDialogSession) return;
+  censorDialogSession.strokes.pop();
+  document.querySelector("#censor-dialog-status").textContent = "Se quitó el último trazo. El original sigue intacto.";
+  drawCensorDialogPreview();
+});
+document.querySelector("#censor-dialog-cancel")?.addEventListener("click", closeCensorLightDialog);
+document.querySelector("#censor-dialog-close")?.addEventListener("click", closeCensorLightDialog);
+censorDialog?.addEventListener("cancel", event => {
+  event.preventDefault();
+  closeCensorLightDialog();
+});
+document.querySelector("#censor-dialog-apply")?.addEventListener("click", async event => {
+  const session = censorDialogSession;
+  if (!session || !session.strokes.length) {
+    document.querySelector("#censor-dialog-status").textContent = "Pintá al menos un trazo antes de aplicar.";
+    return;
+  }
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    if (state.storageRecoveryPending) throw new Error("El proyecto recuperado está protegido. Guardalo primero para permitir modificaciones.");
+    const layer = state.document.layers.find(item => item.id === session.layerId);
+    if (!layer || layer.contentType !== "image" || !layer.image || layer.locked || layer.image.source !== session.source) {
+      throw new Error("La imagen seleccionada cambió. Cancelá y volvé a abrir Luz de censura.");
+    }
+    drawCensorDialogPreview();
+    const source = censorPreviewCanvas.toDataURL("image/png");
+    const optimized = await optimizeImageSource(source);
+    const before = cloneDocument(state.document);
+    const next = replaceImageLayer(state.document, layer.id, { source: optimized.source, width: optimized.width, height: optimized.height }, { preserveDisplaySize: true });
+    if (!next) throw new Error("No se pudo aplicar el efecto a esta imagen.");
+    const changedLayer = next.layers.find(item => item.id === layer.id);
+    if (changedLayer?.image) {
+      changedLayer.image.flipX = false;
+      changedLayer.image.flipY = false;
+    }
+    imageCache.delete(session.source);
+    state.document = next;
+    setSelection([layer.id], layer.id);
+    state.history.record(before, next);
+    refreshDocument("✨ Luz de censura aplicada solo a la imagen. Deshacer restaura los píxeles originales.");
+    persistDocument();
+    closeCensorLightDialog();
+  } catch (error) {
+    document.querySelector("#censor-dialog-status").textContent = error?.message || "No se pudo aplicar Luz de censura.";
+  } finally {
+    button.disabled = false;
+  }
+});
+
 document.querySelectorAll("[data-censor-preset]").forEach(button => button.addEventListener("click", () => {
   const presets = {
     point: { size: 10, opacity: 100, softness: 0, glow: 15 },
@@ -3326,6 +3521,7 @@ magicTolerance?.addEventListener("input", () => {
 
  document.querySelectorAll(".tool").forEach(button => {
   button.addEventListener("click", () => {
+    if (button.dataset.tool === "censor-light") { openCensorLightDialog(); return; }
     state.tool = button.dataset.tool;
     if (state.tool !== "select" && state.multiTransformInteraction) {
       state.multiTransformInteraction = null;
@@ -3403,7 +3599,7 @@ function runEditGoal(goal) {
       }
       document.querySelector('.toolbar [data-tool="eraser"]')?.click();
     },
-    censor: () => document.querySelector('.toolbar [data-tool="censor-light"]')?.click(),
+    censor: () => openCensorLightDialog(),
     draw: () => document.querySelector('.toolbar [data-tool="brush"]')?.click(),
     text: () => document.querySelector("#add-text-layer").click(),
     shapes: () => openShapeMaker(),
@@ -3429,8 +3625,8 @@ document.querySelectorAll("[data-edit-goal]").forEach(button => button.addEventL
   const goal = button.dataset.editGoal;
   runEditGoal(goal);
   if (window.matchMedia("(max-width: 920px)").matches) {
-    if (goal === "draw" || goal === "erase" || goal === "censor") {
-      openMobileContextPanel(goal === "erase" ? "erase" : goal === "censor" ? "censor" : "draw");
+    if (goal === "draw" || goal === "erase") {
+      openMobileContextPanel(goal === "erase" ? "erase" : "draw");
       return;
     }
     closeMobileContextPanel();
