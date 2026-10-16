@@ -9,7 +9,7 @@ import { createViewport, panBy } from "./domain/viewport.mjs";
 import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocumentPoint, screenViewportForDocument, zoomViewportAt } from "./domain/canvas-space.mjs";
 import { distanceBetweenTouches, midpointBetweenTouches, updatePinchPanViewport } from "./domain/touch-gestures.mjs";
 import { createFrameScheduler } from "./domain/frame-scheduler.mjs";
-import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
 import { removeConnectedBackground, applyEraseStrokes } from "./domain/background-removal.mjs";
@@ -250,6 +250,13 @@ function updateSelectionMiniPanel(layer = selectedLayerExact()) {
 
   const fit = document.querySelector("#selection-mini-fit");
   if (fit) fit.disabled = layer.locked || layer.contentType !== "image" || !layer.image;
+  const background = document.querySelector("#selection-mini-background");
+  if (background) {
+    background.disabled = !(layer.contentType === "image" && layer.image) || (layer.locked && !layer.isBackground);
+    background.setAttribute("aria-pressed", String(Boolean(layer.isBackground)));
+    background.textContent = layer.isBackground ? "↩ Desfijar fondo" : "🖼️ Como fondo";
+    background.title = layer.isBackground ? "Volver a tratar la imagen como una capa normal" : "Fijar esta imagen al fondo del lienzo";
+  }
   const remove = document.querySelector("#selection-mini-delete");
   if (remove) remove.disabled = Boolean(layer.locked);
   const mobileRemove = document.querySelector('.mobile-touch-dock [data-touch-action="delete-selected"]');
@@ -470,7 +477,8 @@ function drawDrawingLayer(layer, context, documentModel) {
 }
 
 function drawDocument({ context = ctx, document = state.document, center = documentCenter(document), transformForLayer = layerTransformForRender } = {}) {
-  for (const layer of document.layers) {
+  const layersInRenderOrder = [...document.layers].sort((a, b) => Number(Boolean(b.isBackground)) - Number(Boolean(a.isBackground)));
+  for (const layer of layersInRenderOrder) {
     if (!layer.visible) continue;
     const transform = transformForLayer(layer);
     context.save();
@@ -750,7 +758,7 @@ function renderLayers() {
     selectButton.className = "layer-select";
     const layerName = document.createElement("span");
     layerName.className = "layer-name";
-    layerName.textContent = layer.name + (layer.contentType === "image" ? (layer.isReference ? " [Reference]" : " [Image]") : layer.contentType === "text" ? " [Text]" : "");
+    layerName.textContent = layer.name + (layer.isBackground ? " [Fondo fijo]" : layer.contentType === "image" ? (layer.isReference ? " [Referencia]" : " [Imagen]") : layer.contentType === "text" ? " [Texto]" : "");
     selectButton.append(createLayerThumbnail(layer), layerName);
     selectButton.setAttribute("aria-label", "Select " + layer.name);
     selectButton.addEventListener("click", event => {
@@ -1119,6 +1127,7 @@ cropResizeButton.addEventListener("click", () => {
 });
 
 document.querySelector("#cancel-image-edit").addEventListener("click", () => imageEditDialog.close());
+document.querySelector("#close-image-edit")?.addEventListener("click", () => imageEditDialog.close());
 imageEditDialog.addEventListener("close", () => {
   cropPreviewDrag = null;
   if (imageEditPreviewImage) {
@@ -1621,7 +1630,7 @@ textShadowXInput.addEventListener("input", () => { const v = Number(textShadowXI
 textShadowXInput.addEventListener("change", () => commitTextPreview("Text shadow horizontal offset updated"));
 textShadowYInput.addEventListener("input", () => { const v = Number(textShadowYInput.value); textShadowYValue.textContent = v + " px"; updateTextPreview({ shadowOffsetY: v }); });
 textShadowYInput.addEventListener("change", () => commitTextPreview("Text shadow vertical offset updated"));
-closeTextEditButton?.addEventListener("click", () => { commitTextPreview(); textEditDialog?.close(); });
+closeTextEditButton?.addEventListener("click", () => textEditDialog?.close());
 document.querySelector("#apply-text-layer")?.addEventListener("click", () => {
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "text") {
@@ -1637,7 +1646,12 @@ document.querySelector("#delete-text-layer")?.addEventListener("click", () => {
   if (!layer || layer.contentType !== "text") return;
   if (removeSelectedLayer()) textEditDialog?.close();
 });
-textEditDialog?.addEventListener("close", () => commitTextPreview());
+textEditDialog?.addEventListener("close", () => {
+  // Closing with X or Escape cancels an in-progress preview instead of silently applying it.
+  if (state.textPreview) state.textPreview = null;
+  redraw();
+  renderLayerText();
+});
 textStylePresetButtons.forEach(button=>button.addEventListener("click",()=>{const layer=selectedLayerExact();if(!layer||layer.contentType!=="text"||layer.locked)return;const p={comic:{fontFamily:"Impact",fontWeight:"bold",color:"#fff200",outlineColor:"#171717",outlineWidth:5,shadowColor:"#171717",shadowBlur:0,shadowOffsetX:5,shadowOffsetY:6},poster:{fontFamily:"Arial Black",fontWeight:"bold",color:"#ffffff",outlineColor:"#101014",outlineWidth:2,shadowColor:"#000000",shadowBlur:8,shadowOffsetX:2,shadowOffsetY:4},manga:{fontFamily:"Georgia",fontWeight:"bold",color:"#111111",outlineColor:"#ffffff",outlineWidth:0,shadowColor:"#777777",shadowBlur:1,shadowOffsetX:1,shadowOffsetY:2},neon:{fontFamily:"Arial Black",fontWeight:"bold",color:"#ffffff",outlineColor:"#f000c8",outlineWidth:3,shadowColor:"#00dfff",shadowBlur:18,shadowOffsetX:0,shadowOffsetY:0}}[button.dataset.textStylePreset];if(p){updateTextPreview(p);commitTextPreview(button.dataset.textStylePreset+" text style applied");}}));
 
 function renderImageMask(){if(!imageMaskPanel||!imageMaskInput)return;const layer=selectedLayerExact(),isImage=layer?.contentType==="image"&&Boolean(layer.image);imageMaskPanel.hidden=!isImage;imageMaskInput.disabled=!isImage||layer.locked;imageMaskInput.value=isImage?(layer.image.mask||"none"):"none";}
@@ -2685,13 +2699,10 @@ canvas.addEventListener("pointerdown", event => {
   if (hitImage && hitImage.id !== state.selectedLayerId &&
       ["brush", "eraser", "censor-light"].includes(state.tool) &&
       !keepPaintingLayer) {
+    // Select the hit image but keep processing this same pointer gesture. Previously
+    // the early return made the first drawing/erase touch appear to do nothing.
     setSelection([hitImage.id], hitImage.id);
     renderLayers();
-    redraw();
-    status.textContent = "🖼️ Imagen seleccionada. Volvé a tocar para usar " +
-      (state.tool === "eraser" ? "Borrar" : state.tool === "censor-light" ? "Luz de censura" : "Dibujar") +
-      " sobre la capa correcta.";
-    return;
   }
   let layer = selectedLayer();
   if (!layer || layer.locked) return;
@@ -3121,10 +3132,11 @@ function openMobileContextPanel(panel = "draw") {
   if (mobileContextHeading) mobileContextHeading.hidden = false;
   const title = document.querySelector("#mobile-context-title");
   const description = document.querySelector("#mobile-context-description");
-  if (title) title.textContent = panel === "erase" ? "Borrar" : "Dibujar";
+  if (title) title.textContent = panel === "erase" ? "Borrar" : panel === "censor" ? "Luz de censura" : "Dibujar";
   if (description) description.textContent = panel === "erase"
     ? "Ajustá el borrador y deslizá sobre la zona que querés quitar."
-    : "Elegí el color, el grosor y el efecto. Después dibujá sobre el lienzo.";
+    : panel === "censor" ? "Elegí color y tamaño; dibujá una cobertura de luz sobre la zona deseada."
+      : "Elegí el color, el grosor y el efecto. Después dibujá sobre el lienzo.";
   document.querySelector('.mobile-touch-dock [data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
   document.querySelector('.mobile-touch-dock [data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
   mobileToolsToggle?.setAttribute("aria-expanded", "true");
@@ -3417,8 +3429,8 @@ document.querySelectorAll("[data-edit-goal]").forEach(button => button.addEventL
   const goal = button.dataset.editGoal;
   runEditGoal(goal);
   if (window.matchMedia("(max-width: 920px)").matches) {
-    if (goal === "draw" || goal === "erase") {
-      openMobileContextPanel(goal === "erase" ? "erase" : "draw");
+    if (goal === "draw" || goal === "erase" || goal === "censor") {
+      openMobileContextPanel(goal === "erase" ? "erase" : goal === "censor" ? "censor" : "draw");
       return;
     }
     closeMobileContextPanel();
@@ -3461,6 +3473,22 @@ document.querySelector("#selection-mini-fit")?.addEventListener("click", () => {
   const layer = selectedLayerExact();
   if (!layer || layer.locked || layer.contentType !== "image" || !layer.image) return;
   document.querySelector("#fit-image-to-canvas")?.click();
+});
+document.querySelector("#selection-mini-background")?.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image || (layer.locked && !layer.isBackground)) {
+    status.textContent = "Seleccioná una imagen desbloqueada para fijarla como fondo.";
+    return;
+  }
+  const wasBackground = Boolean(layer.isBackground);
+  const before = cloneDocument(state.document);
+  const next = setLayerBackground(state.document, layer.id, !wasBackground);
+  if (!next) { status.textContent = "No se pudo cambiar el modo de fondo."; return; }
+  state.document = next;
+  setSelection([layer.id], layer.id);
+  state.history.record(before, next);
+  refreshDocument(wasBackground ? "La imagen volvió a ser una capa normal." : "Fondo fijado. Ya no se mueve por accidente; podés desfijarlo desde esta barra.");
+  persistDocument();
 });
 document.querySelector("#selection-mini-delete")?.addEventListener("click", () => removeSelectedLayer());
 
@@ -3517,7 +3545,7 @@ document.querySelector("#add-text-layer").addEventListener("click", () => {
   const width = Math.max(300, state.document.width || canvas.width || 300);
   const height = Math.max(180, state.document.height || canvas.height || 180);
   const layer = createTextLayer("Text " + index, {
-    value: "Your text",
+    value: "Escribe aquí",
     x: Math.round(width * 0.5),
     y: Math.round(height * 0.5),
     fontSize: Math.max(24, Math.min(64, Math.round(height * 0.1))),
@@ -3537,6 +3565,7 @@ document.querySelector("#add-text-layer").addEventListener("click", () => {
   state.history.record(before, next);
   refreshDocument("Text layer added");
   persistDocument();
+  renderLayerText();
   if (textEditDialog && !textEditDialog.open) textEditDialog.showModal();
 });
 
@@ -3714,10 +3743,39 @@ document.querySelector("#cancel-background-removal").addEventListener("click", (
   backgroundRemovalSession = null;
   backgroundRemovalSampleMode = false;
 });
+function setQuickBackgroundColor(color, tolerance, feather) {
+  const colorInput = document.querySelector("#background-removal-color");
+  const toleranceInput = document.querySelector("#background-removal-tolerance");
+  const featherInput = document.querySelector("#background-removal-feather");
+  colorInput.value = color;
+  toleranceInput.value = String(tolerance);
+  featherInput.value = String(feather);
+  document.querySelector("#background-removal-tolerance-value").textContent = String(tolerance);
+  document.querySelector("#background-removal-feather-value").textContent = String(feather);
+  document.querySelector("#background-removal-status").textContent = "Revisá la vista previa; los píxeles transparentes se aplican solo al pulsar Aplicar.";
+  backgroundRemovalSampleMode = false;
+  renderBackgroundRemovalPreview(true);
+}
+document.querySelector("#background-auto-detect")?.addEventListener("click", () => {
+  const image = backgroundRemovalSession?.original;
+  if (!image || image.width < 1 || image.height < 1) return;
+  const points = [[0,0],[image.width-1,0],[0,image.height-1],[image.width-1,image.height-1],[Math.floor(image.width/2),0]];
+  const colors = new Map();
+  for (const [x,y] of points) {
+    const i=(y*image.width+x)*4;
+    if (image.data[i+3] < 24) continue;
+    const color="#" + [image.data[i],image.data[i+1],image.data[i+2]].map(v=>v.toString(16).padStart(2,"0")).join("");
+    colors.set(color,(colors.get(color)||0)+1);
+  }
+  const color=[...colors.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0] || "#ffffff";
+  setQuickBackgroundColor(color, 46, 20);
+});
+document.querySelector("#background-preset-white")?.addEventListener("click", () => setQuickBackgroundColor("#ffffff", 46, 20));
+document.querySelector("#background-preset-dark")?.addEventListener("click", () => setQuickBackgroundColor("#101014", 52, 18));
 document.querySelector("#sample-background-color").addEventListener("click", () => {
   backgroundRemovalSampleMode = true;
   document.querySelector("#background-removal-manual").checked = false;
-  document.querySelector("#background-removal-status").textContent = "Click a background pixel in the image preview to sample its color.";
+  document.querySelector("#background-removal-status").textContent = "Ahora tocá el color del fondo dentro de la vista previa. Después revisá el resultado.";
 });
 for (const id of ["background-removal-color", "background-removal-tolerance", "background-removal-feather", "background-removal-edge-sensitivity", "background-removal-protect-line-art", "background-removal-decontaminate"]) {
   document.querySelector("#" + id).addEventListener("input", () => {
