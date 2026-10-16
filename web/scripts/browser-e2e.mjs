@@ -644,10 +644,47 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source !== window.__animeArtOriginalRecolorSource', 10000);
   await saveScreenshot("animeart-studio-selective-recolor.png");
 
+  const backgroundCandidate = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight"); return layer ? { id:layer.id, name:layer.name } : null; })()');
+  assert(Boolean(backgroundCandidate), "background fixture is the selected character image");
+  await click("#selection-mini-background");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers[0]?.id === ' + JSON.stringify(backgroundCandidate.id) + ' && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(backgroundCandidate.id) + ')?.isBackground === true');
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(backgroundCandidate.id) + ')?.locked === true'), "set as background fixes the image at the bottom and locks it against accidental movement");
+  await click("#selection-mini-background");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(backgroundCandidate.id) + ')?.isBackground !== true && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(backgroundCandidate.id) + ')?.locked === false');
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(backgroundCandidate.id) + ')?.name === "battleworn_knight"'), "unpinning restores a moveable image without changing its name");
+
+  const censorBefore = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(backgroundCandidate.id) + '); window.__animeArtCensorBefore=layer.image.source; return { width:layer.image.width, height:layer.image.height, flipX:layer.image.flipX }; })()');
+  await click('[data-edit-goal="censor"]');
+  await waitFor('document.querySelector("#censor-light-dialog").open === true', 10000);
+  assert(await evaluate('document.querySelector("#censor-dialog-image-name").textContent.includes("battleworn_knight")'), "censor-light dialog explicitly targets the selected image");
+  const censorBounds = await selectorCenter("#censor-image-preview");
+  await mouseStroke([
+    { x:censorBounds.x-censorBounds.width*0.18, y:censorBounds.y },
+    { x:censorBounds.x, y:censorBounds.y },
+    { x:censorBounds.x+censorBounds.width*0.18, y:censorBounds.y+censorBounds.height*0.03 }
+  ]);
+  await waitFor('document.querySelector("#censor-dialog-undo").disabled === false', 5000);
+  await click("#censor-dialog-undo");
+  await waitFor('document.querySelector("#censor-dialog-undo").disabled === true', 5000);
+  await mouseStroke([
+    { x:censorBounds.x-censorBounds.width*0.18, y:censorBounds.y+censorBounds.height*0.05 },
+    { x:censorBounds.x, y:censorBounds.y+censorBounds.height*0.05 },
+    { x:censorBounds.x+censorBounds.width*0.18, y:censorBounds.y+censorBounds.height*0.08 }
+  ]);
+  await waitFor('document.querySelector("#censor-dialog-undo").disabled === false', 5000);
+  await click("#censor-dialog-apply");
+  await waitFor('document.querySelector("#censor-light-dialog").open === false', 15000);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(backgroundCandidate.id) + ')?.image?.source !== window.__animeArtCensorBefore', 15000);
+  const censoredImage = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(backgroundCandidate.id) + '); return { source:layer.image.source, width:layer.image.width, height:layer.image.height, flipX:layer.image.flipX }; })()');
+  assert(censoredImage.width === censorBefore.width && censoredImage.height === censorBefore.height && censoredImage.flipX === false, "apply edits only the image pixels while retaining dimensions and baking the visual flip safely");
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(backgroundCandidate.id) + ')?.image?.source === window.__animeArtCensorBefore', 10000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(backgroundCandidate.id) + ')?.image?.flipX === true'), "Undo restores the original flipped image and its exact source");
+
   await evaluate('window.__animeArtTextDrawCount = 0; const originalFillText = CanvasRenderingContext2D.prototype.fillText; CanvasRenderingContext2D.prototype.fillText = function(...args) { window.__animeArtTextDrawCount += 1; return originalFillText.apply(this, args); };');
   await click("#add-text-layer");
   const textLayerAfterCreate = (await readDocument()).layers.at(-1);
-  assert(textLayerAfterCreate?.contentType === "text" && textLayerAfterCreate.text?.value === "Your text", "real browser creates an editable text layer");
+  assert(textLayerAfterCreate?.contentType === "text" && textLayerAfterCreate.text?.value === "Escribe aquí", "real browser creates an editable text layer");
   const textLayerId = textLayerAfterCreate.id;
   await evaluate('(() => { const el = document.querySelector("#text-content"); el.value = "AnimeArt Studio"; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); })()');
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.id === ' + JSON.stringify(textLayerId) + ' && layer.contentType === "text" && layer.text?.value === "AnimeArt Studio")', 10000);
@@ -660,7 +697,7 @@ try {
   await waitFor('document.querySelector("#text-edit-dialog").open === false');
   assert((await readDocument()).layers.some(layer => layer.id === textLayerId && layer.text?.value === "AnimeArt Studio"), "Apply keeps the selected text as an editable canvas layer");
   await click("#undo");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(textLayerId) + ')?.text?.value === "Your text"', 10000);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(textLayerId) + ')?.text?.value === "Escribe aquí"', 10000);
   await click("#redo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(textLayerId) + ')?.text?.value === "AnimeArt Studio"', 10000);
 
@@ -671,6 +708,14 @@ try {
   await waitFor('document.querySelector("#text-edit-dialog").open === false');
   await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.id === ' + JSON.stringify(disposableText.id) + ')', 10000);
   assert(!(await readDocument()).layers.some(layer => layer.id === disposableText.id), "Delete text removes the exact selected text layer");
+
+  await click("#add-text-layer");
+  const cancelledText = (await readDocument()).layers.at(-1);
+  assert(cancelledText?.contentType === "text", "new text starts as a provisional editable layer");
+  await click("#close-text-edit");
+  await waitFor('document.querySelector("#text-edit-dialog").open === false');
+  await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.id === ' + JSON.stringify(cancelledText.id) + ')', 10000);
+  assert(!(await readDocument()).layers.some(layer => layer.id === cancelledText.id), "X cancels creation and removes the provisional text layer");
 
   await evaluate('window.__animeArtStrokeTextCount = 0; const originalStrokeText = CanvasRenderingContext2D.prototype.strokeText; CanvasRenderingContext2D.prototype.strokeText = function(...args) { window.__animeArtStrokeTextCount += 1; return originalStrokeText.apply(this, args); };');
   await click("#add-meme-text");
