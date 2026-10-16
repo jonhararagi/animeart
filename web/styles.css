@@ -2167,3 +2167,57 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   #shape-maker-dialog .shape-maker-preview { min-height: 64px; max-height: 68px; }
   #shape-maker-dialog .shape-maker-preview img { height: 60px; }
 }
+
+
+/* AA-MOBILE-IMPORT-FEEDBACK-001: never hide import success/errors behind the desktop-only status bar. */
+.mobile-feedback {
+  position: fixed;
+  z-index: 10000;
+  left: 12px;
+  right: 12px;
+  bottom: calc(82px + env(safe-area-inset-bottom));
+  width: min(560px, calc(100vw - 24px));
+  margin-inline: auto;
+  padding: 13px 15px;
+  border: 1px solid #5b4b7c;
+  border-radius: 14px;
+  background: #211b30;
+  color: #f7f2ff;
+  box-shadow: 0 12px 36px #0009;
+  font-size: .9rem;
+  font-weight: 750;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+.mobile-feedback[hidden] { display: none !important; }
+.mobile-feedback[data-kind="success"] { border-color: #36b99a; background: #102d2b; }
+.mobile-feedback[data-kind="error"] { border-color: #fb7185; background: #3b1722; }
+@media (min-width: 921px) {
+  .mobile-feedback { left: auto; right: 22px; bottom: 22px; }
+}
+/* Reduce the crowded legacy panel on phones and make the primary actions obvious. */
+@media (max-width: 920px) {
+  body.mobile-tools-open .editor-mode-switch,
+  body.mobile-tools-open .editor-mode-hint,
+  body.mobile-tools-open .guided-edit-tools,
+  body.mobile-tools-open .editing-help-card { display: none !important; }
+  body.mobile-tools-open .asset-quick-actions { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+  body.mobile-tools-open .asset-quick-actions button {
+    min-height: 68px !important;
+    padding: 10px !important;
+    border: 1px solid #654c91 !important;
+    border-radius: 14px !important;
+    background: linear-gradient(145deg, #302047, #171d2d) !important;
+    box-shadow: inset 0 1px #ffffff10 !important;
+  }
+  body.mobile-tools-open .asset-quick-actions button b { font-size: .82rem !important; }
+  body.mobile-tools-open .asset-quick-actions button small { font-size: .68rem !important; }
+  body.mobile-tools-open .easy-edit-grid { gap: 8px !important; }
+  body.mobile-tools-open .easy-edit-grid button {
+    min-height: 58px !important;
+    border: 1px solid #303a52 !important;
+    border-radius: 13px !important;
+    background: #171d2b !important;
+  }
+}
