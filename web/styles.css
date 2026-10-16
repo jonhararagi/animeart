@@ -2221,3 +2221,125 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
     background: #171d2b !important;
   }
 }
+
+
+/* AA-MOBILE-REDESIGN-004: canvas-first phone layout, safe-area aware and touch-sized. */
+@media (max-width: 920px) {
+  :root { color-scheme: dark; }
+  html, body { min-height: 100%; overscroll-behavior-y: none; }
+  body { padding-bottom: env(safe-area-inset-bottom); }
+  body > .topbar {
+    min-height: 52px;
+    padding-top: max(7px, env(safe-area-inset-top));
+    padding-left: max(10px, env(safe-area-inset-left));
+    padding-right: max(10px, env(safe-area-inset-right));
+    gap: 8px;
+  }
+  body > .topbar .brand { font-size: .86rem; letter-spacing: .12em; }
+  body > .topbar .topbar-actions { display: none !important; }
+  body > .topbar .mobile-top-actions { display: flex !important; gap: 6px; }
+  body > .topbar .mobile-top-actions button {
+    width: 44px; min-width: 44px; height: 44px; min-height: 44px;
+    border-radius: 13px; font-size: 1.2rem;
+  }
+  body > .workspace {
+    min-height: 0 !important;
+    height: calc(100dvh - 52px - env(safe-area-inset-top));
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-rows: minmax(0, 1fr) auto 0 !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+  body > .workspace > .canvas-area,
+  body > .workspace > .canvas-wrap,
+  body > .workspace .canvas-wrap {
+    min-width: 0; min-height: 0;
+    background-color: #11131b !important;
+    background-image:
+      linear-gradient(45deg, #1a1d28 25%, transparent 25%),
+      linear-gradient(-45deg, #1a1d28 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, #1a1d28 75%),
+      linear-gradient(-45deg, transparent 75%, #1a1d28 75%) !important;
+    background-size: 24px 24px !important;
+    background-position: 0 0, 0 12px, 12px -12px, -12px 0 !important;
+    touch-action: none;
+  }
+  body > .workspace > .toolbar {
+    grid-row: 2 !important;
+    width: 100% !important;
+    max-height: min(36dvh, 300px) !important;
+    min-height: 0 !important;
+    padding: 12px max(12px, env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left)) !important;
+    border: 1px solid #39304e !important;
+    border-bottom: 0 !important;
+    border-radius: 18px 18px 0 0 !important;
+    background: linear-gradient(180deg, #1b1927, #10131d 80%) !important;
+    box-shadow: 0 -10px 28px #0006 !important;
+    overscroll-behavior: contain;
+  }
+  body.mobile-tools-collapsed > .workspace { grid-template-rows: minmax(0, 1fr) 0 0 !important; }
+  body.mobile-tools-collapsed > .workspace > .toolbar { display: none !important; }
+  body > .workspace > .toolbar .easy-edit-heading,
+  body > .workspace > .toolbar .editor-mode-switch,
+  body > .workspace > .toolbar .editor-mode-hint,
+  body > .workspace > .toolbar .guided-edit-tools,
+  body > .workspace > .toolbar .editing-help-card { display: none !important; }
+  body > .workspace > .toolbar .asset-quick-actions {
+    display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important; margin: 0 0 10px !important;
+  }
+  body > .workspace > .toolbar .asset-quick-actions button {
+    min-height: 54px !important; padding: 8px 10px !important;
+    border: 1px solid #594474 !important; border-radius: 12px !important;
+    background: #211b30 !important; color: #f7f2ff !important;
+  }
+  body > .workspace > .toolbar .easy-edit-grid {
+    display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+  body > .workspace > .toolbar .easy-edit-grid button {
+    min-width: 0 !important; min-height: 48px !important; padding: 7px 4px !important;
+    border: 1px solid #30384b !important; border-radius: 11px !important;
+    background: #171c29 !important; color: #f0f2fa !important;
+    font-size: .72rem !important; line-height: 1.2 !important;
+  }
+  body > .workspace > .toolbar .easy-edit-grid button span { display: none !important; }
+  body > .workspace > .toolbar .easy-edit-grid button b { font-size: .72rem !important; }
+  body > .workspace > .toolbar .easy-edit-grid button small { display: none !important; }
+  body > .workspace > .layers { display: none !important; }
+  body > .workspace .canvas-tools button,
+  body > .workspace .canvas-view-menu button { min-width: 44px; min-height: 44px; }
+  #mobile-tools-toggle {
+    z-index: 1002 !important;
+    right: 12px !important; bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+    width: 46px !important; min-width: 46px !important; height: 46px !important; min-height: 46px !important;
+    border: 1px solid #a78bfa !important; border-radius: 15px !important;
+    background: #302047 !important; color: #fff !important;
+    box-shadow: 0 5px 20px #0008 !important;
+  }
+  body.mobile-tools-open #mobile-tools-toggle { bottom: calc(min(36dvh, 300px) + 8px) !important; }
+  .mobile-feedback { bottom: calc(74px + env(safe-area-inset-bottom)) !important; }
+  body > .mobile-touch-dock {
+    z-index: 1001 !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+    min-height: calc(62px + env(safe-area-inset-bottom)) !important;
+    max-height: calc(68px + env(safe-area-inset-bottom)) !important;
+    padding: 5px max(7px, env(safe-area-inset-right)) calc(5px + env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left)) !important;
+    background: #0c0f17 !important;
+    border-top: 1px solid #29243a !important;
+  }
+  body > .mobile-touch-dock button {
+    min-width: 0 !important; min-height: 48px !important; height: auto !important;
+    padding: 5px 2px !important; border-radius: 12px !important;
+    font-size: .68rem !important; line-height: 1.15 !important;
+    white-space: normal !important; overflow-wrap: anywhere;
+  }
+}
+@media (max-width: 400px) {
+  body > .workspace > .toolbar .easy-edit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  body > .workspace > .toolbar .easy-edit-grid button { min-height: 44px !important; }
+  body > .topbar .brand { font-size: .75rem; }
+}
