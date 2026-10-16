@@ -1312,6 +1312,23 @@ try {
     await waitFor('Boolean(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").image.' + field + ') === ' + JSON.stringify(before), 10000);
   }
 
+  // The rotation handle itself must respond to a real pointer drag, not just the +/- buttons.
+  await click('.mobile-touch-dock [data-touch-action="layers"]');
+  await waitFor('!document.body.classList.contains("mobile-layers-open")');
+  await evaluate('window.__ANIMEART_E2E_DIAGNOSTICS__ = true');
+  await waitFor('Boolean(window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.rotationHandle && window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.center)');
+  const rotationGestureGeometry = await evaluate('(() => { const d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; const canvas=document.querySelector("#canvas"); const r=canvas.getBoundingClientRect(); const start={x:r.left+d.rotationHandle.x,y:r.top+d.rotationHandle.y}; const pivot={x:r.left+r.width/2,y:r.top+r.height/2}; const vx=start.x-pivot.x, vy=start.y-pivot.y, angle=20*Math.PI/180; return {start,target:{x:pivot.x+vx*Math.cos(angle)-vy*Math.sin(angle),y:pivot.y+vx*Math.sin(angle)+vy*Math.cos(angle)}}; })()');
+  const rotationBeforeGesture = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation');
+  await mouseDrag(rotationGestureGeometry.start, rotationGestureGeometry.target);
+  await waitFor('Math.abs(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation - ' + JSON.stringify(rotationBeforeGesture) + ') > 5', 10000);
+  const rotationAfterGesture = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation');
+  assert(Math.abs(rotationAfterGesture - rotationBeforeGesture) > 5, "dragging the visible mobile rotation handle changes the selected image angle");
+  await click('.mobile-touch-dock [data-touch-action="undo"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation === ' + JSON.stringify(rotationBeforeGesture), 10000);
+  await click('.mobile-touch-dock [data-touch-action="redo"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation === ' + JSON.stringify(rotationAfterGesture), 10000);
+  assert(true, "mobile rotation-handle drag participates in Undo/Redo history");
+
   assert(await evaluate('(() => { const label=document.querySelector(".mobile-export-format"); const select=document.querySelector("#mobile-export-format"); const r=select.getBoundingClientRect(); const s=getComputedStyle(label); return Boolean(select && s.display!=="none" && s.visibility!=="hidden" && r.width>=60 && r.height>=30 && r.bottom<=innerHeight; })()'),
     "mobile export format picker stays visible and touch-usable at a 393px viewport");
 
