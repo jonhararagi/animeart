@@ -14,7 +14,7 @@ test("pinning an image as background locks it and puts it behind other layers", 
   assert.equal(next.layers[0].id, image.id, "background is the first rendered layer");
   assert.equal(next.layers[0].isBackground, true);
   assert.equal(next.layers[0].locked, true, "background cannot be dragged by accident");
-  assert.equal(next.layers[0].name, "Fondo del lienzo");
+  assert.equal(next.layers[0].name, "Photo", "pinning does not discard the image name");
   assert.equal(document.layers[1].locked, false, "original document stays immutable");
   assert.equal(isValidDocument(next), true);
 });
