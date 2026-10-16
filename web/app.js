@@ -629,8 +629,17 @@ function drawSelectionOverlay() {
         kind: "layer"
       };
     }
+    const rotationHandle = geometry.rotationHandle;
+    const topMid = { x: (geometry.corners[0].x + geometry.corners[1].x) / 2, y: (geometry.corners[0].y + geometry.corners[1].y) / 2 };
+    ctx.beginPath();
+    ctx.moveTo(topMid.x, topMid.y);
+    ctx.lineTo(rotationHandle.x, rotationHandle.y);
+    ctx.strokeStyle = "#8bdcf0";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
     drawObjectSelectionHandle(visibleHandles.closeHandle, "close");
     drawObjectSelectionHandle(visibleHandles.resizeHandle, "resize");
+    drawObjectSelectionHandle(rotationHandle, "rotate");
     ctx.restore();
   }
 }
@@ -3136,6 +3145,10 @@ if (mobileDock) {
       mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
       return;
     }
+    if (action === "rotate-left") { document.querySelector('[data-transform="rotate-left"]')?.click(); return; }
+    if (action === "rotate-right") { document.querySelector('[data-transform="rotate-right"]')?.click(); return; }
+    if (action === "flip-horizontal") { flipImageHorizontalButton?.click(); return; }
+    if (action === "flip-vertical") { flipImageVerticalButton?.click(); return; }
     if (action === "undo") { undo(); return; }
     if (action === "redo") { redo(); return; }
     if (action === "export") {
@@ -4217,6 +4230,17 @@ setCanvasBackground("checkerboard");
 if (transparencyButton) {
   transparencyButton.setAttribute("aria-pressed", "false");
   transparencyButton.textContent = "Ver transparencia";
+}
+const mobileExportFormatInput = document.querySelector("#mobile-export-format");
+if (mobileExportFormatInput) {
+  mobileExportFormatInput.value = exportFormatInput.value;
+  mobileExportFormatInput.addEventListener("change", () => {
+    exportFormatInput.value = mobileExportFormatInput.value;
+    syncExportFormatControls();
+  });
+  exportFormatInput.addEventListener("change", () => {
+    mobileExportFormatInput.value = exportFormatInput.value;
+  });
 }
 exportFormatInput.addEventListener("change", syncExportFormatControls);
 exportQualityInput.addEventListener("input", syncExportFormatControls);
