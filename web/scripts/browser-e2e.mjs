@@ -1049,6 +1049,8 @@ try {
   await waitFor('document.querySelector("#canvas") !== null');
   await waitForServiceWorkerReadiness();
   assert(await evaluate('window.innerWidth <= 920'), "Xiaomi-sized mobile E2E runs at a 393 CSS-pixel viewport");
+  assert(await evaluate('getComputedStyle(document.querySelector(".topbar")).display === "none"'), "mobile layout leaves the phone status-bar region free of app controls");
+  assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=export]") !== null'), "mobile export remains reachable in the bottom dock");
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "mobile editor starts without stale storage-recovery warning");
   assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height > 0'), "clean mobile workspace retains usable canvas space");
   assert(await evaluate('getComputedStyle(document.querySelector(".workspace")).gridTemplateColumns.split(" ").length === 1'), "mobile workspace uses a single canvas column instead of the desktop sidebars");
