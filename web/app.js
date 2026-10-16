@@ -4331,6 +4331,19 @@ syncBrushControls();
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
+// Mobile sheets can resize the editor without causing a window resize event.
+// Keep the backing bitmap and selection geometry aligned with the actual canvas box.
+if (typeof ResizeObserver === "function") {
+  const canvasResizeObserver = new ResizeObserver(() => {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const expectedWidth = Math.round(rect.width * dpr);
+    const expectedHeight = Math.round(rect.height * dpr);
+    if (canvas.width !== expectedWidth || canvas.height !== expectedHeight) resizeCanvas();
+  });
+  canvasResizeObserver.observe(canvas.parentElement || canvas);
+}
+
 
 const OFFLINE_CACHE_NAME = "animeart-web-shell-v30";
 const OFFLINE_REQUIRED_RESOURCES = [
