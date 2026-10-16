@@ -12,6 +12,11 @@
   <header class="topbar">
     <div class="brand">ANIMEART</div>
     <div class="topbar-actions"><button id="editor-mode-toggle" type="button" aria-label="Cambiar modo de edición">Modo simple</button><button id="appearance-open" type="button" aria-label="Personalizar apariencia">Apariencia</button><div class="status" id="status">Editor local</div></div>
+    <div class="mobile-top-actions" role="group" aria-label="Acciones del editor">
+      <button type="button" data-mobile-top-action="undo" aria-label="Deshacer" title="Deshacer">↶</button>
+      <button type="button" data-mobile-top-action="redo" aria-label="Rehacer" title="Rehacer">↷</button>
+      <button type="button" data-mobile-top-action="export" aria-label="Guardar o exportar imagen" title="Guardar o exportar">↓</button>
+    </div>
   </header>
   <div id="storage-recovery-notice" class="recovery-notice" role="alert" hidden></div>
   <main class="workspace">
