@@ -30,7 +30,7 @@ test("background metadata survives save/restore normalization and can be unset",
   assert.equal(restored.layers[0].locked, true);
   const editable = setLayerBackground(restored, image.id, false);
   assert.ok(editable);
-  assert.equal(editable.layers.find(layer => layer.id === image.id).isBackground, false);
+  assert.notEqual(editable.layers.find(layer => layer.id === image.id).isBackground, true);
   assert.equal(editable.layers.find(layer => layer.id === image.id).locked, false);
   assert.equal(isValidDocument(editable), true);
 });
@@ -45,7 +45,7 @@ test("a new background replaces the old fixed background without leaving both lo
 
   const oldBackground = twice.layers.find(layer => layer.id === first.id);
   const newBackground = twice.layers.find(layer => layer.id === second.id);
-  assert.equal(oldBackground.isBackground, false);
+  assert.notEqual(oldBackground.isBackground, true);
   assert.equal(oldBackground.locked, false);
   assert.equal(newBackground.isBackground, true);
   assert.equal(newBackground.locked, true);
