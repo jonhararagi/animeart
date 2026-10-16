@@ -531,7 +531,7 @@ function drawObjectSelectionHandle(point, kind) {
   ctx.save();
   ctx.beginPath();
   ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
-  ctx.fillStyle = kind === "close" ? "#e74f78" : "#7058f5";
+  ctx.fillStyle = kind === "close" ? "#e74f78" : kind === "rotate" ? "#168da6" : "#7058f5";
   ctx.fill();
   ctx.lineWidth = 2;
   ctx.strokeStyle = "#ffffff";
@@ -543,6 +543,9 @@ function drawObjectSelectionHandle(point, kind) {
   if (kind === "close") {
     ctx.moveTo(point.x - 5.5, point.y - 5.5); ctx.lineTo(point.x + 5.5, point.y + 5.5);
     ctx.moveTo(point.x + 5.5, point.y - 5.5); ctx.lineTo(point.x - 5.5, point.y + 5.5);
+  } else if (kind === "rotate") {
+    ctx.arc(point.x, point.y, 6.5, -Math.PI * 0.15, Math.PI * 1.45, false);
+    ctx.moveTo(point.x + 5, point.y - 6); ctx.lineTo(point.x + 7, point.y + 0.5); ctx.lineTo(point.x + 0.5, point.y - 1);
   } else {
     ctx.moveTo(point.x - 6, point.y - 6); ctx.lineTo(point.x + 6, point.y + 6);
     ctx.moveTo(point.x - 6, point.y - 6); ctx.lineTo(point.x - 6, point.y - 1);
