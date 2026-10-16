@@ -1235,22 +1235,56 @@ try {
     point.y >= 20 && point.y <= visibleHandles.height - 20);
   assert(handlesInsideCanvas, "selected-image X and resize handles remain fully visible inside the canvas edges: " + JSON.stringify(visibleHandles));
   await saveScreenshot("animeart-studio-mobile-imported-image-moved.png");
-  const closeAt = { x: visibleHandles.canvas.left + visibleHandles.close.x, y: visibleHandles.canvas.top + visibleHandles.close.y };
+
+  // Drag the bottom-right resize handle after its visual position has been clamped to the canvas.
+  // The editor must compensate for the difference between the displayed handle and the real corner.
+  const scaleBeforeEdgeDrag = mobilePngMoved.transform.scale;
+  const resizeAt = { x: visibleHandles.canvas.left + visibleHandles.resize.x, y: visibleHandles.canvas.top + visibleHandles.resize.y };
+  const resizeTarget = { x: resizeAt.x - 18, y: resizeAt.y - 18 };
+  await mouseDrag(resizeAt, resizeTarget);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform.scale !== ' + JSON.stringify(scaleBeforeEdgeDrag), 10000);
+  const mobilePngResized = (await readLayerSummary()).find(layer => layer.name === "e2e-mobile-import");
+  assert(Number.isFinite(mobilePngResized?.transform?.scale) && Math.abs(mobilePngResized.transform.scale - scaleBeforeEdgeDrag) > 0.001,
+    "dragging the visible bottom-right handle really changes image scale when its corner extends beyond the canvas");
+  const importedTransformAfterResize = JSON.stringify(mobilePngResized.transform);
+  const resizedHandleSnapshot = JSON.stringify(visibleHandles.resize);
+  await waitFor('JSON.stringify(window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.resizeHandle) !== ' + JSON.stringify(resizedHandleSnapshot), 10000);
+  const visibleHandlesAfterResize = await evaluate('(() => { const d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; const size=d.canvasSize; const r=document.querySelector("#canvas").getBoundingClientRect(); return { width:size.width,height:size.height,close:d.closeHandle,resize:d.resizeHandle,canvas:{left:r.left,top:r.top,width:r.width,height:r.height} }; })()');
+  assert([visibleHandlesAfterResize.close, visibleHandlesAfterResize.resize].every(point =>
+    point.x >= 20 && point.x <= visibleHandlesAfterResize.width - 20 &&
+    point.y >= 20 && point.y <= visibleHandlesAfterResize.height - 20),
+    "selection handles remain visible after edge resizing");
+  await saveScreenshot("animeart-studio-mobile-imported-image-resized.png");
+
+  const closeAt = { x: visibleHandlesAfterResize.canvas.left + visibleHandlesAfterResize.close.x, y: visibleHandlesAfterResize.canvas.top + visibleHandlesAfterResize.close.y };
   await mouseStroke([closeAt, closeAt]);
   await waitFor('document.querySelector("#selection-mini-panel").hidden === true');
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="e2e-mobile-import")'),
     "the clamped mobile X closes selection without deleting the imported image");
-  // Selection is deliberately closed here; Undo/Redo must remain available from the mobile dock.
+
+  // Undo/Redo must remain accessible from the mobile dock when the selection overlay is closed.
+  await click('.mobile-touch-dock [data-touch-action="undo"]');
+  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterMove), 10000);
+  assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
+    "Undo reverses edge resizing and preserves the moved image");
+  await click('.mobile-touch-dock [data-touch-action="redo"]');
+  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterResize), 10000);
+  assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
+    "Redo reapplies edge resizing");
+  await click('.mobile-touch-dock [data-touch-action="undo"]');
+  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterMove), 10000);
   await click('.mobile-touch-dock [data-touch-action="undo"]');
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformBeforeMove), 10000);
   assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
-    "mobile Undo restores the imported image transform without deleting its layer");
-  assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=redo]")?.disabled === false'),
-    "mobile Redo becomes enabled after undoing the image movement");
+    "mobile Undo restores the image transform from before moving and resizing");
   await click('.mobile-touch-dock [data-touch-action="redo"]');
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterMove), 10000);
   assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
-    "redo restores the moved imported image");
+    "mobile Redo restores the image move");
+  await click('.mobile-touch-dock [data-touch-action="redo"]');
+  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterResize), 10000);
+  assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
+    "mobile Redo restores the edge resize after restoring the move");
 
   await click('.mobile-touch-dock [data-touch-action="more"]');
   await waitFor('document.body.classList.contains("mobile-tools-open")');
