@@ -67,7 +67,7 @@ jobs:
         run: |
           set -euo pipefail
           SOURCE_APK="app/build/outputs/apk/debug/app-debug.apk"
-          VERSIONED_APK="AnimeArt-Android-aa-mobile-redesign-004-${GITHUB_SHA:0:12}.apk"
+          VERSIONED_APK="AnimeArt-Android-aa-mobile-redesign-004-${GITHUB_SHA}.apk"
           test -s "$SOURCE_APK"
           cp "$SOURCE_APK" "$VERSIONED_APK"
           sha256sum "$VERSIONED_APK" | tee "$VERSIONED_APK.sha256"
