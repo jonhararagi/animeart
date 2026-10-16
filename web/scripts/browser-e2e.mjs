@@ -944,7 +944,8 @@ try {
     diagnostics.storedCharactersImmediatelyAfterChange = raw?.length ?? 0;
     return { type: blob.type, size: blob.size, immediate: diagnostics };
   })`);
-  assert(jpegImport.type === "image/jpeg" && jpegImport.size > 0, "browser generated a real JPEG fixture for import");
+  console.log("JPEG_FIXTURE_RESULT: " + JSON.stringify(jpegImport));
+  assert(jpegImport.type === "image/jpeg" && jpegImport.size > 0, "browser generated a real JPEG fixture for import: " + JSON.stringify({ type: jpegImport.type, size: jpegImport.size, immediate: jpegImport.immediate }));
   assert(jpegImport.immediate?.changeObserved === true, "JPEG change event reached the file-input listener path");
   assert(jpegImport.immediate?.files?.[0]?.name === "e2e-fixture-jpeg.jpg" &&
     jpegImport.immediate?.files?.[0]?.type === "image/jpeg" &&
