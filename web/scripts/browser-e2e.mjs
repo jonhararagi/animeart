@@ -308,7 +308,22 @@ try {
   await cdp("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: downloadDir });
   await cdp("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
   await waitFor(`document.readyState === "complete"`);
-  await waitFor(`document.querySelector("#canvas") !== null`);
+  try {
+    await waitFor(`document.querySelector("#canvas") !== null`, 12000);
+  } catch (error) {
+    const startup = await evaluate(`(() => ({
+      url: location.href,
+      title: document.title,
+      readyState: document.readyState,
+      bodyText: (document.body?.innerText || "").slice(0, 1200),
+      bodyHtml: (document.body?.innerHTML || "").slice(0, 1800),
+      canvasCount: document.querySelectorAll("canvas").length,
+      scriptSources: Array.from(document.scripts, script => script.src || "inline"),
+      serviceWorkerController: navigator.serviceWorker?.controller?.scriptURL || null
+    }))()`).catch(e => ({ diagnosticError: String(e) }));
+    console.error("ANIMEART_STARTUP_FAILURE " + JSON.stringify({ startup, browserDiagnostics }));
+    throw error;
+  }
   try {
     await waitForServiceWorkerReadiness();
   } catch (error) {
