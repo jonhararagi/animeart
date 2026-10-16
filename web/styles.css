@@ -2375,7 +2375,7 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   }
   body > .workspace {
     grid-row: 2 !important;
-    height: auto !important;
+    height: calc(100dvh - var(--aa-mobile-safe-top) - 68px - env(safe-area-inset-bottom)) !important;
     min-height: 0 !important;
     align-self: stretch !important;
   }
