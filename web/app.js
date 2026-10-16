@@ -2849,6 +2849,7 @@ if (mobileDock) {
     if (action === "undo") { undo(); return; }
     if (action === "redo") { redo(); return; }
     if (action === "crop-image") {
+      closeMobileContextPanel();
       document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
       mobileToolsToggle?.setAttribute("aria-expanded", "true");
       mobileToolsToggle?.setAttribute("aria-label", "Ocultar herramientas");
@@ -2890,6 +2891,10 @@ if (mobileDock) {
       return;
     }
     if (action === "add-text") {
+      closeMobileContextPanel();
+      document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
+      mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+      mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
       const selected = selectedLayerExact();
       if (selected?.contentType === "text" && textEditDialog) {
         renderLayerText();
@@ -3080,8 +3085,8 @@ document.querySelectorAll("[data-edit-goal]").forEach(button => button.addEventL
   const goal = button.dataset.editGoal;
   runEditGoal(goal);
   if (window.matchMedia("(max-width: 920px)").matches) {
-    if (goal === "draw") {
-      openMobileContextPanel("draw");
+    if (goal === "draw" || goal === "erase") {
+      openMobileContextPanel(goal === "erase" ? "erase" : "draw");
       return;
     }
     closeMobileContextPanel();
@@ -3985,7 +3990,7 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v25";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v26";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
