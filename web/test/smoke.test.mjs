@@ -705,10 +705,12 @@ test("AA-MOBILE-UX-004 keeps direct Spanish image/text/delete actions in the mob
   assert.match(dock, /aria-label="Herramientas principales"/);
   for (const label of ["Añadir", "Galería", "Mover", "Dibujar", "Texto", "Eliminar", "Capas", "Más"]) assert.match(dock, new RegExp(label));
   assert.equal((dock.match(/data-touch-action=/g) || []).length, 8);
-  assert.match(dock, /data-touch-action="import-image"/);\n  assert.match(dock, /data-touch-action="asset-library"/);
+  assert.match(dock, /data-touch-action="import-image"/);
+  assert.match(dock, /data-touch-action="asset-library"/);
   assert.match(dock, /data-touch-action="delete-selected"/);
   assert.match(css, /AA-MOBILE-UX-004/);
-  assert.match(css, /AA-GALLERY-DOCK-001/);\n  assert.match(css, /grid-template-columns:\\s*repeat\\(8, minmax\\(0, 1fr\\)\\)/);
+  assert.match(css, /AA-GALLERY-DOCK-001/);
+  assert.match(css, /grid-template-columns:\s*repeat\(8, minmax\(0, 1fr\)\)/);
 });
 
 
