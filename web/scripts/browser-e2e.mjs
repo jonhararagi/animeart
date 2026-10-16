@@ -1319,7 +1319,11 @@ try {
   await waitFor('Boolean(window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.rotationHandle && window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.center)');
   const rotationGestureGeometry = await evaluate('(() => { const d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; const canvas=document.querySelector("#canvas"); const r=canvas.getBoundingClientRect(); const start={x:r.left+d.rotationHandle.x,y:r.top+d.rotationHandle.y}; const pivot={x:r.left+r.width/2,y:r.top+r.height/2}; const vx=start.x-pivot.x, vy=start.y-pivot.y, angle=20*Math.PI/180; return {start,target:{x:pivot.x+vx*Math.cos(angle)-vy*Math.sin(angle),y:pivot.y+vx*Math.sin(angle)+vy*Math.cos(angle)}}; })()');
   const rotationBeforeGesture = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation');
+  await evaluate('window.__ANIMEART_LAST_SELECTION_POINTER__ = null');
   await mouseDrag(rotationGestureGeometry.start, rotationGestureGeometry.target);
+  const rotationPointerDiagnostics = await evaluate('window.__ANIMEART_LAST_SELECTION_POINTER__ || null');
+  assert(rotationPointerDiagnostics?.hit === "rotate",
+    "pointer starts on the actual rotation handle (diagnostics: " + JSON.stringify(rotationPointerDiagnostics) + ")");
   await waitFor('Math.abs(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation - ' + JSON.stringify(rotationBeforeGesture) + ') > 5', 10000);
   const rotationAfterGesture = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation');
   assert(Math.abs(rotationAfterGesture - rotationBeforeGesture) > 5, "dragging the visible mobile rotation handle changes the selected image angle");
