@@ -253,7 +253,7 @@ const mouseStroke = async points => {
 };
 
 const readDocument = async () => JSON.parse(await evaluate(`localStorage.getItem("animeart-web-document")`));
-const readLayerSummary = async () => evaluate(`JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.map(layer => ({ id: layer.id, name: layer.name, contentType: layer.contentType, visible: layer.visible, locked: layer.locked, isReference: layer.isReference, transform: layer.transform, strokes: layer.strokes?.length || 0 })) || []`);
+const readLayerSummary = async () => evaluate(`JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.map(layer => ({ id: layer.id, name: layer.name, contentType: layer.contentType, visible: layer.visible, locked: layer.locked, isReference: layer.isReference, transform: layer.transform, image: layer.image ? { width: layer.image.width, height: layer.image.height, mime: /^data:([^;,]+)/.exec(layer.image.source || "")?.[1] || null } : null, strokes: layer.strokes?.length || 0 })) || []`);
 const layerSelector = layerId => "#layers li[data-layer-id=\"" + layerId + "\"]";
 const layerButtonSelector = layerId => layerSelector(layerId) + " .layer-select";
 const layerToggleSelector = (layerId, index) => layerSelector(layerId) + " .layer-controls .layer-toggle:nth-of-type(" + index + ")";
@@ -903,6 +903,17 @@ try {
   // AA-MOBILE-REDESIGN-004: exercise a genuine JPEG Blob through the same device file-input path.
   const jpegLayerCountBefore = (await readLayerSummary()).length;
   const jpegImport = await evaluate(`(async () => {
+    const diagnostics = window.__animeArtJpegImportDiagnostics = {
+      changeObserved: false, files: [], messages: [],
+      layersBefore: JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length ?? 0
+    };
+    const status = document.querySelector("#status");
+    const feedback = document.querySelector("#mobile-feedback");
+    const observer = new MutationObserver(() => diagnostics.messages.push({
+      status: status?.textContent || "", feedback: feedback?.textContent || ""
+    }));
+    if (status) observer.observe(status, { childList: true, subtree: true, characterData: true });
+    if (feedback) observer.observe(feedback, { childList: true, subtree: true, characterData: true });
     const source = document.createElement("canvas");
     source.width = 3;
     source.height = 2;
@@ -910,20 +921,69 @@ try {
     context.fillStyle = "#ff4fd8";
     context.fillRect(0, 0, source.width, source.height);
     const blob = await new Promise(resolve => source.toBlob(resolve, "image/jpeg", 0.9));
-    if (!blob || blob.type !== "image/jpeg" || blob.size === 0) return { type: blob?.type || null, size: blob?.size || 0 };
+    if (!blob || blob.type !== "image/jpeg" || blob.size === 0) {
+      return { type: blob?.type || null, size: blob?.size || 0, immediate: diagnostics };
+    }
     const file = new File([blob], "e2e-fixture-jpeg.jpg", { type: "image/jpeg" });
     const transfer = new DataTransfer();
     transfer.items.add(file);
     const input = document.querySelector("#image-file-input");
+    document.addEventListener("change", event => {
+      if (event.target !== input) return;
+      diagnostics.changeObserved = true;
+      diagnostics.files = Array.from(input.files || []).map(selectedFile => ({
+        name: selectedFile.name, type: selectedFile.type, size: selectedFile.size
+      }));
+    }, { capture: true, once: true });
     input.files = transfer.files;
     input.dispatchEvent(new Event("change", { bubbles: true }));
-    return { type: blob.type, size: blob.size };
-  })()`);
+    const raw = localStorage.getItem("animeart-web-document");
+    diagnostics.immediateStatus = status?.textContent || "";
+    diagnostics.immediateFeedback = feedback?.textContent || "";
+    diagnostics.layersImmediatelyAfterChange = JSON.parse(raw || "{}").layers?.length ?? 0;
+    diagnostics.storedCharactersImmediatelyAfterChange = raw?.length ?? 0;
+    return { type: blob.type, size: blob.size, immediate: diagnostics };
+  })`);
   assert(jpegImport.type === "image/jpeg" && jpegImport.size > 0, "browser generated a real JPEG fixture for import");
-  await waitFor("JSON.parse(localStorage.getItem(\"animeart-web-document\") || \"{}\").layers?.length === " + (jpegLayerCountBefore + 1), 10000);
+  assert(jpegImport.immediate?.changeObserved === true, "JPEG change event reached the file-input listener path");
+  assert(jpegImport.immediate?.files?.[0]?.name === "e2e-fixture-jpeg.jpg" &&
+    jpegImport.immediate?.files?.[0]?.type === "image/jpeg" &&
+    jpegImport.immediate?.files?.[0]?.size === jpegImport.size,
+    "JPEG listener captures filename, MIME type and non-empty size immediately after change");
+
+  let jpegPersistenceFailure = null;
+  try {
+    await waitFor("JSON.parse(localStorage.getItem(\\"animeart-web-document\\") || \\"{}\\").layers?.length === " + (jpegLayerCountBefore + 1), 10000);
+  } catch (error) {
+    jpegPersistenceFailure = error.message;
+  }
+  const jpegFinalDiagnostics = await evaluate(`(() => {
+    const raw = localStorage.getItem("animeart-web-document");
+    let saved = null;
+    try {
+      const stored = JSON.parse(raw || "{}");
+      saved = { layerCount: stored.layers?.length ?? null, layers: Array.isArray(stored.layers)
+        ? stored.layers.map(layer => ({ name: layer.name, contentType: layer.contentType,
+            width: layer.image?.width ?? null, height: layer.image?.height ?? null })) : [] };
+    } catch (error) { saved = { parseError: error?.name || "Error" }; }
+    return { status: document.querySelector("#status")?.textContent || "",
+      feedback: document.querySelector("#mobile-feedback")?.textContent || "",
+      diagnostics: window.__animeArtJpegImportDiagnostics || null,
+      storedCharacters: raw?.length ?? 0, saved };
+  })`);
+  if (jpegPersistenceFailure) {
+    throw new Error("JPEG import did not persist a new image layer; diagnostics=" +
+      JSON.stringify(jpegFinalDiagnostics) + "; waitFailure=" + jpegPersistenceFailure);
+  }
   const jpegLayer = (await readLayerSummary()).at(-1);
   assert(jpegLayer?.contentType === "image", "real JPEG import creates an image layer");
   assert(jpegLayer?.name === "e2e-fixture-jpeg", "real JPEG import preserves the filename as its layer name");
+  assert(jpegLayer?.image?.width === 3 && jpegLayer?.image?.height === 2 && jpegLayer?.image?.mime === "image/jpeg",
+    "real JPEG import persists decoded dimensions and original JPEG MIME data");
+  assert(await evaluate('document.querySelector("#selection-mini-layer-name").textContent.includes("e2e-fixture-jpeg")'),
+    "real JPEG import selects the new image layer");
+  assert(await evaluate('document.querySelector("#mobile-feedback").textContent.includes("Imagen añadida al lienzo")'),
+    "successful JPEG import reports localized success feedback");
 
   // T064: inject a deterministic getItem failure before load(), then prove edits cannot auto-save.
   const readFailurePayload = '{"version":999,"sentinel":"read-failure-protected"}';
@@ -945,6 +1005,18 @@ try {
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "startup read failure remains in protected recovery state");
 
   assert(await evaluate('document.documentElement.dataset.serviceWorkerActive === "true"'), "real browser service worker is active");
+
+  // The fault-injection test intentionally leaves an unreadable local document behind.
+  // Clear only that test fixture before gesture checks and visual screenshots.
+  await evaluate('localStorage.removeItem("animeart-web-document")');
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitFor('document.querySelector("#storage-recovery-notice")?.hidden === true', 10000);
+  await waitForServiceWorkerReadiness();
+  await click("#save");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length === 1', 10000);
+  assert(await evaluate('document.querySelector("#status").textContent === "Guardado localmente"'),
+    "fault-injection state is cleared and a clean document is persisted before mobile visual tests");
 
   // Mobile regression: use Chromium's real touch input path, not synthetic MouseEvents.
   await cdp("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 2 });
@@ -976,8 +1048,8 @@ try {
   await waitFor('document.querySelector("#canvas") !== null');
   await waitForServiceWorkerReadiness();
   assert(await evaluate('window.innerWidth <= 920'), "Xiaomi-sized mobile E2E runs at a 393 CSS-pixel viewport");
-  assert(await evaluate('(() => { const notice = document.querySelector("#storage-recovery-notice"); const message = notice.textContent; return notice.hidden || message.includes("No se pudo abrir el proyecto guardado") || message.includes("No se pudo leer el almacenamiento local"); })()'), "mobile recovery warning is localized in Spanish");
-  assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden || document.querySelector("#storage-recovery-notice").getBoundingClientRect().height <= 112'), "mobile recovery warning stays compact and preserves canvas space");
+  assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "mobile editor starts without stale storage-recovery warning");
+  assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height > 0'), "clean mobile workspace retains usable canvas space");
   assert(await evaluate('getComputedStyle(document.querySelector(".workspace")).gridTemplateColumns.split(" ").length === 1'), "mobile workspace uses a single canvas column instead of the desktop sidebars");
   assert(await evaluate('document.querySelector(".mobile-touch-dock").getBoundingClientRect().height >= 48'), "mobile quick-action dock has a usable touch target area");
   assert(await evaluate('Array.from(document.querySelectorAll(".mobile-touch-dock button")).every(el => { const r = el.getBoundingClientRect(); return r.width >= 44 && r.height >= 44; })'), "Xiaomi-sized quick-action buttons meet the 44px touch-target floor");
@@ -995,6 +1067,60 @@ try {
   await click("#close-asset-library");
   await waitFor('document.querySelector("#asset-library-dialog")?.open === false');
   await saveScreenshot("animeart-studio-mobile-initial.png");
+
+  // Import a real PNG Blob through the mobile file input and capture the resulting editor state.
+  const mobileLayerCountBefore = (await readLayerSummary()).length;
+  const mobilePng = await evaluate(`(async () => {
+    const source = document.createElement("canvas");
+    source.width = 8;
+    source.height = 6;
+    const context = source.getContext("2d");
+    context.fillStyle = "#12e0f6";
+    context.fillRect(0, 0, source.width, source.height);
+    const blob = await new Promise(resolve => source.toBlob(resolve, "image/png"));
+    if (!blob || blob.type !== "image/png" || blob.size === 0) {
+      return { type: blob?.type || null, size: blob?.size || 0, changeObserved: false, files: [] };
+    }
+    const file = new File([blob], "e2e-mobile-import.png", { type: "image/png" });
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    const input = document.querySelector("#image-file-input");
+    window.__animeArtMobilePngChange = { observed: false, files: [] };
+    document.addEventListener("change", event => {
+      if (event.target !== input) return;
+      window.__animeArtMobilePngChange.observed = true;
+      window.__animeArtMobilePngChange.files = Array.from(input.files || []).map(selectedFile => ({
+        name: selectedFile.name, type: selectedFile.type, size: selectedFile.size
+      }));
+    }, { capture: true, once: true });
+    input.files = transfer.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    return {
+      type: blob.type, size: blob.size,
+      changeObserved: window.__animeArtMobilePngChange.observed,
+      files: window.__animeArtMobilePngChange.files,
+      immediateStatus: document.querySelector("#status")?.textContent || ""
+    };
+  })`);
+  assert(mobilePng.type === "image/png" && mobilePng.size > 0, "mobile E2E creates a genuine PNG fixture");
+  assert(mobilePng.changeObserved && mobilePng.files?.[0]?.name === "e2e-mobile-import.png" &&
+    mobilePng.files?.[0]?.type === "image/png" && mobilePng.files?.[0]?.size === mobilePng.size,
+    "mobile file-input change captures PNG filename, MIME type and byte size");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.some(layer => layer.name === "e2e-mobile-import" && layer.contentType === "image")', 10000);
+  const mobilePngLayer = (await readLayerSummary()).find(layer => layer.name === "e2e-mobile-import");
+  assert(mobilePngLayer?.visible === true && mobilePngLayer?.image?.width === 8 &&
+    mobilePngLayer?.image?.height === 6 && mobilePngLayer?.image?.mime === "image/png",
+    "mobile PNG import persists a visible image layer with decoded dimensions");
+  assert(await evaluate('document.querySelector("#selection-mini-layer-name").textContent.includes("e2e-mobile-import")'),
+    "mobile PNG import selects the new image layer");
+  await waitFor('document.querySelector("#mobile-feedback")?.textContent.includes("Imagen añadida al lienzo")', 10000);
+  await waitFor('(() => { const c = document.querySelector("#canvas"); const p = c.getContext("2d").getImageData(Math.floor(c.width / 2), Math.floor(c.height / 2), 1, 1).data; return p[2] > 160 && p[1] > 120 && p[0] < 100 && p[3] > 0; })()', 10000);
+  assert(await evaluate('document.querySelector("#mobile-feedback").textContent.includes("Imagen añadida al lienzo")'),
+    "mobile image import produces localized success feedback");
+  await saveScreenshot("animeart-studio-mobile-imported-image.png");
+  console.log("MOBILE_IMPORTED_IMAGE_DIAGNOSTICS: " + JSON.stringify(await evaluate('(() => { const raw=localStorage.getItem("animeart-web-document"); const saved=JSON.parse(raw || "{}"); const layer=saved.layers?.find(entry=>entry.name==="e2e-mobile-import"); return { status:document.querySelector("#status")?.textContent||"", feedback:document.querySelector("#mobile-feedback")?.textContent||"", storedCharacters:raw?.length||0, layer:layer ? {name:layer.name,contentType:layer.contentType,width:layer.image?.width,height:layer.image?.height,mime:(/^data:([^;,]+)/.exec(layer.image?.source||"")||[])[1]||null,transform:layer.transform} : null }; })()')));
+
+
   await click('.mobile-touch-dock [data-touch-action="more"]');
   await waitFor('document.body.classList.contains("mobile-tools-open")');
   assert(await evaluate('getComputedStyle(document.querySelector(".easy-edit-grid")).display === "grid"'), "mobile More action opens the dedicated task-card panel");
