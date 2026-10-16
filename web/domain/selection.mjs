@@ -143,6 +143,8 @@ export function selectionGeometry(layer, viewport, center, transformOverride = n
   return {
     corners: screenCorners,
     center: centerScreen,
+    closeHandle: screenCorners[1],
+    resizeHandle: screenCorners[2],
     rotationHandle: { x: topMid.x + outward.x / length * 32, y: topMid.y + outward.y / length * 32 }
   };
 }
@@ -266,13 +268,15 @@ export function groupRotationTransforms(layers, pivot, targetDocumentPoint, star
 }
 
 export function hitTestHandle(screenPoint, geometry, radius = 10) {
-  if (!geometry) return null;
-  const names = ["scale-nw", "scale-ne", "scale-se", "scale-sw"];
-  for (let i = 0; i < geometry.corners.length; i += 1) {
-    const corner = geometry.corners[i];
-    if (Math.hypot(screenPoint.x - corner.x, screenPoint.y - corner.y) <= radius) return names[i];
-  }
-  if (Math.hypot(screenPoint.x - geometry.rotationHandle.x, screenPoint.y - geometry.rotationHandle.y) <= radius) return "rotate";
+  if (!geometry || !screenPoint) return null;
+  const closeHandle = geometry.closeHandle || geometry.corners?.[1];
+  const resizeHandle = geometry.resizeHandle || geometry.corners?.[2];
+  const closeDistance = closeHandle ? Math.hypot(screenPoint.x - closeHandle.x, screenPoint.y - closeHandle.y) : Infinity;
+  const resizeDistance = resizeHandle ? Math.hypot(screenPoint.x - resizeHandle.x, screenPoint.y - resizeHandle.y) : Infinity;
+  const hitsClose = closeDistance <= radius, hitsResize = resizeDistance <= radius;
+  if (hitsClose && hitsResize) return closeDistance <= resizeDistance ? "close" : "scale-se";
+  if (hitsClose) return "close";
+  if (hitsResize) return "scale-se";
   if (pointInPolygon(screenPoint, geometry.corners)) return "move";
   return null;
 }
