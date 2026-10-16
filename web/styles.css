@@ -2109,3 +2109,61 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   .mini-style-pair { gap:8px; }
   .mini-dialog-actions button { min-height:48px; }
 }
+
+
+/* Contextual editor dialogs: keep every control reachable on short phone screens. */
+#object-style-dialog, #shape-maker-dialog {
+  max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+#object-style-dialog .mini-dialog-header, #shape-maker-dialog .mini-dialog-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+#object-style-dialog .mini-dialog-actions, #shape-maker-dialog .mini-dialog-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  padding: 10px 0 max(2px, env(safe-area-inset-bottom));
+  background: #17141e;
+}
+@media (max-width: 620px) {
+  #object-style-dialog, #shape-maker-dialog {
+    width: calc(100vw - 16px);
+    max-width: none;
+    max-height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    margin: auto;
+    border-radius: 14px;
+  }
+  #object-style-dialog .mini-dialog-header, #shape-maker-dialog .mini-dialog-header {
+    gap: 8px;
+    padding: 10px 10px 9px;
+  }
+  #object-style-dialog .mini-dialog-body, #shape-maker-dialog .mini-dialog-body {
+    gap: 9px;
+    padding: 10px;
+  }
+  #object-style-dialog .mini-dialog-actions, #shape-maker-dialog .mini-dialog-actions {
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.2fr);
+    gap: 7px;
+  }
+  #object-style-dialog .mini-dialog-actions button, #shape-maker-dialog .mini-dialog-actions button {
+    min-height: 48px;
+    white-space: normal;
+    line-height: 1.2;
+  }
+  #object-style-dialog .mini-style-section { padding: 9px; gap: 8px; }
+  #shape-maker-dialog .shape-maker-preview { min-height: 84px; max-height: 90px; }
+  #shape-maker-dialog .shape-maker-preview img { height: 82px; }
+}
+@media (max-height: 650px) {
+  #object-style-dialog, #shape-maker-dialog {
+    max-height: calc(100dvh - 12px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+  #shape-maker-dialog .shape-maker-preview { min-height: 64px; max-height: 68px; }
+  #shape-maker-dialog .shape-maker-preview img { height: 60px; }
+}
