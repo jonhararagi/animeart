@@ -1115,8 +1115,8 @@ try {
   assert(await evaluate('getComputedStyle(document.querySelector(".workspace")).gridTemplateColumns.split(" ").length === 1'), "mobile workspace uses a single canvas column instead of the desktop sidebars");
   assert(await evaluate('document.querySelector(".mobile-touch-dock").getBoundingClientRect().height >= 72'), "mobile quick-action dock has a usable touch target area");
   assert(await evaluate('Array.from(document.querySelectorAll(".mobile-touch-dock button")).every(el => { const r = el.getBoundingClientRect(); return r.width >= 44 && r.height >= 44; })'), "Xiaomi-sized quick-action buttons meet the 44px touch-target floor");
-  assert(await evaluate('getComputedStyle(document.querySelector(".mobile-touch-dock")).overflowX === "auto" && document.querySelector(".mobile-touch-dock").scrollWidth > document.querySelector(".mobile-touch-dock").clientWidth'), "the 11-tool bottom dock scrolls horizontally instead of clipping buttons");
-  assert(await evaluate('document.querySelectorAll(".mobile-touch-dock [data-touch-action]").length === 11'), "mobile dock exposes all eleven editing actions");
+  assert(await evaluate('getComputedStyle(document.querySelector(".mobile-touch-dock")).overflowX === "auto" && document.querySelector(".mobile-touch-dock").scrollWidth > document.querySelector(".mobile-touch-dock").clientWidth'), "the expanded 15-action bottom dock scrolls horizontally instead of clipping buttons");
+  assert(await evaluate('document.querySelectorAll(".mobile-touch-dock [data-touch-action]").length === 15'), "mobile dock exposes all fifteen editing actions, including rotate and flip");
   await evaluate('document.querySelector(".mobile-touch-dock").scrollLeft = 0');
   assert(await evaluate('(() => { const dock=document.querySelector(".mobile-touch-dock").getBoundingClientRect(); const add=document.querySelector(".mobile-touch-dock [data-touch-action=import-image]").getBoundingClientRect(); return add.left >= dock.left && add.right <= dock.right; })()'), "the primary Add image action is visible without horizontal scrolling");
   assert(await evaluate('document.querySelector("#selection-mini-panel").hidden === true'), "empty canvas does not show a useless layer-action panel");
@@ -1285,6 +1285,52 @@ try {
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterResize), 10000);
   assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
     "mobile Redo restores the edge resize after restoring the move");
+
+  // AA-MOBILE-REDESIGN-004: verify that mobile rotation and flip controls mutate the selected image and can be restored.
+  await click('.mobile-touch-dock [data-touch-action="layers"]');
+  await waitFor('document.body.classList.contains("mobile-layers-open")');
+  await click('#layers li button.layer-select');
+  await waitFor('document.querySelector("#selection-mini-panel").hidden === false');
+  const mobileTransformBeforeButtonRotate = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation');
+  await click('.mobile-touch-dock [data-touch-action="rotate-right"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation === ' + JSON.stringify(mobileTransformBeforeButtonRotate + 5), 10000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation === ' + JSON.stringify(mobileTransformBeforeButtonRotate + 5)),
+    "mobile Rotate + really turns the selected image by five degrees");
+  await click('.mobile-touch-dock [data-touch-action="rotate-left"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation === ' + JSON.stringify(mobileTransformBeforeButtonRotate), 10000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation === ' + JSON.stringify(mobileTransformBeforeButtonRotate)),
+    "mobile Rotate − restores the prior rotation through the same history-aware operation");
+
+  for (const [action, field] of [["flip-horizontal", "flipX"], ["flip-vertical", "flipY"]]) {
+    const before = await evaluate('Boolean(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").image.' + field + ')');
+    await click('.mobile-touch-dock [data-touch-action="' + action + '"]');
+    await waitFor('Boolean(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").image.' + field + ') === ' + JSON.stringify(!before), 10000);
+    assert(await evaluate('Boolean(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").image.' + field + ') === ' + JSON.stringify(!before)),
+      "mobile " + (field === "flipX" ? "horizontal" : "vertical") + " flip changes the saved image transform");
+    await click('.mobile-touch-dock [data-touch-action="' + action + '"]');
+    await waitFor('Boolean(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").image.' + field + ') === ' + JSON.stringify(before), 10000);
+  }
+
+  assert(await evaluate('(() => { const label=document.querySelector(".mobile-export-format"); const select=document.querySelector("#mobile-export-format"); const r=select.getBoundingClientRect(); const s=getComputedStyle(label); return Boolean(select && s.display!=="none" && s.visibility!=="hidden" && r.width>=60 && r.height>=30 && r.bottom<=innerHeight; })()'),
+    "mobile export format picker stays visible and touch-usable at a 393px viewport");
+
+  // Export a real JPEG via the mobile dock and decode the downloaded file, not only a mocked Blob.
+  const expectedJpegSize = await evaluate('({width:JSON.parse(localStorage.getItem("animeart-web-document")||"{}").width,height:JSON.parse(localStorage.getItem("animeart-web-document")||"{}").height})');
+  await evaluate('(() => { const select=document.querySelector("#mobile-export-format"); select.value="jpeg"; select.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await click('.mobile-touch-dock [data-touch-action="export"]');
+  await waitFor('document.querySelector("#status").textContent === "JPEG exported"', 15000);
+  const jpegPath = join(downloadDir, "animeart.jpeg");
+  for (let attempt = 0; attempt < 100 && !existsSync(jpegPath); attempt++) await sleep(100);
+  assert(existsSync(jpegPath), "mobile dock exports JPEG to a downloadable file");
+  const jpegBytes = await (await import("node:fs/promises")).readFile(jpegPath);
+  assert(jpegBytes.length > 4 && jpegBytes[0] === 0xff && jpegBytes[1] === 0xd8 &&
+    jpegBytes[jpegBytes.length - 2] === 0xff && jpegBytes[jpegBytes.length - 1] === 0xd9,
+    "downloaded JPEG has valid SOI/EOI signatures");
+  const decodedJpeg = await evaluate('new Promise(resolve => { const image=new Image(); image.onload=()=>resolve({width:image.naturalWidth,height:image.naturalHeight,ok:true}); image.onerror=()=>resolve({ok:false}); image.src="data:image/jpeg;base64,' + jpegBytes.toString("base64") + '"; })');
+  assert(decodedJpeg.ok && decodedJpeg.width === expectedJpegSize.width && decodedJpeg.height === expectedJpegSize.height,
+    "downloaded JPEG decodes successfully at the exact document dimensions");
+  await evaluate('(() => { const select=document.querySelector("#mobile-export-format"); select.value="png"; select.dispatchEvent(new Event("change",{bubbles:true})); })()');
+
 
   await click('.mobile-touch-dock [data-touch-action="more"]');
   await waitFor('document.body.classList.contains("mobile-tools-open")');
