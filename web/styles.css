@@ -2045,9 +2045,9 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 @media (max-width: 400px) {
   body > .mobile-touch-dock {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    grid-template-rows: repeat(2, minmax(42px, 1fr)) !important;
-    min-height: calc(100px + env(safe-area-inset-bottom)) !important;
-    max-height: calc(108px + env(safe-area-inset-bottom)) !important;
+    grid-template-rows: repeat(2, minmax(44px, 1fr)) !important;
+    min-height: calc(104px + env(safe-area-inset-bottom)) !important;
+    max-height: calc(112px + env(safe-area-inset-bottom)) !important;
   }
-  body > .mobile-touch-dock button { min-height: 42px !important; font-size: clamp(.58rem, 2.8vw, .68rem) !important; }
+  body > .mobile-touch-dock button { min-height: 44px !important; font-size: clamp(.58rem, 2.8vw, .68rem) !important; }
 }
