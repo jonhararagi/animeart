@@ -2093,6 +2093,7 @@ function beginSelectionInteraction(event) {
       groupScreenGeometry.closeHandle = groupScreenGeometry.corners[1];
       groupScreenGeometry.resizeHandle = groupScreenGeometry.corners[2];
       const groupHit = hitTestHandle(screenPoint, groupScreenGeometry, HANDLE_RADIUS);
+      if (window.__ANIMEART_E2E_DIAGNOSTICS__) console.error("AA_MULTI_POINTERDOWN", JSON.stringify({screenPoint, groupHit, pointerId: event.pointerId, selectedIds: layers.map(layer => layer.id), corners: groupScreenGeometry.corners}));
       if (groupHit === "close") {
         closeSelectionBox();
         return;
@@ -2688,6 +2689,7 @@ canvas.addEventListener("pointermove", event => {
     if (interaction.type === "move") {
       const start = interaction.startDocument;
       interaction.previewDelta = { x: current.x - start.x, y: current.y - start.y };
+      if (window.__ANIMEART_E2E_DIAGNOSTICS__) console.error("AA_MULTI_POINTERMOVE", JSON.stringify({current, start, delta: interaction.previewDelta, pointerId: event.pointerId}));
     } else if (interaction.type === "scale") {
       const transforms = groupScaleTransforms(layers, documentCenter(state.document), interaction.handle, current);
       if (transforms) interaction.previewTransforms = new Map(transforms.map(item => [item.id, item.transform]));
@@ -2765,6 +2767,7 @@ canvas.addEventListener("pointerup", event => {
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     if (interaction.type === "move") {
       const delta = interaction.previewDelta || { x: 0, y: 0 };
+      if (window.__ANIMEART_E2E_DIAGNOSTICS__) console.error("AA_MULTI_POINTERUP", JSON.stringify({delta, layerIds: interaction.layerIds}));
       if (delta.x !== 0 || delta.y !== 0) applyMultiLayerMove(delta.x, delta.y, "Layers moved", interaction.layerIds);
       else redraw();
     } else {
