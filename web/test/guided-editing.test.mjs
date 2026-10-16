@@ -69,3 +69,19 @@ test("AA-UX-DELETE-001 exposes a functional selected-image removal action separa
  assert.match(app, /function updateRemoveImageControl\(\)/);
  assert.match(css, /#remove-selected-image[\s\S]*?width: 46px/);
 });
+
+
+test("censor light uses a cancellable per-image preview instead of the drawing tool", async () => {
+ const [html, app, css] = await Promise.all([
+  readFile("index.html","utf8"), readFile("app.js","utf8"), readFile("styles.css","utf8")
+ ]);
+ for (const id of ["censor-light-dialog","censor-image-preview","censor-dialog-cancel","censor-dialog-undo","censor-dialog-apply"]) {
+  assert.ok(html.includes('id="' + id + '"'), "missing censor dialog control: " + id);
+ }
+ assert.match(app, /async function openCensorLightDialog\(\)/);
+ assert.match(app, /function closeCensorLightDialog\(\)/);
+ assert.match(app, /censor: \(\) => openCensorLightDialog\(\)/);
+ assert.match(app, /refreshDocument\("✨ Luz de censura aplicada solo a la imagen/);
+ assert.match(app, /replaceImageLayer\(state\.document, layer\.id/);
+ assert.match(css, /#censor-image-preview[\s\S]*?touch-action: none/);
+});
