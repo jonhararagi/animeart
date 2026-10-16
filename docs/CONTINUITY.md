@@ -1,3 +1,9 @@
+# LEY PERMANENTE DE DISEÑO MÓVIL
+
+La especificación vinculante del editor móvil está en [docs/MOBILE_EDITOR_LAW.md](./MOBILE_EDITOR_LAW.md). Tiene prioridad sobre notas de continuidad anteriores que contradigan esta estructura: lienzo grande y centrado, cabecera mínima, herramientas principales abajo y paneles contextuales inferiores. Todo cambio futuro debe respetarla y validar el flujo en teléfono sin confundir CI/emulador con una prueba física.
+
+---
+
 # Estado actual · AA-MOBILE-UX-004 · 2026-10-15
 
 **TIMER:** 1–3 horas de trabajo activo estimado; CI y validación física en Xiaomi son variables.
