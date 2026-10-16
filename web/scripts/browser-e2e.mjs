@@ -1315,8 +1315,11 @@ try {
   // The rotation handle itself must respond to a real pointer drag, not just the +/- buttons.
   await click('.mobile-touch-dock [data-touch-action="layers"]');
   await waitFor('!document.body.classList.contains("mobile-layers-open")');
-  await evaluate('window.__ANIMEART_E2E_DIAGNOSTICS__ = true');
+  // The sheet has a CSS closing transition. Wait for the canvas position to settle before reading screen-space handles.
+  await sleep(400);
+  await evaluate('window.dispatchEvent(new Event("resize")); window.__ANIMEART_E2E_DIAGNOSTICS__ = true');
   await waitFor('Boolean(window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.rotationHandle && window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.center)');
+  await sleep(100);
   const rotationGestureGeometry = await evaluate('(() => { const d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; const canvas=document.querySelector("#canvas"); const r=canvas.getBoundingClientRect(); const start={x:r.left+d.rotationHandle.x,y:r.top+d.rotationHandle.y}; const pivot={x:r.left+r.width/2,y:r.top+r.height/2}; const vx=start.x-pivot.x, vy=start.y-pivot.y, angle=20*Math.PI/180; return {start,target:{x:pivot.x+vx*Math.cos(angle)-vy*Math.sin(angle),y:pivot.y+vx*Math.sin(angle)+vy*Math.cos(angle)}}; })()');
   const rotationBeforeGesture = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation');
   await evaluate('window.__ANIMEART_LAST_SELECTION_POINTER__ = null');
