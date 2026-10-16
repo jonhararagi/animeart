@@ -47,7 +47,7 @@ test("selection box exposes a close X and one bottom-right resize handle", () =>
   const geometry = selectionGeometry(document.layers[0], createViewport(), { x: 200, y: 150 });
   assert.equal(hitTestHandle(geometry.closeHandle, geometry), "close");
   assert.equal(hitTestHandle(geometry.resizeHandle, geometry), "scale-se");
-  assert.equal(hitTestHandle(geometry.rotationHandle, geometry), null);
+  assert.equal(hitTestHandle(geometry.rotationHandle, geometry), "rotate");
   assert.equal(hitTestHandle(geometry.center, geometry), "move");
 });
 
