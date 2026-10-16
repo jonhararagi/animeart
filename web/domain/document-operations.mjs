@@ -129,7 +129,7 @@ export function setLayerBackground(document, layerId, isBackground) {
   if (isBackground) {
     for (const candidate of next.layers) {
       if (candidate.isBackground) {
-        candidate.isBackground = false;
+        delete candidate.isBackground;
         candidate.locked = false;
         if (candidate.name === "Fondo del lienzo") candidate.name = "Imagen";
       }
@@ -140,7 +140,7 @@ export function setLayerBackground(document, layerId, isBackground) {
     const index = next.layers.findIndex(item => item.id === layerId);
     if (index > 0) next.layers.unshift(next.layers.splice(index, 1)[0]);
   } else {
-    layer.isBackground = false;
+    delete layer.isBackground;
     layer.locked = false;
     if (layer.name === "Fondo del lienzo") layer.name = "Imagen";
   }
