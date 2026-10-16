@@ -1148,11 +1148,11 @@ try {
   const mobileLayerCountBefore = (await readLayerSummary()).length;
   const mobilePng = await evaluate(`(async () => {
     const source = document.createElement("canvas");
-    source.width = 8;
-    source.height = 6;
-    const context = source.getContext("2d");
+    source.width = 640;
+    source.height = 480;
+    const context = source.getContext("2d", { willReadFrequently: true });
     context.fillStyle = "#12e0f6";
-    context.fillRect(0, 0, source.width, source.height);
+    context.fillRect(40, 40, source.width - 80, source.height - 80);
     const blob = await new Promise(resolve => source.toBlob(resolve, "image/png"));
     if (!blob || blob.type !== "image/png" || blob.size === 0) {
       return { type: blob?.type || null, size: blob?.size || 0, changeObserved: false, files: [] };
@@ -1172,21 +1172,30 @@ try {
     input.files = transfer.files;
     input.dispatchEvent(new Event("change", { bubbles: true }));
     return {
-      type: blob.type, size: blob.size,
+      type: blob.type, size: blob.size, width: source.width, height: source.height,
+      transparentAlpha: context.getImageData(0, 0, 1, 1).data[3],
+      subjectAlpha: context.getImageData(60, 60, 1, 1).data[3],
       changeObserved: window.__animeArtMobilePngChange.observed,
       files: window.__animeArtMobilePngChange.files,
       immediateStatus: document.querySelector("#status")?.textContent || ""
     };
   })()`);
-  assert(mobilePng.type === "image/png" && mobilePng.size > 0, "mobile E2E creates a genuine PNG fixture");
+  assert(mobilePng.type === "image/png" && mobilePng.size > 0 && mobilePng.width === 640 && mobilePng.height === 480,
+    "mobile E2E creates a representative 640×480 PNG fixture");
+  assert(mobilePng.transparentAlpha === 0 && mobilePng.subjectAlpha === 255,
+    "mobile PNG fixture contains both transparent background and opaque image pixels");
   assert(mobilePng.changeObserved && mobilePng.files?.[0]?.name === "e2e-mobile-import.png" &&
     mobilePng.files?.[0]?.type === "image/png" && mobilePng.files?.[0]?.size === mobilePng.size,
     "mobile file-input change captures PNG filename, MIME type and byte size");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.some(layer => layer.name === "e2e-mobile-import" && layer.contentType === "image")', 10000);
   const mobilePngLayer = (await readLayerSummary()).find(layer => layer.name === "e2e-mobile-import");
-  assert(mobilePngLayer?.visible === true && mobilePngLayer?.image?.width === 8 &&
-    mobilePngLayer?.image?.height === 6 && mobilePngLayer?.image?.mime === "image/png",
-    "mobile PNG import persists a visible image layer with decoded dimensions");
+  assert(mobilePngLayer?.visible === true && mobilePngLayer?.image?.width === 640 &&
+    mobilePngLayer?.image?.height === 480 && mobilePngLayer?.image?.mime === "image/png",
+    "mobile PNG import persists a visible 640×480 image layer with decoded dimensions");
+  const persistedMobilePngPixels = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="e2e-mobile-import"); if(!layer?.image?.source)return {decodeError:true}; return new Promise(resolve=>{const image=new Image();image.onload=()=>{const sample=document.createElement("canvas");sample.width=image.naturalWidth;sample.height=image.naturalHeight;const context=sample.getContext("2d",{willReadFrequently:true});context.drawImage(image,0,0);resolve({width:sample.width,height:sample.height,transparentAlpha:context.getImageData(0,0,1,1).data[3],subjectAlpha:context.getImageData(60,60,1,1).data[3]});};image.onerror=()=>resolve({decodeError:true});image.src=layer.image.source;});})()');
+  assert(persistedMobilePngPixels.width === 640 && persistedMobilePngPixels.height === 480 &&
+    persistedMobilePngPixels.transparentAlpha === 0 && persistedMobilePngPixels.subjectAlpha === 255,
+    "mobile PNG persists with genuine transparency and the expected opaque subject pixels");
   assert(await evaluate('document.querySelector("#selection-mini-layer-name").textContent.includes("e2e-mobile-import")'),
     "mobile PNG import selects the new image layer");
   await waitFor('document.querySelector("#mobile-feedback")?.textContent.includes("Imagen añadida al lienzo")', 10000);
@@ -1216,7 +1225,21 @@ try {
     "the image imported through the mobile file input can be dragged on the canvas");
   const importedTransformAfterMove = JSON.stringify(mobilePngMoved.transform);
   await evaluate('document.querySelector(".mobile-touch-dock").scrollLeft = 0');
+  await evaluate('window.__ANIMEART_E2E_DIAGNOSTICS__ = true');
+  await waitFor('Boolean(window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.closeHandle && window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.resizeHandle)');
+  const visibleHandles = await evaluate('(() => { const d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; const size=d.canvasSize; const r=document.querySelector("#canvas").getBoundingClientRect(); return { kind:d.kind, width:size.width,height:size.height,close:d.closeHandle,resize:d.resizeHandle,canvas:{left:r.left,top:r.top,width:r.width,height:r.height} }; })()');
+  const handlesInsideCanvas = [visibleHandles.close, visibleHandles.resize].every(point =>
+    point.x >= 20 && point.x <= visibleHandles.width - 20 &&
+    point.y >= 20 && point.y <= visibleHandles.height - 20);
+  assert(handlesInsideCanvas, "selected-image X and resize handles remain fully visible inside the canvas edges: " + JSON.stringify(visibleHandles));
   await saveScreenshot("animeart-studio-mobile-imported-image-moved.png");
+  const closeAt = { x: visibleHandles.canvas.left + visibleHandles.close.x, y: visibleHandles.canvas.top + visibleHandles.close.y };
+  await mouseStroke([closeAt, closeAt]);
+  await waitFor('document.querySelector("#selection-mini-panel").hidden === true');
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="e2e-mobile-import")'),
+    "the clamped mobile X closes selection without deleting the imported image");
+  await click('[aria-label="Select e2e-mobile-import"]');
+  await waitFor('document.querySelector("#selection-mini-panel").hidden === false');
   await click('.mobile-touch-dock [data-touch-action="undo"]');
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformBeforeMove), 10000);
   assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),

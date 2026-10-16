@@ -18,7 +18,7 @@ import { fitImportedImageTransform } from "./domain/image-import.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
-import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
+import { clampSelectionHandles, groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
@@ -521,6 +521,10 @@ function drawDocument({ context = ctx, document = state.document, center = docum
   }
 }
 
+function selectionHandleInset() {
+  return window.matchMedia("(max-width: 920px)").matches ? 22 : 21;
+}
+
 function drawObjectSelectionHandle(point, kind) {
   if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
   const radius = window.matchMedia("(max-width: 920px)").matches ? 20 : 19;
@@ -551,6 +555,7 @@ function drawObjectSelectionHandle(point, kind) {
 }
 
 function drawSelectionOverlay() {
+  if (window.__ANIMEART_E2E_DIAGNOSTICS__) window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__ = null;
   const selectedLayers = selectedLayersExact();
   if (selectedLayers.length > 1) {
     const geometry = multiSelectionGeometry(selectedLayers.map(layer => ({
@@ -566,6 +571,15 @@ function drawSelectionOverlay() {
         closeHandle: corners[1],
         resizeHandle: corners[2]
       };
+      const visibleGroupHandles = clampSelectionHandles(groupGeometry, viewportSize, selectionHandleInset());
+      if (window.__ANIMEART_E2E_DIAGNOSTICS__) {
+        window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__ = {
+          closeHandle: visibleGroupHandles.closeHandle,
+          resizeHandle: visibleGroupHandles.resizeHandle,
+          canvasSize: viewportSize,
+          kind: "group"
+        };
+      }
       ctx.save();
       ctx.setLineDash([6, 4]);
       ctx.strokeStyle = "#2f80ed";
@@ -575,8 +589,8 @@ function drawSelectionOverlay() {
       ctx.closePath();
       ctx.stroke();
       ctx.setLineDash([]);
-      drawObjectSelectionHandle(groupGeometry.closeHandle, "close");
-      drawObjectSelectionHandle(groupGeometry.resizeHandle, "resize");
+      drawObjectSelectionHandle(visibleGroupHandles.closeHandle, "close");
+      drawObjectSelectionHandle(visibleGroupHandles.resizeHandle, "resize");
       ctx.restore();
     }
   }
@@ -606,8 +620,17 @@ function drawSelectionOverlay() {
       continue;
     }
     ctx.setLineDash([]);
-    drawObjectSelectionHandle(geometry.closeHandle, "close");
-    drawObjectSelectionHandle(geometry.resizeHandle, "resize");
+    const visibleHandles = clampSelectionHandles(geometry, canvasSize(), selectionHandleInset());
+    if (window.__ANIMEART_E2E_DIAGNOSTICS__) {
+      window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__ = {
+        closeHandle: visibleHandles.closeHandle,
+        resizeHandle: visibleHandles.resizeHandle,
+        canvasSize: canvasSize(),
+        kind: "layer"
+      };
+    }
+    drawObjectSelectionHandle(visibleHandles.closeHandle, "close");
+    drawObjectSelectionHandle(visibleHandles.resizeHandle, "resize");
     ctx.restore();
   }
 }
@@ -1986,7 +2009,7 @@ function applyMultiLayerMove(deltaX, deltaY, message = "Layers moved", layerIds 
   return true;
 }
 
-function beginTransformInteraction(type, event, handle = null) {
+function beginTransformInteraction(type, event, handle = null, handleOffset = null) {
   const layer = selectedLayerExact();
   if (!layer || layer.locked) return false;
   const screenPoint = screenPointFromEvent(event);
@@ -1995,6 +2018,8 @@ function beginTransformInteraction(type, event, handle = null) {
   state.transformInteraction = {
     type,
     handle,
+    handleOffset: handleOffset && Number.isFinite(handleOffset.x) && Number.isFinite(handleOffset.y)
+      ? { x: handleOffset.x, y: handleOffset.y } : { x: 0, y: 0 },
     pointerId: event.pointerId,
     layerId: layer.id,
     startDocument: documentPoint,
@@ -2042,7 +2067,11 @@ function updateTransformPreview(event) {
   const interaction = state.transformInteraction;
   if (!interaction || event.pointerId !== interaction.pointerId) return;
   const currentScreen = screenPointFromEvent(event);
-  const currentDocument = screenToDocumentPoint(currentScreen, state.document, state.viewport, canvasSize());
+  const targetOffset = interaction.type === "scale" ? interaction.handleOffset : null;
+  const targetScreen = targetOffset
+    ? { x: currentScreen.x + targetOffset.x, y: currentScreen.y + targetOffset.y }
+    : currentScreen;
+  const currentDocument = screenToDocumentPoint(targetScreen, state.document, state.viewport, canvasSize());
   const pivot = interaction.pivot;
   const preview = { ...interaction.previewTransform };
   if (interaction.type === "move") {
@@ -2081,7 +2110,8 @@ function closeSelectionBox() {
 function beginSelectionInteraction(event) {
   const screenPoint = screenPointFromEvent(event);
   const selected = selectedLayerExact();
-  const selectedGeometry = selected ? selectionGeometry(selected, screenViewportForDocument(state.document, state.viewport, canvasSize()), documentCenter(state.document)) : null;
+  const rawSelectedGeometry = selected ? selectionGeometry(selected, screenViewportForDocument(state.document, state.viewport, canvasSize()), documentCenter(state.document)) : null;
+  const selectedGeometry = clampSelectionHandles(rawSelectedGeometry, canvasSize(), selectionHandleInset());
   const selectedHit = hitTestHandle(screenPoint, selectedGeometry, HANDLE_RADIUS);
   // In multi-selection, prefer the group bounds before interpreting the anchor layer's X.
   // Otherwise a group-interior drag can overlap the active layer's own close handle.
@@ -2093,14 +2123,14 @@ function beginSelectionInteraction(event) {
     const layers = selectedLayersExact();
     const documentPoint = screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize());
     const groupDocumentGeometry = multiSelectionGeometry(layers, documentCenter(state.document));
-    const groupScreenGeometry = groupDocumentGeometry ? {
+    const groupScreenGeometry = groupDocumentGeometry ? clampSelectionHandles({
       ...groupDocumentGeometry,
       corners: groupDocumentGeometry.corners.map(point => documentToScreenPoint(point, state.document, state.viewport, canvasSize())),
-      center: documentToScreenPoint(groupDocumentGeometry.center, state.document, state.viewport, canvasSize())
-    } : null;
+      center: documentToScreenPoint(groupDocumentGeometry.center, state.document, state.viewport, canvasSize()),
+      closeHandle: documentToScreenPoint(groupDocumentGeometry.corners[1], state.document, state.viewport, canvasSize()),
+      resizeHandle: documentToScreenPoint(groupDocumentGeometry.corners[2], state.document, state.viewport, canvasSize())
+    }, canvasSize(), selectionHandleInset()) : null;
     if (groupScreenGeometry) {
-      groupScreenGeometry.closeHandle = groupScreenGeometry.corners[1];
-      groupScreenGeometry.resizeHandle = groupScreenGeometry.corners[2];
       const groupHit = hitTestHandle(screenPoint, groupScreenGeometry, HANDLE_RADIUS);
       if (window.__ANIMEART_E2E_DIAGNOSTICS__) console.error("AA_MULTI_POINTERDOWN", JSON.stringify({screenPoint, groupHit, pointerId: event.pointerId, selectedIds: layers.map(layer => layer.id), corners: groupScreenGeometry.corners}));
       if (groupHit === "close") {
@@ -2123,7 +2153,7 @@ function beginSelectionInteraction(event) {
       }
       if (groupHit === "scale-nw" || groupHit === "scale-ne" || groupHit === "scale-se" || groupHit === "scale-sw") {
         if (layers.some(layer => layer.locked)) return;
-        state.multiTransformInteraction = { pointerId: event.pointerId, type: "scale", handle: groupHit, startDocument: documentPoint, layerIds: layers.map(layer => layer.id), previewTransforms: new Map(layers.map(layer => [layer.id, { ...layer.transform }])) };
+        state.multiTransformInteraction = { pointerId: event.pointerId, type: "scale", handle: groupHit, handleOffset: groupScreenGeometry.resizeHandleOffset, startDocument: documentPoint, layerIds: layers.map(layer => layer.id), previewTransforms: new Map(layers.map(layer => [layer.id, { ...layer.transform }])) };
         canvas.setPointerCapture(event.pointerId);
         return;
       }
@@ -2155,7 +2185,7 @@ function beginSelectionInteraction(event) {
   if (selectedHit === "move" && state.selectedLayerIds.length === 1) {
     return beginTransformInteraction("move", event);
   }
-  if (selectedHit?.startsWith("scale-")) return beginTransformInteraction("scale", event, selectedHit);
+  if (selectedHit?.startsWith("scale-")) return beginTransformInteraction("scale", event, selectedHit, selectedGeometry?.resizeHandleOffset);
   if (selectedHit === "rotate") return beginTransformInteraction("rotate", event);
   const documentPoint = screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize());
   for (const layer of [...state.document.layers].reverse()) {
@@ -2693,7 +2723,12 @@ canvas.addEventListener("pointermove", event => {
   }
   if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
     const interaction = state.multiTransformInteraction;
-    const current = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
+    const currentScreen = screenPointFromEvent(event);
+    const handleOffset = interaction.type === "scale" ? interaction.handleOffset : null;
+    const targetScreen = handleOffset
+      ? { x: currentScreen.x + handleOffset.x, y: currentScreen.y + handleOffset.y }
+      : currentScreen;
+    const current = screenToDocumentPoint(targetScreen, state.document, state.viewport, canvasSize());
     const layers = interactionLayers(interaction);
     if (interaction.type === "move") {
       const start = interaction.startDocument;
@@ -2758,7 +2793,12 @@ canvas.addEventListener("pointerup", event => {
   }
   if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
     const interaction = state.multiTransformInteraction;
-    const current = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
+    const currentScreen = screenPointFromEvent(event);
+    const handleOffset = interaction.type === "scale" ? interaction.handleOffset : null;
+    const targetScreen = handleOffset
+      ? { x: currentScreen.x + handleOffset.x, y: currentScreen.y + handleOffset.y }
+      : currentScreen;
+    const current = screenToDocumentPoint(targetScreen, state.document, state.viewport, canvasSize());
     const layers = interactionLayers(interaction);
     if (interaction.type === "move") {
       interaction.previewDelta = { x: current.x - interaction.startDocument.x, y: current.y - interaction.startDocument.y };

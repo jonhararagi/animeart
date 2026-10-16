@@ -149,6 +149,47 @@ export function selectionGeometry(layer, viewport, center, transformOverride = n
   };
 }
 
+/**
+ * Keep the visible close and resize handles inside the canvas even when the
+ * corresponding transformed image corners extend beyond its viewport.
+ * Offsets preserve the true corner trajectory while the finger drags a clamped
+ * handle, so resizing does not jump when the selected image touches an edge.
+ */
+export function clampSelectionHandles(geometry, viewportSize, inset = 22) {
+  if (!geometry || !viewportSize) return geometry;
+  const width = Number(viewportSize.width);
+  const height = Number(viewportSize.height);
+  if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return geometry;
+
+  const requestedInset = Number.isFinite(Number(inset)) ? Math.max(0, Number(inset)) : 0;
+  const minX = Math.min(requestedInset, width / 2);
+  const maxX = Math.max(minX, width - requestedInset);
+  const minY = Math.min(requestedInset, height / 2);
+  const maxY = Math.max(minY, height - requestedInset);
+  const clampPoint = point => {
+    if (!point || !Number.isFinite(Number(point.x)) || !Number.isFinite(Number(point.y))) return point;
+    return {
+      x: Math.min(maxX, Math.max(minX, Number(point.x))),
+      y: Math.min(maxY, Math.max(minY, Number(point.y)))
+    };
+  };
+  const originalClose = geometry.closeHandle || geometry.corners?.[1] || null;
+  const originalResize = geometry.resizeHandle || geometry.corners?.[2] || null;
+  const closeHandle = clampPoint(originalClose);
+  const resizeHandle = clampPoint(originalResize);
+  const offset = (original, clamped) => original && clamped
+    ? { x: original.x - clamped.x, y: original.y - clamped.y }
+    : { x: 0, y: 0 };
+
+  return {
+    ...geometry,
+    closeHandle,
+    resizeHandle,
+    closeHandleOffset: offset(originalClose, closeHandle),
+    resizeHandleOffset: offset(originalResize, resizeHandle)
+  };
+}
+
 export function layerWorldCenter(layer, pivot) {
   const bounds = layerLocalBounds(layer);
   if (!bounds) return null;
