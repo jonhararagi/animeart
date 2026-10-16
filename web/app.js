@@ -42,11 +42,10 @@ function openImagePicker() {
     return;
   }
   try {
-    if (typeof imageFileInput.showPicker === "function") imageFileInput.showPicker();
-    else imageFileInput.click();
+    // Keep the picker activation on the original trusted click path used by Android WebView and E2E.
+    imageFileInput.click();
   } catch {
-    try { imageFileInput.click(); }
-    catch { showMobileFeedback("Android no pudo abrir la galería. Recargá la app e intentá otra vez.", "error"); }
+    showMobileFeedback("Android no pudo abrir la galería. Recargá la app e intentá otra vez.", "error");
   }
 }
 const recoveryNotice = document.querySelector("#storage-recovery-notice");
