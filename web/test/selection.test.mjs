@@ -42,11 +42,12 @@ test("hit testing respects layer translation, scale and rotation", () => {
   assert.equal(hitTestLayer(layer, { x: 20, y: 20 }, pivot), false);
 });
 
-test("screen handles distinguish scale corners, rotation and move", () => {
+test("selection box exposes a close X and one bottom-right resize handle", () => {
   const document = drawableDocument();
   const geometry = selectionGeometry(document.layers[0], createViewport(), { x: 200, y: 150 });
-  assert.equal(hitTestHandle(geometry.corners[0], geometry), "scale-nw");
-  assert.equal(hitTestHandle(geometry.rotationHandle, geometry), "rotate");
+  assert.equal(hitTestHandle(geometry.closeHandle, geometry), "close");
+  assert.equal(hitTestHandle(geometry.resizeHandle, geometry), "scale-se");
+  assert.equal(hitTestHandle(geometry.rotationHandle, geometry), null);
   assert.equal(hitTestHandle(geometry.center, geometry), "move");
 });
 
@@ -241,15 +242,13 @@ test("Image Layer selection bounds follow transform and viewport zoom/pan", () =
   assert.equal(hit, true);
 });
 
-test("Image Layer exposes the same selection handles for move resize and rotate", () => {
+test("Image Layer selection box exposes close and bottom-right resize handles", () => {
   const layer = createImageLayer("Image", 120, 80);
   const viewport = createViewport(2, -30, 15);
   const geometry = selectionGeometry(layer, viewport, { x: 200, y: 150 });
-  assert.equal(hitTestHandle(geometry.corners[0], geometry), "scale-nw");
-  assert.equal(hitTestHandle(geometry.corners[1], geometry), "scale-ne");
-  assert.equal(hitTestHandle(geometry.corners[2], geometry), "scale-se");
-  assert.equal(hitTestHandle(geometry.corners[3], geometry), "scale-sw");
-  assert.equal(hitTestHandle(geometry.rotationHandle, geometry), "rotate");
+  assert.equal(hitTestHandle(geometry.closeHandle, geometry), "close");
+  assert.equal(hitTestHandle(geometry.resizeHandle, geometry), "scale-se");
+  assert.equal(hitTestHandle(geometry.rotationHandle, geometry), null);
   const polygonCenter = {
     x: geometry.corners.reduce((sum, point) => sum + point.x, 0) / 4,
     y: geometry.corners.reduce((sum, point) => sum + point.y, 0) / 4
