@@ -39,7 +39,7 @@
           <button type="button" data-edit-goal="fit"><span aria-hidden="true">🎯</span><b>Ajustar al lienzo</b><small>Centra y encaja la imagen</small></button>
           <button type="button" data-edit-goal="crop"><span aria-hidden="true">✂️</span><b>Recortar</b><small>Quita bordes sobrantes</small></button>
           <button type="button" data-edit-goal="background"><span aria-hidden="true">🪄</span><b>Quitar fondo</b><small>Hazlo transparente</small></button>
-          <button type="button" data-edit-goal="erase"><span aria-hidden="true">🧽</span><b>Borrar</b><small>Elimina una parte</small></button>
+          <button type="button" data-edit-goal="erase"><span aria-hidden="true">🧽</span><b>Borrar píxeles</b><small>Quita la parte que pintes</small></button>
           <button type="button" data-edit-goal="censor"><span aria-hidden="true">✨</span><b>Luz de censura</b><small>Cubre con luz brillante</small></button>
           <button type="button" data-edit-goal="draw"><span aria-hidden="true">🖌️</span><b>Dibujar</b><small>Pinta sobre la imagen</small></button>
           <button type="button" data-edit-goal="text"><span aria-hidden="true">🔤</span><b>Texto</b><small>Añade palabras o globos</small></button>
@@ -72,15 +72,15 @@
         <div class="more-tools-content">
           <button class="tool active" data-tool="select" aria-pressed="true">🖐️ Seleccionar / mover</button>
       <button class="tool" data-tool="brush" aria-pressed="false">🖌️ Dibujar</button>
-      <button class="tool" data-tool="eraser" title="Borrar píxeles transparentes">🧽 Borrar</button>
+      <button class="tool" data-tool="eraser" title="Borrar una parte de la imagen o de los trazos seleccionados">🧽 Borrar</button>
       <button class="tool" data-tool="restore-brush" aria-pressed="false" title="Pintá sobre una zona borrada para recuperar píxeles originales">🩹 Restaurar</button>
       <button class="tool" data-tool="magic-eraser" aria-pressed="false" title="Toca una región de fondo conectada para previsualizar el borrado">🪄 Borrado mágico</button>
       <label class="brush-control magic-tolerance-control" for="magic-eraser-tolerance">Tolerancia del borrado mágico <output id="magic-eraser-tolerance-value">28</output><input id="magic-eraser-tolerance" type="range" min="4" max="100" step="1" value="28"></label>
-      <button class="tool" data-tool="censor-light" aria-pressed="false" title="Paint an independent bright censor stroke">✨ Luz de censura</button>
+      <button class="tool" data-tool="censor-light" aria-pressed="false" title="Abrir Luz de censura para editar una imagen en una ventana independiente">✨ Luz de censura</button>
       <button class="tool" data-tool="pan">✋ Mover / zoom</button>
-          <section class="censor-light-controls" aria-labelledby="censor-light-title">
+          <section class="censor-light-controls" aria-labelledby="censor-light-title" hidden>
             <h3 id="censor-light-title">✨ Luz de censura</h3>
-            <p>Cubre una zona con color opaco. La imagen original queda debajo, en otra capa.</p>
+            <p>Usá la ventana independiente “Luz de censura” para pintar una vista previa, deshacer trazos o cancelar antes de aplicar.</p>
             <label for="censor-light-color">Color<input id="censor-light-color" type="color" value="#ffffff"></label>
             <label for="censor-light-size">Tamaño <output id="censor-light-size-value">28 px</output><input id="censor-light-size" type="range" min="2" max="320" step="1" value="28"></label>
             <label for="censor-light-opacity">Opacidad <output id="censor-light-opacity-value">100%</output><input id="censor-light-opacity" type="range" min="10" max="100" step="1" value="100"></label>
