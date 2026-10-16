@@ -3018,7 +3018,8 @@ const helpGoals = {
   color: ["Mejorar color", "Selecciona una imagen y ajusta brillo, contraste o saturación en Image adjustments."],
   layers: ["Capas", "Toca una capa para seleccionarla. Cambia el orden, visibilidad y opacidad con los controles disponibles."],
   undo: ["Deshacer", "Pulsa Deshacer para volver un paso atrás. Rehacer recupera el cambio."],
-  export: ["Guardar / Exportar", "Guardar localmente conserva el proyecto editable. Exportar imagen crea una imagen compuesta."]
+  export: ["Guardar / Exportar", "Guardar localmente conserva el proyecto editable. Exportar imagen crea una imagen compuesta."],
+  appearance: ["Apariencia", "Personaliza los detalles visuales del editor desde este panel, sin ocupar la zona del lienzo."]
 };
 let lastEditGoal = "crop";
 function showGoalHelp(goal) {
