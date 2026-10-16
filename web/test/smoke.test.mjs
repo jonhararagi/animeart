@@ -248,7 +248,7 @@ test("multi-format export UI uses the existing document renderer and local downl
 
 test("PNG export composes visible layers with opacity and transforms while ignoring lock state", async () => {
   const js = await readFile("app.js", "utf8");
-  assert.match(js, /for \\(const layer of layersInRenderOrder\\)/);
+  assert.match(js, /for \(const layer of layersInRenderOrder\)/);
   assert.match(js, /if \(!layer\.visible\) continue/);
   assert.match(js, /context\.globalAlpha = layer\.opacity/);
   assert.match(js, /transformForLayer: layer => layer\.transform/);
