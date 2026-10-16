@@ -1336,7 +1336,7 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation === ' + JSON.stringify(rotationAfterGesture), 10000);
   assert(true, "mobile rotation-handle drag participates in Undo/Redo history");
 
-  assert(await evaluate('(() => { const label=document.querySelector(".mobile-export-format"); const select=document.querySelector("#mobile-export-format"); const r=select.getBoundingClientRect(); const s=getComputedStyle(label); return Boolean(select && s.display!=="none" && s.visibility!=="hidden" && r.width>=60 && r.height>=30 && r.bottom<=innerHeight; })()'),
+  assert(await evaluate('(() => { const label=document.querySelector(".mobile-export-format"); const select=document.querySelector("#mobile-export-format"); const r=select.getBoundingClientRect(); const s=getComputedStyle(label); return Boolean(select && s.display!=="none" && s.visibility!=="hidden" && r.width>=60 && r.height>=30 && r.bottom<=innerHeight); })()'),
     "mobile export format picker stays visible and touch-usable at a 393px viewport");
 
   // Export a real JPEG via the mobile dock and decode the downloaded file, not only a mocked Blob.
