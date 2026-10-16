@@ -953,7 +953,7 @@ try {
 
   let jpegPersistenceFailure = null;
   try {
-    await waitFor("JSON.parse(localStorage.getItem(\\"animeart-web-document\\") || \\"{}\\").layers?.length === " + (jpegLayerCountBefore + 1), 10000);
+    await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length === ' + (jpegLayerCountBefore + 1), 10000);
   } catch (error) {
     jpegPersistenceFailure = error.message;
   }
