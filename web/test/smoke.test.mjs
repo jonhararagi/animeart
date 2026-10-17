@@ -523,7 +523,7 @@ test("background-removal profiles are local, reusable and wired to the existing 
   assert.match(html, /id="save-background-profile"/);
   assert.match(html, /id="delete-background-profile"/);
   assert.match(app, /applyBackgroundRemovalProfile/);
-  assert.match(app, /const automatic = removeConnectedBackground\(session\.original, currentBackgroundRemovalSettings\(\)\)/);
+  assert.match(app, /const automatic = session\.removalRequested\s*\?\s*removeConnectedBackground\(session\.original, currentBackgroundRemovalSettings\(\)\)\s*:\s*session\.original/);
   assert.match(app, /applyEraseStrokes\(automatic, session\.strokes\)/);
   assert.match(profiles, /BACKGROUND_PROFILE_STORAGE_KEY/);
   assert.match(profiles, /anime-ink/);
@@ -531,6 +531,27 @@ test("background-removal profiles are local, reusable and wired to the existing 
   assert.match(profiles, /transparent-png/);
   assert.match(profiles, /id: "photo"/);
   assert.match(tests, /saves, restores, updates and deletes a custom local profile/);
+  assert.match(html, /id="preview-background-removal"/);
+  assert.match(html, /id="background-removal-zoom-in"/);
+  assert.match(html, /id="background-removal-zoom-out"/);
+  assert.match(html, /id="background-removal-zoom-fit"/);
+  assert.match(app, /removalRequested: false/);
+  assert.match(app, /Imagen original intacta/);
+  assert.match(app, /function updateBackgroundRemovalZoom/);
+  assert.match(app, /backgroundRemovalPan\?\.pointerId === event\.pointerId/);
+});
+
+test("selected images remain visible near canvas edges and transparent new documents do not add a background layer", async () => {
+  const [html, app, css, png] = await Promise.all([
+    readFile("index.html", "utf8"), readFile("app.js", "utf8"),
+    readFile("styles.css", "utf8"), readFile("domain/png-export.mjs", "utf8")
+  ]);
+  assert.match(app, /function keepImageTransformVisible/);
+  assert.match(app, /Object\.assign\(preview, keepImageTransformVisible/);
+  assert.match(app, /const corners = layerCorners\(layer, documentCenter\(state\.document\), transform\)/);
+  assert.match(html, /data-canvas-background="checkerboard"/);
+  assert.match(css, /\.canvas-wrap\[data-background="checkerboard"\] canvas/);
+  assert.match(png, /createPngExportCanvas/);
 });
 
 test("Android native export bridge and browser fallback are wired to the canonical editor", async () => {
