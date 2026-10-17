@@ -1368,7 +1368,7 @@ try {
   assert(visibleAfterBottomDrag.visibleW >= visibleAfterBottomDrag.requiredW && visibleAfterBottomDrag.visibleH >= visibleAfterBottomDrag.requiredH,
     "dragging an image toward the canvas edge keeps a useful part visible instead of losing it off-canvas: " + JSON.stringify(visibleAfterBottomDrag));
   await click('.mobile-touch-dock [data-touch-action="undo"]');
-  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) === ' + JSON.stringify(JSON.parse(transformBeforeBottomDrag)), 10000);
+  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) === ' + JSON.stringify(transformBeforeBottomDrag), 10000);
 
   // AA-MOBILE-REDESIGN-004: verify that mobile rotation and flip controls mutate the selected image and can be restored.
   await click('.mobile-touch-dock [data-touch-action="layers"]');
