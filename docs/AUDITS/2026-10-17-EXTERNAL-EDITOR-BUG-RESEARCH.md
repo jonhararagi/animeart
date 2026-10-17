@@ -87,22 +87,45 @@ Este defecto se confirmó con Chromium, no se infirió solamente por analogía c
 
 La investigación de este documento se basa en informes y PRs públicos de GitHub que sí se pudieron consultar. La búsqueda general de blogs y notas de novedades de sitios editoriales sigue pendiente, porque no estuvo disponible en esta sesión. La aceptación física en el Xiaomi `24116RACCG` también sigue pendiente.
 
-## Estado actualizado tras integrar en main (2026-10-17)
 
-La corrección descrita en esta investigación y sus regresiones ya están integradas en `main`. El informe ya no queda pendiente de integración.
+---
 
-- **HEAD actual de main:** `075def85455cecb407de1161c1ccde533faaddb6`.
-- **Web CI: PASS** sobre ese HEAD: [run #39063754210](https://github.com/jonhararagi/animeart/actions/runs/39063754210).
-- **Android CI: PASS** sobre el mismo HEAD: [run #39063754195](https://github.com/jonhararagi/animeart/actions/runs/39063754195).
-- **Despliegue web: PASS:** [run #39063754215](https://github.com/jonhararagi/animeart/actions/runs/39063754215).
-- Android verificó el editor actual dentro del APK, pruebas unitarias, lint, instrumentación `connectedDebugAndroidTest`, arranque de WebView y funcionamiento offline.
-- **APK de main:** [artefacto #12111993080](https://github.com/jonhararagi/animeart/actions/runs/39063754195/artifacts/12111993080).
-- **SHA-256 verificado por el trabajo de CI:** `d78f9f82f1538165eaa7e76844dbff08131759491b40afcc0badbcfb765d3db5`.
+## AA-IMAGE-X-DELETE-AND-TOUCH-ANCHOR-001 · X de imagen y salto al tocar (2026-10-17)
 
-## Pendiente de aceptación física y alcance de investigación
+**TIMER:** 2–4 horas estimadas para diagnóstico, reparación, regresiones y validación Android; el tiempo activo real no se midió.
 
-- Las incidencias de flujo táctil y movimiento libre [#73](https://github.com/jonhararagi/animeart/issues/73) y [#86](https://github.com/jonhararagi/animeart/issues/86) deben conservarse abiertas hasta completar la aceptación en el Xiaomi `24116RACCG`. CI, Chromium y el emulador no demuestran que el manejo con el dedo sea correcto en el dispositivo físico.
-- La investigación técnica basada en informes públicos de GitHub, issues de usuarios, cambios de mantenedores y PRs corregidas está documentada arriba. La búsqueda general de artículos de novedades/blogs fuera de GitHub no se pudo hacer en esta sesión; no se atribuye ninguna cita a Adobe, Canva, Picsart ni a otros sitios editoriales.
-- El PR antiguo de empaquetado alternativo [#78](https://github.com/jonhararagi/animeart/pull/78) sigue abierto, pero no se integró: `main` ya genera el APK desde el flujo Android canónico y valida que el paquete incluya la versión actual del editor. No mezclar ambos sistemas sin una necesidad demostrada.
+### Síntomas
+- La X del marco cerraba la selección pero no eliminaba la imagen; el comando Eliminar del menú sí la quitaba.
+- Al tocar/seleccionar una imagen en móvil, la capa podía saltar hacia abajo como si tuviera un fallo gráfico.
 
-**Estado global:** PASS para el código integrado y la CI de `main`; PARTIAL para la aceptación final de uso táctil físico, que todavía no se ha ejecutado.
+### Causa y corrección
+- La rama de interacción de la X llamaba a `closeSelectionBox()`. Para una imagen ahora ejecuta `removeSelectedImage()`, usando la eliminación de capa existente con historial y Deshacer. En capas no-imagen la X conserva el comportamiento de cerrar la selección.
+- El movimiento transformaba `clientX/clientY` usando el rectángulo actual del canvas en cada evento. Si la interfaz móvil reacomodaba ese rectángulo mientras el dedo permanecía fijo, se producía un delta aparente.
+- El gesto ahora conserva el punto global de inicio y la escala pantalla-documento al comenzar. El movimiento usa el delta global del puntero relativo a ese ancla; un toque estacionario no genera una transformación ni una entrada innecesaria en el historial.
+- La caché offline PWA pasó de `animeart-web-shell-v39` a `v40` para evitar que el editor instalado mantenga el JavaScript anterior.
+
+### Pruebas y evidencia
+- E2E de Chromium cambia artificialmente la posición del canvas durante un toque estacionario. Resultado: **PASS**, la transformación persistida no cambia.
+- E2E de Chromium toca la X, confirma que desaparece el ID de la imagen y pulsa Deshacer móvil. Resultado: **PASS**, imagen y transformación regresan.
+- El mismo E2E mantiene las pruebas existentes de movimiento, escala, zoom/pan, transparencia y exportación.
+- **HEAD de código probado:** [`8e44a325963c379bd9f880191748770367dc99cc`](https://github.com/jonhararagi/animeart/commit/8e44a325963c379bd9f880191748770367dc99cc).
+- **Web CI: PASS:** [run #39074410762](https://github.com/jonhararagi/animeart/actions/runs/39074410762), incluye `ANIMEART_REAL_WEB_E2E: PASS`.
+- **Android CI: PASS:** [run #39074410743](https://github.com/jonhararagi/animeart/actions/runs/39074410743). Build APK, tests unitarios, lint, `connectedDebugAndroidTest`, arranque de WebView y validación offline PASS.
+- **Despliegue/build web: PASS:** [run #39074410809](https://github.com/jonhararagi/animeart/actions/runs/39074410809).
+- **APK Android:** [artefacto #12116756555](https://github.com/jonhararagi/animeart/actions/runs/39074410743/artifacts/12116756555).
+- **SHA-256 del archivo APK:** `7602d891e3e19f350be8bbb44a6c23abc789ab671ca49fc2aa99b1428733662b`.
+
+### Comparación pública de incidencias
+- [Fabric.js #7085](https://github.com/fabricjs/fabric.js/issues/7085) y [PR #11143](https://github.com/fabricjs/fabric.js/pull/11143): el pincel limitado al lienzo fallaba con zoom; el arreglo transforma coordenadas respetando zoom/pan.
+- [Photopea #4051](https://github.com/photopea/photopea/issues/4051): incidencias en entrada táctil Android. El mantenedor confirmó una corrección concreta de Quick Select, no la solución de todos los síntomas del hilo.
+- [Fabric.js #7056](https://github.com/fabricjs/fabric.js/issues/7056) y [PR #11150](https://github.com/fabricjs/fabric.js/pull/11150): un pincel de spray alteraba puntos al terminar el gesto.
+- [Fabric.js #7278](https://github.com/fabricjs/fabric.js/issues/7278), [PR #7289](https://github.com/fabricjs/fabric.js/pull/7289) y [PR #7470](https://github.com/fabricjs/fabric.js/pull/7470): separación de fondo y contenido borrable, y enfoque de máscaras para borradores.
+
+Las incidencias externas se usan como patrones de diagnóstico, no como prueba de que AnimeArt tuviera el mismo fallo. Sí se pudo consultar documentación técnica pública en GitHub; la búsqueda general de artículos de novedades/blogs ajenos a GitHub no estuvo disponible en esta sesión.
+
+## Aceptación que sigue pendiente
+
+- La prueba física con el dedo en el Xiaomi `24116RACCG` no se ha ejecutado. Chromium y el emulador no sustituyen esa validación.
+- Las incidencias [#73](https://github.com/jonhararagi/animeart/issues/73) y [#86](https://github.com/jonhararagi/animeart/issues/86) deben seguir abiertas hasta completar esa aceptación física.
+
+**Estado:** PASS para código, pruebas Web/Chromium y Android en el HEAD de código anterior; PARTIAL únicamente para la validación táctil física en el teléfono.

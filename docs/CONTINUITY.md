@@ -3426,3 +3426,27 @@ El workflow de publicación web terminó con el trabajo `deploy` omitido; no se 
 - Chromium E2E agrega sticker, palabra decorativa y conjunto desde la interfaz real; comprueba capas independientes y deshacer; después crea una portada galáctica y verifica los textos editables.
 - Android CI verifica el módulo creativo dentro de la APK.
 - La aceptación física sigue pendiente en el Xiaomi 24116RACCG. Chromium y el emulador no sustituyen la prueba en teléfono real.
+
+---
+
+# Estado actual · AA-IMAGE-X-DELETE-AND-TOUCH-ANCHOR-001 · 2026-10-17
+
+**TIMER:** 2–4 horas estimadas de diagnóstico, implementación, regresión y validación Android; el tiempo activo no se midió.
+
+## Corrección
+- La X del marco ahora elimina la imagen seleccionada mediante la ruta existente con historial/Deshacer, en lugar de cerrar únicamente la selección.
+- El movimiento usa el punto inicial global del puntero y la escala CSS/documento capturada al comenzar el gesto. Si el layout móvil mueve el canvas bajo un dedo estacionario, no debe mover la imagen.
+- La X para texto/otros objetos conserva el cierre de selección. La caché offline PWA se actualizó a v40.
+
+## Evidencia comprobada
+**HEAD de código probado:** `8e44a325963c379bd9f880191748770367dc99cc`  
+- Web CI PASS [#39074410762](https://github.com/jonhararagi/animeart/actions/runs/39074410762), incluyendo `ANIMEART_REAL_WEB_E2E: PASS`.
+- Android CI PASS [#39074410743](https://github.com/jonhararagi/animeart/actions/runs/39074410743): build, unit tests, lint, instrumentación, WebView y validación offline.
+- Build/despliegue web PASS [#39074410809](https://github.com/jonhararagi/animeart/actions/runs/39074410809).
+- APK [artefacto #12116756555](https://github.com/jonhararagi/animeart/actions/runs/39074410743/artifacts/12116756555); SHA-256 `7602d891e3e19f350be8bbb44a6c23abc789ab671ca49fc2aa99b1428733662b`.
+- E2E cubre toque estacionario durante cambio de posición del canvas, borrado con X y restauración con Deshacer.
+
+## Referencias y límites
+Fuentes técnicas verificadas: [Fabric.js #7085/PR #11143](https://github.com/fabricjs/fabric.js/pull/11143), [Photopea #4051](https://github.com/photopea/photopea/issues/4051), [Fabric.js #7056/PR #11150](https://github.com/fabricjs/fabric.js/pull/11150), [Fabric.js #7278/PR #7289](https://github.com/fabricjs/fabric.js/pull/7289) y [PR #7470](https://github.com/fabricjs/fabric.js/pull/7470). Se utilizaron como patrones para diseñar pruebas de regresión, no como evidencia automática de un defecto idéntico.
+
+Sigue pendiente validar con el dedo en el Xiaomi `24116RACCG`. La búsqueda web general de blogs/notas editoriales externos a GitHub no estuvo disponible; no se atribuyen citas a páginas no consultadas.
