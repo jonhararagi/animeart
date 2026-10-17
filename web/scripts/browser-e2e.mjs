@@ -1313,9 +1313,12 @@ try {
   await evaluate('(() => { window.confirm = () => true; document.querySelector("#document-width").value = "640"; document.querySelector("#document-height").value = "480"; document.querySelector("#document-width").dispatchEvent(new Event("input",{bubbles:true})); document.querySelector("#document-height").dispatchEvent(new Event("input",{bubbles:true})); })()');
   await click('#project-form button[type="submit"]');
   await waitFor('document.querySelector("#project-dialog").open === false');
+  // Creating a document updates editor state; an explicit Save persists this new size.
+  await evaluate('document.querySelector("#save").click()');
+  await waitFor('document.querySelector("#status").textContent === "Guardado localmente"');
   await waitFor('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return d.width===640 && d.height===480; })()');
   assert(await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return d.width===640 && d.height===480; })()'),
-    "zoom/pan regression uses a persisted 640×480 document instead of a zero-sized startup placeholder");
+    "zoom/pan regression saves a real 640×480 document instead of relying on a zero-sized startup placeholder");
 
   // AA-EXTERNAL-BUGFIX-RESEARCH-001: drawing coordinates must remain correct after viewport zoom + touch pan.
   await click('.mobile-touch-dock [data-touch-action="paint"]');
