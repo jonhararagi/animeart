@@ -4007,6 +4007,15 @@ if (mobileDock) {
       mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
       return;
     }
+    if (action === "paint") {
+      hideMobileToolSheets();
+      void openCensorLightDialog("paint");
+      return;
+    }
+    if (action === "crop") {
+      openCropModeDialog();
+      return;
+    }
     if (action === "rotate-left") { document.querySelector('[data-transform="rotate-left"]')?.click(); return; }
     if (action === "rotate-right") { document.querySelector('[data-transform="rotate-right"]')?.click(); return; }
     if (action === "flip-horizontal") { flipImageHorizontalButton?.click(); return; }
@@ -4220,7 +4229,20 @@ function runEditGoal(goal) {
       status.textContent = "Toca la imagen y arrástrala para moverla. Usa las esquinas para cambiar el tamaño.";
     },
     fit: () => document.querySelector("#fit-image-to-canvas")?.click(),
-    crop: () => cropResizeButton.click(),
+    "rotate-left": () => document.querySelector('[data-transform="rotate-left"]')?.click(),
+    "rotate-right": () => document.querySelector('[data-transform="rotate-right"]')?.click(),
+    "flip-horizontal": () => flipImageHorizontalButton?.click(),
+    "flip-vertical": () => flipImageVerticalButton?.click(),
+    crop: () => openCropModeDialog(),
+    "crop-image": () => {
+      const layer = selectedLayerExact();
+      if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) {
+        status.textContent = "Seleccioná una imagen desbloqueada para recortar solo sus píxeles.";
+        return;
+      }
+      cropResizeButton.click();
+    },
+    "crop-canvas": () => void openCanvasCropDialog(),
     background: () => {
       const layer = selectedLayerExact();
       if (!layer || layer.contentType !== "image" || !layer.image) {
@@ -4230,15 +4252,10 @@ function runEditGoal(goal) {
       }
       removeBackgroundButton.click();
     },
-    erase: () => {
-      if (!selectedLayerExact()) {
-        status.textContent = "Primero tocá una imagen o elegí una capa en Capas. Después usá Borrar.";
-        return;
-      }
-      document.querySelector('.toolbar [data-tool="eraser"]')?.click();
-    },
-    censor: () => openCensorLightDialog(),
-    draw: () => document.querySelector('.toolbar [data-tool="brush"]')?.click(),
+    erase: () => openCensorLightDialog("erase"),
+    censor: () => openCensorLightDialog("censor-light"),
+    draw: () => openCensorLightDialog("paint"),
+    paint: () => openCensorLightDialog("paint"),
     text: () => selectedLayerExact()?.contentType === "text" ? openTextEditorForLayer(selectedLayerExact().id) : document.querySelector("#add-text-layer").click(),
     shapes: () => openShapeMaker(),
     "object-style": () => openSelectedObjectStyle(),
@@ -4263,8 +4280,8 @@ document.querySelectorAll("[data-edit-goal]").forEach(button => button.addEventL
   const goal = button.dataset.editGoal;
   runEditGoal(goal);
   if (window.matchMedia("(max-width: 920px)").matches) {
-    if (goal === "draw" || goal === "erase") {
-      openMobileContextPanel(goal === "erase" ? "erase" : "draw");
+    if (["draw", "erase", "censor", "crop"].includes(goal)) {
+      hideMobileToolSheets();
       return;
     }
     closeMobileContextPanel();
