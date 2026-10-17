@@ -877,7 +877,7 @@ test("AA-MOBILE-UX-004 exposes direct image insertion and selected-object deleti
   const js = await readFile("app.js", "utf8");
   const css = await readFile("styles.css", "utf8");
   assert.ok(html.includes('data-touch-action="import-image"'));
-  assert.ok(html.includes('data-touch-action="delete-selected"'));
+  assert.ok(html.includes('data-edit-goal="delete-selected"'));
   assert.ok(html.includes('id="selection-mini-delete"'));
   assert.ok(html.includes('id="apply-text-layer"'));
   assert.ok(html.includes('id="delete-text-layer"'));
@@ -930,6 +930,10 @@ test("AA-MOBILE-PICSART-PANEL-LAW keeps mobile actions below the phone safe area
   assert.match(css, /env\(safe-area-inset-bottom\)/);
   assert.match(html, /data-touch-action="import-image"/);
   assert.match(html, /data-edit-goal="export"/);
+  assert.match(html, /id="quick-open-asset-library"/);
+  assert.match(html, /data-edit-goal="delete-selected"/);
+  assert.match(html, /data-edit-goal="undo"/);
+  assert.match(html, /data-edit-goal="redo"/);
   assert.match(html, /data-touch-action="more"/);
 });
 
