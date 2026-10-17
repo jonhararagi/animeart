@@ -98,3 +98,26 @@ test("canceling the new-text dialog removes the provisional text layer", async (
  assert.match(app, /event\.preventDefault\(\);\s*cancelNewlyCreatedTextLayer\(\)/);
  assert.match(app, /newlyCreatedTextLayerId = null;\s*textEditDialog\?\.close\(\)/);
 });
+
+
+test("AA-TYPOGRAPHY-CANVA-001 keeps the text modal reachable on mobile and supports title-first editing", async () => {
+ const [html, app, css, worker, browserE2E] = await Promise.all([
+  readFile("index.html", "utf8"), readFile("app.js", "utf8"),
+  readFile("styles.css", "utf8"), readFile("service-worker.js", "utf8"),
+  readFile("scripts/browser-e2e.mjs", "utf8")
+ ]);
+ assert.match(app, /document\.body\.append\(textEditDialog\)/);
+ assert.match(app, /function openTextEditorForLayer\(/);
+ assert.match(app, /selection-mini-edit-text/);
+ assert.match(app, /text: \(\) => selectedLayerExact\(\)\?\.contentType === "text"/);
+ assert.match(app, /function canvasRenderDpr\(rect\)/);
+ assert.match(app, /function keepLayerTransformVisible\(layer, transform\)/);
+ for (const preset of ["title", "subtitle", "body", "quote", "label", "elegant"]) {
+  assert.ok(html.includes('data-text-style-preset="' + preset + '"'), "missing typography preset: " + preset);
+ }
+ assert.ok(html.includes('id="selection-mini-edit-text"'));
+ assert.match(css, /AA-TYPOGRAPHY-CANVA-001/);
+ assert.match(worker, /\.\/app\.js/);
+ assert.match(browserE2E, /dragging selected text on the mobile touch path commits a bounded transform/);
+ assert.match(browserE2E, /mobile Add Text opens a visible, editable typography window/);
+});
