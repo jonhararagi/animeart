@@ -289,7 +289,8 @@ test("PNG export composes visible layers with opacity and transforms while ignor
 test("PNG export uses Document dimensions, not viewport or UI capture", async () => {
   const js = await readFile("app.js", "utf8");
   const exporter = await readFile("domain/png-export.mjs", "utf8");
-  assert.match(js, /createPngExportCanvas\(state\.document\)/);
+  assert.ok(js.includes("createPngExportCanvas({ ...state.document, width: outputWidth, height: outputHeight })"));
+  assert.ok(js.includes("exportScaleForResolution(state.document, resolution)"));
   assert.match(exporter, /canvas\.width = width/);
   assert.match(exporter, /canvas\.height = height/);
   assert.doesNotMatch(js, /html2canvas|toDataURL\(\)/);
