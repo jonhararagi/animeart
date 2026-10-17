@@ -129,3 +129,41 @@ Las incidencias externas se usan como patrones de diagnóstico, no como prueba d
 - Las incidencias [#73](https://github.com/jonhararagi/animeart/issues/73) y [#86](https://github.com/jonhararagi/animeart/issues/86) deben seguir abiertas hasta completar esa aceptación física.
 
 **Estado:** PASS para código, pruebas Web/Chromium y Android en el HEAD de código anterior; PARTIAL únicamente para la validación táctil física en el teléfono.
+
+
+---
+
+## Segunda ronda de auditoría · AA-MULTI-TOUCH-ANCHOR-001 + AA-HISTORY-RETENTION-001 (2026-10-17)
+
+**TIMER:** 2–4 horas estimadas de inspección, implementación y regresión para esta ronda; tiempo activo real no medido.
+
+### Defectos/riesgos confirmados y correcciones
+
+1. **Movimiento de selección múltiple sensible al cambio del layout.** Las capas múltiples guardaban el punto inicial en coordenadas del documento y recalculaban los puntos posteriores respecto al rectángulo actual del canvas. Un cambio de layout durante el gesto podía simular un desplazamiento aunque el puntero no se moviera. Ahora el movimiento de grupo captura `clientX/clientY` y la escala documento/pantalla al iniciar, y traduce desde ese anclaje en el movimiento y en el evento de soltar. Escala y rotación mantienen su conversión normal.
+2. **Historial sin límite de operaciones.** Cada paso conserva snapshots completos antes/después del documento, que pueden contener las fuentes de imágenes embebidas. Una secuencia larga de ediciones podía aumentar la memoria usada en el WebView. El historial principal ahora conserva hasta 30 operaciones recientes. La ruta de rollback guarda temporalmente la operación desalojada, de forma que un fallo de persistencia al alcanzar el límite no destruye el paso de Deshacer anterior.
+3. **Shell offline.** La versión del shell PWA cambió de `v41` a `v42` para que instalaciones existentes no sigan sirviendo el JavaScript anterior.
+
+### Evidencia reproducible
+
+- Web CI y Chromium E2E **PASS** sobre `00d9691fb7d3cfa10fa91b982808f310ce888595`: [run #39076162599](https://github.com/jonhararagi/animeart/actions/runs/39076162599). El log incluye `PASS: stationary multi-selection gesture does not move selected layers when the canvas rectangle changes` y `ANIMEART_REAL_WEB_E2E: PASS`.
+- Las pruebas unitarias incluyen límite configurable de historial y rollback del registro desalojado si falla el guardado.
+- Android CI **PASS** sobre el mismo SHA: [run #39076162638](https://github.com/jonhararagi/animeart/actions/runs/39076162638). Build, comprobación del editor dentro del APK, unit tests, lint, `connectedDebugAndroidTest`, arranque WebView y validación offline pasaron.
+- Despliegue/build web **PASS**: [run #39076162831](https://github.com/jonhararagi/animeart/actions/runs/39076162831).
+- Artefacto APK [#12117351168](https://github.com/jonhararagi/animeart/actions/runs/39076162638/artifacts/12117351168), compilado desde `00d9691fb7d3cfa10fa91b982808f310ce888595`.
+- Archivo APK: `AnimeArt-Android-aa-mobile-redesign-004-00d9691fb7d3cfa10fa91b982808f310ce888595.apk`.
+- SHA-256 del archivo APK (extraído del log de `sha256sum`): `4c8d59e973ddf857288368305968dc639be593f9887f50bfdaeccf2876f4a501`. El digest del ZIP de artefacto de GitHub es diferente y no se debe confundir con este hash del APK.
+- Build Web descargable [artefacto #12117171834](https://github.com/jonhararagi/animeart/actions/runs/39076162599/artifacts/12117171834); capturas del navegador [#12116574850](https://github.com/jonhararagi/animeart/actions/runs/39076162599/artifacts/12116574850).
+
+### Comparación externa verificada
+
+- [Fabric.js #7085](https://github.com/fabricjs/fabric.js/issues/7085) + [PR #11143](https://github.com/fabricjs/fabric.js/pull/11143), fusionada el 12 de octubre de 2026: dibujar bajo zoom/pan se limitaba a parte del lienzo por conversión de puntero.
+- [Fabric.js #7056](https://github.com/fabricjs/fabric.js/issues/7056) + [PR #11150](https://github.com/fabricjs/fabric.js/pull/11150), fusionada el 12 de octubre de 2026: el pincel Spray saltaba al soltar el puntero.
+- [Fabric.js PR #10977](https://github.com/fabricjs/fabric.js/pull/10977), fusionada en mayo de 2026, y [release 7.4.0](https://github.com/fabricjs/fabric.js/releases/tag/v740): errores de zoom, dimensiones y tiradores con viewport rotado.
+- [Photopea #4051](https://github.com/photopea/photopea/issues/4051): reporte de problemas táctiles Android, bloqueo durante ciertas operaciones y dificultades al trabajar con imágenes grandes. El mantenedor confirmó una corrección específica para Quick Select táctil el 5 de diciembre de 2021; no afirmó haber corregido todo el reporte.
+- [Konva 10.9.0](https://github.com/konvajs/konva/releases/tag/10.9.0), publicada el 15 de octubre de 2026, y [commit de rendimiento](https://github.com/konvajs/konva/commit/849c455a251298ccbcd881675e4226c79368b52a): agrupar actualizaciones del Transformer y retirar nodos destruidos sin volver a enlazar los supervivientes. Es una lección general de rendimiento; AnimeArt no usa Konva ni Fabric como dependencia.
+
+Estos reportes son patrones de diagnóstico y prueba, no evidencia de que AnimeArt comparta exactamente todos esos defectos. En esta sesión se verificaron fuentes técnicas públicas de GitHub; no se pudo hacer una búsqueda general de blogs/novedades editoriales de Adobe, Canva o Picsart fuera de GitHub, por lo que no se atribuye ninguna cita a esos sitios.
+
+### Aceptación todavía pendiente
+
+La prueba del emulador no sustituye la prueba física de mover, tocar, escalar y recuperar imágenes con el dedo en el Xiaomi `24116RACCG`. Los issues [#73](https://github.com/jonhararagi/animeart/issues/73) y [#86](https://github.com/jonhararagi/animeart/issues/86) siguen abiertos. Código y CI están en **PASS** para este SHA; aceptación física final permanece en **PARTIAL** hasta comprobarla en el teléfono real.

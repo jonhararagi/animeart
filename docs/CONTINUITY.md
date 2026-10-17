@@ -3450,3 +3450,18 @@ El workflow de publicación web terminó con el trabajo `deploy` omitido; no se 
 Fuentes técnicas verificadas: [Fabric.js #7085/PR #11143](https://github.com/fabricjs/fabric.js/pull/11143), [Photopea #4051](https://github.com/photopea/photopea/issues/4051), [Fabric.js #7056/PR #11150](https://github.com/fabricjs/fabric.js/pull/11150), [Fabric.js #7278/PR #7289](https://github.com/fabricjs/fabric.js/pull/7289) y [PR #7470](https://github.com/fabricjs/fabric.js/pull/7470). Se utilizaron como patrones para diseñar pruebas de regresión, no como evidencia automática de un defecto idéntico.
 
 Sigue pendiente validar con el dedo en el Xiaomi `24116RACCG`. La búsqueda web general de blogs/notas editoriales externos a GitHub no estuvo disponible; no se atribuyen citas a páginas no consultadas.
+
+---
+
+# Continuidad · auditoría móvil y rendimiento del historial · 2026-10-17
+
+**HEAD funcional verificado:** `00d9691fb7d3cfa10fa91b982808f310ce888595`  
+**TIMER:** 2–4 horas estimadas de inspección, implementación y validación de esta ronda; tiempo activo real no medido.
+
+- Movimiento de selección múltiple: fija la referencia a las coordenadas globales del puntero y la escala al comienzo del gesto; mover el canvas bajo un puntero estacionario no altera las capas seleccionadas.
+- Historial: límite por defecto de 30 operaciones para no retener snapshots completos sin límite; prueba de regresión para rollback que restaura la entrada desalojada si el guardado falla.
+- Caché PWA: `animeart-web-shell-v42`.
+- Web CI + Chromium E2E PASS [#39076162599](https://github.com/jonhararagi/animeart/actions/runs/39076162599), Android CI PASS [#39076162638](https://github.com/jonhararagi/animeart/actions/runs/39076162638), despliegue web PASS [#39076162831](https://github.com/jonhararagi/animeart/actions/runs/39076162831).
+- APK artefacto [#12117351168](https://github.com/jonhararagi/animeart/actions/runs/39076162638/artifacts/12117351168), desde `00d9691fb7d3cfa10fa91b982808f310ce888595`. SHA-256 del APK: `4c8d59e973ddf857288368305968dc639be593f9887f50bfdaeccf2876f4a501`.
+- Fuentes revisadas: [Fabric.js #7085/PR #11143](https://github.com/fabricjs/fabric.js/pull/11143), [#7056/PR #11150](https://github.com/fabricjs/fabric.js/pull/11150), [PR #10977/release 7.4.0](https://github.com/fabricjs/fabric.js/releases/tag/v740), [Photopea #4051](https://github.com/photopea/photopea/issues/4051) y [Konva 10.9.0](https://github.com/konvajs/konva/releases/tag/10.9.0). Sirven como patrones de prueba, no como prueba automática de defectos idénticos ni como motivo para añadir esas bibliotecas.
+- Sin aceptación física todavía: probar con el dedo en el Xiaomi `24116RACCG`; mantener abiertos [#73](https://github.com/jonhararagi/animeart/issues/73) y [#86](https://github.com/jonhararagi/animeart/issues/86) hasta completar esa prueba.
