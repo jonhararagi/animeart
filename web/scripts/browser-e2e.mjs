@@ -889,7 +889,7 @@ try {
   const zoomWidthBefore = await evaluate('document.querySelector("#background-removal-preview").getBoundingClientRect().width');
   await click("#background-removal-zoom-in");
   await waitFor('document.querySelector("#background-removal-preview").getBoundingClientRect().width > ' + JSON.stringify(zoomWidthBefore * 1.4), 5000);
-  assert(await evaluate('document.querySelector("#background-removal-preview-wrap") === null || document.querySelector(".background-removal-preview-wrap").classList.contains("is-zoomed")'), "zoom controls switch the preview to a pannable enlarged image");
+  assert(await evaluate('document.querySelector(".background-removal-preview-wrap").classList.contains("is-zoomed")'), "zoom controls switch the preview to a pannable enlarged image");
   for (let step = 0; step < 5; step++) await click("#background-removal-zoom-in");
   await waitFor('document.querySelector(".background-removal-preview-wrap").scrollWidth > document.querySelector(".background-removal-preview-wrap").clientWidth', 5000);
   const previewPanStart = await selectorCenter("#background-removal-preview");
