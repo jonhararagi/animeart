@@ -491,7 +491,7 @@ try {
   assert(importedLayer?.image?.width === 640 && importedLayer?.image?.height === 480 && importedLayer?.image?.mime === "image/png", "PNG import preserves decoded dimensions and PNG MIME type");
   const importedPngPixels = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="e2e-fixture"); if(!layer?.image?.source) return Promise.resolve({decodeError:true}); return new Promise(resolve=>{ const image=new Image(); image.onload=()=>{ const sample=document.createElement("canvas"); sample.width=image.naturalWidth; sample.height=image.naturalHeight; const context=sample.getContext("2d",{willReadFrequently:true}); context.drawImage(image,0,0); resolve({width:sample.width,height:sample.height,transparentAlpha:context.getImageData(0,0,1,1).data[3],subjectAlpha:context.getImageData(60,80,1,1).data[3]}); }; image.onerror=()=>resolve({decodeError:true}); image.src=layer.image.source; }); })()');
   assert(importedPngPixels.width === 640 && importedPngPixels.height === 480 && importedPngPixels.transparentAlpha === 0 && importedPngPixels.subjectAlpha === 255, "persisted PNG decodes with real transparency and retained subject pixels");
-  await click('[aria-label="Select e2e-fixture"]');
+  await click('[aria-label="Seleccionar capa e2e-fixture"]');
   await evaluate('(() => { const slider = document.querySelector("#adjustment-brightness"); slider.value = "125"; slider.dispatchEvent(new Event("input", { bubbles: true })); slider.dispatchEvent(new Event("change", { bubbles: true })); })()');
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "e2e-fixture" && layer.adjustments?.brightness === 125)', 10000);
   assert(await evaluate('document.querySelector("#adjustment-brightness").value === "125"'), "real browser previews a non-destructive image adjustment");
@@ -522,7 +522,7 @@ try {
   const deleteFirst = await importNamedFixture("delete-first");
   const keepSecond = await importNamedFixture("keep-second");
   assert(deleteFirst.id !== keepSecond.id, "two imported images have distinct stable layer IDs");
-  await click('[aria-label="Select delete-first"]');
+  await click('[aria-label="Seleccionar capa delete-first"]');
   assert(await evaluate('document.querySelector("#selection-indicator").textContent.includes("Imagen seleccionada: delete-first")'), "selected image is identified by a visible label, not only a blue outline");
   assert(await evaluate('!document.querySelector("#remove-selected-image").hidden'), "the X control is visible for the selected image");
   await click("#remove-selected-image");
@@ -866,7 +866,7 @@ try {
   const beforeMaskImport = (await readDocument()).layers.length;
   await evaluate('(() => { const bytes=Uint8Array.from(atob("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="),c=>c.charCodeAt(0)); const file=new File([bytes],"shape-mask-fixture.png",{type:"image/png"}); const dt=new DataTransfer();dt.items.add(file);const input=document.querySelector("#image-file-input");input.files=dt.files;input.dispatchEvent(new Event("change",{bubbles:true}));return true;})()');
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length === ' + (beforeMaskImport + 1), 10000);
-  await click('[aria-label="Select shape-mask-fixture"]');
+  await click('[aria-label="Seleccionar capa shape-mask-fixture"]');
   await waitFor('document.querySelector("#image-mask-panel").hidden === false');
   await evaluate('(() => { const select=document.querySelector("#image-mask");select.value="heart";select.dispatchEvent(new Event("change",{bubbles:true})); })()');
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer=>layer.name==="shape-mask-fixture"&&layer.image?.mask==="heart")');
@@ -896,7 +896,7 @@ try {
   const beforeMagicLayerCount = (await readDocument()).layers.length;
   await evaluate('(async () => { const source=document.createElement("canvas");source.width=64;source.height=64;const context=source.getContext("2d");context.fillStyle="#ffffff";context.fillRect(0,0,64,64);context.fillStyle="#d21e23";context.fillRect(2,2,10,10);const blob=await new Promise(resolve=>source.toBlob(resolve,"image/png"));const file=new File([blob],"magic-tap-fixture.png",{type:"image/png"});const transfer=new DataTransfer();transfer.items.add(file);const input=document.querySelector("#image-file-input");input.files=transfer.files;input.dispatchEvent(new Event("change",{bubbles:true}));return true;})()');
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length === ' + (beforeMagicLayerCount + 1), 10000);
-  await click('[aria-label="Select magic-tap-fixture"]');
+  await click('[aria-label="Seleccionar capa magic-tap-fixture"]');
   const magicOriginalSource = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="magic-tap-fixture").image.source');
   await click('[data-tool="magic-eraser"]');
   await click("#canvas");
