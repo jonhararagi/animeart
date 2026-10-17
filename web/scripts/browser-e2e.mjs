@@ -1612,16 +1612,7 @@ try {
     "selection handles remain visible after edge resizing");
   await saveScreenshot("animeart-studio-mobile-imported-image-resized.png");
 
-  const closeAt = { x: visibleHandlesAfterResize.canvas.left + visibleHandlesAfterResize.close.x, y: visibleHandlesAfterResize.canvas.top + visibleHandlesAfterResize.close.y };
-  await mouseStroke([closeAt, closeAt]);
-  await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="e2e-mobile-import")', 10000);
-  assert(await evaluate('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="e2e-mobile-import")'),
-    "the canvas X removes the selected mobile image and Undo restores it");
-  await click("#undo");
-  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterResize), 10000);
-  await click('[aria-label="Seleccionar capa e2e-mobile-import"]');
-  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="e2e-mobile-import")'),
-    "Undo restores the image removed with the canvas X before transform Undo/Redo tests");
+  // The X-delete/Undo regression runs after the transform history sequence below.
 
   // Undo/Redo must remain accessible from the mobile dock when the selection overlay is closed.
   await clickMoreGoal("undo");
@@ -1646,6 +1637,19 @@ try {
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterResize), 10000);
   assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
     "mobile Redo restores the edge resize after restoring the move");
+
+  // AA-IMAGE-X-DELETE-001: the visible X is an image delete action, not a selection-close action.
+  await click('[aria-label="Seleccionar capa e2e-mobile-import"]');
+  await waitFor('Boolean(window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.closeHandle)');
+  const closeAtAfterHistory = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(), d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; return {x:r.left+d.closeHandle.x,y:r.top+d.closeHandle.y}; })()');
+  await mouseStroke([closeAtAfterHistory, closeAtAfterHistory]);
+  await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="e2e-mobile-import")', 10000);
+  assert(await evaluate('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="e2e-mobile-import")'),
+    "the canvas X removes the selected mobile image");
+  await click("#undo");
+  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterResize), 10000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="e2e-mobile-import")'),
+    "Undo restores the image removed with the canvas X and preserves its transform");
 
   // Zoom out first so the visible workspace has a pasteboard around the full document.
   // At fit-to-width on a phone, left/right edges coincide with the viewport and cannot
