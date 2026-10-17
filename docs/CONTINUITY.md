@@ -3288,7 +3288,7 @@ Corrección de inventario durante la integración: aunque la sincronización de 
 
 ## AA-FREE-MOVE-PREVIEW-001 — contenido visible fuera del marco (2026-10-17)
 
-- Rama de trabajo: `aa-free-move-preview-001`, PR #89. `main` permanece sin modificar mientras se valida la prueba ampliada.
+- Registro histórico de la rama de validación `aa-free-move-preview-001`, PR #89: en ese momento `main` aún permanecía sin modificar. La integración posterior se completó el 2026-10-17 por squash en `main`, merge SHA `28f51e8050c601a6edb45df17dab938dc140df77`.
 - Causa confirmada en código: `drawNow()` recortaba todo el render al rectángulo del documento después de `applyViewport()`. El modelo de capa podía moverse fuera del marco, pero los píxeles se descartaban en pantalla. Es coherente con el síntoma de que la transformación cambia pero la imagen parece desaparecer antes de lo esperado.
 - Corrección: retirar el recorte global del render de edición y aplicar recorte por capa. Con **Libre**, las capas normales de imagen y texto se pueden dibujar fuera del marco dentro del espacio de trabajo. Capas de fondo y de dibujo permanecen recortadas. Las vistas auxiliares y exportación siguen usando el render seguro por defecto.
 - Modelo de UX aplicado: separar espacio de trabajo visible, marco/documento y exportación. Es un patrón general de los editores por capas; no se afirma haber inspeccionado el código propietario de Canva/Picsart.
@@ -3307,7 +3307,7 @@ Corrección de inventario durante la integración: aunque la sincronización de 
 **Rama:** `aa-free-move-preview-001`  
 **SHA de código y pruebas E2E:** `4d6f7b42b71dc5aed6161900b1cc13765382b188`  
 **PR:** [#89](https://github.com/jonhararagi/animeart/pull/89)  
-**Estado de integración:** PR abierto. `main` no modificado.
+**Estado de integración:** PR #89 fusionado por squash el 2026-10-17 en `main`. Merge SHA `28f51e8050c601a6edb45df17dab938dc140df77`.
 
 ### Comportamiento corregido
 
@@ -3336,6 +3336,12 @@ El SHA del código/PR es `4d6f7b42b71dc5aed6161900b1cc13765382b188`; el identifi
 
 **Pendiente de investigación externa con fuentes verificables.** No se debe afirmar que Canva o Picsart usan una implementación específica sin una publicación técnica o documentación pública que lo confirme. La solución aplicada a AnimeArt sigue un patrón general de editores de lienzo: transformación de capa independiente, área visible de trabajo/pasteboard, marco que delimita el arte final y recorte en el render/exportación, no en la transformación. La sesión actual no permitió hacer una búsqueda web general de blogs/documentación; por tanto no se registra ningún artículo como ya consultado.
 
+**CI post-merge sobre main SHA `28f51e8050c601a6edb45df17dab938dc140df77`:** Web PASS [run #39056009157](https://github.com/jonhararagi/animeart/actions/runs/39056009157); Android PASS [run #39056009180](https://github.com/jonhararagi/animeart/actions/runs/39056009180). El Android CI confirmó arranque de WebView y validación offline.
+
+**APK de main:** [artefacto #12109711866](https://github.com/jonhararagi/animeart/actions/runs/39056009180/artifacts/12109711866). SHA-256 de la APK `21b994563b804fbff5349e765eca3c153d5d949152aaaabcf60ee371d87c4949`.
+
+El workflow de publicación web terminó con el trabajo `deploy` omitido; no se afirma que la publicación web se haya desplegado.
+
 **Aceptación física pendiente:** arrastre real con dedo y recuperación de la capa en el Xiaomi `24116RACCG`. La prueba Chromium y el emulador Android no se consideran una prueba física de teléfono.
 
 ---
@@ -3361,5 +3367,7 @@ El SHA del código/PR es `4d6f7b42b71dc5aed6161900b1cc13765382b188`; el identifi
 
 **Documento detallado:** [`docs/AUDITS/2026-10-17-EDITOR-TOOLS-AUDIT.md`](./AUDITS/2026-10-17-EDITOR-TOOLS-AUDIT.md)
 
-**CI del código y pruebas:** PASS sobre `6cb21972b26e626613148e24a61899a4297f1dd6`. Web CI [#39055005733](https://github.com/jonhararagi/animeart/actions/runs/39055005733) y Android CI [#39055005730](https://github.com/jonhararagi/animeart/actions/runs/39055005730) pasaron sobre el mismo SHA. La nueva comprobación móvil certifica la bandeja de dibujo táctil, trazos editables/deshacer, controles de capa de `44×44` px CSS o más y cambio real del orden de capas. Se añadió la actualización documental actual después de ese SHA; el HEAD documental también vuelve a ejecutarse en CI. La prueba física con el Xiaomi `24116RACCG` sigue pendiente.
+**CI del código y pruebas:** PASS sobre `6cb21972b26e626613148e24a61899a4297f1dd6`.
+
+**Integración posterior en main:** PR #89 está fusionado. Merge SHA `28f51e8050c601a6edb45df17dab938dc140df77`; Web CI #39056009157 PASS y Android CI #39056009180 PASS sobre el mismo merge SHA. APK post-merge: artefacto #12109711866, SHA-256 `21b994563b804fbff5349e765eca3c153d5d949152aaaabcf60ee371d87c4949`. La prueba física en Xiaomi y la investigación externa de fuentes públicas siguen pendientes. Web CI [#39055005733](https://github.com/jonhararagi/animeart/actions/runs/39055005733) y Android CI [#39055005730](https://github.com/jonhararagi/animeart/actions/runs/39055005730) pasaron sobre el mismo SHA. La nueva comprobación móvil certifica la bandeja de dibujo táctil, trazos editables/deshacer, controles de capa de `44×44` px CSS o más y cambio real del orden de capas. Se añadió la actualización documental actual después de ese SHA; el HEAD documental también vuelve a ejecutarse en CI. La prueba física con el Xiaomi `24116RACCG` sigue pendiente.
 
