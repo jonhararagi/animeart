@@ -3578,6 +3578,7 @@ body.mobile-tools-open .toolbar > .easy-edit-panel > .easy-edit-grid button {
   /* Small tool catalogs float above the dock; large image studios occupy the full screen. */
   #toolbox-dialog[open] {
     position: fixed;
+    z-index: 20;
     inset: auto 0 calc(66px + env(safe-area-inset-bottom)) 0;
     box-sizing: border-box;
     width: 100vw;
