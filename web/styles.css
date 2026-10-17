@@ -438,8 +438,15 @@ canvas {
 .background-removal-header h2{margin:0;font-size:1.15rem}
 .background-removal-header p:not(.eyebrow){color:#94a4b8;font-size:.75rem;line-height:1.5}
 .background-removal-workspace{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(230px,.8fr);gap:16px;min-height:300px}
-.background-removal-preview-wrap{display:grid;place-items:center;min-width:0;min-height:300px;overflow:auto;border:1px solid #344155;border-radius:10px;background:repeating-conic-gradient(#202938 0% 25%,#161e2b 0% 50%) 50%/20px 20px}
-#background-removal-preview{display:block;max-width:100%;max-height:60vh;object-fit:contain;touch-action:none;cursor:crosshair}
+.background-removal-preview-column{display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:8px;min-width:0;min-height:0}
+.background-removal-preview-tools{display:flex;align-items:center;justify-content:flex-start;gap:8px;flex-wrap:wrap}
+.background-removal-preview-tools button{min-width:44px;min-height:44px;padding:8px 12px;border:1px solid #526078;border-radius:10px;background:#202b3d;color:inherit;font:inherit;font-weight:800;touch-action:manipulation}
+.background-removal-preview-tools button:disabled{opacity:.45}
+#background-removal-zoom-value{min-width:64px;text-align:center;color:#c6d8ee;font-size:.78rem;font-weight:800}
+.background-removal-preview-wrap{display:grid;place-items:center;min-width:0;min-height:260px;height:min(58vh,560px);max-height:60vh;overflow:auto;overscroll-behavior:contain;border:1px solid #344155;border-radius:10px;background:repeating-conic-gradient(#202938 0% 25%,#161e2b 0% 50%) 50%/20px 20px;touch-action:pan-x pan-y}
+.background-removal-preview-wrap.is-zoomed{display:block;place-items:unset}
+#background-removal-preview{display:block;max-width:none;max-height:none;object-fit:initial;touch-action:none;cursor:crosshair;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
+.background-removal-zoom-help{margin:0;color:#9fb0c7;font-size:.72rem;line-height:1.4}
 .background-removal-controls{display:grid;align-content:start;gap:12px;min-width:0}
 .background-profile-controls{display:grid;gap:8px;padding:10px;border:1px solid #344155;border-radius:10px;background:rgb(20 29 42 / 72%)}
 .background-profile-controls select,.background-profile-controls input[type=text]{width:100%;min-width:0;min-height:38px}
@@ -451,7 +458,7 @@ canvas {
 .background-removal-actions{display:flex;flex-wrap:wrap;gap:7px}
 #background-removal-status{margin:0;color:#9bb1c8;font-size:.7rem;line-height:1.5}
 #apply-background-removal{border-color:#31a6b8;background:#173944}
-@media(max-width:760px){.background-removal-shell{padding:12px}.background-removal-workspace{grid-template-columns:minmax(0,1fr)}.background-removal-preview-wrap{min-height:220px}#background-removal-preview{max-height:42vh}.background-removal-header h2{font-size:1rem}}
+@media(max-width:760px){.background-removal-shell{padding:12px}.background-removal-workspace{grid-template-columns:minmax(0,1fr)}.background-removal-preview-column{min-height:0}.background-removal-preview-wrap{min-height:200px;height:min(36vh,320px);max-height:42vh}.background-removal-preview-tools{position:sticky;top:0;z-index:2;background:#101722;padding:2px 0}.background-removal-preview-tools button{min-height:46px}.background-removal-zoom-help{font-size:.7rem}#background-removal-header h2,.background-removal-header h2{font-size:1rem}.background-removal-quick-actions button{min-height:48px}}
 
 /* Mobile editing: the canvas owns touch input so drawing and two-finger gestures remain deterministic. */
 .canvas-wrap, #canvas { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
@@ -2908,6 +2915,8 @@ body > .mobile-touch-dock .mobile-export-format select { width: 100%; min-width:
 .background-removal-advanced > summary {
   min-height: 44px;
 }
+#preview-background-removal { grid-column: 1 / -1; min-height: 48px!important; font-weight: 850; border-color:#38bfd4; background:#153c4a; color:#e2fbff; }
+#apply-background-removal:disabled { opacity:.45; cursor:not-allowed; }
 .background-removal-advanced {
   border: 1px solid var(--border, #343b4a);
   border-radius: 12px;
