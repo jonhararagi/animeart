@@ -1535,9 +1535,9 @@ try {
     "typography dialog presents the title-first text workflow");
   await click("#apply-text-layer");
   await waitFor('document.querySelector("#text-edit-dialog").open === false');
-  assert(await evaluate('(() => { const b=document.querySelector("#selection-mini-edit-text"); const r=b.getBoundingClientRect(); const s=getComputedStyle(b); return !b.hidden && s.display!=="none" && s.visibility!=="hidden" && r.width>=44 && r.height>=44; })()'),
-    "a selected text layer exposes a direct, touch-sized Edit Text action");
-  await click("#selection-mini-edit-text");
+  assert(await evaluate('(() => { const b=document.querySelector(".mobile-touch-dock [data-touch-action=add-text]"); const r=b.getBoundingClientRect(); const s=getComputedStyle(b); return s.display!=="none" && s.visibility!=="hidden" && r.width>=44 && r.height>=44 && b.getAttribute("aria-label")==="Editar texto seleccionado" && b.querySelector("span:last-child")?.textContent==="Editar texto"; })()'),
+    "the persistent mobile dock changes from Add Text to a touch-sized Edit Text action for a selected text layer");
+  await click('.mobile-touch-dock [data-touch-action="add-text"]');
   await waitFor('document.querySelector("#text-edit-dialog").open === true');
   await evaluate('(() => { const el=document.querySelector("#text-content"); el.value="SUBTÍTULO EDITADO"; el.dispatchEvent(new Event("input",{bubbles:true})); el.dispatchEvent(new Event("change",{bubbles:true})); })()');
   await click("#apply-text-layer");
