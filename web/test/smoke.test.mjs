@@ -512,15 +512,20 @@ test("mobile dock actions call history directly and keep the active drawing tool
   const [html, js, css] = await Promise.all([
     readFile("index.html", "utf8"), readFile("app.js", "utf8"), readFile("styles.css", "utf8")
   ]);
-  assert.match(html, /data-touch-action="tool" data-tool="brush" aria-pressed="false"><span aria-hidden="true">🖌️<\/span><span>Dibujar<\/span>/);
+  assert.match(html, /data-touch-action="paint" aria-label="Abrir estudio de pintura"/);
+  assert.match(html, /data-touch-action="crop" aria-label="Elegir tipo de recorte"/);
+  assert.match(html, /data-edit-goal="draw"/);
+  assert.match(html, /data-edit-goal="erase"/);
   assert.match(html, /data-touch-action="more" aria-expanded="false"><span aria-hidden="true">☰<\/span><span>Más<\/span>/);
   assert.match(html, /data-edit-goal="crop"/);
   assert.match(html, /id="crop-resize-image"/);
   assert.match(js, /Primero seleccioná una imagen en el lienzo o en Capas; después tocá Recortar/);
   assert.match(js, /La imagen está bloqueada\. Desbloqueala desde Capas para poder recortarla/);
   assert.doesNotMatch(html, /data-touch-action="more" aria-expanded="false">More/);
-  assert.match(js, /if \(action === "undo"\) \{ undo\(\); return; \}/);
-  assert.match(js, /if \(action === "redo"\) \{ redo\(\); return; \}/);
+  assert.match(js, /if \(action === "paint"\)[\s\S]*?openCensorLightDialog\("paint"\)/);
+  assert.match(js, /crop: \(\) => openCropModeDialog\(\)/);
+  assert.match(js, /undo: \(\) => undoButton\.click\(\)/);
+  assert.match(js, /redo: \(\) => redoButton\.click\(\)/);
   assert.match(css, /Mobile editor controls: fixed canvas/);
 });
 
@@ -752,15 +757,18 @@ test("selection status indicator never intercepts canvas pointer gestures", asyn
 });
 
 
-test("AA-MOBILE-PICSART-UX-005 keeps image, text, history, export and delete in the bottom dock", async () => {
+test("AA-MOBILE-PICSART-UX-005 keeps common actions on the dock and secondary actions in More", async () => {
   const [html, css, js] = await Promise.all([
     readFile("index.html", "utf8"), readFile("styles.css", "utf8"), readFile("app.js", "utf8")
   ]);
   const dock = html.match(/<nav class="mobile-touch-dock"[\s\S]*?<\/nav>/)?.[0] || "";
   assert.match(dock, /aria-label="Herramientas principales"/);
-  for (const label of ["Añadir", "Galería", "Mover", "Dibujar", "Texto", "Deshacer", "Rehacer", "Exportar", "Eliminar", "Capas", "Más"]) assert.match(dock, new RegExp(label));
-  assert.equal((dock.match(/data-touch-action=/g) || []).length, 15);
-  for (const action of ["import-image", "asset-library", "undo", "redo", "export", "delete-selected"]) assert.match(dock, new RegExp('data-touch-action="' + action + '"'));
+  for (const label of ["Añadir", "Mover", "Pintar", "Recortar", "Texto", "Más"]) assert.match(dock, new RegExp(label));
+  assert.equal((dock.match(/data-touch-action=/g) || []).length, 6);
+  for (const action of ["import-image", "tool", "paint", "crop", "add-text", "more"]) assert.match(dock, new RegExp('data-touch-action="' + action + '"'));
+  for (const goal of ["rotate-left", "rotate-right", "flip-horizontal", "flip-vertical", "undo", "redo", "export", "delete-selected"]) assert.match(html, new RegExp('data-edit-goal="' + goal + '"'));
+  assert.match(html, /id="mobile-export-format"/);
+  assert.match(html, /id="mobile-export-resolution"/);
   assert.match(css, /AA-MOBILE-UX-004/);
   assert.match(css, /AA-GALLERY-DOCK-001/);
   assert.match(css, /AA-MOBILE-PICSART-UX-005/);
@@ -772,7 +780,7 @@ test("AA-MOBILE-PICSART-UX-005 keeps image, text, history, export and delete in 
   assert.match(js, /const visibleHandles = clampSelectionHandles\(geometry, canvasSize\(\), selectionHandleInset\(\)\)/);
   assert.match(js, /drawObjectSelectionHandle\(visibleHandles\.closeHandle, "close"\)/);
   assert.match(js, /drawObjectSelectionHandle\(visibleHandles\.resizeHandle, "resize"\)/);
-  for (const action of ["rotate-left", "rotate-right", "flip-horizontal", "flip-vertical"]) assert.match(dock, new RegExp(`data-touch-action="${action}"`));
+  for (const action of ["rotate-left", "rotate-right", "flip-horizontal", "flip-vertical"]) assert.match(html, new RegExp('data-edit-goal="' + action + '"'));
   assert.match(html, /id="mobile-export-format"/);
   assert.match(js, /drawObjectSelectionHandle\(rotationHandle, "rotate"\)/);
 });
@@ -825,7 +833,7 @@ test("AA-EDITOR-UX-002 surfaces image import/library, compact view options, laye
   assert.match(html, /id="selection-mini-front"/);
   assert.match(html, /id="crop-reset-selection"/);
   assert.match(html, /data-touch-action="import-image"/);
-  assert.match(html, /data-touch-action="delete-selected"/);
+  assert.match(html, /data-edit-goal="delete-selected"/);
   assert.match(html, /id="selection-mini-delete"/);
   assert.ok(app.includes("function cropPreviewHitHandle("));
   assert.ok(app.includes("isFullImageSelection"), "the full-image frame remains a starting point for a new crop");
@@ -921,7 +929,7 @@ test("AA-MOBILE-PICSART-PANEL-LAW keeps mobile actions below the phone safe area
   assert.match(css, /grid-template-rows: var\(--aa-mobile-safe-top\) minmax\(0, 1fr\) auto !important/);
   assert.match(css, /env\(safe-area-inset-bottom\)/);
   assert.match(html, /data-touch-action="import-image"/);
-  assert.match(html, /data-touch-action="export"/);
+  assert.match(html, /data-edit-goal="export"/);
   assert.match(html, /data-touch-action="more"/);
 });
 
