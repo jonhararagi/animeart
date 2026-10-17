@@ -1553,6 +1553,18 @@ try {
   await waitFor('document.body.classList.contains("mobile-layers-open")');
   const selectedImportedRow = await evaluate('(() => { const doc=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const layer=doc.layers?.find(item=>item.name==="e2e-mobile-import"); const row=layer ? document.querySelector("#layers li[data-layer-id=\\\"" + layer.id + "\\\"] button.layer-select") : null; row?.click(); return Boolean(row); })()');
   assert(selectedImportedRow, "mobile layer list can select the exact imported image for transform tests");
+  const mobileLayerId = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.id');
+  const mobileLayerTouchTargets = await evaluate('(() => { const row=document.querySelector("#layers li[data-layer-id=\\\\\\""+' + JSON.stringify(mobileLayerId) + '+"\\\\\\\"]"); if(!row)return {found:false,targets:[]}; return {found:true,targets:[...row.querySelectorAll(".layer-controls .layer-toggle,.layer-lifecycle .layer-action")].map(el=>{const r=el.getBoundingClientRect();return {label:el.getAttribute("aria-label")||el.title||el.textContent.trim(),width:r.width,height:r.height,disabled:el.disabled};})}; })()');
+  assert(mobileLayerTouchTargets.found && mobileLayerTouchTargets.targets.length >= 6 &&
+    mobileLayerTouchTargets.targets.every(target=>target.width >= 44 && target.height >= 44),
+    "mobile layer visibility, lock and lifecycle actions have finger-sized targets: " + JSON.stringify(mobileLayerTouchTargets));
+  const mobileOrderBefore = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.findIndex(layer=>layer.id===' + JSON.stringify(mobileLayerId) + ')');
+  assert(mobileOrderBefore > 0, "mobile stacking fixture has a layer below the selected image");
+  await click(layerSelector(mobileLayerId) + ' .layer-action[title="Bajar capa un nivel"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.findIndex(layer=>layer.id===' + JSON.stringify(mobileLayerId) + ') === ' + JSON.stringify(mobileOrderBefore - 1), 10000);
+  await click(layerSelector(mobileLayerId) + ' .layer-action[title="Subir capa un nivel"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.findIndex(layer=>layer.id===' + JSON.stringify(mobileLayerId) + ') === ' + JSON.stringify(mobileOrderBefore), 10000);
+  assert(true, "mobile layer drawer moves a real layer backward and forward in stack order through its touch actions");
   await waitFor('document.querySelector("#selection-mini-panel").hidden === false');
   const mobileTransformBeforeButtonRotate = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation');
   await clickMoreGoal("rotate-right");
