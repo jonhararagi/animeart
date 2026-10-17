@@ -63,6 +63,30 @@ Esta rama añade pruebas E2E para:
 
 Las fuentes externas sirven como patrones para diseñar la prueba, no como sustituto de reproducir un bug en AnimeArt. Los cambios derivados solo se consideran completos si la suite Web E2E y las comprobaciones Android pasan en el mismo HEAD.
 
+## Hallazgo confirmado en AnimeArt y corrección aplicada (2026-10-17)
+
+### Defecto reproducido
+
+En `web/app.js`, `pointFromEvent()` calculaba el punto del evento en coordenadas del documento, pero llamaba a `createStrokePoint(screenToDocumentPoint(...))`. La función `createStrokePoint` está definida para recibir dos números separados (`x, y`), no un objeto. Al convertir ese objeto a número, el valor resultaba no válido y se normalizaba a cero, por lo que los trazos libres podían persistirse en `(0, 0)` en lugar de donde la persona había dibujado.
+
+Este defecto se confirmó con Chromium, no se infirió solamente por analogía con Fabric.js. La corrección obtiene `documentPoint` y llama a `createStrokePoint(documentPoint.x, documentPoint.y)`. Se añadió una prueba unitaria que protege la firma y una prueba E2E que compara los puntos guardados con los puntos previstos después de zoom y pan táctil.
+
+### Evidencia final
+
+- **HEAD probado:** `6facc31ba32ea45d8246b6922550b6aede61e9d9`.
+- **Web CI: PASS:** [run #39059634356](https://github.com/jonhararagi/animeart/actions/runs/39059634356).
+- **Android CI: PASS:** [run #39059634357](https://github.com/jonhararagi/animeart/actions/runs/39059634357).
+- Puntos esperados del trazo: `(294, 248)` y `(346, 248)`. Puntos reales guardados en E2E: `(293.9999957, 248.0000112)` y `(345.9999928, 248.0000112)`.
+- Se comprobó que el trazo produjera píxeles reales tras zoom/pan.
+- El borrado por pincel de píxeles tras zoom/pan dejó el centro con alfa `0` y conservó un píxel distante con alfa `255`.
+- También siguieron pasando el cruce visible de los cuatro bordes del documento, la recuperación del objeto y la exportación PNG RGBA `640×480` fuera del marco sin modificar la transformación.
+- **APK de esa CI:** [artefacto #12109919707](https://github.com/jonhararagi/animeart/actions/runs/39059634357/artifacts/12109919707).
+- **SHA-256 del archivo APK:** `87bfde30f0a8ead7deea6f631394fbd79e7bc6678cbc79232ba51a2a6ebd2e29`.
+- Nombre generado por CI: `AnimeArt-Android-aa-mobile-redesign-004-21c418de44c7659f0bd0da2dfe88cf71b5ec8f5e.apk`. El SHA del código probado es `6facc31...`; el SHA incrustado en el nombre de la APK identifica el checkout de compilación del PR y no es el SHA de la rama.
+- La comprobación de arranque Android confirmó WebView, el canvas del editor y el modo offline.
+
+La investigación de este documento se basa en informes y PRs públicos de GitHub que sí se pudieron consultar. La búsqueda general de blogs y notas de novedades de sitios editoriales sigue pendiente, porque no estuvo disponible en esta sesión. La aceptación física en el Xiaomi `24116RACCG` también sigue pendiente.
+
 ## Pendiente
 
 - Verificar Web CI y Android CI para el HEAD de esta rama y, si ambos pasan, integrar en `main` según la autorización del usuario.
