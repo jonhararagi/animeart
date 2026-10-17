@@ -81,9 +81,9 @@ test("censor light uses a cancellable per-image preview instead of the drawing t
  assert.match(html, /class="censor-light-controls"[^>]*hidden/);
  assert.match(html, /<details class="background-removal-advanced">/);
  assert.ok(html.includes('id="background-auto-detect"'));
- assert.match(app, /async function openCensorLightDialog\(\)/);
+ assert.match(app, /async function openCensorLightDialog\(requestedMode = "censor-light"\)/);
  assert.match(app, /function closeCensorLightDialog\(\)/);
- assert.match(app, /censor: \(\) => openCensorLightDialog\(\)/);
+ assert.match(app, /censor: \(\) => openCensorLightDialog\("censor-light"\)/);
  assert.match(app, /refreshDocument\("✨ Luz de censura aplicada solo a la imagen/);
  assert.match(app, /replaceImageLayer\(state\.document, layer\.id/);
  assert.match(css, /#censor-image-preview[\s\S]*?touch-action: none/);
