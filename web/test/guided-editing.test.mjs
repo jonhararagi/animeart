@@ -124,8 +124,33 @@ test("AA-TYPOGRAPHY-CANVA-001 keeps the text modal reachable on mobile and suppo
  assert.match(app, /finishTransformInteraction\(false, event\)/);
  assert.match(css, /AA-TYPOGRAPHY-CANVA-002/);
  assert.match(css, /#text-edit-dialog\[open\]/);
- assert.match(worker, /animeart-web-shell-v33/);
+ assert.match(worker, /animeart-web-shell-v34/);
  assert.match(browserE2E, /mobile Text opens a reachable Canva-style editor above the dock and switches away from brush mode/);
  assert.match(browserE2E, /dragging text never adds brush strokes/);
  assert.match(browserE2E, /tapping the moved text opens the editor/);
+});
+
+
+test("AA-TOOL-STUDIOS-001 keeps the mobile dock focused and separates image crop from composition crop", async () => {
+ const [html, app, css, worker] = await Promise.all([
+  readFile("index.html", "utf8"), readFile("app.js", "utf8"),
+  readFile("styles.css", "utf8"), readFile("service-worker.js", "utf8")
+ ]);
+ const dockStart = html.indexOf('<nav class="mobile-touch-dock"');
+ const dockEnd = html.indexOf("</nav>", dockStart);
+ assert.ok(dockStart >= 0 && dockEnd > dockStart);
+ const dock = html.slice(dockStart, dockEnd);
+ assert.equal((dock.match(/data-touch-action=/g) || []).length, 6, "main dock should show only six common actions");
+ assert.match(html, /id="crop-mode-dialog"/);
+ assert.match(html, /id="crop-selected-image"/);
+ assert.match(html, /id="crop-whole-canvas"/);
+ assert.match(html, /id="canvas-crop-preview"/);
+ assert.match(html, /id="canvas-crop-ratio"/);
+ assert.match(app, /function openCanvasCropDialog\(/);
+ assert.match(app, /cropDocumentCanvas\(state\.document, canvasCropRectangle\)/);
+ assert.match(app, /openCensorLightDialog\("paint"\)/);
+ assert.match(app, /openCensorLightDialog\("erase"\)/);
+ assert.match(css, /AA-TOOL-STUDIOS-001/);
+ assert.match(css, /#canvas-crop-dialog/);
+ assert.match(worker, /animeart-web-shell-v34/);
 });
