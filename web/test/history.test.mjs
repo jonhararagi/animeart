@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, restoreDocument } from "../domain/model.mjs";
-import { DocumentHistory, cloneDocument } from "../domain/history.mjs";
+import { DocumentHistory, cloneDocument, MAX_HISTORY_ENTRIES } from "../domain/history.mjs";
 import { createViewport, panBy, zoomAt } from "../domain/viewport.mjs";
 import { rotateLayer, scaleLayer, translateLayer } from "../domain/document-operations.mjs";
 
@@ -172,4 +172,44 @@ test("Image Layer transform is reversible through the same DocumentHistory", () 
   assert.deepEqual(undone.layers[1].transform, { x: 0, y: 0, scale: 1, rotation: 0 });
   const redone = history.redo(undone);
   assert.deepEqual(redone.layers[1].transform, { x: 20, y: -10, scale: 1.5, rotation: 30 });
+});
+
+
+test("history retention is bounded so image-heavy documents cannot accumulate unlimited full snapshots", () => {
+  const initial = createDocument();
+  const history = new DocumentHistory(initial, { maxEntries: 2 });
+  let current = initial;
+  for (let index = 1; index <= 3; index += 1) {
+    const next = cloneDocument(current);
+    next.layers[0].strokes.push(createStroke("brush", 5, [createStrokePoint(index, index)]));
+    assert.equal(history.record(current, next), true);
+    current = next;
+  }
+  assert.equal(MAX_HISTORY_ENTRIES, 30);
+  assert.equal(history.maxEntries, 2);
+  assert.equal(history.size(), 2);
+  const oneUndo = history.undo(current);
+  assert.equal(oneUndo.layers[0].strokes.length, 2);
+  const twoUndo = history.undo(oneUndo);
+  assert.equal(twoUndo.layers[0].strokes.length, 1);
+  assert.equal(history.canUndo(), false, "the evicted oldest operation is no longer retained");
+});
+
+test("discarding a failed record at the retention limit restores the evicted undo step", () => {
+  const first = createDocument();
+  const second = cloneDocument(first);
+  second.layers[0].strokes.push(createStroke("brush", 5, [createStrokePoint(1, 1)]));
+  const third = cloneDocument(second);
+  third.layers[0].strokes.push(createStroke("brush", 5, [createStrokePoint(2, 2)]));
+  const fourth = cloneDocument(third);
+  fourth.layers[0].strokes.push(createStroke("brush", 5, [createStrokePoint(3, 3)]));
+  const history = new DocumentHistory(first, { maxEntries: 2 });
+  history.record(first, second);
+  history.record(second, third);
+  history.record(third, fourth);
+  assert.equal(history.size(), 2);
+  assert.equal(history.discardLastRecord(), true, "failed persistence rolls back the latest record");
+  assert.equal(history.size(), 2, "rollback restores the history entry evicted at capacity");
+  assert.equal(history.undo(third).layers[0].strokes.length, 1);
+  assert.equal(history.undo(second).layers[0].strokes.length, 0);
 });

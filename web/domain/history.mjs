@@ -1,5 +1,7 @@
 import { normalizeDocument } from "./model.mjs";
 
+export const MAX_HISTORY_ENTRIES = 30;
+
 function cloneDocument(document) {
   const normalized = normalizeDocument(JSON.parse(JSON.stringify(document)));
   if (!normalized) throw new TypeError("History requires a valid Document");
@@ -7,9 +9,14 @@ function cloneDocument(document) {
 }
 
 export class DocumentHistory {
-  constructor(initialDocument) {
+  constructor(initialDocument, { maxEntries = MAX_HISTORY_ENTRIES } = {}) {
+    this.maxEntries = Number.isInteger(maxEntries) && maxEntries > 0
+      ? maxEntries
+      : MAX_HISTORY_ENTRIES;
     this.past = [];
     this.future = [];
+    this.lastRecordFuture = null;
+    this.lastTrimmedRecord = null;
     this.reset(initialDocument);
   }
 
@@ -18,6 +25,7 @@ export class DocumentHistory {
     this.past = [];
     this.future = [];
     this.lastRecordFuture = null;
+    this.lastTrimmedRecord = null;
   }
 
   record(before, after) {
@@ -30,6 +38,11 @@ export class DocumentHistory {
       after: cloneDocument(entry.after)
     }));
     this.future = [];
+    // Keep the most recent operations only. Every entry contains full document
+    // snapshots (including embedded image sources), so unbounded history grows
+    // quickly on phones. Preserve the evicted entry until persistence succeeds
+    // so discardLastRecord() can roll the transaction back without losing Undo.
+    this.lastTrimmedRecord = this.past.length > this.maxEntries ? this.past.shift() : null;
     return true;
   }
 
@@ -48,6 +61,8 @@ export class DocumentHistory {
       before: cloneDocument(entry.before),
       after: cloneDocument(entry.after)
     });
+    this.lastRecordFuture = null;
+    this.lastTrimmedRecord = null;
     return cloneDocument(entry.before);
   }
 
@@ -58,17 +73,21 @@ export class DocumentHistory {
       before: cloneDocument(entry.before),
       after: cloneDocument(entry.after)
     });
+    this.lastRecordFuture = null;
+    this.lastTrimmedRecord = null;
     return cloneDocument(entry.after);
   }
 
   discardLastRecord() {
     if (this.past.length === 0) return false;
     this.past.pop();
+    if (this.lastTrimmedRecord) this.past.unshift(this.lastTrimmedRecord);
     this.future = (this.lastRecordFuture || []).map(entry => ({
       before: cloneDocument(entry.before),
       after: cloneDocument(entry.after)
     }));
     this.lastRecordFuture = null;
+    this.lastTrimmedRecord = null;
     return true;
   }
 
