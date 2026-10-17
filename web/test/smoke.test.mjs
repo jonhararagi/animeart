@@ -989,3 +989,19 @@ test("AA-TOOLBOX-WORKSPACE-001 keeps the mobile main surface compact and opens a
   assert.match(css, /#canvas-crop-dialog\[open\][\s\S]*?height: 100dvh/);
   assert.match(worker, /animeart-web-shell-v35/);
 });
+
+
+test("AA-FREE-MOVE-PREVIEW-001 reveals off-document image/text layers in Libre mode without changing export bounds", async () => {
+  const js = await readFile("app.js", "utf8");
+  const renderer = js.match(/function drawDocument\\(\\{[\\s\\S]*?\\n\\}\\n\\nfunction selectionHandleInset/)?.[0] || "";
+  const editorPreview = js.match(/function drawNow\\(\\)[\\s\\S]*?\\n\\}\\n\\nfunction pointFromEvent/)?.[0] || "";
+  const exportSection = js.match(/renderDocumentToCanvas\\(state\\.document, exportCanvas,[\\s\\S]*?\\n    \\}\\);/)?.[0] || "";
+
+  assert.match(renderer, /allowOffDocumentPreview = false/);
+  assert.match(renderer, /allowOffDocumentPreview &&[\\s\\S]*?frameBoundaryMode === "free"[\\s\\S]*?!layer\\.isBackground[\\s\\S]*?layer\\.contentType === "image" \\|\\| layer\\.contentType === "text"/);
+  assert.match(renderer, /context\\.rect\\(0, 0, Number\\(document\\.width\\) \\|\\| 0, Number\\(document\\.height\\) \\|\\| 0\\)/);
+  assert.match(editorPreview, /allowOffDocumentPreview: frameBoundaryMode === "free"/);
+  assert.doesNotMatch(editorPreview, /ctx\\.clip\\(\\)/);
+  assert.ok(exportSection, "PNG export still uses the document-sized export canvas");
+  assert.doesNotMatch(exportSection, /allowOffDocumentPreview:\\s*true/);
+});
