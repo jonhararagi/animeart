@@ -3285,3 +3285,15 @@ Corrección de inventario durante la integración: aunque la sincronización de 
 - La tarjeta `Estilo del objeto` enruta al editor adecuado: texto reutiliza el editor tipográfico existente; formas SVG vuelven a su ventana de forma; imágenes exponen opacidad, máscara, brillo/contraste/saturación y acceso a reemplazo de color; las capas de trazos permiten cambiar el estilo de sus trazos existentes sin alterar borrados.
 - Las ventanas incluyen X, Cancelar y confirmación explícita. Los cambios del creador de formas no se aplican hasta confirmar; cancelar cierra sin sustituir la capa. Se actualiza la caché PWA a `animeart-web-shell-v28` y se incorporan tests estáticos/E2E que crean una estrella, confirman una capa y comprueban la cancelación del editor.
 - TIMER: 2–4 horas activas estimadas para esta iteración, más CI y prueba física. La aceptación depende de CI sobre el nuevo HEAD, revisión de la forma exportada y prueba táctil en Xiaomi 24116RACCG. No declarar PASS de CI ni validar físicamente antes de disponer de evidencia.
+
+## AA-FREE-MOVE-PREVIEW-001 — contenido visible fuera del marco (2026-10-17)
+
+- Rama de trabajo: `aa-free-move-preview-001`, PR #89. `main` permanece sin modificar mientras se valida la prueba ampliada.
+- Causa confirmada en código: `drawNow()` recortaba todo el render al rectángulo del documento después de `applyViewport()`. El modelo de capa podía moverse fuera del marco, pero los píxeles se descartaban en pantalla. Es coherente con el síntoma de que la transformación cambia pero la imagen parece desaparecer antes de lo esperado.
+- Corrección: retirar el recorte global del render de edición y aplicar recorte por capa. Con **Libre**, las capas normales de imagen y texto se pueden dibujar fuera del marco dentro del espacio de trabajo. Capas de fondo y de dibujo permanecen recortadas. Las vistas auxiliares y exportación siguen usando el render seguro por defecto.
+- Modelo de UX aplicado: separar espacio de trabajo visible, marco/documento y exportación. Es un patrón general de los editores por capas; no se afirma haber inspeccionado el código propietario de Canva/Picsart.
+- Caché PWA actualizada a `animeart-web-shell-v37`.
+- Evidencia previa a añadir la comprobación de píxeles: Web CI #39042515681 PASS y Android CI #39042515678 PASS en SHA `fea3c2a96a52d157df667c4e6b91eaf828b2965b`. APK anterior: artefacto #12104468089. Esa evidencia no valida los últimos cambios.
+- Se añadió a `browser-e2e.mjs` un diagnóstico del marco y una comprobación real de alfa por encima del borde superior del documento; la prueba ya no depende solo de que la matriz de transformación cruce el marco. Hay que tomar el resultado de las CI ejecutadas sobre el HEAD final, no extrapolar el PASS anterior.
+- Aceptación física en Xiaomi `24116RACCG`: pendiente. La emulación de Chromium/Android no sustituye el ensayo con el dedo en el dispositivo.
+- TIMER: 1–2 horas estimadas para la corrección y la validación ampliada; el tiempo real no se ha medido.
