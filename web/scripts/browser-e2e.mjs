@@ -1508,15 +1508,15 @@ try {
 
   await click('.mobile-touch-dock [data-touch-action="more"]');
   await waitFor('document.body.classList.contains("mobile-tools-open")');
-  assert(await evaluate('getComputedStyle(document.querySelector(".easy-edit-grid")).display === "grid"'), "mobile More action opens the dedicated task-card panel");
-  assert(await evaluate('getComputedStyle(document.querySelector(".easy-edit-grid")).gridTemplateColumns.split(" ").length === 2'), "mobile task cards use two columns");
-  assert(await evaluate('document.querySelector(".easy-edit-heading").getBoundingClientRect().height > 0'), "mobile task sheet shows its own heading");
-  assert(await evaluate('getComputedStyle(document.querySelector(".asset-quick-actions")).display !== "none"'), "mobile task sheet exposes image import and library actions");
-  assert(await evaluate('document.querySelector(".toolbar > :not(.easy-edit-panel)") === null || Array.from(document.querySelectorAll(".toolbar > :not(.easy-edit-panel)")).every(el => getComputedStyle(el).display === "none")'), "mobile task sheet hides desktop-only toolbar sections");
+  assert(await evaluate('getComputedStyle(document.querySelector(".easy-edit-grid")).display === "grid"'), "mobile More action opens the dedicated toolbox catalog");
+  assert(await evaluate('getComputedStyle(document.querySelector(".easy-edit-grid")).gridTemplateColumns.split(" ").length === 2'), "mobile toolbox actions use two columns");
+  assert(await evaluate('document.querySelector("#toolbox-title").getBoundingClientRect().height > 0'), "mobile toolbox shows its own heading");
+  assert(await evaluate('getComputedStyle(document.querySelector(".asset-quick-actions")).display !== "none"'), "mobile toolbox exposes image import and library actions");
+  assert(await evaluate('getComputedStyle(document.querySelector(".toolbar")).display === "none"'), "mobile toolbox hides the underlying toolbar");
   await saveScreenshot("animeart-studio-mobile-tools.png");
   await click('.mobile-touch-dock [data-touch-action="more"]');
   await waitFor('!document.body.classList.contains("mobile-tools-open")');
-  assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height > 0'), "closing the mobile task sheet returns usable space to the canvas");
+  assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height > 0'), "closing the mobile toolbox returns usable space to the canvas");
 
   await click('.mobile-touch-dock [data-touch-action="more"]');
   await waitFor('document.body.classList.contains("mobile-tools-open")');
