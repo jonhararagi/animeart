@@ -2674,6 +2674,8 @@ function beginTransformInteraction(type, event, handle = null, handleOffset = nu
     pointerId: event.pointerId,
     layerId: layer.id,
     startScreen: { ...screenPoint },
+    startClient: { x: event.clientX, y: event.clientY },
+    screenScaleAtStart: Math.max(Number.EPSILON, documentFitScale(state.document, canvasSize()) * state.viewport.zoom),
     startDocument: documentPoint,
     beforeTransform: { ...layer.transform },
     previewTransform: { ...layer.transform },
@@ -2704,13 +2706,23 @@ function finishTransformInteraction(cancelled = false, finalEvent = null) {
   if (!cancelled && finalEvent?.pointerType === "touch" &&
       interaction.type === "move" && layer.contentType === "text" &&
       interaction.startScreen) {
-    const endScreen = screenPointFromEvent(finalEvent);
-    if (Math.hypot(endScreen.x - interaction.startScreen.x, endScreen.y - interaction.startScreen.y) <= 8) {
+    const clientDeltaX = Number(finalEvent.clientX) - interaction.startClient.x;
+    const clientDeltaY = Number(finalEvent.clientY) - interaction.startClient.y;
+    if (Math.hypot(clientDeltaX, clientDeltaY) <= 8) {
       if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
       redraw();
       openTextEditorForLayer(layer.id);
       return;
     }
+  }
+  // A stationary tap selects the object only. Changes in the canvas bounding box
+  // must never manufacture a move or a history entry.
+  if (finalEvent && interaction.type === "move" && interaction.startClient &&
+      Math.hypot(Number(finalEvent.clientX) - interaction.startClient.x,
+        Number(finalEvent.clientY) - interaction.startClient.y) <= 3) {
+    if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
+    redraw();
+    return;
   }
   const before = cloneDocument(state.document);
   const start = interaction.beforeTransform;
@@ -2736,7 +2748,16 @@ function updateTransformPreview(event) {
   const targetScreen = targetOffset
     ? { x: currentScreen.x + targetOffset.x, y: currentScreen.y + targetOffset.y }
     : currentScreen;
-  const currentDocument = screenToDocumentPoint(targetScreen, state.document, state.viewport, canvasSize());
+  // Translate from the pointer's original client coordinates and the original CSS
+  // scale. Using a newly measured canvas rect here makes a stationary finger look
+  // like a large drag whenever mobile layout/selection controls reflow the canvas.
+  const currentDocument = interaction.type === "move" && interaction.startClient &&
+    Number.isFinite(interaction.screenScaleAtStart) && interaction.screenScaleAtStart > 0
+    ? {
+        x: interaction.startDocument.x + (Number(event.clientX) - interaction.startClient.x) / interaction.screenScaleAtStart,
+        y: interaction.startDocument.y + (Number(event.clientY) - interaction.startClient.y) / interaction.screenScaleAtStart
+      }
+    : screenToDocumentPoint(targetScreen, state.document, state.viewport, canvasSize());
   const pivot = interaction.pivot;
   const preview = { ...interaction.previewTransform };
   if (interaction.type === "move") {
@@ -2796,7 +2817,9 @@ function beginSelectionInteraction(event) {
   // In multi-selection, prefer the group bounds before interpreting the anchor layer's X.
   // Otherwise a group-interior drag can overlap the active layer's own close handle.
   if (selectedHit === "close" && state.selectedLayerIds.length <= 1) {
-    closeSelectionBox();
+    // On mobile the canvas X is the primary image-removal control, not a selection dismiss button.
+    if (selected?.contentType === "image") removeSelectedImage();
+    else closeSelectionBox();
     return;
   }
   if (state.selectedLayerIds.length > 1) {
@@ -5727,7 +5750,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v39";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v40";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",

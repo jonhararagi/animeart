@@ -1511,6 +1511,17 @@ try {
     "mobile uses the canvas X selection handle instead of a second floating delete control");
   await waitFor('document.querySelector("#mobile-feedback").hidden === true', 5000);
 
+  // AA-IMAGE-TOUCH-ANCHOR-001: a stationary finger must not move the image if selection/layout changes the canvas rect.
+  const transformBeforeStationaryTouch = await evaluate('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.transform)');
+  const stationaryTouchPoint = await evaluate('(() => { const c=document.querySelector("#canvas"),r=c.getBoundingClientRect(),d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; if(!d?.center) throw new Error("Selected image center diagnostics unavailable"); return {x:r.left+d.center.x,y:r.top+d.center.y}; })()');
+  await cdp("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ id: 73, x: stationaryTouchPoint.x, y: stationaryTouchPoint.y, radiusX: 4, radiusY: 4, force: 1 }] });
+  await evaluate('document.querySelector("#canvas").style.transform = "translateY(44px)"');
+  await cdp("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await evaluate('(() => { const c=document.querySelector("#canvas"); c.style.transform=""; window.dispatchEvent(new Event("resize")); })()');
+  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.transform) === ' + JSON.stringify(transformBeforeStationaryTouch), 10000);
+  assert(await evaluate('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.transform) === ' + JSON.stringify(transformBeforeStationaryTouch)),
+    "canvas layout shifts during a stationary touch without changing the image transform");
+
   // AA-EXTERNAL-BUGFIX-RESEARCH-002: the pixel eraser must target the same document point after zoom + pan.
   const eraseViewportBaseline = await readFrameMetrics();
   await wheelCanvasZoom("in", 2);
@@ -1603,9 +1614,14 @@ try {
 
   const closeAt = { x: visibleHandlesAfterResize.canvas.left + visibleHandlesAfterResize.close.x, y: visibleHandlesAfterResize.canvas.top + visibleHandlesAfterResize.close.y };
   await mouseStroke([closeAt, closeAt]);
-  await waitFor('document.querySelector("#selection-mini-panel").hidden === true');
+  await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="e2e-mobile-import")', 10000);
+  assert(await evaluate('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="e2e-mobile-import")'),
+    "the canvas X removes the selected mobile image and Undo restores it");
+  await click("#undo");
+  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterResize), 10000);
+  await click('[aria-label="Seleccionar capa e2e-mobile-import"]');
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="e2e-mobile-import")'),
-    "the clamped mobile X closes selection without deleting the imported image");
+    "Undo restores the image removed with the canvas X before transform Undo/Redo tests");
 
   // Undo/Redo must remain accessible from the mobile dock when the selection overlay is closed.
   await clickMoreGoal("undo");
