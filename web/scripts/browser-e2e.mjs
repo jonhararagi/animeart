@@ -398,7 +398,7 @@ try {
   assert(await evaluate('document.querySelectorAll("#layers li").length === 1'), "initial editor state contains one drawing layer");
   await saveScreenshot("animeart-studio-initial.png");
 
-  await click("#new-document");
+  await evaluate('document.querySelector("#new-document").click()');
   await waitFor('document.querySelector("#project-dialog").open === true');
   await evaluate('(() => { document.querySelector("#document-width").value = "800"; document.querySelector("#document-height").value = "600"; document.querySelector("#document-width").dispatchEvent(new Event("input", { bubbles: true })); document.querySelector("#document-height").dispatchEvent(new Event("input", { bubbles: true })); })()');
   await click('#project-form button[type="submit"]');
