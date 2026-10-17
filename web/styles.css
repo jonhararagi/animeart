@@ -3149,3 +3149,226 @@ body > .mobile-touch-dock .mobile-export-resolution select { width: 100%; min-wi
     touch-action: manipulation;
   }
 }
+
+
+/* AA-TOOL-STUDIOS-001: focused tool windows and a six-action mobile dock. */
+.mobile-touch-dock button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 6px 4px;
+  text-align: center;
+}
+.mobile-touch-dock button > span:first-child {
+  font-size: 1.08rem;
+  line-height: 1.1;
+}
+.mobile-touch-dock button > span:last-child {
+  font-size: .66rem;
+  line-height: 1.15;
+}
+body.mobile-tools-open .toolbar {
+  top: calc(56px + env(safe-area-inset-top));
+  bottom: calc(66px + env(safe-area-inset-bottom));
+  z-index: 75;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 10px;
+}
+body.mobile-tools-open .toolbar > * {
+  grid-column: 1 / -1 !important;
+}
+body.mobile-tools-open .toolbar > .easy-edit-panel {
+  padding: 13px;
+  gap: 12px;
+}
+body.mobile-tools-open .toolbar > .easy-edit-panel > .easy-edit-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+body.mobile-tools-open .toolbar > .easy-edit-panel > .easy-edit-grid button {
+  min-height: 68px;
+  padding: 10px 9px;
+}
+.workflow-dialog,
+#canvas-crop-dialog {
+  width: min(760px, calc(100vw - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 20px);
+  overflow: auto;
+  padding: 0;
+  border: 1px solid #49395d;
+  border-radius: 18px;
+  background: #17141e;
+  color: var(--text, #f2eff8);
+  box-shadow: 0 28px 100px #000b;
+}
+.workflow-dialog::backdrop,
+#canvas-crop-dialog::backdrop {
+  background: rgb(2 5 11 / 78%);
+  backdrop-filter: blur(5px);
+}
+.workflow-dialog-shell,
+.canvas-crop-shell {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+.workflow-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #383044;
+}
+.workflow-dialog-header h2 { margin: 0 0 6px; font-size: 1.18rem; }
+.workflow-dialog-header p:not(.eyebrow) { margin: 0; color: #b5adbf; font-size: .78rem; line-height: 1.5; }
+.workflow-dialog-header .eyebrow { margin: 0 0 6px; color: #a78bfa; font-size: .66rem; font-weight: 800; letter-spacing: .12em; }
+.crop-mode-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.workflow-choice {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-content: center;
+  align-items: center;
+  gap: 6px 11px;
+  min-height: 144px;
+  padding: 18px;
+  text-align: left;
+  border: 1px solid #493d60;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #262138, #1a1b2a);
+}
+.workflow-choice > span { grid-row: span 2; font-size: 1.85rem; text-align: center; }
+.workflow-choice strong { font-size: .95rem; line-height: 1.25; }
+.workflow-choice small { color: #c1b8d0; font-size: .76rem; line-height: 1.45; }
+.workflow-choice:focus-visible,
+.workflow-choice:hover { outline: 2px solid #ba9cff; outline-offset: 2px; border-color: #ba9cff; }
+.workflow-dialog-note { margin: 0; color: #b6adbf; font-size: .75rem; line-height: 1.5; }
+#canvas-crop-dialog { width: min(1120px, calc(100vw - 20px)); }
+.canvas-crop-shell { min-height: min(840px, calc(100dvh - 20px)); grid-template-rows: auto minmax(160px, 1fr) auto auto auto auto; }
+.canvas-crop-stage {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 160px;
+  max-height: 48dvh;
+  padding: 8px;
+  overflow: hidden;
+  border: 1px solid #41364e;
+  border-radius: 12px;
+  background-color: #1b202b;
+  background-image:
+    linear-gradient(45deg, rgba(255,255,255,.055) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,255,255,.055) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255,255,255,.055) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255,255,255,.055) 75%);
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-size: 16px 16px;
+}
+#canvas-crop-preview {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+  object-fit: contain;
+}
+.canvas-crop-hint { margin: 0; color: #b6adbf; font-size: .77rem; line-height: 1.5; }
+.canvas-crop-ratio-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 10px; }
+.canvas-crop-ratio-row label { display: grid; gap: 6px; color: #c3ccda; font-size: .76rem; }
+.canvas-crop-ratio-row select {
+  width: 100%; min-width: 0; min-height: 44px; padding: 9px;
+  border: 1px solid #49395d; border-radius: 10px; background: #0f141c; color: var(--text);
+}
+#canvas-crop-reset { min-height: 44px; padding: 9px 13px; white-space: nowrap; }
+.canvas-crop-fields { gap: 10px; }
+.canvas-crop-fields label { font-size: .75rem; }
+#canvas-crop-status { margin: 0; color: #b6adbf; font-size: .76rem; line-height: 1.45; }
+.canvas-crop-actions { position: sticky; bottom: 0; z-index: 2; padding: 10px 0 max(8px, env(safe-area-inset-bottom)); background: #17141e; }
+.canvas-crop-actions button { min-height: 48px; }
+#censor-light-dialog .censor-dialog-controls label[hidden] { display: none !important; }
+#censor-dialog-effect {
+  min-width: 0; width: 100%; min-height: 42px; padding: 8px;
+  border: 1px solid #49395d; border-radius: 9px; background: #0f141c; color: var(--text);
+}
+@media (max-width: 620px) {
+  .mobile-touch-dock { gap: 5px; padding: 6px 6px calc(6px + env(safe-area-inset-bottom)); }
+  .mobile-touch-dock button { min-width: 0; min-height: 48px; padding: 5px 2px; flex: 1 1 0; }
+  .mobile-touch-dock button > span:last-child { font-size: .63rem; }
+  body.mobile-tools-open .toolbar { left: 5px; right: 5px; bottom: calc(62px + env(safe-area-inset-bottom)); padding: 9px; }
+  body.mobile-tools-open .toolbar > .easy-edit-panel { padding: 10px; }
+  body.mobile-tools-open .toolbar > .easy-edit-panel > .easy-edit-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .workflow-dialog,
+  #canvas-crop-dialog {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+  }
+  .workflow-dialog-shell { min-height: 100dvh; align-content: center; padding: calc(14px + env(safe-area-inset-top)) 13px calc(12px + env(safe-area-inset-bottom)); }
+  .crop-mode-options { grid-template-columns: 1fr; }
+  .workflow-choice { min-height: 112px; padding: 14px; }
+  .canvas-crop-shell {
+    box-sizing: border-box;
+    min-height: 100dvh;
+    height: 100dvh;
+    grid-template-rows: auto minmax(190px, 1fr) auto auto auto auto;
+    gap: 10px;
+    padding: calc(10px + env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom));
+  }
+  .canvas-crop-stage { max-height: none; min-height: 190px; padding: 4px; }
+  .canvas-crop-ratio-row { grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
+  #canvas-crop-reset { padding: 8px; font-size: .72rem; }
+  .canvas-crop-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .canvas-crop-actions { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.4fr); }
+  .canvas-crop-actions button { min-width: 0; padding: 8px; font-size: .76rem; }
+  #censor-light-dialog {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+  }
+  .censor-dialog-shell {
+    box-sizing: border-box;
+    min-height: 100dvh;
+    gap: 9px;
+    padding: calc(10px + env(safe-area-inset-top)) 12px calc(8px + env(safe-area-inset-bottom));
+  }
+  .censor-dialog-preview-wrap { min-height: 150px; max-height: 42dvh; padding: 5px; }
+  #censor-image-preview { max-height: 40dvh; }
+  .censor-dialog-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 10px; }
+  .censor-dialog-controls label { font-size: .75rem; }
+  .censor-dialog-controls input[type="color"] { min-height: 38px; }
+  .censor-dialog-actions { margin-top: auto; }
+  #image-edit-dialog {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    padding: 12px;
+    border: 0;
+    border-radius: 0;
+    box-sizing: border-box;
+  }
+  #image-edit-form { min-height: 100%; grid-template-rows: auto minmax(140px, 1fr) auto auto auto auto auto; }
+  .crop-preview-workspace { min-height: 140px; max-height: 42dvh; }
+  #crop-preview { max-height: 38dvh; }
+  #image-edit-form .dialog-actions { position: sticky; bottom: 0; background: #151b25; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); }
+}
