@@ -1307,6 +1307,18 @@ try {
   await click('.mobile-top-actions [data-mobile-top-action="undo"]');
   await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.contentType==="drawing"&&layer.strokes?.length)', 10000);
 
+  // Give the zoom/pan coordinate test a real artboard; the startup placeholder can be 0×0.
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('document.body.classList.contains("mobile-tools-open")');
+  await click("#new-document");
+  await waitFor('document.querySelector("#project-dialog").open === true');
+  await evaluate('(() => { window.confirm = () => true; document.querySelector("#document-width").value = "640"; document.querySelector("#document-height").value = "480"; document.querySelector("#document-width").dispatchEvent(new Event("input",{bubbles:true})); document.querySelector("#document-height").dispatchEvent(new Event("input",{bubbles:true})); })()');
+  await click('#project-form button[type="submit"]');
+  await waitFor('document.querySelector("#project-dialog").open === false');
+  await waitFor('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return d.width===640 && d.height===480; })()');
+  assert(await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return d.width===640 && d.height===480; })()'),
+    "zoom/pan regression uses a persisted 640×480 document instead of a zero-sized startup placeholder");
+
   // AA-EXTERNAL-BUGFIX-RESEARCH-001: drawing coordinates must remain correct after viewport zoom + touch pan.
   await click('.mobile-touch-dock [data-touch-action="paint"]');
   await waitFor('document.querySelector(".toolbar .tool[data-tool=brush]")?.classList.contains("active")');
