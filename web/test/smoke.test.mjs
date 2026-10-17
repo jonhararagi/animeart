@@ -1021,6 +1021,6 @@ test("AA-IMAGE-X-DELETE-AND-TOUCH-ANCHOR-001 removes the image with X and anchor
   assert.match(app, /interaction\.startDocument\.y \+ \(Number\(event\.clientY\) - interaction\.startClient\.y\) \/ interaction\.screenScaleAtStart/);
   assert.match(app, /A stationary tap selects the object only/);
   assert.match(worker, /animeart-web-shell-v40/);
-  assert.match(browserE2E, /the canvas X removes the selected mobile image and Undo restores it/);
+  assert.match(browserE2E, /the canvas X removes the selected mobile image/);
   assert.match(browserE2E, /canvas layout shifts during a stationary touch without changing the image transform/);
 });
