@@ -111,6 +111,7 @@ let backgroundRemovalPan = null;
 let backgroundRemovalZoom = 1;
 const flipImageHorizontalButton = document.querySelector("#flip-image-horizontal");
 const flipImageVerticalButton = document.querySelector("#flip-image-vertical");
+const toolboxDialog = document.querySelector("#toolbox-dialog");
 const cropModeDialog = document.querySelector("#crop-mode-dialog");
 const canvasCropDialog = document.querySelector("#canvas-crop-dialog");
 const canvasCropPreview = document.querySelector("#canvas-crop-preview");
@@ -4105,16 +4106,23 @@ if (mobileDock) {
       return;
     }
     if (action === "more") {
-      const wasDrawingPanelOpen = document.body.classList.contains("mobile-draw-panel-open");
-      const wasToolsOpen = document.body.classList.contains("mobile-tools-open");
-      closeMobileContextPanel();
-      const open = wasDrawingPanelOpen ? true : !wasToolsOpen;
-      document.body.classList.toggle("mobile-tools-open", open);
-      button.setAttribute("aria-expanded", String(open));
+      // "Más" is a separate tool catalog, not an expansion of the crowded toolbar.
+      if (toolboxDialog?.open) {
+        toolboxDialog.close();
+        document.body.classList.remove("mobile-tools-open");
+        button.setAttribute("aria-expanded", "false");
+        return;
+      }
+      hideMobileToolSheets();
       document.body.classList.remove("mobile-layers-open", "mobile-tools-collapsed");
-      mobileToolsToggle?.setAttribute("aria-expanded", String(!open));
-      mobileToolsToggle?.setAttribute("aria-label", open ? "Ocultar herramientas" : "Mostrar herramientas");
-      if (mobileToolsToggle) mobileToolsToggle.querySelector("span").textContent = open ? "⌄" : "⌃";
+      const isMobile = window.matchMedia("(max-width: 920px)").matches;
+      if (isMobile) {
+        toolboxDialog?.show(); // non-modal bottom sheet keeps the dock available for closing
+        document.body.classList.add("mobile-tools-open");
+      } else {
+        toolboxDialog?.showModal();
+      }
+      button.setAttribute("aria-expanded", "true");
       mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
       return;
     }
@@ -4288,7 +4296,16 @@ function runEditGoal(goal) {
   };
   actions[goal]?.();
 }
+document.querySelector("#toolbox-open")?.addEventListener("click", () => {
+  if (!toolboxDialog?.open) toolboxDialog?.showModal();
+});
+document.querySelector("#toolbox-close")?.addEventListener("click", () => toolboxDialog?.close());
+toolboxDialog?.addEventListener("close", () => {
+  document.body.classList.remove("mobile-tools-open");
+  mobileDock?.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+});
 document.querySelectorAll("[data-edit-goal]").forEach(button => button.addEventListener("click", () => {
+  if (toolboxDialog?.open) toolboxDialog.close();
   const goal = button.dataset.editGoal;
   runEditGoal(goal);
   if (window.matchMedia("(max-width: 920px)").matches) {
