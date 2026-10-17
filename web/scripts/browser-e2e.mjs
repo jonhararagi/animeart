@@ -1417,6 +1417,19 @@ try {
   assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
     "mobile Redo restores the edge resize after restoring the move");
 
+  // Zoom out first so the visible workspace has a pasteboard around the full document.
+  // At fit-to-width on a phone, left/right edges coincide with the viewport and cannot
+  // demonstrate pixels outside the page because that area would be off-screen.
+  const pasteboardZoomAnchor = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}; })()');
+  for (let index = 0; index < 3; index += 1) {
+    await cdp("Input.dispatchMouseEvent", { type: "mouseWheel", x: pasteboardZoomAnchor.x, y: pasteboardZoomAnchor.y, deltaX: 0, deltaY: 120 });
+    await sleep(100);
+  }
+  const pasteboardMargins = await evaluate('(() => { const f=window.__ANIMEART_DOCUMENT_FRAME_DIAGNOSTICS__; const r=document.querySelector("#canvas").getBoundingClientRect(); return {left:f?.topLeft?.x,right:f?.topRight?.x,canvasWidth:r.width}; })()');
+  assert(Number.isFinite(pasteboardMargins.left) && pasteboardMargins.left > 18 &&
+    Number.isFinite(pasteboardMargins.right) && pasteboardMargins.right < pasteboardMargins.canvasWidth - 18,
+    "zooming out exposes a visible pasteboard beyond both horizontal document edges: " + JSON.stringify(pasteboardMargins));
+
   // AA-CANVAS-FREE-MOVE-001: layer content may cross all four document edges.
   // Each move is reversed from the transformed object's actual center, so the
   // test verifies the boundary crossing without polluting the following steps.
