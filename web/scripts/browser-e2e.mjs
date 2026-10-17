@@ -1556,8 +1556,7 @@ try {
   await waitFor('document.body.classList.contains("mobile-tools-open")');
   await click('[data-edit-goal="erase"]');
   await waitFor('document.querySelector("#censor-light-dialog")?.open === true');
-  assert(await evaluate('document.querySelector("#censor-dialog-title").textContent.includes("Borrar píxeles") &&
-    document.querySelector("#censor-dialog-glow").closest("label").hidden'),
+  assert(await evaluate('document.querySelector("#censor-dialog-title").textContent.includes("Borrar píxeles") && document.querySelector("#censor-dialog-glow").closest("label").hidden'),
     "Erase opens its own focused studio with irrelevant glow settings removed");
   await evaluate('(() => { const c=document.querySelector("#censor-image-preview"); const r=c.getBoundingClientRect(); const opts={bubbles:true,cancelable:true,pointerId:72,pointerType:"touch",clientX:r.left+r.width*.55,clientY:r.top+r.height*.52}; c.dispatchEvent(new PointerEvent("pointerdown",opts)); c.dispatchEvent(new PointerEvent("pointermove",{...opts,clientX:opts.clientX+Math.max(8,r.width*.06),clientY:opts.clientY+Math.max(8,r.height*.05)})); c.dispatchEvent(new PointerEvent("pointerup",opts)); })()');
   assert(await evaluate('document.querySelector("#censor-dialog-undo").disabled === false'), "Erase studio captures a reversible transparent preview stroke");
@@ -1573,8 +1572,7 @@ try {
   await waitFor('document.body.classList.contains("mobile-tools-open")');
   await click('[data-edit-goal="crop"]');
   await waitFor('document.querySelector("#crop-mode-dialog")?.open === true');
-  assert(await evaluate('document.querySelector("#crop-selected-image").getBoundingClientRect().height>0 &&
-    document.querySelector("#crop-whole-canvas").getBoundingClientRect().height>0'),
+  assert(await evaluate('document.querySelector("#crop-selected-image").getBoundingClientRect().height>0 && document.querySelector("#crop-whole-canvas").getBoundingClientRect().height>0'),
     "crop chooser offers single-image crop and whole-composition crop separately");
   await click("#crop-selected-image");
   await waitFor('document.querySelector("#image-edit-dialog")?.open === true');
