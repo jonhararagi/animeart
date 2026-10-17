@@ -585,7 +585,7 @@ test("selected images can cross canvas edges and transparent new documents do no
     readFile("domain/selection.mjs", "utf8")
   ]);
   assert.doesNotMatch(app, /function keepImageTransformVisible/);
-  assert.match(app, /preview\.x = interaction\.beforeTransform\.x \+ currentDocument\.x - interaction\.startDocument\.x/);
+  assert.match(app, /const delta = constrainMoveDelta\(layer \? \[layer\] : \[\], desiredX, desiredY\)/);
   assert.match(app, /drawObjectSelectionHandle\(visibleHandles\.moveHandle, "move"\)/);
   assert.match(selection, /const moveHandle = centerOutsideViewport \? clampPoint\(center\) : null/);
   assert.match(html, /data-canvas-background="checkerboard"/);
