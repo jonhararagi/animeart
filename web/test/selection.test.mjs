@@ -317,9 +317,15 @@ test("locked frame constrains single and grouped translations without cropping l
   assert.ok(Math.min(...corners.map(point => point.y)) >= -1e-8);
   assert.ok(Math.max(...corners.map(point => point.y)) <= 300 + 1e-8);
 
-  const oversized = { ...layer, image: { ...layer.image, width: 600, height: 500 } };
+  const second = { ...layer, id: "second", transform: { ...layer.transform, x: 120, y: 40 } };
+  const groupBounded = constrainTranslationToDocument([layer, second], pivot, { width: 400, height: 300 }, -900, 900);
+  assert.ok(Number.isFinite(groupBounded.x) && Number.isFinite(groupBounded.y));
+
+  const oversized = createImageLayer("Oversized image", 600, 500);
   const centered = constrainTranslationToDocument([oversized], pivot, { width: 400, height: 300 }, 500, 500);
   assert.ok(Number.isFinite(centered.x) && Number.isFinite(centered.y));
+  assert.ok(Math.abs(centered.x + 100) < 1e-8, "oversized content is centered horizontally so it remains reachable");
+  assert.ok(Math.abs(centered.y + 100) < 1e-8, "oversized content is centered vertically so it remains reachable");
 });
 
 test("an off-screen layer keeps a clamped move grip so it can be recovered without deselection", () => {
