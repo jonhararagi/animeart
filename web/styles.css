@@ -3399,3 +3399,111 @@ body.mobile-tools-open .toolbar > .easy-edit-panel > .easy-edit-grid button {
   background: #0f141c;
   color: var(--text);
 }
+
+
+/* AA-TOOL-STUDIOS-002: large mobile editors occupy the full device viewport. */
+@media (max-width: 620px) {
+  #text-edit-dialog[open],
+  #text-edit-dialog[data-open-fallback="true"],
+  #object-style-dialog[open],
+  #shape-maker-dialog[open],
+  #appearance-dialog[open],
+  #poster-template-dialog[open],
+  #recolor-dialog[open] {
+    position: fixed;
+    inset: 0;
+    box-sizing: border-box;
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  #text-edit-dialog .text-dialog-topbar,
+  #object-style-dialog .mini-dialog-header,
+  #shape-maker-dialog .mini-dialog-header,
+  #appearance-dialog .appearance-header,
+  #poster-template-dialog .poster-template-form > header,
+  #recolor-dialog .recolor-header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background-color: #17141e;
+  }
+  #text-edit-dialog .text-dialog-topbar {
+    padding-top: calc(13px + env(safe-area-inset-top));
+  }
+  #text-edit-dialog .text-dialog-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    margin-top: 4px;
+    padding: 10px 0 max(10px, env(safe-area-inset-bottom));
+    border-top: 1px solid #383044;
+    background: #17141e;
+  }
+  #object-style-dialog .mini-editor-dialog,
+  #shape-maker-dialog .shape-maker-shell {
+    min-height: 100dvh;
+    max-height: none;
+  }
+  #object-style-dialog .mini-dialog-header,
+  #shape-maker-dialog .mini-dialog-header {
+    padding-top: calc(13px + env(safe-area-inset-top));
+  }
+  #object-style-dialog .mini-dialog-body {
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+  #shape-maker-dialog .shape-maker-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #shape-maker-dialog .shape-maker-preview {
+    min-height: 160px;
+  }
+  #shape-maker-dialog .shape-maker-preview img {
+    height: min(25dvh, 220px);
+  }
+  #appearance-dialog .appearance-shell {
+    min-height: 100dvh;
+    box-sizing: border-box;
+    padding: calc(14px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom));
+    gap: 13px;
+  }
+  #appearance-dialog .appearance-header {
+    padding-bottom: 12px;
+  }
+  #poster-template-dialog .poster-template-form {
+    min-height: 100dvh;
+    box-sizing: border-box;
+    align-content: start;
+    padding: calc(14px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom));
+  }
+  #recolor-dialog .recolor-shell {
+    min-height: 100dvh;
+    max-height: none;
+    box-sizing: border-box;
+    grid-template-rows: auto minmax(150px, 1fr) auto;
+    padding: calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
+  }
+  #recolor-dialog .recolor-header {
+    padding-bottom: 10px;
+  }
+  #recolor-dialog .recolor-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(180px, 1fr) auto;
+    min-height: 0;
+    gap: 10px;
+  }
+  #recolor-dialog .recolor-preview-wrap {
+    min-height: 180px;
+  }
+  #recolor-preview {
+    max-height: 40dvh;
+  }
+}
