@@ -152,6 +152,10 @@ test("AA-TOOL-STUDIOS-001 keeps the mobile dock focused and separates image crop
  assert.match(app, /openCensorLightDialog\("paint"\)/);
  assert.match(app, /openCensorLightDialog\("erase"\)/);
  assert.match(css, /AA-TOOL-STUDIOS-001/);
+ assert.match(css, /AA-TOOL-STUDIOS-002/);
+ assert.match(css, /#text-edit-dialog\\[open\\]/);
+ assert.match(css, /#shape-maker-dialog\\[open\\]/);
+ assert.match(css, /height: 100dvh/);
  assert.match(css, /#canvas-crop-dialog/);
  assert.match(worker, /animeart-web-shell-v34/);
 });
