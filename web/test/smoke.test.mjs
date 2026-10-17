@@ -578,14 +578,16 @@ test("background-removal profiles are local, reusable and wired to the existing 
   assert.match(app, /backgroundRemovalPan\?\.pointerId === event\.pointerId/);
 });
 
-test("selected images remain visible near canvas edges and transparent new documents do not add a background layer", async () => {
-  const [html, app, css, png] = await Promise.all([
+test("selected images can cross canvas edges and transparent new documents do not add a background layer", async () => {
+  const [html, app, css, png, selection] = await Promise.all([
     readFile("index.html", "utf8"), readFile("app.js", "utf8"),
-    readFile("styles.css", "utf8"), readFile("domain/png-export.mjs", "utf8")
+    readFile("styles.css", "utf8"), readFile("domain/png-export.mjs", "utf8"),
+    readFile("domain/selection.mjs", "utf8")
   ]);
-  assert.match(app, /function keepImageTransformVisible/);
-  assert.match(app, /Object\.assign\(preview, keepImageTransformVisible/);
-  assert.match(app, /const corners = layerCorners\(layer, documentCenter\(state\.document\), transform\)/);
+  assert.doesNotMatch(app, /function keepImageTransformVisible/);
+  assert.match(app, /preview\.x = interaction\.beforeTransform\.x \+ currentDocument\.x - interaction\.startDocument\.x/);
+  assert.match(app, /drawObjectSelectionHandle\(visibleHandles\.moveHandle, "move"\)/);
+  assert.match(selection, /const moveHandle = centerOutsideViewport \? clampPoint\(center\) : null/);
   assert.match(html, /data-canvas-background="checkerboard"/);
   assert.match(css, /\.canvas-wrap\[data-background="checkerboard"\] canvas/);
   assert.match(png, /createPngExportCanvas/);
