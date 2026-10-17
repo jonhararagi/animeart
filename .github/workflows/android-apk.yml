@@ -1,0 +1,73 @@
+name: Build AnimeArt Android APK
+
+on:
+  push:
+    branches:
+      - android/apk-webview-packaging
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-apk.yml'
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Download the tested AnimeArt WebApp build
+        uses: actions/download-artifact@v4
+        with:
+          name: animeart-web-editor-build
+          repository: jonhararagi/animeart
+          run-id: 38614230247
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: /tmp/animeart-web-build
+      - name: Package web app into Android assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p android/app/src/main/assets/www
+          find /tmp/animeart-web-build -maxdepth 2 -type f -print
+          if [ -f /tmp/animeart-web-build/index.html ]; then
+            cp -R /tmp/animeart-web-build/. android/app/src/main/assets/www/
+          else
+            find /tmp/animeart-web-build -type f -name '*.zip' -print -quit | grep -q .
+            unzip -o "$(find /tmp/animeart-web-build -type f -name '*.zip' -print -quit)" -d android/app/src/main/assets/www
+          fi
+          test -s android/app/src/main/assets/www/index.html
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+      - name: Install Android build platform
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Build debug APK
+        working-directory: android
+        run: gradle --no-daemon assembleDebug
+      - name: Verify APK
+        run: test -s android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnimeArt-Android-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
