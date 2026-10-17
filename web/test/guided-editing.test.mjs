@@ -119,11 +119,11 @@ test("AA-TYPOGRAPHY-CANVA-001 keeps the text modal reachable on mobile and suppo
  assert.match(css, /AA-TYPOGRAPHY-CANVA-001/);
  assert.match(worker, /\.\/app\.js/);
  assert.match(browserE2E, /dragging selected text on the mobile touch path commits a bounded transform/);
- assert.match(app, /function activateSelectionToolForText\\(/);
- assert.match(app, /function showTextEditorDialog\\(/);
- assert.match(app, /finishTransformInteraction\\(false, event\\)/);
+ assert.match(app, /function activateSelectionToolForText\(/);
+ assert.match(app, /function showTextEditorDialog\(/);
+ assert.match(app, /finishTransformInteraction\(false, event\)/);
  assert.match(css, /AA-TYPOGRAPHY-CANVA-002/);
- assert.match(css, /#text-edit-dialog\\[open\\]/);
+ assert.match(css, /#text-edit-dialog\[open\]/);
  assert.match(worker, /animeart-web-shell-v33/);
  assert.match(browserE2E, /mobile Text opens a reachable Canva-style editor above the dock and switches away from brush mode/);
  assert.match(browserE2E, /dragging text never adds brush strokes/);
