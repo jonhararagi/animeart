@@ -242,10 +242,20 @@ function updateSelectionMiniPanel(layer = selectedLayerExact()) {
   ));
   panel.hidden = !hasEditableContent;
   const editText = document.querySelector("#selection-mini-edit-text");
+  const selectedText = layer?.contentType === "text";
   if (editText) {
-    editText.hidden = layer?.contentType !== "text";
-    editText.disabled = layer?.contentType !== "text" || Boolean(layer?.locked);
+    editText.hidden = !selectedText;
+    editText.disabled = !selectedText || Boolean(layer?.locked);
     editText.title = layer?.locked ? "Desbloqueá la capa para editar el texto" : "Abrir el editor de texto y tipografía";
+  }
+  // On mobile the contextual canvas strip is intentionally hidden. Reuse the
+  // always-visible bottom-dock action and make its purpose explicit for a text selection.
+  const mobileTextAction = document.querySelector('.mobile-touch-dock [data-touch-action="add-text"]');
+  if (mobileTextAction) {
+    const label = mobileTextAction.querySelector("span:last-child");
+    mobileTextAction.setAttribute("aria-label", selectedText ? "Editar texto seleccionado" : "Añadir título o texto");
+    mobileTextAction.title = selectedText ? "Editar el texto seleccionado" : "Añadir un título o texto";
+    if (label) label.textContent = selectedText ? "Editar texto" : "Texto";
   }
   if (!hasEditableContent) return;
 
