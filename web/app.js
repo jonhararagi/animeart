@@ -190,10 +190,7 @@ const ADJUSTMENT_CONTROL_DEFS = Object.freeze([
 const activeTouchPointers = new Map();
 let touchGesture = null;
 
-let frameBoundaryMode = (() => {
-  try { return localStorage.getItem("animeart-frame-boundary-mode") === "inside" ? "inside" : "free"; }
-  catch { return "free"; }
-})();
+let frameBoundaryMode = "free";
 
 const state = {
   tool: "select",
@@ -5244,7 +5241,6 @@ const backgroundModeButtons = [...document.querySelectorAll("[data-canvas-backgr
 const frameBoundaryButtons = [...document.querySelectorAll("[data-frame-boundary-mode]")];
 function setFrameBoundaryMode(mode) {
   frameBoundaryMode = mode === "inside" ? "inside" : "free";
-  try { localStorage.setItem("animeart-frame-boundary-mode", frameBoundaryMode); } catch {}
   frameBoundaryButtons.forEach(button => {
     const active = button.dataset.frameBoundaryMode === frameBoundaryMode;
     button.setAttribute("aria-pressed", String(active));
