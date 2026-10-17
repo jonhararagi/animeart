@@ -679,7 +679,7 @@ try {
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.at(-1)?.id === ' + JSON.stringify(backgroundCandidate.id)), "unpinning also restores the image to the top of the normal layer stack");
 
   const censorBefore = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(backgroundCandidate.id) + '); window.__animeArtCensorBefore=layer.image.source; return { width:layer.image.width, height:layer.image.height, flipX:layer.image.flipX }; })()');
-  await click('[data-edit-goal="censor"]');
+  await clickMoreGoal("censor");
   await waitFor('document.querySelector("#censor-light-dialog").open === true', 10000);
   assert(await evaluate('document.querySelector("#censor-dialog-image-name").textContent.includes("battleworn_knight")'), "censor-light dialog explicitly targets the selected image");
   const censorBounds = await selectorCenter("#censor-image-preview");
