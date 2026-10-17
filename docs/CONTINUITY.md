@@ -3371,3 +3371,34 @@ El workflow de publicación web terminó con el trabajo `deploy` omitido; no se 
 
 **Integración posterior en main:** PR #89 está fusionado. Merge SHA `28f51e8050c601a6edb45df17dab938dc140df77`; Web CI #39056009157 PASS y Android CI #39056009180 PASS sobre el mismo merge SHA. APK post-merge: artefacto #12109711866, SHA-256 `21b994563b804fbff5349e765eca3c153d5d949152aaaabcf60ee371d87c4949`. La prueba física en Xiaomi y la investigación externa de fuentes públicas siguen pendientes. Web CI [#39055005733](https://github.com/jonhararagi/animeart/actions/runs/39055005733) y Android CI [#39055005730](https://github.com/jonhararagi/animeart/actions/runs/39055005730) pasaron sobre el mismo SHA. La nueva comprobación móvil certifica la bandeja de dibujo táctil, trazos editables/deshacer, controles de capa de `44×44` px CSS o más y cambio real del orden de capas. Se añadió la actualización documental actual después de ese SHA; el HEAD documental también vuelve a ejecutarse en CI. La prueba física con el Xiaomi `24116RACCG` sigue pendiente.
 
+---
+
+## AA-EDITOR-RESEARCH-002 — corrección de coordenadas de pincel y auditoría de fuentes públicas (2026-10-17)
+
+**TIMER:** 2–4 horas estimadas para investigación de informes públicos, reproducción del defecto, corrección y validación; el tiempo real no se midió.
+
+**Fuentes públicas revisadas:** Fabric.js #7085 y PR #11143 (límite del pincel con zoom/pan); Fabric.js #7056 y PR #11150 (pincel de spray que cambiaba al soltar); Photopea #4051 (Quick Select en pantalla táctil Android); Fabric.js #7278/PR #7289 (fondo del canvas confundido con objeto borrable); Fabric.js PR #7470 (modelo de borrador por máscaras); Fabric.js #10460 (diferencia entre canvas y exportación SVG); Photopea #5894 (diferenciar recorte de imagen y composición). Las fuentes, los límites y los enlaces están en `docs/AUDITS/2026-10-17-EXTERNAL-EDITOR-BUG-RESEARCH.md`. La búsqueda general de blogs/editoriales de novedades no estuvo disponible en esta sesión; no se registra como realizada.
+
+### Defecto de AnimeArt confirmado y reparación
+
+- La prueba E2E nueva encontró que el pincel libre persistía todos los puntos como `(0,0)`.
+- Causa: `pointFromEvent()` pasaba un objeto a `createStrokePoint()`, cuya firma acepta números `x, y`. El objeto se coercionaba a un número no válido y la función lo normalizaba a cero.
+- Corrección: convertir pantalla→documento una vez y pasar `documentPoint.x` y `documentPoint.y` como dos argumentos numéricos.
+- Protección: prueba unitaria en `web/test/smooth-interaction.test.mjs` para proteger el contrato de argumentos y E2E móvil que dibuja tras zoom + pan táctil y compara las coordenadas reales guardadas con las esperadas.
+
+### Validación del código y pruebas
+
+- **HEAD de código y pruebas:** `6facc31ba32ea45d8246b6922550b6aede61e9d9`.
+- **Web CI PASS:** [run #39059634356](https://github.com/jonhararagi/animeart/actions/runs/39059634356).
+- **Android CI PASS:** [run #39059634357](https://github.com/jonhararagi/animeart/actions/runs/39059634357).
+- Esperado `(294,248)`, `(346,248)`; real guardado `(293.9999957,248.0000112)`, `(345.9999928,248.0000112)`.
+- Píxeles reales de trazo confirmados. En borrado de píxeles con zoom/pan, alfa del centro `0` y de un píxel distante `255`.
+- La prueba anterior del marco libre siguió PASS: alfa visible por fuera de arriba `255`, derecha `255`, abajo `207`, izquierda `255`; exportación PNG sigue siendo RGBA `640×480`, transparente y sin mutación de transformación.
+- **APK de CI:** [artefacto #12109919707](https://github.com/jonhararagi/animeart/actions/runs/39059634357/artifacts/12109919707).
+- **SHA-256 del APK:** `87bfde30f0a8ead7deea6f631394fbd79e7bc6678cbc79232ba51a2a6ebd2e29`.
+- La CI Android confirmó `connectedDebugAndroidTest`, arranque de WebView y `OFFLINE VALIDATION PASS`.
+
+**Integración autorizada:** pendiente de confirmar CI en el HEAD final que incluye este registro documental, fusionar PR #90 y verificar el SHA de `main` con sus CI de push.
+
+**Aceptación física pendiente:** arrastre real con el dedo, dibujo sobre el lienzo vacío, borrado tras zoom/pan y exportación en Xiaomi `24116RACCG`. Chromium y emulador no sustituyen esta prueba.
+
