@@ -30,37 +30,9 @@
           <button type="button" data-editor-mode="interactive" aria-pressed="false">✋ Modo interactivo</button>
         </div>
         <p class="editor-mode-hint" id="editor-mode-hint">Simple: elegí una tarea. Para acomodar una imagen, tocala y arrastrala.</p>
-        <div class="asset-quick-actions" role="group" aria-label="Importar y organizar imágenes">
-          <button type="button" id="quick-import-images"><span aria-hidden="true">＋</span><b>Importar imágenes</b><small>Desde tu dispositivo</small></button>
-          <button type="button" id="quick-open-asset-library"><span aria-hidden="true">▦</span><b>Mis imágenes</b><small>Biblioteca reutilizable</small></button>
-        </div>
-        <div class="mobile-output-options" role="group" aria-label="Formato y tamaño de exportación">
-          <label for="mobile-export-format">Formato<select id="mobile-export-format" aria-label="Formato de exportación móvil"><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="webp">WebP</option></select></label>
-          <label for="mobile-export-resolution">Tamaño<select id="mobile-export-resolution" aria-label="Resolución de exportación móvil"><option value="normal">Normal</option><option value="hd">HD</option></select></label>
-        </div>
-        <div class="easy-edit-grid">
-          <button type="button" data-edit-goal="move"><span aria-hidden="true">🖐️</span><b>Mover / acomodar</b><small>Arrastra y cambia tamaño</small></button>
-          <button type="button" data-edit-goal="fit"><span aria-hidden="true">🎯</span><b>Ajustar al lienzo</b><small>Centra y encaja la imagen</small></button>
-          <button type="button" data-edit-goal="crop"><span aria-hidden="true">✂️</span><b>Recortar</b><small>Imagen o composición completa</small></button>
-          <button type="button" data-edit-goal="background"><span aria-hidden="true">🪄</span><b>Quitar fondo</b><small>Hazlo transparente</small></button>
-          <button type="button" data-edit-goal="erase"><span aria-hidden="true">🧽</span><b>Borrar</b><small>Abre el estudio de borrado</small></button>
-          <button type="button" data-edit-goal="censor"><span aria-hidden="true">✨</span><b>Luz de censura</b><small>Control de color, brillo y grosor</small></button>
-          <button type="button" data-edit-goal="draw"><span aria-hidden="true">🖌️</span><b>Pintar en la imagen</b><small>Vista previa con deshacer y aplicar</small></button>
-          <button type="button" data-edit-goal="rotate-left"><span aria-hidden="true">↶</span><b>Girar −</b><small>5° a la izquierda</small></button>
-          <button type="button" data-edit-goal="rotate-right"><span aria-hidden="true">↷</span><b>Girar +</b><small>5° a la derecha</small></button>
-          <button type="button" data-edit-goal="flip-horizontal"><span aria-hidden="true">↔️</span><b>Voltear horizontal</b><small>Reflejar izquierda y derecha</small></button>
-          <button type="button" data-edit-goal="flip-vertical"><span aria-hidden="true">↕️</span><b>Voltear vertical</b><small>Reflejar arriba y abajo</small></button>
-          <button type="button" data-edit-goal="text"><span aria-hidden="true">🔤</span><b>Texto</b><small>Añade palabras o globos</small></button>
-          <button type="button" data-edit-goal="shapes"><span aria-hidden="true">🔷</span><b>Formas</b><small>Figuras, borde y sombra</small></button>
-          <button type="button" data-edit-goal="object-style"><span aria-hidden="true">🎨</span><b>Apariencia del elemento</b><small>Opacidad, color y forma</small></button>
-          <button type="button" data-edit-goal="color"><span aria-hidden="true">🎨</span><b>Mejorar color</b><small>Brillo y contraste</small></button>
-          <button type="button" data-edit-goal="layers"><span aria-hidden="true">🗂️</span><b>Capas</b><small>Ordena los elementos</small></button>
-          <button type="button" data-edit-goal="delete-selected"><span aria-hidden="true">🗑️</span><b>Eliminar seleccionado</b><small>Quita el elemento actual</small></button>
-          <button type="button" data-edit-goal="undo"><span aria-hidden="true">↶</span><b>Deshacer</b><small>Vuelve un paso atrás</small></button>
-          <button type="button" data-edit-goal="redo"><span aria-hidden="true">↷</span><b>Rehacer</b><small>Recupera el cambio deshecho</small></button>
-          <button type="button" data-edit-goal="export"><span aria-hidden="true">💾</span><b>Guardar / Exportar</b><small>Conserva tu edición</small></button>
-          <button type="button" data-edit-goal="appearance"><span aria-hidden="true">⚙️</span><b>Apariencia</b><small>Personaliza el editor</small></button>
-        </div>
+        
+        
+        <div class="easy-edit-launcher"><p>Las herramientas importantes tienen su propio estudio para ajustar y previsualizar los cambios.</p><button type="button" id="toolbox-open" class="toolbox-open-button"><span aria-hidden="true">☷</span><b>Todas las herramientas</b><small>Recorte, borrado, dibujo, capas, color y más</small></button></div>
         <div class="guided-edit-tools">
           <label class="guided-toggle"><input id="editing-help-enabled" type="checkbox" checked> Ayúdame a editar</label>
           <button type="button" id="show-edit-example">¿Cómo hago esto?</button>
@@ -368,6 +340,51 @@
     <button type="button" data-touch-action="add-text" aria-label="Añadir o editar texto"><span aria-hidden="true">🔤</span><span>Texto</span></button>
     <button type="button" data-touch-action="more" aria-expanded="false" aria-label="Abrir todas las herramientas"><span aria-hidden="true">☰</span><span>Más</span></button>
   </nav>
+
+  <dialog id="toolbox-dialog" class="toolbox-dialog" aria-labelledby="toolbox-title">
+    <section class="toolbox-dialog-shell">
+      <header class="toolbox-dialog-header">
+        <div><p class="eyebrow">ANIMEART · HERRAMIENTAS</p><h2 id="toolbox-title">¿Qué querés hacer?</h2><p>Elegí una acción. Los estudios grandes se abren por separado para darte espacio, opciones y una vista previa antes de aplicar.</p></div>
+        <button type="button" id="toolbox-close" class="mini-dialog-close" aria-label="Cerrar herramientas">✕</button>
+      </header>
+      <div class="toolbox-support-tools">
+        <div class="asset-quick-actions" role="group" aria-label="Importar y organizar imágenes">
+          <button type="button" id="quick-import-images"><span aria-hidden="true">＋</span><b>Importar imágenes</b><small>Desde tu dispositivo</small></button>
+          <button type="button" id="quick-open-asset-library"><span aria-hidden="true">▦</span><b>Mis imágenes</b><small>Biblioteca reutilizable</small></button>
+        </div>
+        <div class="mobile-output-options" role="group" aria-label="Formato y tamaño de exportación">
+          <label for="mobile-export-format">Formato<select id="mobile-export-format" aria-label="Formato de exportación móvil"><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="webp">WebP</option></select></label>
+          <label for="mobile-export-resolution">Tamaño<select id="mobile-export-resolution" aria-label="Resolución de exportación móvil"><option value="normal">Normal</option><option value="hd">HD</option></select></label>
+        </div>
+      </div>
+      <h3 class="toolbox-section-title">Herramientas de edición</h3>
+      <div class="easy-edit-grid">
+          <button type="button" data-edit-goal="move"><span aria-hidden="true">🖐️</span><b>Mover / acomodar</b><small>Arrastra y cambia tamaño</small></button>
+          <button type="button" data-edit-goal="fit"><span aria-hidden="true">🎯</span><b>Ajustar al lienzo</b><small>Centra y encaja la imagen</small></button>
+          <button type="button" data-edit-goal="crop"><span aria-hidden="true">✂️</span><b>Recortar</b><small>Imagen o composición completa</small></button>
+          <button type="button" data-edit-goal="background"><span aria-hidden="true">🪄</span><b>Quitar fondo</b><small>Hazlo transparente</small></button>
+          <button type="button" data-edit-goal="erase"><span aria-hidden="true">🧽</span><b>Borrar</b><small>Abre el estudio de borrado</small></button>
+          <button type="button" data-edit-goal="censor"><span aria-hidden="true">✨</span><b>Luz de censura</b><small>Control de color, brillo y grosor</small></button>
+          <button type="button" data-edit-goal="draw"><span aria-hidden="true">🖌️</span><b>Pintar en la imagen</b><small>Vista previa con deshacer y aplicar</small></button>
+          <button type="button" data-edit-goal="rotate-left"><span aria-hidden="true">↶</span><b>Girar −</b><small>5° a la izquierda</small></button>
+          <button type="button" data-edit-goal="rotate-right"><span aria-hidden="true">↷</span><b>Girar +</b><small>5° a la derecha</small></button>
+          <button type="button" data-edit-goal="flip-horizontal"><span aria-hidden="true">↔️</span><b>Voltear horizontal</b><small>Reflejar izquierda y derecha</small></button>
+          <button type="button" data-edit-goal="flip-vertical"><span aria-hidden="true">↕️</span><b>Voltear vertical</b><small>Reflejar arriba y abajo</small></button>
+          <button type="button" data-edit-goal="text"><span aria-hidden="true">🔤</span><b>Texto</b><small>Añade palabras o globos</small></button>
+          <button type="button" data-edit-goal="shapes"><span aria-hidden="true">🔷</span><b>Formas</b><small>Figuras, borde y sombra</small></button>
+          <button type="button" data-edit-goal="object-style"><span aria-hidden="true">🎨</span><b>Apariencia del elemento</b><small>Opacidad, color y forma</small></button>
+          <button type="button" data-edit-goal="color"><span aria-hidden="true">🎨</span><b>Mejorar color</b><small>Brillo y contraste</small></button>
+          <button type="button" data-edit-goal="layers"><span aria-hidden="true">🗂️</span><b>Capas</b><small>Ordena los elementos</small></button>
+          <button type="button" data-edit-goal="delete-selected"><span aria-hidden="true">🗑️</span><b>Eliminar seleccionado</b><small>Quita el elemento actual</small></button>
+          <button type="button" data-edit-goal="undo"><span aria-hidden="true">↶</span><b>Deshacer</b><small>Vuelve un paso atrás</small></button>
+          <button type="button" data-edit-goal="redo"><span aria-hidden="true">↷</span><b>Rehacer</b><small>Recupera el cambio deshecho</small></button>
+          <button type="button" data-edit-goal="export"><span aria-hidden="true">💾</span><b>Guardar / Exportar</b><small>Conserva tu edición</small></button>
+          <button type="button" data-edit-goal="appearance"><span aria-hidden="true">⚙️</span><b>Apariencia</b><small>Personaliza el editor</small></button>
+        </div>
+      <p class="toolbox-note">Los cambios destructivos se previsualizan y se pueden cancelar cuando el estudio correspondiente lo permite. Pintar y borrar se editan en una ventana de píxeles; recortar permite elegir entre una sola imagen o toda la composición con sus capas.</p>
+    </section>
+  </dialog>
+
   <dialog id="crop-mode-dialog" class="workflow-dialog" aria-labelledby="crop-mode-title">
     <section class="workflow-dialog-shell">
       <header class="workflow-dialog-header">
