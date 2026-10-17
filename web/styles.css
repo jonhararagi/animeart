@@ -3691,3 +3691,48 @@ body.mobile-tools-open .toolbar > .easy-edit-panel > .easy-edit-grid button {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+
+/* AA-EDITOR-TOOLS-AUDIT-001: layer management must stay touch-usable on narrow phones. */
+@media (max-width: 920px) {
+  body.mobile-layers-open > .workspace > .layers #layers li {
+    min-height: 0 !important;
+    gap: 7px !important;
+    padding: 8px !important;
+  }
+  body.mobile-layers-open > .workspace > .layers #layers .layer-controls {
+    grid-template-columns: 44px 44px minmax(120px, 1fr) !important;
+    gap: 6px !important;
+  }
+  body.mobile-layers-open > .workspace > .layers #layers .layer-toggle {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    padding: 6px !important;
+    font-size: .9rem !important;
+  }
+  body.mobile-layers-open > .workspace > .layers #layers .layer-opacity {
+    min-height: 44px !important;
+    padding: 0 6px !important;
+    touch-action: pan-x;
+  }
+  body.mobile-layers-open > .workspace > .layers #layers .layer-lifecycle {
+    display: flex !important;
+    gap: 6px !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+    padding: 2px 0 6px !important;
+    scrollbar-width: thin;
+    touch-action: pan-x;
+  }
+  body.mobile-layers-open > .workspace > .layers #layers .layer-action {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 46px !important;
+    min-height: 44px !important;
+    padding: 6px 10px !important;
+    font-size: .72rem !important;
+    white-space: nowrap !important;
+    touch-action: manipulation;
+  }
+}

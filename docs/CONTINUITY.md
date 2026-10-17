@@ -3338,3 +3338,28 @@ El SHA del código/PR es `4d6f7b42b71dc5aed6161900b1cc13765382b188`; el identifi
 
 **Aceptación física pendiente:** arrastre real con dedo y recuperación de la capa en el Xiaomi `24116RACCG`. La prueba Chromium y el emulador Android no se consideran una prueba física de teléfono.
 
+---
+
+## AA-EDITOR-TOOLS-AUDIT-001 — auditoría y mejoras de herramientas (2026-10-17)
+
+**TIMER:** 2–4 horas estimadas para revisión, mejoras, pruebas y validación; tiempo real no medido.  
+**Rama:** `aa-free-move-preview-001`  
+**PR:** [#89](https://github.com/jonhararagi/animeart/pull/89)
+
+### Hallazgos confirmados
+- El botón móvil prominente “Pintar” abría el estudio raster por imagen, aunque el usuario esperaba dibujar en una capa y trabajar aun con el lienzo vacío.
+- Borrar/restaurar acumulaban puntos durante el gesto, pero no dibujaban la ruta previa en el lienzo principal.
+- La gestión de capas ya admitía duplicar, visibilidad, bloqueo, opacidad, renombrado, referencia, eliminación y orden; algunas acciones eran inglesas y los controles de ciclo de vida quedaban comprimidos en móvil.
+- Quitar fondo es un algoritmo local de región conectada por color, útil sobre todo con fondos lisos; no es segmentación semántica de IA.
+
+### Cambios incorporados
+- Separación explícita entre **Dibujar en capa**, **Pintar píxeles**, **Borrar con pincel** y el estudio **Borrar píxeles**.
+- El botón principal móvil activa el pincel de capas; las pruebas dibujan sobre el lienzo vacío y deshacen el trazo.
+- Previsualización de alto contraste para el recorrido del borrador y del pincel Restaurar, incluida la fase de procesamiento; cancelación limpia el overlay sin aplicar cambios.
+- Acciones de capa en español y objetivos táctiles de 44 px o más para gestión móvil. Las acciones secundarias se pueden desplazar horizontalmente sin reducir el tamaño táctil.
+- Caché PWA v38 y pruebas E2E adicionales para proteger los flujos de dibujo y borrado.
+
+**Documento detallado:** [`docs/AUDITS/2026-10-17-EDITOR-TOOLS-AUDIT.md`](./AUDITS/2026-10-17-EDITOR-TOOLS-AUDIT.md)
+
+**CI:** pendiente para el HEAD de esta iteración; se validará con Web CI y Android CI sobre el mismo SHA. La prueba física con el Xiaomi `24116RACCG` sigue pendiente.
+

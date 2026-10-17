@@ -1247,6 +1247,22 @@ try {
   await evaluate('document.querySelector(".mobile-touch-dock").scrollLeft = 0');
   assert(await evaluate('(() => { const dock=document.querySelector(".mobile-touch-dock").getBoundingClientRect(); const add=document.querySelector(".mobile-touch-dock [data-touch-action=import-image]").getBoundingClientRect(); return add.left >= dock.left && add.right <= dock.right; })()'), "the primary Add image action is visible without horizontal scrolling");
   assert(await evaluate('document.querySelector("#selection-mini-panel").hidden === true'), "empty canvas does not show a useless layer-action panel");
+
+  // AA-EDITOR-TOOLS-AUDIT-001: the prominent mobile Draw action must work on an empty canvas.
+  await click('.mobile-touch-dock [data-touch-action="paint"]');
+  await waitFor('document.querySelector(".toolbar .tool[data-tool=brush]")?.classList.contains("active") && document.querySelector("#mobile-context-heading")?.hidden === false');
+  const blankDrawCenter = await selectorCenter("#canvas");
+  await mouseDrag(
+    { x: blankDrawCenter.x - 42, y: blankDrawCenter.y + 8 },
+    { x: blankDrawCenter.x + 42, y: blankDrawCenter.y + 8 }
+  );
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.contentType==="drawing"&&layer.strokes?.some(stroke=>stroke.points?.length>=2))', 10000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.contentType==="drawing"&&layer.strokes?.some(stroke=>stroke.points?.length>=2))'),
+    "mobile Draw creates an editable stroke on a transparent layer without an imported image");
+  await click('.mobile-touch-dock [data-touch-action="tool"][data-tool="select"]');
+  await click('.mobile-top-actions [data-mobile-top-action="undo"]');
+  await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.contentType==="drawing"&&layer.strokes?.length)', 10000);
+
   await saveScreenshot("animeart-studio-mobile-home.png");
   assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=import-image]")?.textContent.includes("Añadir")'), "mobile has a visible Add image action");
   assert(await evaluate('document.querySelector("#quick-open-asset-library")?.textContent.includes("Mis imágenes")'), "reusable Gallery is available inside More instead of occupying a permanent dock slot");
@@ -1341,6 +1357,30 @@ try {
   assert(await evaluate('getComputedStyle(document.querySelector("#remove-selected-image")).display === "none"'),
     "mobile uses the canvas X selection handle instead of a second floating delete control");
   await waitFor('document.querySelector("#mobile-feedback").hidden === true', 5000);
+
+  // The main-canvas pixel eraser exposes a live route before changing image pixels.
+  const sourceBeforeBrushErase = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.image?.source');
+  await evaluate('(() => { const input=document.querySelector("#brush-size"); input.value="48"; input.dispatchEvent(new Event("input",{bubbles:true})); })()');
+  await clickMoreGoal("eraser");
+  await waitFor('document.querySelector(".toolbar .tool[data-tool=eraser]")?.classList.contains("active") && document.querySelector("#mobile-context-heading")?.hidden === false');
+  const erasePreviewSetup = await evaluate('(() => { const canvas=document.querySelector("#canvas"),r=canvas.getBoundingClientRect(),d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; if(!d?.center)throw new Error("selected image screen coordinates are unavailable"); const center={x:r.left+d.center.x,y:r.top+d.center.y}; const sample={x:center.x-7,y:center.y+3}; const px=Math.max(0,Math.min(canvas.width-1,Math.round((sample.x-r.left)*canvas.width/r.width))),py=Math.max(0,Math.min(canvas.height-1,Math.round((sample.y-r.top)*canvas.height/r.height))); return {center,start:{x:center.x-56,y:center.y},end:{x:center.x+42,y:center.y},sample,before:Array.from(canvas.getContext("2d",{willReadFrequently:true}).getImageData(px,py,1,1).data)}; })()');
+  await cdp("Input.dispatchMouseEvent",{type:"mouseMoved",x:erasePreviewSetup.start.x,y:erasePreviewSetup.start.y});
+  await cdp("Input.dispatchMouseEvent",{type:"mousePressed",x:erasePreviewSetup.start.x,y:erasePreviewSetup.start.y,button:"left",buttons:1,clickCount:1});
+  await cdp("Input.dispatchMouseEvent",{type:"mouseMoved",x:erasePreviewSetup.end.x,y:erasePreviewSetup.end.y,button:"left",buttons:1});
+  await sleep(140);
+  const brushPreviewPixels = await evaluate('(() => { const canvas=document.querySelector("#canvas"),r=canvas.getBoundingClientRect(),p=' + JSON.stringify(erasePreviewSetup.sample) + ',px=Math.max(0,Math.min(canvas.width-1,Math.round((p.x-r.left)*canvas.width/r.width))),py=Math.max(0,Math.min(canvas.height-1,Math.round((p.y-r.top)*canvas.height/r.height))); return {pixel:Array.from(canvas.getContext("2d",{willReadFrequently:true}).getImageData(px,py,1,1).data),diagnostics:window.__ANIMEART_PIXEL_EDIT_PREVIEW_DIAGNOSTICS__}; })()');
+  assert(brushPreviewPixels.diagnostics?.mode === "erase" && brushPreviewPixels.diagnostics.pointCount >= 2,
+    "main-canvas erasing exposes a live path preview while the pointer is down");
+  assert(brushPreviewPixels.pixel[0] > erasePreviewSetup.before[0] + 70 && brushPreviewPixels.pixel[1] < erasePreviewSetup.before[1] - 30,
+    "the eraser preview paints a visible high-contrast overlay before changing source pixels: " + JSON.stringify({before:erasePreviewSetup.before,after:brushPreviewPixels.pixel}));
+  await cdp("Input.dispatchMouseEvent",{type:"mouseReleased",x:erasePreviewSetup.end.x,y:erasePreviewSetup.end.y,button:"left",buttons:0,clickCount:1});
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.image?.source !== ' + JSON.stringify(sourceBeforeBrushErase), 15000);
+  await click('.mobile-top-actions [data-mobile-top-action="undo"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.image?.source === ' + JSON.stringify(sourceBeforeBrushErase), 10000);
+  await evaluate('(() => { const input=document.querySelector("#brush-size"); input.value="5"; input.dispatchEvent(new Event("input",{bubbles:true})); })()');
+  await click('.mobile-touch-dock [data-touch-action="tool"][data-tool="select"]');
+  await waitFor('document.querySelector(".toolbar .tool[data-tool=select]")?.classList.contains("active")');
+
   await evaluate('document.querySelector(".mobile-touch-dock").scrollLeft = 0');
   await saveScreenshot("animeart-studio-mobile-imported-image.png");
   console.log("MOBILE_IMPORTED_IMAGE_DIAGNOSTICS: " + JSON.stringify(await evaluate('(() => { const raw=localStorage.getItem("animeart-web-document"); const saved=JSON.parse(raw || "{}"); const layer=saved.layers?.find(entry=>entry.name==="e2e-mobile-import"); return { status:document.querySelector("#status")?.textContent||"", feedback:document.querySelector("#mobile-feedback")?.textContent||"", storedCharacters:raw?.length||0, layer:layer ? {name:layer.name,contentType:layer.contentType,width:layer.image?.width,height:layer.image?.height,mime:(/^data:([^;,]+)/.exec(layer.image?.source||"")||[])[1]||null,transform:layer.transform} : null }; })()')));
@@ -1622,7 +1662,7 @@ try {
   const sourceBeforePaintStudio = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.image?.source');
   await click('.mobile-touch-dock [data-touch-action="more"]');
   await waitFor('document.body.classList.contains("mobile-tools-open")');
-  await click('[data-edit-goal="draw"]');
+  await click('[data-edit-goal="paint"]');
   await waitFor('document.querySelector("#censor-light-dialog")?.open === true');
   assert(await evaluate('(() => { const r=document.querySelector("#censor-light-dialog").getBoundingClientRect(); return document.querySelector("#censor-dialog-title").textContent.includes("Pintar píxeles") && r.width >= innerWidth - 2 && r.height >= innerHeight - 2; })()'),
     "Paint opens a focused full-screen pixel studio with the real image preview");

@@ -53,13 +53,13 @@
         <summary>Más herramientas</summary>
         <div class="more-tools-content">
           <button class="tool active" data-tool="select" aria-pressed="true">🖐️ Seleccionar / mover</button>
-      <button class="tool" data-tool="brush" aria-pressed="false">🖌️ Dibujar</button>
-      <button class="tool" data-tool="eraser" title="Borrar una parte de la imagen o de los trazos seleccionados">🧽 Borrar</button>
+      <button class="tool" data-tool="brush" aria-pressed="false">🖌️ Dibujar en capa</button>
+      <button class="tool" data-tool="eraser" title="Borra píxeles de la imagen o trazos de la capa seleccionada">🧽 Borrar con pincel</button>
       <button class="tool" data-tool="restore-brush" aria-pressed="false" title="Pintá sobre una zona borrada para recuperar píxeles originales">🩹 Restaurar</button>
       <button class="tool" data-tool="magic-eraser" aria-pressed="false" title="Toca una región de fondo conectada para previsualizar el borrado">🪄 Borrado mágico</button>
       <label class="brush-control magic-tolerance-control" for="magic-eraser-tolerance">Tolerancia del borrado mágico <output id="magic-eraser-tolerance-value">28</output><input id="magic-eraser-tolerance" type="range" min="4" max="100" step="1" value="28"></label>
       <button class="tool" data-tool="censor-light" aria-pressed="false" title="Abrir Luz de censura para editar una imagen en una ventana independiente">✨ Luz de censura</button>
-      <button class="tool" data-tool="pan">✋ Mover / zoom</button>
+      <button class="tool" data-tool="pan">✋ Mover vista / zoom</button>
           <section class="censor-light-controls" aria-labelledby="censor-light-title" hidden>
             <h3 id="censor-light-title">✨ Luz de censura</h3>
             <p>Usá la ventana independiente “Luz de censura” para pintar una vista previa, deshacer trazos o cancelar antes de aplicar.</p>
@@ -88,28 +88,28 @@
         <button type="button" data-brush-color="#6ee7b7" aria-label="Spirit mint" title="Spirit mint" style="--swatch:#6ee7b7"></button>
         <button type="button" data-brush-color="#ffffff" aria-label="White" title="White" style="--swatch:#ffffff"></button>
       </div>
-      <button id="undo" disabled>Undo</button>
-      <button id="redo" disabled>Redo</button>
-      <button id="add-layer">+ Layer</button>
-      <button id="add-text-layer">+ Text</button>
-      <button id="add-meme-text" title="Add top and bottom outlined Impact captions">+ Meme Text</button>
-      <button id="poster-templates" type="button">Poster templates</button>
-      <button id="add-image-layer" title="Import images up to 25 MB. Large images are optimized locally for project storage.">+ Image / Reference</button>
-      <button id="crop-resize-image" disabled>Crop / Resize Image</button>
-      <button id="fit-image-to-canvas" type="button" disabled title="Fit the selected image inside the canvas without changing its pixel resolution">Fit image</button>
-      <button id="remove-background" type="button" disabled>Remove Background</button>
-      <button id="recolor-image" type="button" disabled>Recolor Range</button>
-      <button id="flip-image-horizontal" type="button" disabled title="Mirror selected image left to right">Flip H</button>
-      <button id="flip-image-vertical" type="button" disabled title="Mirror selected image top to bottom">Flip V</button>
-      <button id="add-sample-character" title="Import the bundled CC0 1.0 character as a real image layer">+ CC0 Character Sample</button>
-      <button id="open-asset-library" type="button" title="Store and reuse your own images">Asset Library</button>
+      <button id="undo" disabled>Deshacer</button>
+      <button id="redo" disabled>Rehacer</button>
+      <button id="add-layer">+ Capa</button>
+      <button id="add-text-layer">+ Texto</button>
+      <button id="add-meme-text" title="Añadir títulos superior e inferior con contorno">+ Texto meme</button>
+      <button id="poster-templates" type="button">Plantillas de cartel</button>
+      <button id="add-image-layer" title="Importar imágenes de hasta 25 MB. Las imágenes grandes se optimizan localmente para guardar el proyecto.">+ Imagen / referencia</button>
+      <button id="crop-resize-image" disabled>Recortar / redimensionar imagen</button>
+      <button id="fit-image-to-canvas" type="button" disabled title="Encajar la imagen seleccionada en el lienzo sin cambiar su resolución en píxeles">Encajar imagen</button>
+      <button id="remove-background" type="button" disabled>Quitar fondo</button>
+      <button id="recolor-image" type="button" disabled>Reemplazar rango de color</button>
+      <button id="flip-image-horizontal" type="button" disabled title="Reflejar la imagen seleccionada de izquierda a derecha">Voltear H</button>
+      <button id="flip-image-vertical" type="button" disabled title="Reflejar la imagen seleccionada de arriba abajo">Voltear V</button>
+      <button id="add-sample-character" title="Importar el personaje de muestra CC0 1.0 como una capa de imagen editable">+ Personaje CC0</button>
+      <button id="open-asset-library" type="button" title="Guardar y reutilizar tus propias imágenes">Biblioteca de imágenes</button>
       <a class="asset-source-link" href="./assets/ASSET_SOURCES.md" target="_blank" rel="noopener">Sample art source &amp; license</a>
       <input id="image-file-input" type="file" accept="image/*" multiple hidden>
-      <button id="new-document">New</button>
-      <button id="recover-project">Recover local</button>
-      <button id="save">Save locally</button>
-      <button id="export-project">Export project file</button>
-      <button id="import-project">Open project file</button>
+      <button id="new-document">Nuevo</button>
+      <button id="recover-project">Recuperar proyecto local</button>
+      <button id="save">Guardar localmente</button>
+      <button id="export-project">Exportar proyecto</button>
+      <button id="import-project">Abrir proyecto</button>
       <input id="project-file-input" type="file" accept="application/json,.json" hidden>
       <label class="export-format-control" for="export-format">Export format
         <select id="export-format" aria-label="Export format">
@@ -124,16 +124,16 @@
           <option value="hd">HD · hasta 2×, límite inteligente de 16 MP</option>
         </select>
       </label>
-      <label id="export-quality-control" class="export-format-control" for="export-quality" hidden>Quality
+      <label id="export-quality-control" class="export-format-control" for="export-quality" hidden>Calidad
         <input id="export-quality" type="range" min="50" max="100" step="1" value="92">
         <output id="export-quality-value">92%</output>
       </label>
-      <label id="export-background-control" class="export-format-control" for="export-background" hidden>JPEG background
+      <label id="export-background-control" class="export-format-control" for="export-background" hidden>Fondo JPEG
         <input id="export-background" type="color" value="#ffffff">
       </label>
-      <button id="export-png">Export image</button>
-      <button id="clear">Clear</button>
-      <span class="tool-group-label">Layer</span>
+      <button id="export-png">Exportar imagen</button>
+      <button id="clear">Vaciar capa</button>
+      <span class="tool-group-label">Capa</span>
       <button data-transform="left" title="Move layer left">←</button>
       <button data-transform="right" title="Move layer right">→</button>
       <button data-transform="up" title="Move layer up">↑</button>
@@ -194,19 +194,19 @@
       <button type="button" id="remove-selected-image" aria-label="Quitar imagen seleccionada" title="Quitar solo esta imagen. Podés deshacer." hidden>×<span>Quitar imagen</span></button>
       <p class="transparency-note" id="transparency-note">Los cuadritos indican transparencia. No aparecerán en el PNG. El fondo blanco de una imagen importada sigue siendo opaco hasta quitarlo.</p>
     </section>
-    <aside class="layers" aria-label="Layers">
-      <h2>Layers</h2>
+    <aside class="layers" aria-label="Capas">
+      <h2>Capas</h2>
       <ol id="layers"></ol>
-      <section id="image-mask-panel" class="image-mask-panel" aria-labelledby="image-mask-title" hidden><div class="panel-heading"><div><p class="eyebrow">NON-DESTRUCTIVE</p><h3 id="image-mask-title">Image shape cut</h3></div></div><label class="text-field" for="image-mask">Clip shape<select id="image-mask"><option value="none">Original rectangle</option><option value="circle">Circle / avatar</option><option value="rounded">Rounded card</option><option value="star">Star</option><option value="heart">Heart</option><option value="hexagon">Hexagon</option></select></label><p class="adjustment-note">The mask is editable and does not erase the original pixels.</p></section>
+      <section id="image-mask-panel" class="image-mask-panel" aria-labelledby="image-mask-title" hidden><div class="panel-heading"><div><p class="eyebrow">NO DESTRUCTIVO</p><h3 id="image-mask-title">Recorte por forma</h3></div></div><label class="text-field" for="image-mask">Forma de recorte<select id="image-mask"><option value="none">Rectángulo original</option><option value="circle">Círculo / avatar</option><option value="rounded">Tarjeta redondeada</option><option value="star">Estrella</option><option value="heart">Corazón</option><option value="hexagon">Hexágono</option></select></label><p class="adjustment-note">La máscara se puede editar y no borra los píxeles originales.</p></section>
       <section class="adjustment-panel" aria-labelledby="adjustments-title">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">NON-DESTRUCTIVE</p>
-            <h3 id="adjustments-title">Image adjustments</h3>
+            <h3 id="adjustments-title">Ajustes de imagen</h3>
           </div>
-          <button id="reset-layer-adjustments" class="quiet-button" type="button" disabled>Reset</button>
+          <button id="reset-layer-adjustments" class="quiet-button" type="button" disabled>Restablecer</button>
         </div>
-        <p id="adjustment-layer-name" class="adjustment-layer-name">Select a layer to edit</p>
+        <p id="adjustment-layer-name" class="adjustment-layer-name">Seleccioná una capa para editarla</p>
         <div class="adjustment-presets" aria-label="Adjustment presets">
           <button type="button" data-adjustment-preset="original" class="preset-button active">Original</button>
           <button type="button" data-adjustment-preset="anime" class="preset-button">Anime</button>
@@ -340,7 +340,7 @@
   <nav class="mobile-touch-dock" aria-label="Herramientas principales">
     <button type="button" data-touch-action="import-image" aria-label="Añadir imagen al lienzo" title="Importar una imagen"><span aria-hidden="true">＋</span><span>Añadir</span></button>
     <button type="button" data-touch-action="tool" data-tool="select" aria-pressed="true" aria-label="Mover y seleccionar"><span aria-hidden="true">🖐️</span><span>Mover</span></button>
-    <button type="button" data-touch-action="paint" aria-label="Abrir estudio de pintura"><span aria-hidden="true">🖌️</span><span>Pintar</span></button>
+    <button type="button" data-touch-action="paint" aria-label="Dibujar en una capa editable" title="Dibujar en una capa separada"><span aria-hidden="true">🖌️</span><span>Dibujar</span></button>
     <button type="button" data-touch-action="crop" aria-label="Elegir tipo de recorte"><span aria-hidden="true">✂️</span><span>Recortar</span></button>
     <button type="button" data-touch-action="add-text" aria-label="Añadir o editar texto"><span aria-hidden="true">🔤</span><span>Texto</span></button>
     <button type="button" data-touch-action="more" aria-expanded="false" aria-label="Abrir todas las herramientas"><span aria-hidden="true">☰</span><span>Más</span></button>
@@ -368,9 +368,11 @@
           <button type="button" data-edit-goal="fit"><span aria-hidden="true">🎯</span><b>Ajustar al lienzo</b><small>Centra y encaja la imagen</small></button>
           <button type="button" data-edit-goal="crop"><span aria-hidden="true">✂️</span><b>Recortar</b><small>Imagen o composición completa</small></button>
           <button type="button" data-edit-goal="background"><span aria-hidden="true">🪄</span><b>Quitar fondo</b><small>Hazlo transparente</small></button>
-          <button type="button" data-edit-goal="erase"><span aria-hidden="true">🧽</span><b>Borrar</b><small>Abre el estudio de borrado</small></button>
+          <button type="button" data-edit-goal="erase"><span aria-hidden="true">🧽</span><b>Borrar píxeles</b><small>Previsualizar, deshacer y aplicar</small></button>
           <button type="button" data-edit-goal="censor"><span aria-hidden="true">✨</span><b>Luz de censura</b><small>Control de color, brillo y grosor</small></button>
-          <button type="button" data-edit-goal="draw"><span aria-hidden="true">🖌️</span><b>Pintar en la imagen</b><small>Vista previa con deshacer y aplicar</small></button>
+          <button type="button" data-edit-goal="draw"><span aria-hidden="true">🖌️</span><b>Dibujar en capa</b><small>Trazos editables, incluso sin imagen</small></button>
+          <button type="button" data-edit-goal="paint"><span aria-hidden="true">🖍️</span><b>Pintar píxeles</b><small>Editar la imagen con vista previa</small></button>
+          <button type="button" data-edit-goal="eraser"><span aria-hidden="true">🧽</span><b>Borrar con pincel</b><small>Borrar trazos o píxeles y deshacer</small></button>
           <button type="button" data-edit-goal="rotate-left"><span aria-hidden="true">↶</span><b>Girar −</b><small>5° a la izquierda</small></button>
           <button type="button" data-edit-goal="rotate-right"><span aria-hidden="true">↷</span><b>Girar +</b><small>5° a la derecha</small></button>
           <button type="button" data-edit-goal="flip-horizontal"><span aria-hidden="true">↔️</span><b>Voltear horizontal</b><small>Reflejar izquierda y derecha</small></button>
@@ -386,7 +388,7 @@
           <button type="button" data-edit-goal="export"><span aria-hidden="true">💾</span><b>Guardar / Exportar</b><small>Conserva tu edición</small></button>
           <button type="button" data-edit-goal="appearance"><span aria-hidden="true">⚙️</span><b>Apariencia</b><small>Personaliza el editor</small></button>
         </div>
-      <p class="toolbox-note">Los cambios destructivos se previsualizan y se pueden cancelar cuando el estudio correspondiente lo permite. Pintar y borrar se editan en una ventana de píxeles; recortar permite elegir entre una sola imagen o toda la composición con sus capas.</p>
+      <p class="toolbox-note">Dibujar crea trazos en una capa editable. Pintar y Borrar píxeles abren un estudio de la imagen con vista previa y confirmación; Borrar con pincel trabaja directamente en la capa seleccionada. Recortar permite elegir una imagen o toda la composición.</p>
     </section>
   </dialog>
 
@@ -589,18 +591,18 @@
           <p class="background-removal-zoom-help">Con <b>+</b> acercás los detalles. Con la eliminación manual desactivada, arrastrá la imagen ampliada para moverte. Activala para borrar con el dedo.</p>
         </div>
         <div class="background-removal-controls">
-          <section class="background-profile-controls" aria-label="Local processing profiles">
-            <label class="text-field" for="background-removal-profile">Processing profile
+          <section class="background-profile-controls" aria-label="Perfiles de procesamiento locales">
+            <label class="text-field" for="background-removal-profile">Perfil de procesamiento
               <select id="background-removal-profile"></select>
             </label>
-            <label class="text-field" for="background-removal-profile-name">Save current settings as
-              <input id="background-removal-profile-name" type="text" maxlength="60" value="My profile" autocomplete="off">
+            <label class="text-field" for="background-removal-profile-name">Guardar estos ajustes como
+              <input id="background-removal-profile-name" type="text" maxlength="60" value="Mi perfil" autocomplete="off">
             </label>
             <div class="background-removal-actions">
-              <button id="save-background-profile" type="button">Save profile</button>
-              <button id="delete-background-profile" type="button" disabled>Delete custom profile</button>
+              <button id="save-background-profile" type="button">Guardar perfil</button>
+              <button id="delete-background-profile" type="button" disabled>Eliminar perfil personalizado</button>
             </div>
-            <p class="profile-help">Profiles stay on this device. They save processing parameters, not a trained AI model.</p>
+            <p class="profile-help">Los perfiles quedan en este dispositivo. Guardan parámetros de procesamiento, no un modelo de IA entrenado.</p>
           </section>
           <label class="text-field" for="background-removal-color">Color del fondo
             <input id="background-removal-color" type="color" value="#ffffff">

@@ -208,6 +208,7 @@ const state = {
   strokeBefore: null,
   imageEraseInteraction: null,
   imageRestoreInteraction: null,
+  pixelEditProcessingPreview: null,
   magicEraseInteraction: null,
   transformInteraction: null,
   multiTransformInteraction: null,
@@ -736,6 +737,47 @@ function redraw() {
   redrawScheduler.schedule(drawNow);
 }
 
+function drawPixelEditPreview() {
+  const active = state.imageEraseInteraction
+    ? { ...state.imageEraseInteraction, mode: "erase" }
+    : state.imageRestoreInteraction
+      ? { ...state.imageRestoreInteraction, mode: "restore" }
+      : null;
+  const preview = active || state.pixelEditProcessingPreview;
+  const points = preview?.previewPoints;
+  if (!Array.isArray(points) || points.length === 0) {
+    if (window.__ANIMEART_E2E_DIAGNOSTICS__) window.__ANIMEART_PIXEL_EDIT_PREVIEW_DIAGNOSTICS__ = null;
+    return;
+  }
+  const zoom = Math.max(0.25, Number(preview.zoom) || state.viewport.zoom || 1);
+  const width = Math.max(8, Math.min(96, (Number(preview.brushSize) || state.brush.size) * zoom));
+  const color = preview.mode === "restore" ? "rgba(0, 229, 255, 0.92)" : "rgba(255, 79, 216, 0.92)";
+  ctx.save();
+  ctx.globalAlpha = 0.96;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const trace = () => {
+    ctx.beginPath();
+    if (points.length === 1) {
+      ctx.arc(points[0].x, points[0].y, width / 2, 0, Math.PI * 2);
+    } else {
+      ctx.moveTo(points[0].x, points[0].y);
+      for (const point of points.slice(1)) ctx.lineTo(point.x, point.y);
+    }
+    ctx.stroke();
+  };
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.94)";
+  ctx.lineWidth = width + 5;
+  trace();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  trace();
+  if (window.__ANIMEART_E2E_DIAGNOSTICS__) {
+    window.__ANIMEART_PIXEL_EDIT_PREVIEW_DIAGNOSTICS__ = { mode: preview.mode, pointCount: points.length, width, color };
+  }
+  ctx.restore();
+}
+
 function drawNow() {
   const rect = canvas.getBoundingClientRect();
   const dpr = canvasRenderDpr(rect);
@@ -762,6 +804,7 @@ function drawNow() {
   });
   ctx.restore();
   if (!transparencyPreview) drawSelectionOverlay();
+  drawPixelEditPreview();
   updateRemoveImageControl();
   if (!transparencyPreview && ["censor-light", "brush", "eraser"].includes(state.tool) && state.censorCursorPoint) {
     const point = documentToScreenPoint(state.censorCursorPoint, state.document, state.viewport, canvasSize());
@@ -845,7 +888,7 @@ function renderLayers() {
     layerName.className = "layer-name";
     layerName.textContent = layer.name + (layer.isBackground ? " [Fondo fijo]" : layer.contentType === "image" ? (layer.isReference ? " [Referencia]" : " [Imagen]") : layer.contentType === "text" ? " [Texto]" : "");
     selectButton.append(createLayerThumbnail(layer), layerName);
-    selectButton.setAttribute("aria-label", "Select " + layer.name);
+    selectButton.setAttribute("aria-label", "Seleccionar capa " + layer.name);
     selectButton.addEventListener("click", event => {
       if (event.shiftKey) {
         toggleSelection(layer.id);
@@ -860,49 +903,49 @@ function renderLayers() {
     visibilityButton.type = "button";
     visibilityButton.className = "layer-toggle";
     visibilityButton.textContent = layer.visible ? "◉" : "○";
-    visibilityButton.title = layer.visible ? "Hide layer" : "Show layer";
+    visibilityButton.title = layer.visible ? "Ocultar capa" : "Mostrar capa";
     visibilityButton.setAttribute("aria-label", visibilityButton.title);
     visibilityButton.addEventListener("click", event => {
       event.stopPropagation();
-      applyLayerOperation((doc, id) => setLayerVisibility(doc, id, !layer.visible), layer.visible ? "Layer hidden" : "Layer shown");
+      applyLayerOperation((doc, id) => setLayerVisibility(doc, id, !layer.visible), layer.visible ? "Capa ocultada" : "Capa visible");
     });
 
     const lockButton = document.createElement("button");
     lockButton.type = "button";
     lockButton.className = "layer-toggle";
     lockButton.textContent = layer.locked ? "🔒" : "🔓";
-    lockButton.title = layer.locked ? "Unlock layer" : "Lock layer";
+    lockButton.title = layer.locked ? "Desbloquear capa" : "Bloquear capa";
     lockButton.setAttribute("aria-label", lockButton.title);
     lockButton.addEventListener("click", event => {
       event.stopPropagation();
-      applyLayerOperation((doc, id) => setLayerLocked(doc, id, !layer.locked), layer.locked ? "Layer unlocked" : "Layer locked", { allowLocked: true });
+      applyLayerOperation((doc, id) => setLayerLocked(doc, id, !layer.locked), layer.locked ? "Capa desbloqueada" : "Capa bloqueada", { allowLocked: true });
     });
 
     const opacity = document.createElement("input");
     opacity.type = "range"; opacity.min = "0"; opacity.max = "1"; opacity.step = "0.01";
-    opacity.value = String(layer.opacity); opacity.className = "layer-opacity"; opacity.title = "Layer opacity";
-    opacity.setAttribute("aria-label", "Opacity for " + layer.name);
+    opacity.value = String(layer.opacity); opacity.className = "layer-opacity"; opacity.title = "Opacidad de la capa";
+    opacity.setAttribute("aria-label", "Opacidad de la capa " + layer.name);
     opacity.addEventListener("click", event => event.stopPropagation());
     opacity.addEventListener("change", event => {
       event.stopPropagation();
-      applyLayerOperation((doc, id) => setLayerOpacity(doc, id, Number(event.currentTarget.value)), "Layer opacity changed");
+      applyLayerOperation((doc, id) => setLayerOpacity(doc, id, Number(event.currentTarget.value)), "Opacidad de capa actualizada");
     });
 
     const renameButton = document.createElement("button");
-    renameButton.type = "button"; renameButton.className = "layer-action"; renameButton.textContent = "Rename"; renameButton.title = "Rename layer";
+    renameButton.type = "button"; renameButton.className = "layer-action"; renameButton.textContent = "Renombrar"; renameButton.title = "Renombrar capa"; renameButton.setAttribute("aria-label", "Renombrar capa " + layer.name);
     renameButton.addEventListener("click", event => {
       event.stopPropagation();
       if (layer.locked) return;
-      const requested = window.prompt("Layer name", layer.name);
+      const requested = window.prompt("Nombre de la capa", layer.name);
       if (requested === null) return;
-      applyLayerOperation((doc, id) => renameLayer(doc, id, requested), "Layer renamed");
+      applyLayerOperation((doc, id) => renameLayer(doc, id, requested), "Capa renombrada");
     });
 
     const referenceButton = document.createElement("button");
     referenceButton.type = "button";
     referenceButton.className = "layer-action";
-    referenceButton.textContent = layer.isReference ? "Image" : "Reference";
-    referenceButton.title = layer.isReference ? "Convert reference to image" : "Use image as reference";
+    referenceButton.textContent = layer.isReference ? "Imagen" : "Referencia";
+    referenceButton.title = layer.isReference ? "Convertir referencia en imagen" : "Usar imagen como referencia";
     referenceButton.setAttribute("aria-label", referenceButton.title);
     referenceButton.disabled = layer.contentType !== "image" || layer.locked;
     referenceButton.addEventListener("click", event => {
@@ -910,12 +953,12 @@ function renderLayers() {
       if (layer.contentType !== "image" || layer.locked) return;
       applyLayerOperation(
         (doc, id) => setLayerReference(doc, id, !layer.isReference),
-        layer.isReference ? "Reference converted to image" : "Image converted to reference"
+        layer.isReference ? "Referencia convertida en imagen" : "Imagen convertida en referencia"
       );
     });
 
     const duplicateButton = document.createElement("button");
-    duplicateButton.type = "button"; duplicateButton.className = "layer-action"; duplicateButton.textContent = "Duplicate"; duplicateButton.title = "Duplicate layer";
+    duplicateButton.type = "button"; duplicateButton.className = "layer-action"; duplicateButton.textContent = "Duplicar"; duplicateButton.title = "Duplicar capa"; duplicateButton.setAttribute("aria-label", "Duplicar capa " + layer.name);
     duplicateButton.addEventListener("click", event => {
       event.stopPropagation();
       if (layer.locked) return;
@@ -925,29 +968,29 @@ function renderLayers() {
       const originalIndex = state.document.layers.findIndex(item => item.id === layer.id);
       const duplicate = next.layers[originalIndex + 1];
       state.document = next; setSelection([duplicate.id], duplicate.id);
-      state.history.record(before, next); refreshDocument("Layer duplicated"); persistDocument();
+      state.history.record(before, next); refreshDocument("Capa duplicada"); persistDocument();
     });
 
     const deleteButton = document.createElement("button");
-    deleteButton.type = "button"; deleteButton.className = "layer-action"; deleteButton.textContent = "Delete"; deleteButton.title = "Delete layer";
+    deleteButton.type = "button"; deleteButton.className = "layer-action"; deleteButton.textContent = "Eliminar"; deleteButton.title = "Eliminar capa"; deleteButton.setAttribute("aria-label", "Eliminar capa " + layer.name);
     deleteButton.addEventListener("click", event => {
       event.stopPropagation();
       if (layer.locked || state.document.layers.length <= 1) return;
-      applyLayerOperation(deleteLayer, "Layer deleted");
+      applyLayerOperation(deleteLayer, "Capa eliminada");
     });
 
     const reorderUpButton = document.createElement("button");
-    reorderUpButton.type = "button"; reorderUpButton.className = "layer-action"; reorderUpButton.textContent = "↑"; reorderUpButton.title = "Move layer up";
+    reorderUpButton.type = "button"; reorderUpButton.className = "layer-action"; reorderUpButton.textContent = "↑ Subir"; reorderUpButton.title = "Subir capa un nivel"; reorderUpButton.setAttribute("aria-label", "Subir capa " + layer.name);
     reorderUpButton.addEventListener("click", event => {
       event.stopPropagation(); if (layer.locked) return;
-      applyLayerOperation((doc, id) => reorderLayer(doc, id, "up"), "Layer moved up");
+      applyLayerOperation((doc, id) => reorderLayer(doc, id, "up"), "Capa subida un nivel");
     });
 
     const reorderDownButton = document.createElement("button");
-    reorderDownButton.type = "button"; reorderDownButton.className = "layer-action"; reorderDownButton.textContent = "↓"; reorderDownButton.title = "Move layer down";
+    reorderDownButton.type = "button"; reorderDownButton.className = "layer-action"; reorderDownButton.textContent = "↓ Bajar"; reorderDownButton.title = "Bajar capa un nivel"; reorderDownButton.setAttribute("aria-label", "Bajar capa " + layer.name);
     reorderDownButton.addEventListener("click", event => {
       event.stopPropagation(); if (layer.locked) return;
-      applyLayerOperation((doc, id) => reorderLayer(doc, id, "down"), "Layer moved down");
+      applyLayerOperation((doc, id) => reorderLayer(doc, id, "down"), "Capa bajada un nivel");
     });
 
     const controls = document.createElement("div"); controls.className = "layer-controls"; controls.append(visibilityButton, lockButton, opacity);
@@ -3170,7 +3213,7 @@ async function finishImageRestore(interaction) {
 function fitSelectedImageToCanvas() {
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) {
-    status.textContent = "Select an unlocked image layer first";
+    status.textContent = "Seleccioná primero una capa de imagen desbloqueada."; 
     return;
   }
   const before = cloneDocument(state.document);
@@ -3193,7 +3236,7 @@ async function finishImageErase(interaction) {
     image = await new Promise((resolve, reject) => {
       const candidate = new Image();
       candidate.onload = () => resolve(candidate);
-      candidate.onerror = () => reject(new Error("Could not load the selected image for erasing"));
+      candidate.onerror = () => reject(new Error("No se pudo cargar la imagen seleccionada para borrar."));
       candidate.src = source;
       imageCache.set(source, candidate);
     });
@@ -3204,7 +3247,7 @@ async function finishImageErase(interaction) {
   raster.width = width;
   raster.height = height;
   const context = raster.getContext("2d", { willReadFrequently: true });
-  if (!context) throw new Error("Image editing canvas is unavailable");
+  if (!context) throw new Error("El lienzo de edición de imagen no está disponible.");
   context.drawImage(image, 0, 0, width, height);
   const pixels = context.getImageData(0, 0, width, height);
   const scale = Math.max(0.05, Number(layer.transform.scale) || 1);
@@ -3221,13 +3264,13 @@ async function finishImageErase(interaction) {
     width: optimized.width,
     height: optimized.height
   }, { preserveDisplaySize: true });
-  if (!next) throw new Error("Could not apply the erase stroke to this image");
+  if (!next) throw new Error("No se pudo aplicar el trazo de borrado a esta imagen.");
   imageCache.delete(source);
   state.document = next;
   state.history.record(before, next);
   state.dirty = true;
   persistDocument();
-  refreshDocument("🧽 Image pixels erased · Undo can restore them");
+  refreshDocument("🧽 Píxeles borrados. Deshacer recupera la imagen anterior.");
 }
 
 canvas.addEventListener("dblclick", event => {
@@ -3237,6 +3280,10 @@ canvas.addEventListener("dblclick", event => {
 });
 
 canvas.addEventListener("pointerdown", event => {
+  if (state.pixelEditProcessingPreview) {
+    status.textContent = "Esperá a que termine de procesarse el trazo actual.";
+    return;
+  }
   if (event.pointerType === "touch") {
     activeTouchPointers.set(event.pointerId, { ...screenPointFromEvent(event), pointerId: event.pointerId });
     if (activeTouchPointers.size >= 2 && beginTouchGesture()) return;
@@ -3282,20 +3329,28 @@ canvas.addEventListener("pointerdown", event => {
       status.textContent = "Esta imagen no tiene copia original guardada. El pincel Restaurar aparece disponible después de usar Borrado mágico.";
       return;
     }
-    state.imageRestoreInteraction = { pointerId: event.pointerId, layerId: imageLayer.id, points: [imageErasePoint(event, imageLayer)] };
+    state.imageRestoreInteraction = {
+      pointerId: event.pointerId,
+      layerId: imageLayer.id,
+      points: [imageErasePoint(event, imageLayer)],
+      previewPoints: [screenPointFromEvent(event)],
+      brushSize: state.brush.size,
+      zoom: state.viewport.zoom
+    };
     canvas.setPointerCapture(event.pointerId);
+    redraw();
     status.textContent = "🩹 Restaurando píxeles originales. Soltá para aplicar.";
     return;
   }
   if (state.tool === "magic-eraser") {
     const imageLayer = selectedLayerExact();
     if (!imageLayer || imageLayer.contentType !== "image" || !imageLayer.image || imageLayer.locked) {
-      status.textContent = "Select an unlocked image layer, then tap the background to erase it";
+      status.textContent = "Seleccioná una imagen desbloqueada y tocá el fondo que querés hacer transparente."; 
       return;
     }
     const documentPoint = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
     if (!hitTestLayer(imageLayer, documentPoint, documentCenter(state.document))) {
-      status.textContent = "Tap inside the selected image to erase a background region";
+      status.textContent = "Tocá dentro de la imagen seleccionada para borrar esa región del fondo."; 
       return;
     }
     state.magicEraseInteraction = { pointerId: event.pointerId, layerId: imageLayer.id, point: imageErasePoint(event, imageLayer), startScreen: screenPointFromEvent(event), moved: false };
@@ -3324,14 +3379,18 @@ canvas.addEventListener("pointerdown", event => {
     state.imageEraseInteraction = {
       pointerId: event.pointerId,
       layerId: layer.id,
-      points: [imageErasePoint(event, layer)]
+      points: [imageErasePoint(event, layer)],
+      previewPoints: [screenPointFromEvent(event)],
+      brushSize: state.brush.size,
+      zoom: state.viewport.zoom
     };
     canvas.setPointerCapture(event.pointerId);
-    status.textContent = "Erase image pixels · release to apply";
+    redraw();
+    status.textContent = "🧽 Deslizá para borrar píxeles de la imagen. Soltá para aplicar.";
     return;
   }
   if (layer.contentType === "image") {
-    const paintLayer = createLayer("Paint " + (state.document.layers.filter(item => item.contentType === "drawing").length + 1));
+    const paintLayer = createLayer("Capa de pintura " + (state.document.layers.filter(item => item.contentType === "drawing").length + 1));
     const before = cloneDocument(state.document);
     const next = addLayer(state.document, paintLayer);
     if (!next) return;
@@ -3340,7 +3399,7 @@ canvas.addEventListener("pointerdown", event => {
     layer = selectedLayer();
     state.history.record(before, next);
     persistDocument();
-    refreshDocument("Transparent paint layer added");
+    refreshDocument("Capa de pintura transparente agregada.");
   }
   state.drawing = true;
   state.drawingPointerId = event.pointerId;
@@ -3406,11 +3465,15 @@ canvas.addEventListener("pointermove", event => {
   if (state.imageEraseInteraction && event.pointerId === state.imageEraseInteraction.pointerId) {
     const layer = state.document.layers.find(item => item.id === state.imageEraseInteraction.layerId);
     if (layer?.image) state.imageEraseInteraction.points.push(imageErasePoint(event, layer));
+    state.imageEraseInteraction.previewPoints.push(screenPointFromEvent(event));
+    redraw();
     return;
   }
   if (state.imageRestoreInteraction && event.pointerId === state.imageRestoreInteraction.pointerId) {
     const layer = state.document.layers.find(item => item.id === state.imageRestoreInteraction.layerId);
     if (layer?.image) state.imageRestoreInteraction.points.push(imageErasePoint(event, layer));
+    state.imageRestoreInteraction.previewPoints.push(screenPointFromEvent(event));
+    redraw();
     return;
   }
   if (!state.drawing || event.pointerId !== state.drawingPointerId) return;
@@ -3499,25 +3562,47 @@ canvas.addEventListener("pointerup", event => {
     state.magicEraseInteraction = null;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     if (!interaction.moved) finishMagicErase(interaction);
-    else status.textContent = "Magic Eraser tap cancelled because the canvas moved";
+    else status.textContent = "Borrado mágico cancelado porque moviste el lienzo."; 
     return;
   }
   if (state.imageRestoreInteraction && event.pointerId === state.imageRestoreInteraction.pointerId) {
     const interaction = state.imageRestoreInteraction;
+    const layer = state.document.layers.find(item => item.id === interaction.layerId);
+    if (layer?.image) interaction.points.push(imageErasePoint(event, layer));
+    interaction.previewPoints.push(screenPointFromEvent(event));
     state.imageRestoreInteraction = null;
+    state.pixelEditProcessingPreview = {
+      mode: "restore", previewPoints: interaction.previewPoints.slice(),
+      brushSize: interaction.brushSize, zoom: interaction.zoom
+    };
+    const pendingPreview = state.pixelEditProcessingPreview;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    redraw();
     finishImageRestore(interaction).catch(error => {
       status.textContent = error?.message || "Falló el pincel Restaurar";
+    }).finally(() => {
+      if (state.pixelEditProcessingPreview === pendingPreview) state.pixelEditProcessingPreview = null;
       redraw();
     });
     return;
   }
   if (state.imageEraseInteraction && event.pointerId === state.imageEraseInteraction.pointerId) {
     const interaction = state.imageEraseInteraction;
+    const layer = state.document.layers.find(item => item.id === interaction.layerId);
+    if (layer?.image) interaction.points.push(imageErasePoint(event, layer));
+    interaction.previewPoints.push(screenPointFromEvent(event));
     state.imageEraseInteraction = null;
+    state.pixelEditProcessingPreview = {
+      mode: "erase", previewPoints: interaction.previewPoints.slice(),
+      brushSize: interaction.brushSize, zoom: interaction.zoom
+    };
+    const pendingPreview = state.pixelEditProcessingPreview;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    redraw();
     finishImageErase(interaction).catch(error => {
-      status.textContent = error?.message || "Image erasing failed";
+      status.textContent = error?.message || "Falló el borrado de píxeles";
+    }).finally(() => {
+      if (state.pixelEditProcessingPreview === pendingPreview) state.pixelEditProcessingPreview = null;
       redraw();
     });
     return;
@@ -3565,19 +3650,21 @@ canvas.addEventListener("pointercancel", event => {
   if (state.magicEraseInteraction?.pointerId === event.pointerId) {
     state.magicEraseInteraction = null;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
-    status.textContent = "Magic Eraser tap cancelled";
+    status.textContent = "Borrado mágico cancelado."; 
     return;
   }
   if (state.imageRestoreInteraction?.pointerId === event.pointerId) {
     state.imageRestoreInteraction = null;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     status.textContent = "Restauración cancelada; no se modificó la imagen.";
+    redraw();
     return;
   }
   if (state.imageEraseInteraction?.pointerId === event.pointerId) {
     state.imageEraseInteraction = null;
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
-    status.textContent = "Image erase cancelled";
+    status.textContent = "Borrado cancelado; la imagen quedó intacta.";
+    redraw();
     return;
   }
   if (event.pointerId !== state.drawingPointerId) return;
@@ -4021,7 +4108,9 @@ if (mobileDock) {
     if (action === "paint") {
       if (toolboxDialog?.open) toolboxDialog.close();
       hideMobileToolSheets();
-      void openCensorLightDialog("paint");
+      document.querySelector('.toolbar .tool[data-tool="brush"]')?.click();
+      openMobileContextPanel("draw");
+      status.textContent = "Dibujar en capa activo. El lienzo no necesita una imagen seleccionada.";
       return;
     }
     if (action === "crop") {
@@ -4212,9 +4301,11 @@ const helpGoals = {
   fit: ["Ajustar al lienzo", "Centra la imagen y haz que encaje dentro del lienzo sin deformar sus proporciones. Puedes volver a moverla después."],
   crop: ["Recortar", "Seleccioná una imagen. Arrastrá el marco sobre la vista previa, movelo o cambiá su tamaño con los tiradores. Elige la proporción y pulsa ✂️ Recortar; la X cancela."],
   background: ["Quitar fondo", "Seleccioná una imagen con fondo liso. Probá Detectar color de fondo o tocá el color exacto en la vista previa, revisá el resultado y pulsa Aplicar. Para casos difíciles, abrí Más ajustes."],
-  erase: ["Borrar", "Elige Borrar y arrastra sobre la zona. Deshacer recupera lo borrado."],
+  erase: ["Borrar píxeles", "Abre el estudio de píxeles de la imagen seleccionada. Revisá el resultado y aplicá solo cuando esté listo."],
+  eraser: ["Borrar con pincel", "Arrastrá sobre una imagen para borrar píxeles o sobre una capa de pintura para quitar trazos. Deshacer recupera el cambio."],
+  paint: ["Pintar píxeles", "Pinta dentro de una imagen seleccionada con vista previa. Aplicar confirma los píxeles; Cancelar conserva el original."],
   censor: ["Luz de censura", "Seleccioná una imagen y pintá el resplandor directamente en su vista previa. Deshacer quita el último trazo; X cancela sin cambiar la foto y Aplicar confirma el resultado."],
-  draw: ["Dibujar", "Elegí el color y el grosor, luego arrastrá sobre el lienzo. Si hay una foto debajo, el primer toque también empieza a pintar en una capa transparente separada."],
+  draw: ["Dibujar en capa", "Elegí color, grosor y efecto; dibujá incluso sobre un lienzo vacío. Los trazos quedan en una capa separada de la imagen y se pueden deshacer."],
   text: ["Texto", "Al tocar Texto se abre un editor con estilos Cómic, Cartel, Manga y Neón, tipografía, tamaño, color, contorno y sombra. Aplicar conserva el texto; X cancela el texto nuevo."],
   shapes: ["Formas", "Añade rectángulos, círculos, estrellas, corazones, globos y otras figuras. Define relleno, contorno y sombra antes de insertarlas como capas."],
   "object-style": ["Apariencia del elemento", "Seleccioná un elemento para cambiar opacidad, forma de recorte, brillo, contraste o saturación, según el tipo de capa."],
@@ -4283,8 +4374,15 @@ function runEditGoal(goal) {
       removeBackgroundButton.click();
     },
     erase: () => openCensorLightDialog("erase"),
+    eraser: () => {
+      document.querySelector('.toolbar .tool[data-tool="eraser"]')?.click();
+      status.textContent = "Borrar con pincel activo. Deslizá sobre la imagen o los trazos de la capa seleccionada; Deshacer recupera el cambio.";
+    },
     censor: () => openCensorLightDialog("censor-light"),
-    draw: () => openCensorLightDialog("paint"),
+    draw: () => {
+      document.querySelector('.toolbar .tool[data-tool="brush"]')?.click();
+      status.textContent = "Dibujar en capa activo. Tus trazos quedan separados de las imágenes.";
+    },
     paint: () => openCensorLightDialog("paint"),
     text: () => selectedLayerExact()?.contentType === "text" ? openTextEditorForLayer(selectedLayerExact().id) : document.querySelector("#add-text-layer").click(),
     shapes: () => openShapeMaker(),
@@ -4321,7 +4419,17 @@ document.querySelectorAll("[data-edit-goal]").forEach(button => button.addEventL
   const goal = button.dataset.editGoal;
   runEditGoal(goal);
   if (window.matchMedia("(max-width: 920px)").matches) {
-    if (["draw", "erase", "censor", "crop"].includes(goal)) {
+    if (goal === "draw") {
+      hideMobileToolSheets();
+      openMobileContextPanel("draw");
+      return;
+    }
+    if (goal === "eraser") {
+      hideMobileToolSheets();
+      openMobileContextPanel("erase");
+      return;
+    }
+    if (["paint", "erase", "censor", "crop"].includes(goal)) {
       hideMobileToolSheets();
       return;
     }
@@ -4537,21 +4645,21 @@ document.querySelector("#save-background-profile").addEventListener("click", () 
     const profile = saveBackgroundProfile(document.querySelector("#background-removal-profile-name").value, currentBackgroundRemovalSettings());
     populateBackgroundRemovalProfiles(profile.id);
     applyBackgroundRemovalProfile(profile.id);
-    document.querySelector("#background-removal-status").textContent = "Saved local profile: " + profile.name;
+    document.querySelector("#background-removal-status").textContent = "Perfil local guardado: " + profile.name;
   } catch (error) {
-    document.querySelector("#background-removal-status").textContent = error.message || "Could not save processing profile";
+    document.querySelector("#background-removal-status").textContent = error.message || "No se pudo guardar el perfil de procesamiento."; 
   }
 });
 document.querySelector("#delete-background-profile").addEventListener("click", () => {
   const selectedId = document.querySelector("#background-removal-profile").value;
   if (!selectedId.startsWith("custom-")) return;
   if (!deleteBackgroundProfile(selectedId)) {
-    document.querySelector("#background-removal-status").textContent = "Could not delete this local profile";
+    document.querySelector("#background-removal-status").textContent = "No se pudo eliminar este perfil local."; 
     return;
   }
   populateBackgroundRemovalProfiles("anime-ink");
   applyBackgroundRemovalProfile("anime-ink");
-  document.querySelector("#background-removal-status").textContent = "Local profile deleted";
+  document.querySelector("#background-removal-status").textContent = "Perfil local eliminado."; 
 });
 
 function backgroundRemovalColorHex(data, offset) {

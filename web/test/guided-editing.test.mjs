@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 test("beginner panel and censor controls are connected to the canonical editor", async () => {
  const html = await readFile("index.html","utf8");
  const app = await readFile("app.js","utf8");
- for (const goal of ["crop","background","erase","censor","draw","text","color","layers","undo","export"]) assert.ok(html.includes(`data-edit-goal="${goal}"`));
+ for (const goal of ["crop","background","erase","eraser","paint","censor","draw","text","color","layers","undo","export"]) assert.ok(html.includes(`data-edit-goal="${goal}"`));
  assert.ok(html.includes("id=\"editing-help-enabled\""));
  assert.ok(html.includes("id=\"censor-light-size\""));
  assert.ok(html.includes("data-censor-preset=\"point\""));
@@ -127,7 +127,7 @@ test("AA-TYPOGRAPHY-CANVA-001 keeps the text modal reachable on mobile and suppo
  assert.match(app, /finishTransformInteraction\(false, event\)/);
  assert.match(css, /AA-TYPOGRAPHY-CANVA-002/);
  assert.match(css, /#text-edit-dialog\[open\]/);
- assert.match(worker, /animeart-web-shell-v37/);
+ assert.match(worker, /animeart-web-shell-v38/);
  assert.match(browserE2E, /mobile Text fills the available app viewport, remains editable, and switches away from brush mode/);
  assert.match(browserE2E, /dragging text never adds brush strokes/);
  assert.match(browserE2E, /tapping the moved text opens the editor/);
@@ -151,7 +151,9 @@ test("AA-TOOL-STUDIOS-001 keeps the mobile dock focused and separates image crop
  assert.match(html, /id="canvas-crop-ratio"/);
  assert.match(app, /function openCanvasCropDialog\(/);
  assert.match(app, /cropDocumentCanvas\(state\.document, canvasCropRectangle\)/);
- assert.match(app, /openCensorLightDialog\("paint"\)/);
+ assert.match(app, /draw: \(\) => \{[\s\S]*?data-tool="brush"[\s\S]*?click\(\)/);
+ assert.match(app, /paint: \(\) => openCensorLightDialog\("paint"\)/);
+ assert.match(app, /eraser: \(\) => \{[\s\S]*?data-tool="eraser"[\s\S]*?click\(\)/);
  assert.match(app, /openCensorLightDialog\("erase"\)/);
  assert.match(css, /AA-TOOL-STUDIOS-001/);
  assert.match(css, /AA-TOOL-STUDIOS-002/);
@@ -159,5 +161,5 @@ test("AA-TOOL-STUDIOS-001 keeps the mobile dock focused and separates image crop
  assert.match(css, /#shape-maker-dialog\[open\]/);
  assert.match(css, /height: 100dvh/);
  assert.match(css, /#canvas-crop-dialog/);
- assert.match(worker, /animeart-web-shell-v37/);
+ assert.match(worker, /animeart-web-shell-v38/);
 });
