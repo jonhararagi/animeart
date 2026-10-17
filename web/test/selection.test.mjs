@@ -316,9 +316,9 @@ test("an off-screen layer keeps a clamped move grip so it can be recovered witho
     ...visible,
     corners: visible.corners.map(point => ({ x: point.x + 500, y: point.y + 420 })),
     center: { x: 700, y: 570 },
-    closeHandle: { x: 900, y: 450 },
-    resizeHandle: { x: 900, y: 650 },
-    rotationHandle: { x: 900, y: 400 }
+    closeHandle: { x: 80, y: 450 },
+    resizeHandle: { x: 320, y: 450 },
+    rotationHandle: { x: 200, y: 400 }
   };
   const clamped = clampSelectionHandles(offscreen, { width: 400, height: 300 }, 22);
   assert.deepEqual(clamped.moveHandle, { x: 378, y: 278 });

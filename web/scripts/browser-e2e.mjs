@@ -1443,8 +1443,12 @@ try {
   const transformBeforeOffscreenRecovery = await evaluate('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform)');
   const bottomOffscreenStart = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); const d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; return {x:r.left+d.center.x,y:r.top+d.center.y}; })()');
   const bottomOffscreenEnd = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); return {x:r.left+r.width/2,y:Math.min(innerHeight-26,r.bottom+80)}; })()');
+  const canvasBeforeOffscreenDrag = await evaluate('document.querySelector("#canvas").getBoundingClientRect().bottom');
+  assert(bottomOffscreenEnd.y > canvasBeforeOffscreenDrag + 1,
+    "full off-canvas recovery E2E fixture has room below the visible canvas");
   await mouseDrag(bottomOffscreenStart, bottomOffscreenEnd);
   await waitFor('Boolean(window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.moveHandle)', 10000);
+  const transformAfterOffscreenMove = await evaluate('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform)');
   const offscreenHandle = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); const d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; return {move:{x:r.left+d.moveHandle.x,y:r.top+d.moveHandle.y},center:{x:r.left+r.width/2,y:r.top+r.height/2},canvas:{left:r.left,top:r.top,width:r.width,height:r.height}}; })()');
   assert(offscreenHandle.move.x >= offscreenHandle.canvas.left + 20 &&
     offscreenHandle.move.x <= offscreenHandle.canvas.left + offscreenHandle.canvas.width - 20 &&
@@ -1457,7 +1461,7 @@ try {
   assert(recoveredOffscreenTransform !== transformBeforeOffscreenRecovery,
     "dragging the visible recovery grip brings the off-screen image back while retaining its selection");
   await clickMoreGoal("undo");
-  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) === ' + JSON.stringify(transformBeforeOffscreenRecovery), 10000);
+  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) === ' + JSON.stringify(transformAfterOffscreenMove), 10000);
   await clickMoreGoal("undo");
   // Retain the pre-test transform after backing out the recovery and off-screen move.
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) === ' + JSON.stringify(transformBeforeOffscreenRecovery), 10000);
