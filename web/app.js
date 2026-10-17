@@ -18,7 +18,7 @@ import { fitImportedImageTransform } from "./domain/image-import.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
-import { clampSelectionHandles, groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
+import { clampSelectionHandles, groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, layerCorners, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
@@ -104,6 +104,7 @@ const backgroundRemovalContext = backgroundRemovalCanvas?.getContext("2d", { wil
 let backgroundRemovalSession = null;
 let backgroundRemovalSampleMode = false;
 let backgroundRemovalPointerId = null;
+let backgroundRemovalZoom = 1;
 const flipImageHorizontalButton = document.querySelector("#flip-image-horizontal");
 const flipImageVerticalButton = document.querySelector("#flip-image-vertical");
 const imageEditDialog = document.querySelector("#image-edit-dialog");
@@ -2114,6 +2115,46 @@ function finishTransformInteraction(cancelled = false) {
   if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
 }
 
+function keepImageTransformVisible(layer, transform) {
+  if (layer?.contentType !== "image" || !layer.image || !transform) return transform;
+  const documentWidth = Number(state.document.width);
+  const documentHeight = Number(state.document.height);
+  if (!(documentWidth > 0 && documentHeight > 0)) return transform;
+  const corners = layerCorners(layer, documentCenter(state.document), transform);
+  if (!corners?.length) return transform;
+  const minX = Math.min(...corners.map(point => point.x));
+  const maxX = Math.max(...corners.map(point => point.x));
+  const minY = Math.min(...corners.map(point => point.y));
+  const maxY = Math.max(...corners.map(point => point.y));
+  const boxWidth = maxX - minX;
+  const boxHeight = maxY - minY;
+  const minVisibleX = Math.min(48, documentWidth / 4);
+  const minVisibleY = Math.min(48, documentHeight / 4);
+  let dx = 0;
+  let dy = 0;
+
+  // If the image fits on the document, keep the whole image on-canvas.
+  // Oversized images can still be cropped creatively, but never disappear completely.
+  if (boxWidth <= documentWidth) {
+    if (minX < 0) dx = -minX;
+    else if (maxX > documentWidth) dx = documentWidth - maxX;
+  } else if (maxX < minVisibleX) {
+    dx = minVisibleX - maxX;
+  } else if (minX > documentWidth - minVisibleX) {
+    dx = documentWidth - minVisibleX - minX;
+  }
+
+  if (boxHeight <= documentHeight) {
+    if (minY < 0) dy = -minY;
+    else if (maxY > documentHeight) dy = documentHeight - maxY;
+  } else if (maxY < minVisibleY) {
+    dy = minVisibleY - maxY;
+  } else if (minY > documentHeight - minVisibleY) {
+    dy = documentHeight - minVisibleY - minY;
+  }
+  return dx || dy ? { ...transform, x: transform.x + dx, y: transform.y + dy } : transform;
+}
+
 function updateTransformPreview(event) {
   const interaction = state.transformInteraction;
   if (!interaction || event.pointerId !== interaction.pointerId) return;
@@ -2128,6 +2169,10 @@ function updateTransformPreview(event) {
   if (interaction.type === "move") {
     preview.x = interaction.beforeTransform.x + currentDocument.x - interaction.startDocument.x;
     preview.y = interaction.beforeTransform.y + currentDocument.y - interaction.startDocument.y;
+    Object.assign(preview, keepImageTransformVisible(
+      state.document.layers.find(layer => layer.id === interaction.layerId),
+      preview
+    ));
   } else if (interaction.type === "scale") {
     const nextTransform = resizeTransformFromCorner(
       state.document.layers.find(item => item.id === interaction.layerId),
@@ -3853,7 +3898,7 @@ function applyBackgroundRemovalProfile(profileId, render = true) {
   document.querySelector("#background-removal-decontaminate").checked = profile.decontaminate;
   document.querySelector("#background-removal-profile-name").value = profile.name;
   document.querySelector("#delete-background-profile").disabled = !profile.id.startsWith("custom-");
-  if (render) renderBackgroundRemovalPreview(true);
+  if (render && backgroundRemovalSession?.removalRequested) renderBackgroundRemovalPreview(true);
 }
 document.querySelector("#background-removal-profile").addEventListener("change", event => {
   applyBackgroundRemovalProfile(event.currentTarget.value);
@@ -3890,11 +3935,75 @@ function backgroundRemovalPoint(event) {
     y: Math.max(0, Math.min(backgroundRemovalCanvas.height - 1, (event.clientY - rect.top) * backgroundRemovalCanvas.height / Math.max(1, rect.height)))
   };
 }
+function syncBackgroundRemovalApplyButton() {
+  const button = document.querySelector("#apply-background-removal");
+  const session = backgroundRemovalSession;
+  if (button) button.disabled = !session || (!session.removalRequested && session.strokes.length === 0);
+}
+
+function backgroundRemovalFitScale() {
+  const session = backgroundRemovalSession;
+  const wrap = document.querySelector(".background-removal-preview-wrap");
+  if (!session || !wrap) return 1;
+  const width = Math.max(1, wrap.clientWidth - 20);
+  const height = Math.max(1, wrap.clientHeight - 20);
+  return Math.max(0.01, Math.min(1, width / session.width, height / session.height));
+}
+
+function updateBackgroundRemovalZoom(nextZoom = backgroundRemovalZoom, { resetScroll = false } = {}) {
+  const session = backgroundRemovalSession;
+  const wrap = document.querySelector(".background-removal-preview-wrap");
+  const zoomOut = document.querySelector("#background-removal-zoom-out");
+  const zoomIn = document.querySelector("#background-removal-zoom-in");
+  const zoomValue = document.querySelector("#background-removal-zoom-value");
+  if (!session || !wrap) return;
+
+  const oldRect = backgroundRemovalCanvas.getBoundingClientRect();
+  const oldScale = oldRect.width > 0 ? oldRect.width / session.width : backgroundRemovalFitScale() * backgroundRemovalZoom;
+  const focusX = oldScale > 0 ? (wrap.scrollLeft + wrap.clientWidth / 2) / oldScale : session.width / 2;
+  const focusY = oldScale > 0 ? (wrap.scrollTop + wrap.clientHeight / 2) / oldScale : session.height / 2;
+  backgroundRemovalZoom = Math.min(8, Math.max(1, Number(nextZoom) || 1));
+  const scale = backgroundRemovalFitScale() * backgroundRemovalZoom;
+  backgroundRemovalCanvas.style.width = Math.max(1, Math.round(session.width * scale)) + "px";
+  backgroundRemovalCanvas.style.height = Math.max(1, Math.round(session.height * scale)) + "px";
+  wrap.classList.toggle("is-zoomed", backgroundRemovalZoom > 1.001);
+
+  if (zoomOut) zoomOut.disabled = backgroundRemovalZoom <= 1.001;
+  if (zoomIn) zoomIn.disabled = backgroundRemovalZoom >= 7.999;
+  if (zoomValue) zoomValue.textContent = backgroundRemovalZoom <= 1.001
+    ? "Ajustar"
+    : Math.round(backgroundRemovalZoom * 100) + "%";
+
+  requestAnimationFrame(() => {
+    if (resetScroll || backgroundRemovalZoom <= 1.001) {
+      wrap.scrollLeft = 0;
+      wrap.scrollTop = 0;
+      return;
+    }
+    const nextScale = backgroundRemovalCanvas.getBoundingClientRect().width / session.width;
+    wrap.scrollLeft = Math.max(0, focusX * nextScale - wrap.clientWidth / 2);
+    wrap.scrollTop = Math.max(0, focusY * nextScale - wrap.clientHeight / 2);
+  });
+}
+
+document.querySelector("#background-removal-zoom-out")?.addEventListener("click", () => {
+  updateBackgroundRemovalZoom(backgroundRemovalZoom / 1.5);
+});
+document.querySelector("#background-removal-zoom-in")?.addEventListener("click", () => {
+  updateBackgroundRemovalZoom(backgroundRemovalZoom * 1.5);
+});
+document.querySelector("#background-removal-zoom-fit")?.addEventListener("click", () => {
+  updateBackgroundRemovalZoom(1, { resetScroll: true });
+});
+window.addEventListener("resize", () => {
+  if (backgroundRemovalDialog?.open && backgroundRemovalSession) updateBackgroundRemovalZoom(backgroundRemovalZoom);
+});
+
 function renderBackgroundRemovalPreview(recompute = false) {
   const session = backgroundRemovalSession;
   if (!session || !backgroundRemovalContext) return;
   try {
-    if (recompute || !session.automatic) {
+    if (session.removalRequested && (recompute || !session.automatic || session.automatic === session.original)) {
       session.automatic = removeConnectedBackground(session.original, {
         targetColor: document.querySelector("#background-removal-color").value,
         tolerance: Number(document.querySelector("#background-removal-tolerance").value),
@@ -3904,13 +4013,18 @@ function renderBackgroundRemovalPreview(recompute = false) {
         decontaminate: document.querySelector("#background-removal-decontaminate").checked
       });
     }
-    const result = applyEraseStrokes(session.automatic, session.strokes);
+    const base = session.removalRequested ? (session.automatic || session.original) : session.original;
+    const result = applyEraseStrokes(base, session.strokes);
     backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
-    document.querySelector("#background-removal-status").textContent =
-      "Preview ready · " + result.width + " × " + result.height + " px · " + session.strokes.length + " manual erase stroke(s)";
+    document.querySelector("#background-removal-status").textContent = session.removalRequested
+      ? "Vista previa del borrado · " + result.width + " × " + result.height + " px. No se aplica hasta pulsar Aplicar."
+      : session.strokes.length
+        ? "La imagen original sigue intacta; hay " + session.strokes.length + " trazo(s) manual(es) en la vista previa."
+        : "Imagen original intacta. Pulsa “Previsualizar quitar fondo” para generar la transparencia.";
     document.querySelector("#undo-background-erase").disabled = session.strokes.length === 0;
+    syncBackgroundRemovalApplyButton();
   } catch (error) {
-    document.querySelector("#background-removal-status").textContent = error.message || "Could not process this image";
+    document.querySelector("#background-removal-status").textContent = error.message || "No se pudo procesar esta imagen";
   }
 }
 async function openBackgroundRemoval() {
@@ -3935,7 +4049,8 @@ async function openBackgroundRemoval() {
     backgroundRemovalContext.clearRect(0, 0, width, height);
     backgroundRemovalContext.drawImage(image, 0, 0, width, height);
     const original = backgroundRemovalContext.getImageData(0, 0, width, height);
-    backgroundRemovalSession = { layerId: layer.id, source: layer.image.source, width, height, original, automatic: null, strokes: [], activeStroke: null };
+    backgroundRemovalSession = { layerId: layer.id, source: layer.image.source, width, height, original, automatic: original, removalRequested: false, strokes: [], activeStroke: null };
+    backgroundRemovalZoom = 1;
     backgroundRemovalSampleMode = false;
     document.querySelector("#background-removal-manual").checked = false;
     document.querySelector("#background-removal-color").value = "#ffffff";
@@ -3952,7 +4067,8 @@ async function openBackgroundRemoval() {
     document.querySelector("#background-removal-brush-size").value = "28";
     document.querySelector("#background-removal-brush-size-value").textContent = "28 px";
     backgroundRemovalDialog.showModal();
-    renderBackgroundRemovalPreview(true);
+    updateBackgroundRemovalZoom(1, { resetScroll: true });
+    renderBackgroundRemovalPreview(false);
   } catch (error) {
     status.textContent = error.message || "Could not open background removal";
   }
@@ -3962,8 +4078,10 @@ document.querySelector("#cancel-background-removal").addEventListener("click", (
   backgroundRemovalDialog.close();
   backgroundRemovalSession = null;
   backgroundRemovalSampleMode = false;
+  backgroundRemovalZoom = 1;
 });
 function setQuickBackgroundColor(color, tolerance, feather) {
+  if (backgroundRemovalSession) backgroundRemovalSession.removalRequested = true;
   const colorInput = document.querySelector("#background-removal-color");
   const toleranceInput = document.querySelector("#background-removal-tolerance");
   const featherInput = document.querySelector("#background-removal-feather");
@@ -3976,6 +4094,11 @@ function setQuickBackgroundColor(color, tolerance, feather) {
   backgroundRemovalSampleMode = false;
   renderBackgroundRemovalPreview(true);
 }
+document.querySelector("#preview-background-removal")?.addEventListener("click", () => {
+  if (!backgroundRemovalSession) return;
+  backgroundRemovalSession.removalRequested = true;
+  renderBackgroundRemovalPreview(true);
+});
 document.querySelector("#background-auto-detect")?.addEventListener("click", () => {
   const image = backgroundRemovalSession?.original;
   if (!image || image.width < 1 || image.height < 1) return;
@@ -4026,6 +4149,7 @@ backgroundRemovalCanvas.addEventListener("pointerdown", event => {
     const offset = (y * backgroundRemovalSession.width + x) * 4;
     document.querySelector("#background-removal-color").value = backgroundRemovalColorHex(backgroundRemovalSession.original.data, offset);
     backgroundRemovalSampleMode = false;
+    backgroundRemovalSession.removalRequested = true;
     renderBackgroundRemovalPreview(true);
     return;
   }
@@ -4053,12 +4177,15 @@ backgroundRemovalCanvas.addEventListener("pointercancel", finishBackgroundRemova
 document.querySelector("#apply-background-removal").addEventListener("click", async () => {
   const session = backgroundRemovalSession;
   const layer = session && state.document.layers.find(item => item.id === session.layerId);
-  if (!session || !layer || layer.locked || layer.contentType !== "image" || layer.image?.source !== session.source) {
+  if (!session || (!session.removalRequested && session.strokes.length === 0)) return;
+  if (!layer || layer.locked || layer.contentType !== "image" || layer.image?.source !== session.source) {
     document.querySelector("#background-removal-status").textContent = "The selected layer changed. Close this tool and reopen it.";
     return;
   }
   try {
-    const automatic = removeConnectedBackground(session.original, currentBackgroundRemovalSettings());
+    const automatic = session.removalRequested
+      ? removeConnectedBackground(session.original, currentBackgroundRemovalSettings())
+      : session.original;
     const result = applyEraseStrokes(automatic, session.strokes);
     backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
     const source = backgroundRemovalCanvas.toDataURL("image/webp", 0.88);
@@ -4623,7 +4750,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v30";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v31";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
