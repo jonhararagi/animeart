@@ -87,8 +87,22 @@ Este defecto se confirmó con Chromium, no se infirió solamente por analogía c
 
 La investigación de este documento se basa en informes y PRs públicos de GitHub que sí se pudieron consultar. La búsqueda general de blogs y notas de novedades de sitios editoriales sigue pendiente, porque no estuvo disponible en esta sesión. La aceptación física en el Xiaomi `24116RACCG` también sigue pendiente.
 
-## Pendiente
+## Estado actualizado tras integrar en main (2026-10-17)
 
-- Verificar Web CI y Android CI para el HEAD de esta rama y, si ambos pasan, integrar en `main` según la autorización del usuario.
-- Probar con el dedo en el Xiaomi `24116RACCG`; CI de Chromium/emulador no sustituye la aceptación física.
-- Completar otra ronda de búsqueda en sitios editoriales y blogs de actualizaciones de software cuando la búsqueda web general esté disponible; no hay citas inventadas ni atribuidas a esas páginas en este documento.
+La corrección descrita en esta investigación y sus regresiones ya están integradas en `main`. El informe ya no queda pendiente de integración.
+
+- **HEAD actual de main:** `075def85455cecb407de1161c1ccde533faaddb6`.
+- **Web CI: PASS** sobre ese HEAD: [run #39063754210](https://github.com/jonhararagi/animeart/actions/runs/39063754210).
+- **Android CI: PASS** sobre el mismo HEAD: [run #39063754195](https://github.com/jonhararagi/animeart/actions/runs/39063754195).
+- **Despliegue web: PASS:** [run #39063754215](https://github.com/jonhararagi/animeart/actions/runs/39063754215).
+- Android verificó el editor actual dentro del APK, pruebas unitarias, lint, instrumentación `connectedDebugAndroidTest`, arranque de WebView y funcionamiento offline.
+- **APK de main:** [artefacto #12111993080](https://github.com/jonhararagi/animeart/actions/runs/39063754195/artifacts/12111993080).
+- **SHA-256 verificado por el trabajo de CI:** `d78f9f82f1538165eaa7e76844dbff08131759491b40afcc0badbcfb765d3db5`.
+
+## Pendiente de aceptación física y alcance de investigación
+
+- Las incidencias de flujo táctil y movimiento libre [#73](https://github.com/jonhararagi/animeart/issues/73) y [#86](https://github.com/jonhararagi/animeart/issues/86) deben conservarse abiertas hasta completar la aceptación en el Xiaomi `24116RACCG`. CI, Chromium y el emulador no demuestran que el manejo con el dedo sea correcto en el dispositivo físico.
+- La investigación técnica basada en informes públicos de GitHub, issues de usuarios, cambios de mantenedores y PRs corregidas está documentada arriba. La búsqueda general de artículos de novedades/blogs fuera de GitHub no se pudo hacer en esta sesión; no se atribuye ninguna cita a Adobe, Canva, Picsart ni a otros sitios editoriales.
+- El PR antiguo de empaquetado alternativo [#78](https://github.com/jonhararagi/animeart/pull/78) sigue abierto, pero no se integró: `main` ya genera el APK desde el flujo Android canónico y valida que el paquete incluya la versión actual del editor. No mezclar ambos sistemas sin una necesidad demostrada.
+
+**Estado global:** PASS para el código integrado y la CI de `main`; PARTIAL para la aceptación final de uso táctil físico, que todavía no se ha ejecutado.
