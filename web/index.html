@@ -192,6 +192,7 @@
           <button id="selection-mini-front" type="button" title="Traer una capa hacia adelante">↑ Adelante</button>
           <button id="selection-mini-fit" type="button">Encajar</button>
           <button id="selection-mini-background" type="button" aria-pressed="false" title="Fijar esta imagen como fondo del lienzo">🖼️ Como fondo</button>
+          <button id="selection-mini-edit-text" type="button" title="Abrir el editor de texto y tipografía" hidden>✍️ Editar texto</button>
           <button id="selection-mini-style" type="button" title="Editar colores, formas y efectos del objeto">🎨 Apariencia</button>
           <button id="selection-mini-delete" type="button" title="Eliminar el elemento seleccionado">🗑 Eliminar</button>
         </div>
@@ -249,7 +250,7 @@
 
       <dialog id="text-edit-dialog" aria-labelledby="text-dialog-title">
         <div class="text-dialog-topbar">
-          <div><p class="eyebrow">EDICIÓN DE TEXTO</p><h2 id="text-dialog-title">Texto y estilo</h2><p>Escribe, elige un estilo y ajusta el contorno o la sombra.</p></div>
+          <div><p class="eyebrow">TIPOGRAFÍA Y TÍTULOS</p><h2 id="text-dialog-title">Diseña tu texto</h2><p>Crea títulos, subtítulos, citas y etiquetas. Ajusta la letra a tu diseño.</p></div>
           <button type="button" id="close-text-edit" aria-label="Cerrar edición de texto">✕</button>
         </div>
         <section id="text-panel" class="text-panel" aria-labelledby="text-dialog-title" hidden>
@@ -259,11 +260,17 @@
             <textarea id="text-content" rows="3" maxlength="500" spellcheck="false" placeholder="Escribe aquí tu frase…"></textarea>
           </label>
 
-          <div class="text-style-presets" aria-label="Estilos rápidos de texto">
+          <div class="text-style-presets" aria-label="Estilos tipográficos listos para usar">
+            <button type="button" data-text-style-preset="title"><span aria-hidden="true">Tt</span><span>Título</span></button>
+            <button type="button" data-text-style-preset="subtitle"><span aria-hidden="true">Aa</span><span>Subtítulo</span></button>
+            <button type="button" data-text-style-preset="body"><span aria-hidden="true">¶</span><span>Cuerpo</span></button>
+            <button type="button" data-text-style-preset="quote"><span aria-hidden="true">“ ”</span><span>Cita</span></button>
+            <button type="button" data-text-style-preset="label"><span aria-hidden="true">▰</span><span>Etiqueta</span></button>
+            <button type="button" data-text-style-preset="elegant"><span aria-hidden="true">𝑇</span><span>Elegante</span></button>
+            <button type="button" data-text-style-preset="poster"><span aria-hidden="true">▣</span><span>Cartel</span></button>
+            <button type="button" data-text-style-preset="neon"><span aria-hidden="true">✧</span><span>Neón</span></button>
             <button type="button" data-text-style-preset="comic"><span aria-hidden="true">💬</span><span>Cómic</span></button>
-            <button type="button" data-text-style-preset="poster"><span aria-hidden="true">📣</span><span>Cartel</span></button>
-            <button type="button" data-text-style-preset="manga"><span aria-hidden="true">📖</span><span>Manga</span></button>
-            <button type="button" data-text-style-preset="neon"><span aria-hidden="true">✨</span><span>Neón</span></button>
+            <button type="button" data-text-style-preset="manga"><span aria-hidden="true">▤</span><span>Manga</span></button>
           </div>
 
           <div class="text-simple-controls">
