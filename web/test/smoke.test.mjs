@@ -959,3 +959,26 @@ test("AA-MOBILE-PICSART-PANEL-LAW keeps appearance settings reachable after comp
   assert.match(html, /Personaliza el editor/);
   assert.match(app, /appearance: \(\) => document\.querySelector\("#appearance-open"\)\?\.click\(\)/);
 });
+
+
+test("AA-TOOLBOX-WORKSPACE-001 keeps the mobile main surface compact and opens a dedicated tools catalog", async () => {
+  const [html, app, css, worker] = await Promise.all([
+    readFile("index.html", "utf8"),
+    readFile("app.js", "utf8"),
+    readFile("styles.css", "utf8"),
+    readFile("service-worker.js", "utf8")
+  ]);
+  const toolbox = html.match(/<dialog id="toolbox-dialog"[\\s\\S]*?<\\/dialog>/)?.[0] || "";
+  assert.ok(toolbox.includes('id="toolbox-close"'), "the secondary catalog has an explicit close control");
+  for (const goal of ["move", "crop", "erase", "censor", "draw", "text", "shapes", "object-style", "color", "layers", "delete-selected", "undo", "redo", "export"]) {
+    assert.ok(toolbox.includes('data-edit-goal="' + goal + '"'), "catalog exposes " + goal);
+  }
+  assert.ok(toolbox.includes('id="quick-open-asset-library"'), "asset library remains available from the catalog");
+  assert.ok(toolbox.includes('id="mobile-export-resolution"'), "Normal/HD export settings stay in the catalog rather than the main toolbar");
+  assert.match(app, /toolboxDialog\\?\\.show\\(\\)/);
+  assert.match(app, /document\\.querySelector\\("#toolbox-open"\\)/);
+  assert.match(css, /AA-TOOLBOX-WORKSPACE-001/);
+  assert.match(css, /#censor-light-dialog\\[open\\][\\s\\S]*?height: 100dvh/);
+  assert.match(css, /#canvas-crop-dialog\\[open\\][\\s\\S]*?height: 100dvh/);
+  assert.match(worker, /animeart-web-shell-v35/);
+});
