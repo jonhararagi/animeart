@@ -167,3 +167,28 @@ Estos reportes son patrones de diagnóstico y prueba, no evidencia de que AnimeA
 ### Aceptación todavía pendiente
 
 La prueba del emulador no sustituye la prueba física de mover, tocar, escalar y recuperar imágenes con el dedo en el Xiaomi `24116RACCG`. Los issues [#73](https://github.com/jonhararagi/animeart/issues/73) y [#86](https://github.com/jonhararagi/animeart/issues/86) siguen abiertos. Código y CI están en **PASS** para este SHA; aceptación física final permanece en **PARTIAL** hasta comprobarla en el teléfono real.
+
+ 
+---
+
+## AA-CANVAS-FREE-MOVE-UX-001 · hacer descubrible el margen de trabajo · 2026-10-17
+
+### Problema de uso y solución
+
+Las pruebas anteriores lograban desplazar una capa fuera del marco al reducir el zoom con una rueda de ratón. Esa interacción resulta poco evidente en móvil y el área de documento puede ocupar casi todo el viewport. Se añadió **Ver margen** al panel contextual de selección: activa el modo Libre y cambia solo el viewport a zoom 80 %, con paneo centrado. Las transformaciones de capa y el historial permanecen intactos. En la barra móvil los botones de acción tienen objetivos táctiles de 44×44 px.
+
+### Regresión verificada
+
+La prueba de navegador deja de depender de la rueda del ratón y usa el botón visible. En Chromium, la prueba confirma margen por arriba, abajo, izquierda y derecha, que el modo Libre queda activo, que el botón no cambia las coordenadas de la capa, y que el movimiento real puede cruzar los cuatro bordes. Se conserva la prueba que comprueba que PNG exportado mantiene las dimensiones del documento y recorta cualquier contenido fuera de su marco.
+
+- Implementación: [commit b3ac4e1](https://github.com/jonhararagi/animeart/commit/b3ac4e126d489d9dfb31c8a2a0acf03c814ef6d3).
+- Arreglo de la discrepancia de caché offline: [commit 9c33da7](https://github.com/jonhararagi/animeart/commit/9c33da77e7d1f05a251d757eeccc552422dfbf3f). web/service-worker.js, web/app.js y las pruebas usan la versión animeart-web-shell-v43.
+- Web CI + E2E Chromium PASS: [run #39079788046](https://github.com/jonhararagi/animeart/actions/runs/39079788046); el log confirma el botón Ver margen, el viewport sin alterar capas y E2E PASS.
+- Deploy Web PASS: [run #39079788115](https://github.com/jonhararagi/animeart/actions/runs/39079788115).
+- Android CI PASS: [run #39079788110](https://github.com/jonhararagi/animeart/actions/runs/39079788110), con build, verificación del contenido de APK, unit tests, lint, instrumentación y arranque smoke.
+- APK [artefacto #12118641798](https://github.com/jonhararagi/animeart/actions/runs/39079788110/artifacts/12118641798); SHA-256 16f0381bddf9476256902168aacbeb6234cb983a829dfea49a0db2b56bcb342a.
+- Build Web [#12117788702](https://github.com/jonhararagi/animeart/actions/runs/39079788046/artifacts/12117788702) y capturas de navegador [#12118561170](https://github.com/jonhararagi/animeart/actions/runs/39079788046/artifacts/12118561170).
+
+### Límite restante
+
+Esta evidencia verifica el comportamiento automatizado del viewport, movimiento libre y exportación, no el tacto físico en el Xiaomi 24116RACCG. Los issues [#73](https://github.com/jonhararagi/animeart/issues/73) y [#86](https://github.com/jonhararagi/animeart/issues/86) deben seguir abiertos hasta completar esa prueba. Las fuentes técnicas externas incluidas en este informe se usan como patrones de diagnóstico, no como afirmación de que todas las aplicaciones externas tengan los mismos defectos.
