@@ -145,7 +145,7 @@ test("visual transform drag previews until pointerup and pointercancel clears it
   assert.match(js, /finishTransformInteraction/);
   assert.match(js, /pointercancel/);
   assert.match(js, /finishTransformInteraction\(true\)/);
-  assert.match(js, /finishTransformInteraction\(false\)/);
+  assert.match(js, /finishTransformInteraction\(false(?:, event)?\)/);
   assert.match(js, /event\.pointerId !== interaction\.pointerId/);
 });
 
