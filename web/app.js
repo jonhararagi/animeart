@@ -57,6 +57,8 @@ const resetLayerAdjustmentsButton = document.querySelector("#reset-layer-adjustm
 const adjustmentPresetButtons = [...document.querySelectorAll("[data-adjustment-preset]")];
 const textPanel = document.querySelector("#text-panel");
 const textEditDialog = document.querySelector("#text-edit-dialog");
+// .layers is hidden in the mobile workspace. Keep this modal at the document root so Android WebView can always display it.
+if (textEditDialog && textEditDialog.parentElement !== document.body) document.body.append(textEditDialog);
 let newlyCreatedTextLayerId = null;
 const closeTextEditButton = document.querySelector("#close-text-edit");
 const textContentInput = document.querySelector("#text-content");
@@ -239,6 +241,12 @@ function updateSelectionMiniPanel(layer = selectedLayerExact()) {
     (Array.isArray(layer.strokes) && layer.strokes.some(stroke => Array.isArray(stroke.points) && stroke.points.length > 0))
   ));
   panel.hidden = !hasEditableContent;
+  const editText = document.querySelector("#selection-mini-edit-text");
+  if (editText) {
+    editText.hidden = layer?.contentType !== "text";
+    editText.disabled = layer?.contentType !== "text" || Boolean(layer?.locked);
+    editText.title = layer?.locked ? "Desbloqueá la capa para editar el texto" : "Abrir el editor de texto y tipografía";
+  }
   if (!hasEditableContent) return;
 
   const name = document.querySelector("#selection-mini-layer-name");
@@ -352,9 +360,18 @@ function canvasSize() {
   return { width: rect.width, height: rect.height };
 }
 
+function canvasRenderDpr(rect) {
+  const deviceDpr = Math.max(1, Number(window.devicePixelRatio) || 1);
+  const mobile = window.matchMedia("(max-width: 920px)").matches;
+  const deviceCap = mobile ? 1.5 : 2;
+  const pixelBudget = mobile ? 1_500_000 : 4_000_000;
+  const cssPixels = Math.max(1, rect.width * rect.height);
+  return Math.max(1, Math.min(deviceDpr, deviceCap, Math.sqrt(pixelBudget / cssPixels)));
+}
+
 function resizeCanvas() {
   const rect = canvas.getBoundingClientRect();
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const dpr = canvasRenderDpr(rect);
   canvas.width = Math.round(rect.width * dpr);
   canvas.height = Math.round(rect.height * dpr);
   redraw();
@@ -673,7 +690,7 @@ function redraw() {
 
 function drawNow() {
   const rect = canvas.getBoundingClientRect();
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const dpr = canvasRenderDpr(rect);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, rect.width, rect.height);
   ctx.save();
@@ -1558,6 +1575,31 @@ document.addEventListener("keydown",event=>{
  runQuickEditRecipe(recipe.id);
 });
 
+function openTextEditorForLayer(layerId = selectedLayerExact()?.id) {
+  const layer = state.document.layers.find(item => item.id === layerId);
+  if (!layer || layer.contentType !== "text") {
+    status.textContent = "Seleccioná primero un texto en el lienzo o en Capas.";
+    return false;
+  }
+  newlyCreatedTextLayerId = null;
+  state.textPreview = null;
+  setSelection([layer.id], layer.id);
+  renderLayerText();
+  try {
+    if (textEditDialog && !textEditDialog.open) textEditDialog.showModal();
+  } catch (error) {
+    status.textContent = error?.message || "No se pudo abrir el editor de texto.";
+    return false;
+  }
+  window.requestAnimationFrame(() => {
+    if (!textEditDialog?.open || layer.locked || !textContentInput) return;
+    textContentInput.focus({ preventScroll: true });
+    const end = textContentInput.value.length;
+    textContentInput.setSelectionRange(newlyCreatedTextLayerId === layer.id ? 0 : end, end);
+  });
+  return true;
+}
+
 function getWorkingLayerText(layer) {
   if (state.textPreview?.layerId === layer?.id) return state.textPreview.values;
   return normalizeTextLayer(layer?.text);
@@ -1718,7 +1760,26 @@ textEditDialog?.addEventListener("close", () => {
   redraw();
   renderLayerText();
 });
-textStylePresetButtons.forEach(button=>button.addEventListener("click",()=>{const layer=selectedLayerExact();if(!layer||layer.contentType!=="text"||layer.locked)return;const p={comic:{fontFamily:"Impact",fontWeight:"bold",color:"#fff200",outlineColor:"#171717",outlineWidth:5,shadowColor:"#171717",shadowBlur:0,shadowOffsetX:5,shadowOffsetY:6},poster:{fontFamily:"Arial Black",fontWeight:"bold",color:"#ffffff",outlineColor:"#101014",outlineWidth:2,shadowColor:"#000000",shadowBlur:8,shadowOffsetX:2,shadowOffsetY:4},manga:{fontFamily:"Georgia",fontWeight:"bold",color:"#111111",outlineColor:"#ffffff",outlineWidth:0,shadowColor:"#777777",shadowBlur:1,shadowOffsetX:1,shadowOffsetY:2},neon:{fontFamily:"Arial Black",fontWeight:"bold",color:"#ffffff",outlineColor:"#f000c8",outlineWidth:3,shadowColor:"#00dfff",shadowBlur:18,shadowOffsetX:0,shadowOffsetY:0}}[button.dataset.textStylePreset];if(p){updateTextPreview(p);commitTextPreview(button.dataset.textStylePreset+" text style applied");}}));
+textStylePresetButtons.forEach(button => button.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "text" || layer.locked) return;
+  const presets = {
+    title: { fontFamily: "Arial Black", fontWeight: "bold", fontSize: 76, color: "#ffffff", outlineWidth: 0, shadowColor: "#10131a", shadowBlur: 5, shadowOffsetX: 0, shadowOffsetY: 3, align: "center" },
+    subtitle: { fontFamily: "Georgia", fontWeight: "bold", fontSize: 44, color: "#f4f3ff", outlineWidth: 0, shadowColor: "#171323", shadowBlur: 2, shadowOffsetX: 0, shadowOffsetY: 2, align: "center" },
+    body: { fontFamily: "Arial", fontWeight: "normal", fontSize: 30, color: "#f4f5f7", outlineWidth: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0, align: "left" },
+    quote: { fontFamily: "Palatino Linotype", fontWeight: "normal", fontSize: 50, color: "#fff4dd", outlineWidth: 0, shadowColor: "#20180f", shadowBlur: 3, shadowOffsetX: 0, shadowOffsetY: 2, align: "center" },
+    label: { fontFamily: "Arial Black", fontWeight: "bold", fontSize: 26, color: "#ffe08a", outlineWidth: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0, align: "left" },
+    elegant: { fontFamily: "Georgia", fontWeight: "normal", fontSize: 62, color: "#f5e7d5", outlineWidth: 0, shadowColor: "#30201c", shadowBlur: 2, shadowOffsetX: 0, shadowOffsetY: 2, align: "center" },
+    comic: { fontFamily: "Impact", fontWeight: "bold", color: "#fff200", outlineColor: "#171717", outlineWidth: 5, shadowColor: "#171717", shadowBlur: 0, shadowOffsetX: 5, shadowOffsetY: 6 },
+    poster: { fontFamily: "Arial Black", fontWeight: "bold", color: "#ffffff", outlineColor: "#101014", outlineWidth: 2, shadowColor: "#000000", shadowBlur: 8, shadowOffsetX: 2, shadowOffsetY: 4 },
+    manga: { fontFamily: "Georgia", fontWeight: "bold", color: "#111111", outlineColor: "#ffffff", outlineWidth: 0, shadowColor: "#777777", shadowBlur: 1, shadowOffsetX: 1, shadowOffsetY: 2 },
+    neon: { fontFamily: "Arial Black", fontWeight: "bold", color: "#ffffff", outlineColor: "#f000c8", outlineWidth: 3, shadowColor: "#00dfff", shadowBlur: 18, shadowOffsetX: 0, shadowOffsetY: 0 }
+  }[button.dataset.textStylePreset];
+  if (presets) {
+    updateTextPreview(presets);
+    commitTextPreview(button.dataset.textStylePreset + " text style applied");
+  }
+}));
 
 function renderImageMask(){if(!imageMaskPanel||!imageMaskInput)return;const layer=selectedLayerExact(),isImage=layer?.contentType==="image"&&Boolean(layer.image);imageMaskPanel.hidden=!isImage;imageMaskInput.disabled=!isImage||layer.locked;imageMaskInput.value=isImage?(layer.image.mask||"none"):"none";}
 imageMaskInput.addEventListener("change",()=>{const layer=selectedLayerExact();if(!layer||layer.contentType!=="image"||!layer.image||layer.locked)return;const before=cloneDocument(state.document),next=setImageMask(state.document,layer.id,imageMaskInput.value);if(!next)return;state.document=next;state.history.record(before,next);refreshDocument("Image mask updated");persistDocument();});
@@ -1853,8 +1914,7 @@ function openSelectedObjectStyle() {
   const layer=selectedLayerExact();
   if(!layer){status.textContent="Seleccioná primero un objeto en el lienzo o en Capas.";return;}
   if(layer.contentType==="text") {
-    renderLayerText();
-    if(textEditDialog&&!textEditDialog.open)textEditDialog.showModal();
+    openTextEditorForLayer(layer.id);
     return;
   }
   if(selectedShapeMetadata(layer)){openShapeMaker(layer);return;}
@@ -1930,6 +1990,7 @@ document.querySelector("#object-style-apply")?.addEventListener("click",()=>{
   state.document=next;state.history.record(before,next);state.dirty=true;refreshDocument("Estilo aplicado: "+layer.name);persistDocument();objectStyleDialog.close();
 });
 document.querySelector("#selection-mini-style")?.addEventListener("click",openSelectedObjectStyle);
+document.querySelector("#selection-mini-edit-text")?.addEventListener("click", () => openTextEditorForLayer());
 
 
 function setStorageRecoveryPending(pending, message = "") {
@@ -2173,8 +2234,10 @@ function finishTransformInteraction(cancelled = false) {
   if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
 }
 
-function keepImageTransformVisible(layer, transform) {
-  if (layer?.contentType !== "image" || !layer.image || !transform) return transform;
+function keepLayerTransformVisible(layer, transform) {
+  const movableImage = layer?.contentType === "image" && Boolean(layer.image);
+  const movableText = layer?.contentType === "text" && Boolean(layer.text);
+  if ((!movableImage && !movableText) || !transform) return transform;
   const documentWidth = Number(state.document.width);
   const documentHeight = Number(state.document.height);
   if (!(documentWidth > 0 && documentHeight > 0)) return transform;
@@ -2186,8 +2249,9 @@ function keepImageTransformVisible(layer, transform) {
   const maxY = Math.max(...corners.map(point => point.y));
   const boxWidth = maxX - minX;
   const boxHeight = maxY - minY;
-  const minVisibleX = Math.min(160, Math.max(48, Math.min(documentWidth, boxWidth) * 0.3));
-  const minVisibleY = Math.min(160, Math.max(48, Math.min(documentHeight, boxHeight) * 0.3));
+  const visibilityFloor = movableText ? 20 : 48;
+  const minVisibleX = Math.min(movableText ? 72 : 160, Math.max(visibilityFloor, Math.min(documentWidth, boxWidth) * 0.3));
+  const minVisibleY = Math.min(movableText ? 36 : 160, Math.max(visibilityFloor, Math.min(documentHeight, boxHeight) * 0.3));
   let dx = 0;
   let dy = 0;
 
@@ -2227,7 +2291,7 @@ function updateTransformPreview(event) {
   if (interaction.type === "move") {
     preview.x = interaction.beforeTransform.x + currentDocument.x - interaction.startDocument.x;
     preview.y = interaction.beforeTransform.y + currentDocument.y - interaction.startDocument.y;
-    Object.assign(preview, keepImageTransformVisible(
+    Object.assign(preview, keepLayerTransformVisible(
       state.document.layers.find(layer => layer.id === interaction.layerId),
       preview
     ));
@@ -2761,6 +2825,12 @@ async function finishImageErase(interaction) {
   persistDocument();
   refreshDocument("🧽 Image pixels erased · Undo can restore them");
 }
+
+canvas.addEventListener("dblclick", event => {
+  const point = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
+  const layer = [...state.document.layers].reverse().find(item => item.visible && item.contentType === "text" && item.text && hitTestLayer(item, point, documentCenter(state.document)));
+  if (layer) openTextEditorForLayer(layer.id);
+});
 
 canvas.addEventListener("pointerdown", event => {
   if (event.pointerType === "touch") {
@@ -3556,8 +3626,7 @@ if (mobileDock) {
       mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
       const selected = selectedLayerExact();
       if (selected?.contentType === "text" && textEditDialog) {
-        renderLayerText();
-        if (!textEditDialog.open) textEditDialog.showModal();
+        openTextEditorForLayer(selected.id);
       } else {
         document.querySelector("#add-text-layer")?.click();
       }
@@ -3727,7 +3796,7 @@ function runEditGoal(goal) {
     },
     censor: () => openCensorLightDialog(),
     draw: () => document.querySelector('.toolbar [data-tool="brush"]')?.click(),
-    text: () => document.querySelector("#add-text-layer").click(),
+    text: () => selectedLayerExact()?.contentType === "text" ? openTextEditorForLayer(selectedLayerExact().id) : document.querySelector("#add-text-layer").click(),
     shapes: () => openShapeMaker(),
     "object-style": () => openSelectedObjectStyle(),
     color: () => {
