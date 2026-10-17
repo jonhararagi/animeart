@@ -1313,6 +1313,8 @@ try {
   await click("#mobile-context-close");
   await waitFor('document.querySelector("#mobile-context-heading").hidden === true');
   await evaluate('window.__ANIMEART_E2E_DIAGNOSTICS__ = true');
+  const diagnosticsWarmupPoint = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}; })()');
+  await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: diagnosticsWarmupPoint.x, y: diagnosticsWarmupPoint.y });
   await waitFor('Boolean(window.__ANIMEART_DOCUMENT_FRAME_DIAGNOSTICS__?.topLeft)');
   const drawViewportBaseline = await readFrameMetrics();
   await wheelCanvasZoom("in", 2);
