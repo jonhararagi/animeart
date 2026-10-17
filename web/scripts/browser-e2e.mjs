@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { extname, join, normalize, resolve } from "node:path";
@@ -557,12 +557,15 @@ try {
   await click("#redo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.flipX === true)', 10000);
 
-  // Exercise actual raster edits, history, flips and aspect preservation in Chromium.
+  // Exercise actual raster edits, history, flips, shape masks and aspect preservation in Chromium.
+  const shapeMaskCheck = await evaluate('(async () => { const sourceCanvas=document.createElement("canvas"); sourceCanvas.width=100; sourceCanvas.height=100; const sourceContext=sourceCanvas.getContext("2d"); sourceContext.fillStyle="#ed4baf"; sourceContext.fillRect(0,0,100,100); const { cropImageSource }=await import("/domain/image-processing.mjs"); const masked=await cropImageSource(sourceCanvas.toDataURL("image/png"),{x:0,y:0,width:100,height:100},{shape:"circle"}); const resultImage=new Image(); resultImage.src=masked.source; await resultImage.decode(); const resultCanvas=document.createElement("canvas"); resultCanvas.width=masked.width; resultCanvas.height=masked.height; const resultContext=resultCanvas.getContext("2d",{willReadFrequently:true}); resultContext.drawImage(resultImage,0,0); const data=resultContext.getImageData(0,0,100,100).data; return {width:masked.width,height:masked.height,cornerAlpha:data[3],centerAlpha:data[(50*100+50)*4+3]}; })()');
+  assert(shapeMaskCheck?.width===100 && shapeMaskCheck?.height===100 && shapeMaskCheck.cornerAlpha===0 && shapeMaskCheck.centerAlpha>240, "shape crop makes pixels outside the circle truly transparent while retaining the center");
   const beforeCropDocument = await readDocument();
   const beforeCropSample = beforeCropDocument.layers.find(layer => layer.name === "battleworn_knight");
   await click("#crop-resize-image");
   await waitFor('document.querySelector("#image-edit-dialog").open === true');
   assert(await evaluate('document.querySelector("#image-edit-title").textContent.includes("Símbolo de recorte") && document.querySelector("#apply-image-edit").textContent.includes("Recortar") && document.querySelector("#close-image-edit").textContent.includes("✕")'), "crop dialog presents a clear crop action and X cancel control in Spanish");
+  assert(await evaluate('document.querySelector("#image-crop-shape")?.value==="rectangle" && [...document.querySelector("#image-crop-shape").options].some(option=>option.value==="circle")'), "pixel crop offers a separate shape selector beginning with Rectangle");
   await waitFor('document.querySelector("#crop-preview").width > 1', 15000);
   assert(await evaluate('document.querySelector("#image-crop-width").value === "944" && document.querySelector("#image-crop-height").value === "944"'), "crop dialog reads the selected image dimensions");
   assert(await evaluate('document.querySelector("#crop-preview").height > 1'), "crop dialog renders an actual image preview");
@@ -609,6 +612,18 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 400 && layer.image?.height === 500)', 10000);
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944 && layer.image?.height === 944)', 10000);
+
+  await click("#crop-resize-image");
+  await waitFor('document.querySelector("#image-edit-dialog").open === true');
+  await evaluate('(() => { const shape=document.querySelector("#image-crop-shape"); shape.value="circle"; shape.dispatchEvent(new Event("change",{bubbles:true})); for (const [id,value] of [["#image-crop-x","272"],["#image-crop-y","272"],["#image-crop-width","400"],["#image-crop-height","400"]]) { const input=document.querySelector(id); input.value=value; input.dispatchEvent(new Event("input",{bubbles:true})); } })()');
+  await click("#apply-image-edit");
+  await waitFor('document.querySelector("#status").textContent === "Image cropped"',15000);
+  const roundCropLayer=(await readDocument()).layers.find(layer=>layer.name==="battleworn_knight");
+  assert(roundCropLayer?.image?.width===400 && roundCropLayer?.image?.height===400, "circle crop keeps exact pixel dimensions");
+  const realCropAlpha=await evaluate('(async()=>{const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="battleworn_knight");const image=new Image();image.src=layer.image.source;await image.decode();const c=document.createElement("canvas");c.width=image.naturalWidth;c.height=image.naturalHeight;const x=c.getContext("2d",{willReadFrequently:true});x.drawImage(image,0,0);const d=x.getImageData(0,0,c.width,c.height).data;return {corner:d[3],center:d[(Math.floor(c.height/2)*c.width+Math.floor(c.width/2))*4+3],width:c.width,height:c.height};})()');
+  assert(realCropAlpha?.corner===0 && realCropAlpha.center>0, "applying a circular crop stores alpha transparency outside the selected geometry");
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name === "battleworn_knight" && layer.image?.width === 944 && layer.image?.height === 944)',10000);
 
   const beforeResizeDocument = await readDocument();
   const beforeResizeSample = beforeResizeDocument.layers.find(layer => layer.name === "battleworn_knight");
@@ -726,6 +741,9 @@ try {
   assert(await evaluate('window.__animeArtStrokeTextCount > 0'), "real browser draws caption outlines through Canvas strokeText");
   await saveScreenshot("animeart-studio-meme-captions.png");
 
+  const exportDocumentSize = await evaluate('(()=>{const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}");return {width:d.width,height:d.height};})()');
+  await evaluate('(()=>{const select=document.querySelector("#export-resolution");select.value="hd";select.dispatchEvent(new Event("change",{bubbles:true}));})()');
+  assert(await evaluate('document.querySelector("#export-resolution").value==="hd" && document.querySelector("#mobile-export-resolution").value==="hd"'), "Normal/HD selector synchronizes desktop settings and mobile dock");
   await click("#export-png");
   await waitFor('document.querySelector("#status").textContent !== "Exporting PNG…"', 10000);
   const exportStatus = await evaluate('document.querySelector("#status").textContent');
@@ -735,6 +753,11 @@ try {
   while (Date.now() < downloadDeadline && !statSync(downloadedPng, { throwIfNoEntry: false })) await sleep(100);
   const pngStat = statSync(downloadedPng, { throwIfNoEntry: false });
   assert(Boolean(pngStat && pngStat.size > 0), "real browser PNG export produces a non-empty downloaded PNG file");
+  const newestPngName = readdirSync(downloadDir).filter(name => /^animeart(?: \(\d+\))?\.png$/.test(name)).sort((left,right) => statSync(join(downloadDir,right)).mtimeMs-statSync(join(downloadDir,left)).mtimeMs)[0];
+  const hdPng = readFileSync(join(downloadDir,newestPngName || "animeart.png"));
+  const hdWidth = hdPng.readUInt32BE(16), hdHeight = hdPng.readUInt32BE(20);
+  const expectedHdScale = Math.max(1,Math.min(2,Math.sqrt(16_000_000/(exportDocumentSize.width*exportDocumentSize.height))));
+  assert(hdWidth===Math.round(exportDocumentSize.width*expectedHdScale) && hdHeight===Math.round(exportDocumentSize.height*expectedHdScale), "HD export uses selected output dimensions without changing the editable document canvas");
 
   const persistedBeforeReload = JSON.stringify(await readDocument());
   await cdp("Page.reload", { ignoreCache: true });
@@ -1180,6 +1203,7 @@ try {
   assert(await evaluate('(() => { const brand=document.querySelector(".topbar .brand"); const style=getComputedStyle(brand); const r=brand.getBoundingClientRect(); return style.display!=="none" && style.visibility!=="hidden" && Number(style.opacity)>0 && r.width>=60 && r.height>=24; })()'), "AnimeArt branding is visible in the mobile header");
   assert(await evaluate('(() => { const actions=document.querySelector(".mobile-top-actions"); const style=getComputedStyle(actions); return style.display!=="none" && style.visibility!=="hidden" && Array.from(actions.querySelectorAll("button")).every(el => { const r=el.getBoundingClientRect(); const s=getComputedStyle(el); return s.display!=="none" && s.visibility!=="hidden" && r.width>=44 && r.height>=44; }); })()'), "mobile header actions are visible and meet the 44px touch-target floor");
   assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=export]") !== null'), "mobile export remains reachable in the bottom dock");
+  assert(await evaluate('(()=>{const s=document.querySelector("#mobile-export-resolution");const r=s.getBoundingClientRect();const p=getComputedStyle(s.parentElement);return Boolean(s&&p.display!=="none"&&r.width>=55&&r.height>=30&&r.bottom<=innerHeight);})()'), "mobile Normal/HD output-size picker is visible and touch-usable");
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "mobile editor starts without stale storage-recovery warning");
   assert(await evaluate('(() => { const doc=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const c=document.querySelector("#canvas"); const a=c.getContext("2d",{willReadFrequently:true}).getImageData(Math.floor(c.width/2),Math.floor(c.height/2),1,1).data[3]; return !doc.layers.some(layer=>layer.contentType==="image"&&layer.image?.source) && a===0; })()'),
     "new documents start as a transparent empty canvas; the checkerboard is view-only, not a background image layer");
