@@ -1512,6 +1512,83 @@ try {
   await click("#shape-maker-cancel");
   await waitFor('document.querySelector("#shape-maker-dialog")?.open === false');
   assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height > 0'), "closing a shape window returns to the canvas without applying cancelled edits");
+
+  // AA-TOOL-STUDIOS-001: paint/erase have dedicated full-screen previews and never mutate before Apply.
+  await evaluate('(() => { const button=[...document.querySelectorAll("#layers button")].find(b=>(b.getAttribute("aria-label")||"").includes("e2e-mobile-import")); if(!button) throw new Error("e2e-mobile-import layer is missing"); button.click(); return true; })()');
+  const sourceBeforePaintStudio = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.image?.source');
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('document.body.classList.contains("mobile-tools-open")');
+  await click('[data-edit-goal="draw"]');
+  await waitFor('document.querySelector("#censor-light-dialog")?.open === true');
+  assert(await evaluate('document.querySelector("#censor-dialog-title").textContent.includes("Pintar píxeles") &&
+    document.querySelector("#censor-light-dialog").getBoundingClientRect().width >= innerWidth - 2'),
+    "Paint opens a focused full-screen pixel studio with the real image preview");
+  await evaluate('(() => { const c=document.querySelector("#censor-image-preview"); const r=c.getBoundingClientRect(); const opts={bubbles:true,cancelable:true,pointerId:71,pointerType:"touch",clientX:r.left+r.width*.35,clientY:r.top+r.height*.42}; c.dispatchEvent(new PointerEvent("pointerdown",opts)); c.dispatchEvent(new PointerEvent("pointermove",{...opts,clientX:opts.clientX+Math.max(8,r.width*.08),clientY:opts.clientY+Math.max(8,r.height*.06)})); c.dispatchEvent(new PointerEvent("pointerup",opts)); })()');
+  assert(await evaluate('document.querySelector("#censor-dialog-undo").disabled === false'), "Paint studio captures a reversible preview stroke");
+  await click("#censor-dialog-cancel");
+  await waitFor('document.querySelector("#censor-light-dialog").open === false');
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.image?.source === ' + JSON.stringify(sourceBeforePaintStudio)),
+    "cancelling Paint leaves the persisted image byte-for-byte unchanged");
+
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('document.body.classList.contains("mobile-tools-open")');
+  await click('[data-edit-goal="erase"]');
+  await waitFor('document.querySelector("#censor-light-dialog")?.open === true');
+  assert(await evaluate('document.querySelector("#censor-dialog-title").textContent.includes("Borrar píxeles") &&
+    document.querySelector("#censor-dialog-glow").closest("label").hidden'),
+    "Erase opens its own focused studio with irrelevant glow settings removed");
+  await evaluate('(() => { const c=document.querySelector("#censor-image-preview"); const r=c.getBoundingClientRect(); const opts={bubbles:true,cancelable:true,pointerId:72,pointerType:"touch",clientX:r.left+r.width*.55,clientY:r.top+r.height*.52}; c.dispatchEvent(new PointerEvent("pointerdown",opts)); c.dispatchEvent(new PointerEvent("pointermove",{...opts,clientX:opts.clientX+Math.max(8,r.width*.06),clientY:opts.clientY+Math.max(8,r.height*.05)})); c.dispatchEvent(new PointerEvent("pointerup",opts)); })()');
+  assert(await evaluate('document.querySelector("#censor-dialog-undo").disabled === false'), "Erase studio captures a reversible transparent preview stroke");
+  await click("#censor-dialog-undo");
+  assert(await evaluate('document.querySelector("#censor-dialog-undo").disabled === true'), "Erase undo removes the last preview stroke");
+  await click("#censor-dialog-cancel");
+  await waitFor('document.querySelector("#censor-light-dialog").open === false');
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.image?.source === ' + JSON.stringify(sourceBeforePaintStudio)),
+    "cancelling Erase leaves persisted pixels untouched");
+
+  // Cropping offers two distinct scopes: image pixels or the full layered composition.
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('document.body.classList.contains("mobile-tools-open")');
+  await click('[data-edit-goal="crop"]');
+  await waitFor('document.querySelector("#crop-mode-dialog")?.open === true');
+  assert(await evaluate('document.querySelector("#crop-selected-image").getBoundingClientRect().height>0 &&
+    document.querySelector("#crop-whole-canvas").getBoundingClientRect().height>0'),
+    "crop chooser offers single-image crop and whole-composition crop separately");
+  await click("#crop-selected-image");
+  await waitFor('document.querySelector("#image-edit-dialog")?.open === true');
+  assert(await evaluate('document.querySelector("#image-edit-title").textContent.includes("recorte") || document.querySelector("#image-edit-title").textContent.includes("Recorte")'),
+    "single-image crop opens the original per-image pixel crop workspace");
+  await click("#cancel-image-edit");
+  await waitFor('document.querySelector("#image-edit-dialog").open === false');
+
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('document.body.classList.contains("mobile-tools-open")');
+  await click('[data-edit-goal="crop"]');
+  await waitFor('document.querySelector("#crop-mode-dialog")?.open === true');
+  const beforeCompositionCrop = await readDocument();
+  await click("#crop-whole-canvas");
+  await waitFor('document.querySelector("#canvas-crop-dialog")?.open === true', 15000);
+  assert(await evaluate('document.querySelector("#canvas-crop-preview").width>0 &&
+    document.querySelector("#canvas-crop-preview").height>0 &&
+    document.querySelector("#canvas-crop-preview").getBoundingClientRect().width>100'),
+    "composition crop preview shows the whole layered document, not only the selected image");
+  await saveScreenshot("animeart-mobile-canvas-crop.png");
+  const requestedCompositionCrop = {
+    x: 10, y: 10,
+    width: beforeCompositionCrop.width - 20,
+    height: beforeCompositionCrop.height - 20
+  };
+  await evaluate('(() => { const values=' + JSON.stringify(requestedCompositionCrop) + '; for (const [key,value] of Object.entries(values)) { const input=document.querySelector("#canvas-crop-"+key); input.value=String(value); input.dispatchEvent(new Event("change",{bubbles:true})); } })()');
+  assert(await evaluate('document.querySelector("#apply-canvas-crop").disabled === false'), "numeric crop fields enable Apply for a valid smaller composition frame");
+  await click("#apply-canvas-crop");
+  await waitFor('document.querySelector("#canvas-crop-dialog").open === false');
+  const afterCompositionCrop = await readDocument();
+  assert(afterCompositionCrop.width === requestedCompositionCrop.width &&
+    afterCompositionCrop.height === requestedCompositionCrop.height &&
+    afterCompositionCrop.layers.length === beforeCompositionCrop.layers.length &&
+    afterCompositionCrop.layers.every((layer,index)=>layer.id===beforeCompositionCrop.layers[index].id),
+    "applying canvas crop changes the document frame but preserves every editable layer");
+
   // Reset pan/zoom so the layer inserted at the document centre has a known touch target.
   await cdp("Page.reload", { ignoreCache: true });
   await waitFor('document.readyState === "complete"');
