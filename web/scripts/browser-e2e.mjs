@@ -1417,17 +1417,77 @@ try {
   assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
     "mobile Redo restores the edge resize after restoring the move");
 
-  // Keep the image in view when the user drags it toward the bottom edge of the mobile canvas.
-  const bottomDragStart = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}; })()');
-  const bottomDragEnd = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); return {x:r.left+r.width/2,y:r.bottom-10}; })()');
-  const transformBeforeBottomDrag = await evaluate('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform)');
-  await mouseDrag(bottomDragStart, bottomDragEnd);
-  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) !== ' + JSON.stringify(transformBeforeBottomDrag), 10000);
-  const visibleAfterBottomDrag = await evaluate('(() => { const doc=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const layer=doc.layers.find(item=>item.name==="e2e-mobile-import"); const t=layer.transform,p={x:doc.width/2,y:doc.height/2},w=layer.image.width,h=layer.image.height,a=(t.rotation||0)*Math.PI/180,s=t.scale; const points=[[0,0],[w,0],[w,h],[0,h]].map(([x,y])=>{const dx=(x-p.x)*s,dy=(y-p.y)*s;return{x:dx*Math.cos(a)-dy*Math.sin(a)+p.x+t.x,y:dx*Math.sin(a)+dy*Math.cos(a)+p.y+t.y};}); const minX=Math.min(...points.map(v=>v.x)),maxX=Math.max(...points.map(v=>v.x)),minY=Math.min(...points.map(v=>v.y)),maxY=Math.max(...points.map(v=>v.y)); const visibleW=Math.max(0,Math.min(doc.width,maxX)-Math.max(0,minX)),visibleH=Math.max(0,Math.min(doc.height,maxY)-Math.max(0,minY)); return {docW:doc.width,docH:doc.height,bounds:{minX,maxX,minY,maxY},visibleW,visibleH,requiredW:Math.min(doc.width,maxX-minX)*.29,requiredH:Math.min(doc.height,maxY-minY)*.29}; })()');
-  assert(visibleAfterBottomDrag.visibleW >= visibleAfterBottomDrag.requiredW && visibleAfterBottomDrag.visibleH >= visibleAfterBottomDrag.requiredH,
-    "dragging an image toward the canvas edge keeps a useful part visible instead of losing it off-canvas: " + JSON.stringify(visibleAfterBottomDrag));
+  // AA-CANVAS-FREE-MOVE-001: layer content may cross all four document edges.
+  // Each move is reversed from the transformed object's actual center, so the
+  // test verifies the boundary crossing without polluting the following steps.
+  for (const edge of ["top", "right", "bottom", "left"]) {
+    const geometryBeforeEdge = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); const d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; return {canvas:{left:r.left,top:r.top,width:r.width,height:r.height},center:{x:r.left+d.center.x,y:r.top+d.center.y}}; })()');
+    const edgeTarget = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); const p=22; return {top:{x:r.left+r.width/2,y:r.top+p},right:{x:r.right-p,y:r.top+r.height/2},bottom:{x:r.left+r.width/2,y:r.bottom-p},left:{x:r.left+p,y:r.top+r.height/2}}; })()').then(points => points[edge]);
+    const transformBeforeEdge = await evaluate('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform)');
+    await mouseDrag(geometryBeforeEdge.center, edgeTarget);
+    await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) !== ' + JSON.stringify(transformBeforeEdge), 10000);
+    const boundsAfterEdge = await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const l=d.layers.find(item=>item.name==="e2e-mobile-import"); const t=l.transform,p={x:d.width/2,y:d.height/2},w=l.image.width,h=l.image.height,a=(t.rotation||0)*Math.PI/180,s=t.scale; const pts=[[0,0],[w,0],[w,h],[0,h]].map(([x,y])=>{const dx=(x-p.x)*s,dy=(y-p.y)*s;return{x:dx*Math.cos(a)-dy*Math.sin(a)+p.x+t.x,y:dx*Math.sin(a)+dy*Math.cos(a)+p.y+t.y};}); return {width:d.width,height:d.height,minX:Math.min(...pts.map(v=>v.x)),maxX:Math.max(...pts.map(v=>v.x)),minY:Math.min(...pts.map(v=>v.y)),maxY:Math.max(...pts.map(v=>v.y))}; })()');
+    const crossed = edge === "top" ? boundsAfterEdge.minY < 0
+      : edge === "right" ? boundsAfterEdge.maxX > boundsAfterEdge.width
+      : edge === "bottom" ? boundsAfterEdge.maxY > boundsAfterEdge.height
+      : boundsAfterEdge.minX < 0;
+    assert(crossed, "dragging an image across the " + edge + " edge leaves content outside the document frame: " + JSON.stringify(boundsAfterEdge));
+
+    const geometryAfterEdge = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); const d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; return {center:{x:r.left+d.center.x,y:r.top+d.center.y}}; })()');
+    await mouseDrag(geometryAfterEdge.center, geometryBeforeEdge.center);
+    await waitFor('(() => { const l=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import"); return Math.abs(l.transform.x-JSON.parse(' + JSON.stringify(transformBeforeEdge) + ').x)<0.05 && Math.abs(l.transform.y-JSON.parse(' + JSON.stringify(transformBeforeEdge) + ').y)<0.05; })()', 10000);
+  }
+
+  // A selected layer may also move completely beyond the viewport. Its recovery
+  // grip stays clamped to the visible edge and can drag it back into the canvas.
+  const transformBeforeOffscreenRecovery = await evaluate('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform)');
+  const bottomOffscreenStart = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); const d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; return {x:r.left+d.center.x,y:r.top+d.center.y}; })()');
+  const bottomOffscreenEnd = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); return {x:r.left+r.width/2,y:Math.min(innerHeight-26,r.bottom+80)}; })()');
+  const canvasBeforeOffscreenDrag = await evaluate('document.querySelector("#canvas").getBoundingClientRect().bottom');
+  assert(bottomOffscreenEnd.y > canvasBeforeOffscreenDrag + 1,
+    "full off-canvas recovery E2E fixture has room below the visible canvas");
+  await mouseDrag(bottomOffscreenStart, bottomOffscreenEnd);
+  await waitFor('Boolean(window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.moveHandle)', 10000);
+  const transformAfterOffscreenMove = await evaluate('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform)');
+  const offscreenHandle = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); const d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; return {move:{x:r.left+d.moveHandle.x,y:r.top+d.moveHandle.y},center:{x:r.left+r.width/2,y:r.top+r.height/2},canvas:{left:r.left,top:r.top,width:r.width,height:r.height}}; })()');
+  assert(offscreenHandle.move.x >= offscreenHandle.canvas.left + 20 &&
+    offscreenHandle.move.x <= offscreenHandle.canvas.left + offscreenHandle.canvas.width - 20 &&
+    offscreenHandle.move.y >= offscreenHandle.canvas.top + 20 &&
+    offscreenHandle.move.y <= offscreenHandle.canvas.top + offscreenHandle.canvas.height - 20,
+    "an off-screen selected image exposes a move grip inside the canvas bounds");
+  // Export while the selected image is still outside the document bounds.
+  // The file must retain document dimensions and export must not silently restore/mutate the layer.
+  const offscreenPngPath = join(downloadDir, "animeart.png");
+  const offscreenPngFs = await import("node:fs/promises");
+  try { await offscreenPngFs.unlink(offscreenPngPath); } catch {}
+  const transformBeforeOffscreenExport = await evaluate('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform)');
+  const documentSizeBeforeOffscreenExport = await evaluate('({width:JSON.parse(localStorage.getItem("animeart-web-document")||"{}").width,height:JSON.parse(localStorage.getItem("animeart-web-document")||"{}").height})');
+  await evaluate('(() => { const select=document.querySelector("#mobile-export-format"); select.value="png"; select.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await clickMoreGoal("export");
+  await waitFor('document.querySelector("#status").textContent.includes("PNG exported")', 15000);
+  for (let attempt = 0; attempt < 100 && !existsSync(offscreenPngPath); attempt++) await sleep(100);
+  assert(existsSync(offscreenPngPath), "PNG export succeeds while selected image is outside the document frame");
+  const offscreenPngReport = inspectPngAlpha(await offscreenPngFs.readFile(offscreenPngPath));
+  assert(offscreenPngReport.width === documentSizeBeforeOffscreenExport.width &&
+    offscreenPngReport.height === documentSizeBeforeOffscreenExport.height,
+    "off-canvas PNG export is clipped to the exact document dimensions: " + JSON.stringify(offscreenPngReport));
+  const transformAfterOffscreenExport = await evaluate('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform)');
+  assert(transformAfterOffscreenExport === transformBeforeOffscreenExport,
+    "exporting an off-canvas image leaves its current transform unchanged");
+  if (await evaluate('document.body.classList.contains("mobile-tools-open")')) {
+    await click('.mobile-touch-dock [data-touch-action="more"]');
+    await waitFor('!document.body.classList.contains("mobile-tools-open")');
+  }
+  await mouseDrag(offscreenHandle.move, offscreenHandle.center);
+  await waitFor('Boolean(window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.moveHandle) === false', 10000);
+  const recoveredOffscreenTransform = await evaluate('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform)');
+  assert(recoveredOffscreenTransform !== transformBeforeOffscreenRecovery,
+    "dragging the visible recovery grip brings the off-screen image back while retaining its selection");
   await clickMoreGoal("undo");
-  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) === ' + JSON.stringify(transformBeforeBottomDrag), 10000);
+  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) === ' + JSON.stringify(transformAfterOffscreenMove), 10000);
+  await clickMoreGoal("undo");
+  // Retain the pre-test transform after backing out the recovery and off-screen move.
+  await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) === ' + JSON.stringify(transformBeforeOffscreenRecovery), 10000);
 
   // AA-MOBILE-REDESIGN-004: verify that mobile rotation and flip controls mutate the selected image and can be restored.
   await clickMoreGoal("layers");

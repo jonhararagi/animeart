@@ -112,7 +112,9 @@ test("AA-TYPOGRAPHY-CANVA-001 keeps the text modal reachable on mobile and suppo
  assert.match(app, /selection-mini-edit-text/);
  assert.match(app, /text: \(\) => selectedLayerExact\(\)\?\.contentType === "text"/);
  assert.match(app, /function canvasRenderDpr\(rect\)/);
- assert.match(app, /function keepImageTransformVisible\(layer, transform\)/);
+ assert.doesNotMatch(app, /function keepImageTransformVisible\(layer, transform\)/);
+ assert.match(app, /preview\.x = interaction\.beforeTransform\.x \+ currentDocument\.x - interaction\.startDocument\.x/);
+ assert.match(app, /preview\.y = interaction\.beforeTransform\.y \+ currentDocument\.y - interaction\.startDocument\.y/);
  for (const preset of ["title", "subtitle", "body", "quote", "label", "elegant"]) {
   assert.ok(html.includes('data-text-style-preset="' + preset + '"'), "missing typography preset: " + preset);
  }
