@@ -1512,6 +1512,11 @@ try {
   await click("#shape-maker-cancel");
   await waitFor('document.querySelector("#shape-maker-dialog")?.open === false');
   assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height > 0'), "closing a shape window returns to the canvas without applying cancelled edits");
+  // Reset pan/zoom so the layer inserted at the document centre has a known touch target.
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitFor('document.querySelector("#canvas") !== null');
+  await waitForServiceWorkerReadiness();
   // AA-TYPOGRAPHY-CANVA-001: the text modal must work while the mobile layers drawer is hidden.
   assert(await evaluate('document.querySelector("#text-edit-dialog").parentElement === document.body'),
     "text editor is mounted outside the mobile-hidden layers panel");
