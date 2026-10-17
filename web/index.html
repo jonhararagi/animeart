@@ -37,11 +37,15 @@
         <div class="easy-edit-grid">
           <button type="button" data-edit-goal="move"><span aria-hidden="true">🖐️</span><b>Mover / acomodar</b><small>Arrastra y cambia tamaño</small></button>
           <button type="button" data-edit-goal="fit"><span aria-hidden="true">🎯</span><b>Ajustar al lienzo</b><small>Centra y encaja la imagen</small></button>
-          <button type="button" data-edit-goal="crop"><span aria-hidden="true">✂️</span><b>Recortar</b><small>Quita bordes sobrantes</small></button>
+          <button type="button" data-edit-goal="crop"><span aria-hidden="true">✂️</span><b>Recortar</b><small>Imagen o composición completa</small></button>
           <button type="button" data-edit-goal="background"><span aria-hidden="true">🪄</span><b>Quitar fondo</b><small>Hazlo transparente</small></button>
-          <button type="button" data-edit-goal="erase"><span aria-hidden="true">🧽</span><b>Borrar píxeles</b><small>Quita la parte que pintes</small></button>
-          <button type="button" data-edit-goal="censor"><span aria-hidden="true">✨</span><b>Luz de censura</b><small>Cubre con luz brillante</small></button>
-          <button type="button" data-edit-goal="draw"><span aria-hidden="true">🖌️</span><b>Dibujar</b><small>Pinta sobre la imagen</small></button>
+          <button type="button" data-edit-goal="erase"><span aria-hidden="true">🧽</span><b>Borrar</b><small>Abre el estudio de borrado</small></button>
+          <button type="button" data-edit-goal="censor"><span aria-hidden="true">✨</span><b>Luz de censura</b><small>Control de color, brillo y grosor</small></button>
+          <button type="button" data-edit-goal="draw"><span aria-hidden="true">🖌️</span><b>Pintar en la imagen</b><small>Vista previa con deshacer y aplicar</small></button>
+          <button type="button" data-edit-goal="rotate-left"><span aria-hidden="true">↶</span><b>Girar −</b><small>5° a la izquierda</small></button>
+          <button type="button" data-edit-goal="rotate-right"><span aria-hidden="true">↷</span><b>Girar +</b><small>5° a la derecha</small></button>
+          <button type="button" data-edit-goal="flip-horizontal"><span aria-hidden="true">↔️</span><b>Voltear horizontal</b><small>Reflejar izquierda y derecha</small></button>
+          <button type="button" data-edit-goal="flip-vertical"><span aria-hidden="true">↕️</span><b>Voltear vertical</b><small>Reflejar arriba y abajo</small></button>
           <button type="button" data-edit-goal="text"><span aria-hidden="true">🔤</span><b>Texto</b><small>Añade palabras o globos</small></button>
           <button type="button" data-edit-goal="shapes"><span aria-hidden="true">🔷</span><b>Formas</b><small>Figuras, borde y sombra</small></button>
           <button type="button" data-edit-goal="object-style"><span aria-hidden="true">🎨</span><b>Apariencia del elemento</b><small>Opacidad, color y forma</small></button>
@@ -351,24 +355,61 @@
     </aside>
   </main>
   <nav class="mobile-touch-dock" aria-label="Herramientas principales">
-    <button type="button" data-touch-action="import-image" aria-label="Añadir imagen al lienzo" title="Añadir una imagen desde tu dispositivo"><span aria-hidden="true">＋</span><span>Añadir</span></button>
-    <button type="button" data-touch-action="asset-library" aria-label="Abrir galería de recursos" title="Abrir tu biblioteca de imágenes reutilizables"><span aria-hidden="true">▦</span><span>Galería</span></button>
-    <button type="button" data-touch-action="tool" data-tool="select" aria-pressed="true"><span aria-hidden="true">🖐️</span><span>Mover</span></button>
-    <button type="button" data-touch-action="tool" data-tool="brush" aria-pressed="false"><span aria-hidden="true">🖌️</span><span>Dibujar</span></button>
-    <button type="button" data-touch-action="rotate-left" aria-label="Girar 5 grados a la izquierda" title="Girar 5° a la izquierda"><span aria-hidden="true">↺</span><span>Girar −</span></button>
-    <button type="button" data-touch-action="rotate-right" aria-label="Girar 5 grados a la derecha" title="Girar 5° a la derecha"><span aria-hidden="true">↻</span><span>Girar +</span></button>
-    <button type="button" data-touch-action="flip-horizontal" aria-label="Voltear horizontalmente" title="Voltear horizontalmente"><span aria-hidden="true">↔</span><span>Voltear H</span></button>
-    <button type="button" data-touch-action="flip-vertical" aria-label="Voltear verticalmente" title="Voltear verticalmente"><span aria-hidden="true">↕</span><span>Voltear V</span></button>
-    <label class="mobile-export-format" aria-label="Formato de exportación"><span>Formato</span><select id="mobile-export-format" aria-label="Formato de exportación móvil"><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="webp">WebP</option></select></label>
-    <label class="mobile-export-resolution" aria-label="Tamaño de exportación"><span>Tamaño</span><select id="mobile-export-resolution" aria-label="Tamaño de exportación móvil"><option value="normal">Normal</option><option value="hd">HD</option></select></label>
-    <button type="button" data-touch-action="add-text"><span aria-hidden="true">🔤</span><span>Texto</span></button>
-    <button type="button" data-touch-action="undo" aria-label="Deshacer última acción" title="Deshacer"><span aria-hidden="true">↶</span><span>Deshacer</span></button>
-    <button type="button" data-touch-action="redo" aria-label="Rehacer última acción" title="Rehacer" disabled><span aria-hidden="true">↷</span><span>Rehacer</span></button>
-    <button type="button" data-touch-action="export" aria-label="Guardar o exportar imagen" title="Guardar o exportar imagen"><span aria-hidden="true">↓</span><span>Exportar</span></button>
-    <button type="button" data-touch-action="delete-selected" aria-label="Eliminar elemento seleccionado" title="Eliminar la imagen, el texto o la capa seleccionada"><span aria-hidden="true">🗑️</span><span>Eliminar</span></button>
-    <button type="button" data-touch-action="layers" aria-expanded="false" aria-label="Mostrar capas"><span aria-hidden="true">▤</span><span>Capas</span></button>
-    <button type="button" data-touch-action="more" aria-expanded="false"><span aria-hidden="true">☰</span><span>Más</span></button>
+    <button type="button" data-touch-action="import-image" aria-label="Añadir imagen al lienzo" title="Importar una imagen"><span aria-hidden="true">＋</span><span>Añadir</span></button>
+    <button type="button" data-touch-action="tool" data-tool="select" aria-pressed="true" aria-label="Mover y seleccionar"><span aria-hidden="true">🖐️</span><span>Mover</span></button>
+    <button type="button" data-touch-action="paint" aria-label="Abrir estudio de pintura"><span aria-hidden="true">🖌️</span><span>Pintar</span></button>
+    <button type="button" data-touch-action="crop" aria-label="Elegir tipo de recorte"><span aria-hidden="true">✂️</span><span>Recortar</span></button>
+    <button type="button" data-touch-action="add-text" aria-label="Añadir o editar texto"><span aria-hidden="true">🔤</span><span>Texto</span></button>
+    <button type="button" data-touch-action="more" aria-expanded="false" aria-label="Abrir todas las herramientas"><span aria-hidden="true">☰</span><span>Más</span></button>
   </nav>
+  <dialog id="crop-mode-dialog" class="workflow-dialog" aria-labelledby="crop-mode-title">
+    <section class="workflow-dialog-shell">
+      <header class="workflow-dialog-header">
+        <div><p class="eyebrow">ESTUDIO DE RECORTE</p><h2 id="crop-mode-title">¿Qué querés recortar?</h2><p>Elegí si vas a cambiar una sola imagen o el encuadre de toda la composición con sus capas.</p></div>
+        <button type="button" id="close-crop-mode" class="mini-dialog-close" aria-label="Cerrar opciones de recorte">✕</button>
+      </header>
+      <div class="crop-mode-options">
+        <button type="button" id="crop-selected-image" class="workflow-choice">
+          <span aria-hidden="true">🖼️ ✂️</span><strong>Recortar una imagen</strong>
+          <small>Recorta píxeles de la imagen seleccionada. Las demás capas no cambian.</small>
+        </button>
+        <button type="button" id="crop-whole-canvas" class="workflow-choice">
+          <span aria-hidden="true">🗂️ ✂️</span><strong>Recortar lienzo completo</strong>
+          <small>El marco abarca la composición entera. El recorte conserva todas las capas editables.</small>
+        </button>
+      </div>
+      <p class="workflow-dialog-note">Ambas opciones tienen vista previa y permiten cancelar antes de aplicar.</p>
+    </section>
+  </dialog>
+  <dialog id="canvas-crop-dialog" class="workflow-dialog" aria-labelledby="canvas-crop-title">
+    <section class="canvas-crop-shell">
+      <header class="workflow-dialog-header">
+        <div><p class="eyebrow">LIENZO + TODAS LAS CAPAS</p><h2 id="canvas-crop-title">Recortar composición</h2><p id="canvas-crop-document-size">Seleccioná el encuadre que querés conservar.</p></div>
+        <button type="button" id="close-canvas-crop" class="mini-dialog-close" aria-label="Cerrar recorte de composición">✕</button>
+      </header>
+      <div class="canvas-crop-stage">
+        <canvas id="canvas-crop-preview" aria-label="Previsualización de la composición completa con marco de recorte ajustable"></canvas>
+      </div>
+      <p class="canvas-crop-hint">Arrastrá fuera del marco para crear un recorte nuevo. Arrastrá dentro para moverlo o usa sus esquinas para ajustar. Todo el contenido y las capas se conservan, fuera del encuadre no aparecerá en la imagen final.</p>
+      <div class="canvas-crop-ratio-row">
+        <label for="canvas-crop-ratio">Proporción
+          <select id="canvas-crop-ratio"><option value="">Libre</option><option value="1">Cuadrado · 1:1</option><option value="0.8">Vertical · 4:5</option><option value="1.7777777778">Panorámica · 16:9</option><option value="0.5625">Historia · 9:16</option></select>
+        </label>
+        <button type="button" id="canvas-crop-reset">↺ Lienzo completo</button>
+      </div>
+      <div class="image-edit-grid canvas-crop-fields">
+        <label for="canvas-crop-x">Izquierda (X)<input id="canvas-crop-x" type="number" min="0" step="1" value="0"></label>
+        <label for="canvas-crop-y">Arriba (Y)<input id="canvas-crop-y" type="number" min="0" step="1" value="0"></label>
+        <label for="canvas-crop-width">Ancho<input id="canvas-crop-width" type="number" min="1" step="1" value="1"></label>
+        <label for="canvas-crop-height">Alto<input id="canvas-crop-height" type="number" min="1" step="1" value="1"></label>
+      </div>
+      <p id="canvas-crop-status" role="status" aria-live="polite">Solo cambia el marco hasta pulsar “Aplicar recorte”.</p>
+      <div class="dialog-actions canvas-crop-actions">
+        <button type="button" id="cancel-canvas-crop">✕ Cancelar</button>
+        <button type="button" id="apply-canvas-crop" disabled>✂️ Aplicar recorte a todas las capas</button>
+      </div>
+    </section>
+  </dialog>
   <dialog id="object-style-dialog" aria-labelledby="object-style-title">
     <section class="mini-editor-dialog">
       <header class="mini-dialog-header">
