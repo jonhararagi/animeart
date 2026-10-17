@@ -266,6 +266,48 @@ const mouseStroke = async points => {
   await sleep(180);
 };
 
+
+const wheelCanvasZoom = async (direction, steps = 1) => {
+  const point = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}; })()');
+  const deltaY = direction === "in" ? -120 : 120;
+  for (let index = 0; index < steps; index += 1) {
+    await cdp("Input.dispatchMouseEvent", { type: "mouseWheel", x: point.x, y: point.y, deltaX: 0, deltaY });
+    await sleep(70);
+  }
+  await sleep(120);
+};
+
+const panCanvasByTouch = async (deltaX, deltaY) => {
+  const center = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}; })()');
+  const points = [
+    { id: 1, x: center.x - 38, y: center.y - 8, radiusX: 3, radiusY: 3, force: 1 },
+    { id: 2, x: center.x + 38, y: center.y - 8, radiusX: 3, radiusY: 3, force: 1 }
+  ];
+  await cdp("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 2 });
+  await cdp("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: points });
+  await sleep(70);
+  await cdp("Input.dispatchTouchEvent", {
+    type: "touchMove",
+    touchPoints: points.map(point => ({ ...point, x: point.x + deltaX, y: point.y + deltaY }))
+  });
+  await sleep(120);
+  await cdp("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp("Emulation.setTouchEmulationEnabled", { enabled: false });
+  await sleep(140);
+};
+
+const readFrameMetrics = async () => evaluate('(() => { const f=window.__ANIMEART_DOCUMENT_FRAME_DIAGNOSTICS__,d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"),r=document.querySelector("#canvas").getBoundingClientRect(); if(!f?.topLeft||!f?.topRight||!f?.bottomLeft||!d.width||!d.height)return null; return {documentWidth:d.width,documentHeight:d.height,left:f.topLeft.x,top:f.topLeft.y,right:f.topRight.x,bottom:f.bottomLeft.y,canvasLeft:r.left,canvasTop:r.top,canvasWidth:r.width,canvasHeight:r.height}; })()');
+
+const documentPointToClientPoint = (frame, x, y) => ({
+  x: frame.canvasLeft + frame.left + x / frame.documentWidth * (frame.right - frame.left),
+  y: frame.canvasTop + frame.top + y / frame.documentHeight * (frame.bottom - frame.top)
+});
+
+const clientPointToDocumentPoint = (frame, point) => ({
+  x: (point.x - frame.canvasLeft - frame.left) / (frame.right - frame.left) * frame.documentWidth,
+  y: (point.y - frame.canvasTop - frame.top) / (frame.bottom - frame.top) * frame.documentHeight
+});
+
 const readDocument = async () => JSON.parse(await evaluate(`localStorage.getItem("animeart-web-document")`));
 const readLayerSummary = async () => evaluate(`JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.map(layer => ({ id: layer.id, name: layer.name, contentType: layer.contentType, visible: layer.visible, locked: layer.locked, isReference: layer.isReference, transform: layer.transform, image: layer.image ? { width: layer.image.width, height: layer.image.height, mime: /^data:([^;,]+)/.exec(layer.image.source || "")?.[1] || null } : null, strokes: layer.strokes?.length || 0 })) || []`);
 const layerSelector = layerId => "#layers li[data-layer-id=\"" + layerId + "\"]";
@@ -356,7 +398,7 @@ try {
   assert(await evaluate('document.querySelectorAll("#layers li").length === 1'), "initial editor state contains one drawing layer");
   await saveScreenshot("animeart-studio-initial.png");
 
-  await click("#new-document");
+  await evaluate('document.querySelector("#new-document").click()');
   await waitFor('document.querySelector("#project-dialog").open === true');
   await evaluate('(() => { document.querySelector("#document-width").value = "800"; document.querySelector("#document-height").value = "600"; document.querySelector("#document-width").dispatchEvent(new Event("input", { bubbles: true })); document.querySelector("#document-height").dispatchEvent(new Event("input", { bubbles: true })); })()');
   await click('#project-form button[type="submit"]');
@@ -1265,6 +1307,72 @@ try {
   await click('.mobile-top-actions [data-mobile-top-action="undo"]');
   await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.contentType==="drawing"&&layer.strokes?.length)', 10000);
 
+  // Give the zoom/pan coordinate test a real artboard; the startup placeholder can be 0×0.
+  await evaluate('document.querySelector("#project-dialog").showModal()');
+  await waitFor('document.querySelector("#project-dialog").open === true');
+  await evaluate('(() => { window.confirm = () => true; document.querySelector("#document-width").value = "640"; document.querySelector("#document-height").value = "480"; document.querySelector("#document-width").dispatchEvent(new Event("input",{bubbles:true})); document.querySelector("#document-height").dispatchEvent(new Event("input",{bubbles:true})); })()');
+  await click('#project-form button[type="submit"]');
+  await waitFor('document.querySelector("#project-dialog").open === false');
+  // Creating a document updates editor state; an explicit Save persists this new size.
+  await evaluate('document.querySelector("#save").click()');
+  await waitFor('document.querySelector("#status").textContent === "Guardado localmente"');
+  await waitFor('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return d.width===640 && d.height===480; })()');
+  assert(await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return d.width===640 && d.height===480; })()'),
+    "zoom/pan regression saves a real 640×480 document instead of relying on a zero-sized startup placeholder");
+
+  // AA-EXTERNAL-BUGFIX-RESEARCH-001: drawing coordinates must remain correct after viewport zoom + touch pan.
+  await click('.mobile-touch-dock [data-touch-action="paint"]');
+  await waitFor('document.querySelector(".toolbar .tool[data-tool=brush]")?.classList.contains("active")');
+  await click("#mobile-context-close");
+  await waitFor('document.querySelector("#mobile-context-heading").hidden === true');
+  await evaluate('window.__ANIMEART_E2E_DIAGNOSTICS__ = true');
+  const diagnosticsWarmupPoint = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}; })()');
+  await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: diagnosticsWarmupPoint.x, y: diagnosticsWarmupPoint.y });
+  await waitFor('Boolean(window.__ANIMEART_DOCUMENT_FRAME_DIAGNOSTICS__?.topLeft)');
+  const drawViewportBaseline = await readFrameMetrics();
+  await wheelCanvasZoom("in", 2);
+  const drawViewportZoomed = await readFrameMetrics();
+  assert(drawViewportZoomed.right - drawViewportZoomed.left > (drawViewportBaseline.right - drawViewportBaseline.left) * 1.1,
+    "canvas zoom visibly expands the page before the drawing-coordinate regression");
+  await panCanvasByTouch(20, 14);
+  const drawViewportPanned = await readFrameMetrics();
+  assert(Math.hypot(drawViewportPanned.left - drawViewportZoomed.left, drawViewportPanned.top - drawViewportZoomed.top) > 10,
+    "two-finger touch pans the zoomed editor viewport while Draw remains selected");
+
+  const drawBeforeZoomPan = await readDocument();
+  const drawingLayerBeforeZoomPan = drawBeforeZoomPan.layers.find(layer => layer.contentType === "drawing");
+  if (!drawingLayerBeforeZoomPan) throw new Error("Drawing layer is missing from the zoom/pan regression fixture");
+  const oldStrokeCount = drawingLayerBeforeZoomPan.strokes.length;
+  const docStart = { x: drawBeforeZoomPan.width / 2 - 26, y: drawBeforeZoomPan.height / 2 + 8 };
+  const docEnd = { x: drawBeforeZoomPan.width / 2 + 26, y: drawBeforeZoomPan.height / 2 + 8 };
+  const drawStart = documentPointToClientPoint(drawViewportPanned, docStart.x, docStart.y);
+  const drawEnd = documentPointToClientPoint(drawViewportPanned, docEnd.x, docEnd.y);
+  const expectedDrawStart = clientPointToDocumentPoint(drawViewportPanned, drawStart);
+  const expectedDrawEnd = clientPointToDocumentPoint(drawViewportPanned, drawEnd);
+  await mouseDrag(drawStart, drawEnd);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.contentType==="drawing")?.strokes?.length > ' + oldStrokeCount, 10000);
+  const drawnAfterZoomPan = await readDocument();
+  const actualDrawStroke = drawnAfterZoomPan.layers.find(layer => layer.id === drawingLayerBeforeZoomPan.id)?.strokes.at(-1);
+  assert(actualDrawStroke?.points?.length >= 2, "drawing still creates a real editable stroke after zoom and touch pan");
+  const firstDrawPoint = actualDrawStroke.points[0], lastDrawPoint = actualDrawStroke.points.at(-1);
+  assert(Math.hypot(firstDrawPoint.x - expectedDrawStart.x, firstDrawPoint.y - expectedDrawStart.y) < 4 &&
+    Math.hypot(lastDrawPoint.x - expectedDrawEnd.x, lastDrawPoint.y - expectedDrawEnd.y) < 4,
+    "stored drawing points map back to document coordinates after zoom/pan instead of drifting: " + JSON.stringify({expectedDrawStart,expectedDrawEnd,firstDrawPoint,lastDrawPoint}));
+  const drawViewportCanvasPixel = await evaluate('(() => { const canvas=document.querySelector("#canvas"),r=canvas.getBoundingClientRect(),p=' + JSON.stringify({x:(drawStart.x+drawEnd.x)/2,y:(drawStart.y+drawEnd.y)/2}) + ',x=Math.max(0,Math.min(canvas.width-1,Math.round((p.x-r.left)*canvas.width/r.width))),y=Math.max(0,Math.min(canvas.height-1,Math.round((p.y-r.top)*canvas.height/r.height))); return Array.from(canvas.getContext("2d",{willReadFrequently:true}).getImageData(x,y,1,1).data); })()');
+  assert(drawViewportCanvasPixel[3] > 0, "the zoomed and panned drawing stroke produces actual rendered pixels");
+  await click('.mobile-touch-dock [data-touch-action="tool"][data-tool="select"]');
+  await click('.mobile-top-actions [data-mobile-top-action="undo"]');
+  await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.contentType==="drawing"&&layer.strokes?.length)', 10000);
+
+  // Return to the original viewport so later mobile assertions start from a stable baseline.
+  await panCanvasByTouch(-20, -14);
+  await wheelCanvasZoom("out", 2);
+  const drawViewportRestored = await readFrameMetrics();
+  assert(Math.abs(drawViewportRestored.left - drawViewportBaseline.left) < 4 &&
+    Math.abs(drawViewportRestored.top - drawViewportBaseline.top) < 4 &&
+    Math.abs((drawViewportRestored.right - drawViewportRestored.left) - (drawViewportBaseline.right - drawViewportBaseline.left)) < 4,
+    "undoing the touch pan and zoom restores the original viewport before the remaining editor tests");
+
   await saveScreenshot("animeart-studio-mobile-home.png");
   assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=import-image]")?.textContent.includes("Añadir")'), "mobile has a visible Add image action");
   assert(await evaluate('document.querySelector("#quick-open-asset-library")?.textContent.includes("Mis imágenes")'), "reusable Gallery is available inside More instead of occupying a permanent dock slot");
@@ -1360,6 +1468,17 @@ try {
     "mobile uses the canvas X selection handle instead of a second floating delete control");
   await waitFor('document.querySelector("#mobile-feedback").hidden === true', 5000);
 
+  // AA-EXTERNAL-BUGFIX-RESEARCH-002: the pixel eraser must target the same document point after zoom + pan.
+  const eraseViewportBaseline = await readFrameMetrics();
+  await wheelCanvasZoom("in", 2);
+  const eraseViewportZoomed = await readFrameMetrics();
+  assert(eraseViewportZoomed.right - eraseViewportZoomed.left > (eraseViewportBaseline.right - eraseViewportBaseline.left) * 1.1,
+    "pixel-eraser regression zooms the real editor viewport");
+  await panCanvasByTouch(18, 12);
+  const eraseViewportPanned = await readFrameMetrics();
+  assert(Math.hypot(eraseViewportPanned.left - eraseViewportZoomed.left, eraseViewportPanned.top - eraseViewportZoomed.top) > 8,
+    "pixel-eraser regression pans the zoomed viewport using two-finger touch");
+
   // The main-canvas pixel eraser exposes a live route before changing image pixels.
   const sourceBeforeBrushErase = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.image?.source');
   await evaluate('(() => { const input=document.querySelector("#brush-size"); input.value="48"; input.dispatchEvent(new Event("input",{bubbles:true})); })()');
@@ -1377,11 +1496,21 @@ try {
     "the eraser preview paints a visible high-contrast overlay before changing source pixels: " + JSON.stringify({before:erasePreviewSetup.before,after:brushPreviewPixels.pixel}));
   await cdp("Input.dispatchMouseEvent",{type:"mouseReleased",x:erasePreviewSetup.end.x,y:erasePreviewSetup.end.y,button:"left",buttons:0,clickCount:1});
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.image?.source !== ' + JSON.stringify(sourceBeforeBrushErase), 15000);
+  const eraseAlphaEvidence = await evaluate('((async () => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="e2e-mobile-import"); if(!layer?.image?.source)return {decodeError:true}; const image=new Image(); image.src=layer.image.source; await image.decode(); const sample=document.createElement("canvas"); sample.width=image.naturalWidth; sample.height=image.naturalHeight; const context=sample.getContext("2d",{willReadFrequently:true}); context.drawImage(image,0,0); const pixels=context.getImageData(0,0,sample.width,sample.height).data; const alpha=(x,y)=>pixels[(y*sample.width+x)*4+3]; return {width:sample.width,height:sample.height,centerAlpha:alpha(Math.floor(sample.width/2),Math.floor(sample.height/2)),untouchedAlpha:alpha(100,100)}; })())');
+  assert(eraseAlphaEvidence.centerAlpha === 0 && eraseAlphaEvidence.untouchedAlpha === 255,
+    "zoomed/panned pixel erasing makes the intended center transparent without erasing a distant unaffected pixel: " + JSON.stringify(eraseAlphaEvidence));
   await click('.mobile-top-actions [data-mobile-top-action="undo"]');
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.image?.source === ' + JSON.stringify(sourceBeforeBrushErase), 10000);
   await evaluate('(() => { const input=document.querySelector("#brush-size"); input.value="5"; input.dispatchEvent(new Event("input",{bubbles:true})); })()');
   await click('.mobile-touch-dock [data-touch-action="tool"][data-tool="select"]');
   await waitFor('document.querySelector(".toolbar .tool[data-tool=select]")?.classList.contains("active")');
+  await panCanvasByTouch(-18, -12);
+  await wheelCanvasZoom("out", 2);
+  const eraseViewportRestored = await readFrameMetrics();
+  assert(Math.abs(eraseViewportRestored.left - eraseViewportBaseline.left) < 4 &&
+    Math.abs(eraseViewportRestored.top - eraseViewportBaseline.top) < 4 &&
+    Math.abs((eraseViewportRestored.right - eraseViewportRestored.left) - (eraseViewportBaseline.right - eraseViewportBaseline.left)) < 4,
+    "pixel eraser undo and viewport restoration keep later mobile edge tests deterministic");
 
   await evaluate('document.querySelector(".mobile-touch-dock").scrollLeft = 0');
   await saveScreenshot("animeart-studio-mobile-imported-image.png");

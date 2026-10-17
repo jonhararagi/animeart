@@ -57,3 +57,15 @@ test("reduced-motion preference disables UI animation without disabling interact
   assert.match(app, /canvas\.addEventListener\("pointerdown"/);
   assert.match(app, /canvas\.addEventListener\("pointercancel"/);
 });
+
+test("freehand event coordinates are passed to createStrokePoint as separate document x/y numbers", async () => {
+  const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
+  const pointFromEvent = app.slice(
+    app.indexOf("function pointFromEvent(event)"),
+    app.indexOf("function screenPointFromEvent(event)")
+  );
+  assert.match(pointFromEvent, /const documentPoint = screenToDocumentPoint\(screenPoint, state\.document, state\.viewport, canvasSize\(\)\)/);
+  assert.match(pointFromEvent, /createStrokePoint\(documentPoint\.x, documentPoint\.y\)/);
+  assert.doesNotMatch(pointFromEvent, /createStrokePoint\(screenToDocumentPoint\(/);
+});
+
