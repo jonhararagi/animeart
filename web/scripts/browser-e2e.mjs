@@ -1588,9 +1588,7 @@ try {
   const beforeCompositionCrop = await readDocument();
   await click("#crop-whole-canvas");
   await waitFor('document.querySelector("#canvas-crop-dialog")?.open === true', 15000);
-  assert(await evaluate('document.querySelector("#canvas-crop-preview").width>0 &&
-    document.querySelector("#canvas-crop-preview").height>0 &&
-    document.querySelector("#canvas-crop-preview").getBoundingClientRect().width>100'),
+  assert(await evaluate('document.querySelector("#canvas-crop-preview").width>0 && document.querySelector("#canvas-crop-preview").height>0 && document.querySelector("#canvas-crop-preview").getBoundingClientRect().width>100'),
     "composition crop preview shows the whole layered document, not only the selected image");
   await saveScreenshot("animeart-mobile-canvas-crop.png");
   const requestedCompositionCrop = {
