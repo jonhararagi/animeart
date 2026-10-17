@@ -4271,6 +4271,8 @@ function runEditGoal(goal) {
       }
     },
     undo: () => undoButton.click(),
+    redo: () => redoButton.click(),
+    "delete-selected": () => removeSelectedLayer(),
     export: () => exportPngButton.click(),
     appearance: () => document.querySelector("#appearance-open")?.click()
   };
