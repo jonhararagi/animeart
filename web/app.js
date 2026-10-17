@@ -19,7 +19,7 @@ import { fitImportedImageTransform } from "./domain/image-import.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
-import { clampSelectionHandles, groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, layerCorners, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
+import { clampSelectionHandles, constrainTranslationToDocument, groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, layerCorners, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, exportScaleForResolution, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
@@ -189,6 +189,8 @@ const ADJUSTMENT_CONTROL_DEFS = Object.freeze([
 
 const activeTouchPointers = new Map();
 let touchGesture = null;
+
+let frameBoundaryMode = "free";
 
 const state = {
   tool: "select",
@@ -2558,6 +2560,17 @@ function removeSelectedLayer() {
   return true;
 }
 
+function constrainMoveDelta(layers, deltaX, deltaY) {
+  if (frameBoundaryMode !== "inside") return { x: deltaX, y: deltaY };
+  return constrainTranslationToDocument(
+    layers,
+    documentCenter(state.document),
+    { width: state.document.width, height: state.document.height },
+    deltaX,
+    deltaY
+  );
+}
+
 function interactionLayers(interaction) {
   const ids = Array.isArray(interaction?.layerIds) ? interaction.layerIds : state.selectedLayerIds;
   const byId = new Map(state.document.layers.map(layer => [layer.id, layer]));
@@ -2658,8 +2671,12 @@ function updateTransformPreview(event) {
   const pivot = interaction.pivot;
   const preview = { ...interaction.previewTransform };
   if (interaction.type === "move") {
-    preview.x = interaction.beforeTransform.x + currentDocument.x - interaction.startDocument.x;
-    preview.y = interaction.beforeTransform.y + currentDocument.y - interaction.startDocument.y;
+    const desiredX = currentDocument.x - interaction.startDocument.x;
+    const desiredY = currentDocument.y - interaction.startDocument.y;
+    const layer = state.document.layers.find(item => item.id === interaction.layerId);
+    const delta = constrainMoveDelta(layer ? [layer] : [], desiredX, desiredY);
+    preview.x = interaction.beforeTransform.x + delta.x;
+    preview.y = interaction.beforeTransform.y + delta.y;
   } else if (interaction.type === "scale") {
     const nextTransform = resizeTransformFromCorner(
       state.document.layers.find(item => item.id === interaction.layerId),
@@ -3343,7 +3360,7 @@ canvas.addEventListener("pointermove", event => {
     const layers = interactionLayers(interaction);
     if (interaction.type === "move") {
       const start = interaction.startDocument;
-      interaction.previewDelta = { x: current.x - start.x, y: current.y - start.y };
+      interaction.previewDelta = constrainMoveDelta(layers, current.x - start.x, current.y - start.y);
       if (window.__ANIMEART_E2E_DIAGNOSTICS__) console.error("AA_MULTI_POINTERMOVE", JSON.stringify({current, start, delta: interaction.previewDelta, pointerId: event.pointerId}));
     } else if (interaction.type === "scale") {
       const transforms = groupScaleTransforms(layers, documentCenter(state.document), interaction.handle, current);
@@ -3412,7 +3429,7 @@ canvas.addEventListener("pointerup", event => {
     const current = screenToDocumentPoint(targetScreen, state.document, state.viewport, canvasSize());
     const layers = interactionLayers(interaction);
     if (interaction.type === "move") {
-      interaction.previewDelta = { x: current.x - interaction.startDocument.x, y: current.y - interaction.startDocument.y };
+      interaction.previewDelta = constrainMoveDelta(layers, current.x - interaction.startDocument.x, current.y - interaction.startDocument.y);
     } else if (interaction.type === "scale") {
       const transforms = groupScaleTransforms(layers, documentCenter(state.document), interaction.handle, current);
       if (transforms) interaction.previewTransforms = new Map(transforms.map(item => [item.id, item.transform]));
@@ -5221,6 +5238,21 @@ exportPngButton.addEventListener("click", exportPng);
 const transparencyButton = document.querySelector("#view-transparency");
 const canvasWrapElement = document.querySelector(".canvas-wrap");
 const backgroundModeButtons = [...document.querySelectorAll("[data-canvas-background]")];
+const frameBoundaryButtons = [...document.querySelectorAll("[data-frame-boundary-mode]")];
+function setFrameBoundaryMode(mode) {
+  frameBoundaryMode = mode === "inside" ? "inside" : "free";
+  frameBoundaryButtons.forEach(button => {
+    const active = button.dataset.frameBoundaryMode === frameBoundaryMode;
+    button.setAttribute("aria-pressed", String(active));
+  });
+  const message = frameBoundaryMode === "inside"
+    ? "Marco bloqueado: al mover capas, se mantienen dentro del documento cuando su tamaño lo permite."
+    : "Movimiento libre: las capas pueden salir del marco; solo se recorta al exportar.";
+  if (window.matchMedia("(max-width: 920px)").matches) showMobileFeedback(message);
+  else status.textContent = message;
+  redraw();
+}
+frameBoundaryButtons.forEach(button => button.addEventListener("click", () => setFrameBoundaryMode(button.dataset.frameBoundaryMode)));
 let transparencyPreview = false;
 function setCanvasBackground(mode) {
   canvasWrapElement.dataset.background = mode;
@@ -5272,6 +5304,7 @@ document.querySelector("#export-transparent-png")?.addEventListener("click", () 
 });
 updateSelectionIndicator();
 setCanvasBackground("checkerboard");
+setFrameBoundaryMode(frameBoundaryMode);
 if (transparencyButton) {
   transparencyButton.setAttribute("aria-pressed", "false");
   transparencyButton.textContent = "Ver transparencia";

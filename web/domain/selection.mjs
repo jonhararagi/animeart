@@ -199,6 +199,34 @@ export function clampSelectionHandles(geometry, viewportSize, inset = 22) {
   };
 }
 
+/**
+ * Constrain a group translation so its transformed bounds stay inside the
+ * document. If a layer is larger than the document on an axis, center that
+ * axis instead of making the layer unreachable.
+ */
+export function constrainTranslationToDocument(layers, pivot, documentSize, deltaX, deltaY) {
+  const validLayers = (Array.isArray(layers) ? layers : []).filter(Boolean);
+  const width = Number(documentSize?.width);
+  const height = Number(documentSize?.height);
+  let x = Number(deltaX) || 0;
+  let y = Number(deltaY) || 0;
+  if (!validLayers.length || !Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0) return { x, y };
+  const corners = validLayers.flatMap(layer => layerCorners(layer, pivot) || []);
+  if (!corners.length) return { x, y };
+  const minX = Math.min(...corners.map(point => point.x));
+  const maxX = Math.max(...corners.map(point => point.x));
+  const minY = Math.min(...corners.map(point => point.y));
+  const maxY = Math.max(...corners.map(point => point.y));
+  const boundAxis = (delta, min, max, extent) => {
+    const size = max - min;
+    if (size > extent) return extent / 2 - (min + max) / 2;
+    return Math.min(extent - max, Math.max(-min, delta));
+  };
+  x = boundAxis(x, minX, maxX, width);
+  y = boundAxis(y, minY, maxY, height);
+  return { x, y };
+}
+
 export function layerWorldCenter(layer, pivot) {
   const bounds = layerLocalBounds(layer);
   if (!bounds) return null;

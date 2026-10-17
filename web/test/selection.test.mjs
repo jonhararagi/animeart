@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createDocument, createImageLayer } from "../domain/model.mjs";
 import { DocumentHistory } from "../domain/history.mjs";
 import { rotateLayer, scaleLayer, translateLayer, updateLayerTransform } from "../domain/document-operations.mjs";
-import { clampSelectionHandles, hitTestHandle, hitTestLayer, layerLocalBounds, layerCorners, resizeTransformFromCorner, selectionGeometry, transformPoint } from "../domain/selection.mjs";
+import { clampSelectionHandles, constrainTranslationToDocument, hitTestHandle, hitTestLayer, layerLocalBounds, layerCorners, resizeTransformFromCorner, selectionGeometry, transformPoint } from "../domain/selection.mjs";
 import { createViewport, documentToScreen, screenToDocument } from "../domain/viewport.mjs";
 
 function drawableDocument() {
@@ -305,6 +305,28 @@ test("selection handle clamping handles smaller viewports without emitting out-o
   }
 });
 
+
+test("locked frame constrains single and grouped translations without cropping layer content", () => {
+  const document = drawableDocument();
+  const layer = document.layers[0];
+  const pivot = { x: 200, y: 150 };
+  const bounded = constrainTranslationToDocument([layer], pivot, { width: 400, height: 300 }, 500, -500);
+  const corners = layerCorners({ ...layer, transform: { ...layer.transform, x: layer.transform.x + bounded.x, y: layer.transform.y + bounded.y } }, pivot);
+  assert.ok(Math.min(...corners.map(point => point.x)) >= -1e-8);
+  assert.ok(Math.max(...corners.map(point => point.x)) <= 400 + 1e-8);
+  assert.ok(Math.min(...corners.map(point => point.y)) >= -1e-8);
+  assert.ok(Math.max(...corners.map(point => point.y)) <= 300 + 1e-8);
+
+  const second = { ...layer, id: "second", transform: { ...layer.transform, x: 120, y: 40 } };
+  const groupBounded = constrainTranslationToDocument([layer, second], pivot, { width: 400, height: 300 }, -900, 900);
+  assert.ok(Number.isFinite(groupBounded.x) && Number.isFinite(groupBounded.y));
+
+  const oversized = createImageLayer("Oversized image", 600, 500);
+  const centered = constrainTranslationToDocument([oversized], pivot, { width: 400, height: 300 }, 500, 500);
+  assert.ok(Number.isFinite(centered.x) && Number.isFinite(centered.y));
+  assert.ok(Math.abs(centered.x + 100) < 1e-8, "oversized content is centered horizontally so it remains reachable");
+  assert.ok(Math.abs(centered.y + 100) < 1e-8, "oversized content is centered vertically so it remains reachable");
+});
 
 test("an off-screen layer keeps a clamped move grip so it can be recovered without deselection", () => {
   const document = drawableDocument();

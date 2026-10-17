@@ -158,6 +158,11 @@
           <summary aria-label="Abrir opciones de vista">⚙ Vista</summary>
           <div class="canvas-view-actions" aria-label="Opciones de visualización">
             <button id="view-transparency" type="button" aria-pressed="true">✓ Ver transparencia</button>
+            <div class="frame-boundary-control" role="group" aria-label="Límite del marco">
+              <span>Movimiento de capas</span>
+              <button type="button" data-frame-boundary-mode="free" aria-pressed="true" title="Permite sacar imágenes y textos del documento sin recortarlos">↗ Libre</button>
+              <button type="button" data-frame-boundary-mode="inside" aria-pressed="false" title="Limita el movimiento para mantener la capa dentro del documento">▣ Bloquear al marco</button>
+            </div>
             <button type="button" data-canvas-background="white" aria-pressed="false">Fondo blanco</button>
             <button type="button" data-canvas-background="black" aria-pressed="false">Fondo negro</button>
             <button type="button" data-canvas-background="gray" aria-pressed="false">Fondo gris</button>
