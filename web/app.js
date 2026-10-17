@@ -2,6 +2,7 @@ import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, create
 import { initializeAssetLibrary } from "./asset-library.js";
 import { getEditingHelpPreference, initializeAppearanceSettings, setEditingHelpPreference } from "./appearance-settings.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
+import { traceCropShape } from "./domain/crop-shape.mjs";
 import { replaceColorRange } from "./domain/color-replacement.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
@@ -19,7 +20,7 @@ import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs"
 import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { clampSelectionHandles, groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, layerCorners, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
-import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
+import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, exportScaleForResolution, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
 const removeSelectedImageButton = document.querySelector("#remove-selected-image");
@@ -120,6 +121,9 @@ const imageCropHeight = document.querySelector("#image-crop-height");
 const cropPreviewCanvas = document.querySelector("#crop-preview");
 const cropPreviewHint = document.querySelector("#crop-preview-hint");
 const cropAspectInput = document.querySelector("#image-crop-aspect");
+const cropShapeInput = document.querySelector("#image-crop-shape");
+const cropPreviewOverlayCanvas = document.createElement("canvas");
+const cropPreviewOverlayContext = cropPreviewOverlayCanvas.getContext("2d");
 const imageResizeWidth = document.querySelector("#image-resize-width");
 const imageResizeHeight = document.querySelector("#image-resize-height");
 const imageResizeKeepAspect = document.querySelector("#image-resize-keep-aspect");
@@ -136,6 +140,8 @@ const projectFileInput = document.querySelector("#project-file-input");
 const saveButton = document.querySelector("#save");
 const exportPngButton = document.querySelector("#export-png");
 const exportFormatInput = document.querySelector("#export-format");
+const exportResolutionInput = document.querySelector("#export-resolution");
+const mobileExportResolutionInput = document.querySelector("#mobile-export-resolution");
 const exportQualityControl = document.querySelector("#export-quality-control");
 const exportQualityInput = document.querySelector("#export-quality");
 const exportQualityValue = document.querySelector("#export-quality-value");
@@ -935,16 +941,37 @@ function drawCropPreview() {
   const top = cropPreviewClamp(imageCropY.value, sourceHeight) / sourceHeight * height;
   const right = cropPreviewClamp(Number(imageCropX.value) + Number(imageCropWidth.value), sourceWidth) / sourceWidth * width;
   const bottom = cropPreviewClamp(Number(imageCropY.value) + Number(imageCropHeight.value), sourceHeight) / sourceHeight * height;
-  context.fillStyle = "rgba(5, 9, 15, 0.62)";
-  context.fillRect(0, 0, width, Math.max(0, top));
-  context.fillRect(0, bottom, width, Math.max(0, height - bottom));
-  context.fillRect(0, top, Math.max(0, left), Math.max(0, bottom - top));
-  context.fillRect(right, top, Math.max(0, width - right), Math.max(0, bottom - top));
+  if (cropPreviewOverlayCanvas.width !== width) cropPreviewOverlayCanvas.width = width;
+  if (cropPreviewOverlayCanvas.height !== height) cropPreviewOverlayCanvas.height = height;
+  if (cropPreviewOverlayContext) {
+    cropPreviewOverlayContext.clearRect(0, 0, width, height);
+    cropPreviewOverlayContext.globalCompositeOperation = "source-over";
+    cropPreviewOverlayContext.fillStyle = "rgba(5, 9, 15, 0.62)";
+    cropPreviewOverlayContext.fillRect(0, 0, width, height);
+    cropPreviewOverlayContext.globalCompositeOperation = "destination-out";
+    traceCropShape(cropPreviewOverlayContext, left, top, right - left, bottom - top, cropShapeInput?.value || "rectangle");
+    cropPreviewOverlayContext.fill();
+    cropPreviewOverlayContext.globalCompositeOperation = "source-over";
+    context.drawImage(cropPreviewOverlayCanvas, 0, 0);
+  } else {
+    context.fillStyle = "rgba(5, 9, 15, 0.62)";
+    context.fillRect(0, 0, width, Math.max(0, top));
+    context.fillRect(0, bottom, width, Math.max(0, height - bottom));
+    context.fillRect(0, top, Math.max(0, left), Math.max(0, bottom - top));
+    context.fillRect(right, top, Math.max(0, width - right), Math.max(0, bottom - top));
+  }
 
   if (right - left < 1 || bottom - top < 1) return;
+  context.save();
+  traceCropShape(context, left, top, right - left, bottom - top, cropShapeInput?.value || "rectangle");
   context.strokeStyle = "#f5fbff";
   context.lineWidth = 2;
-  context.strokeRect(left + 1, top + 1, Math.max(0, right - left - 2), Math.max(0, bottom - top - 2));
+  context.stroke();
+  context.restore();
+
+  context.save();
+  traceCropShape(context, left, top, right - left, bottom - top, cropShapeInput?.value || "rectangle");
+  context.clip();
   context.strokeStyle = "rgba(255,255,255,0.58)";
   context.lineWidth = 1;
   for (const fraction of [1 / 3, 2 / 3]) {
@@ -955,6 +982,7 @@ function drawCropPreview() {
     context.lineTo(right, top + (bottom - top) * fraction);
     context.stroke();
   }
+  context.restore();
   const centerX = (left + right) / 2;
   const centerY = (top + bottom) / 2;
   const handleSize = Math.max(6, Math.min(10, Math.min(width, height) / 55));
@@ -1122,6 +1150,7 @@ cropResizeButton.addEventListener("click", () => {
   imageResizeWidth.value = String(layer.image.width); imageResizeHeight.value = String(layer.image.height);
   imageResizeKeepAspect.checked = true;
   cropAspectInput.value = "";
+  if (cropShapeInput) cropShapeInput.value = "rectangle";
   document.querySelector('input[name="image-edit-mode"][value="crop"]').checked = true;
   loadCropPreview(layer.image.source);
   syncImageEditMode();
@@ -1143,6 +1172,14 @@ document.querySelectorAll('input[name="image-edit-mode"]').forEach(input => inpu
 imageResizeWidth.addEventListener("input", syncAspectRatioFromWidth);
 imageResizeHeight.addEventListener("input", syncAspectRatioFromHeight);
 cropAspectInput.addEventListener("change", applyCropAspectPreset);
+cropShapeInput?.addEventListener("change", () => {
+  if (cropShapeInput.value === "circle" && cropAspectInput.value !== "1") {
+    cropAspectInput.value = "1";
+    applyCropAspectPreset();
+    return;
+  }
+  drawCropPreview();
+});
 for (const input of [imageCropX, imageCropY, imageCropWidth, imageCropHeight]) {
   input.addEventListener("input", drawCropPreview);
 }
@@ -1328,7 +1365,11 @@ imageEditForm.addEventListener("submit", async event => {
       const width = Number(imageCropWidth.value), height = Number(imageCropHeight.value);
       const sourceX = layer.image.flipX ? layer.image.width - x - width : x;
       const sourceY = layer.image.flipY ? layer.image.height - y - height : y;
-      replacement = await cropImageSource(layer.image.source, { x: sourceX, y: sourceY, width, height });
+      replacement = await cropImageSource(layer.image.source, { x: sourceX, y: sourceY, width, height }, {
+        shape: cropShapeInput?.value || "rectangle",
+        flipX: layer.image.flipX === true,
+        flipY: layer.image.flipY === true
+      });
       // Layer offset uses the visible crop origin; raster crop uses source pixel coordinates.
       options = { cropOrigin: { x, y } };
     } else {
@@ -1683,9 +1724,9 @@ function renderImageMask(){if(!imageMaskPanel||!imageMaskInput)return;const laye
 imageMaskInput.addEventListener("change",()=>{const layer=selectedLayerExact();if(!layer||layer.contentType!=="image"||!layer.image||layer.locked)return;const before=cloneDocument(state.document),next=setImageMask(state.document,layer.id,imageMaskInput.value);if(!next)return;state.document=next;state.history.record(before,next);refreshDocument("Image mask updated");persistDocument();});
 
 
-const SHAPE_MAKER_KINDS = new Set(["rectangle","rounded","circle","ellipse","star","heart","hexagon","triangle","speech","lightning","cloud"]);
+const SHAPE_MAKER_KINDS = new Set(["rectangle","rounded","circle","ellipse","star","heart","hexagon","pentagon","octagon","diamond","trapezoid","parallelogram","cross","arrow","chevron","triangle","speech","lightning","cloud"]);
 const shapeFieldIds = ["shape-maker-kind","shape-maker-width","shape-maker-height","shape-maker-fill","shape-maker-stroke","shape-maker-stroke-width","shape-maker-shadow-color","shape-maker-shadow-blur","shape-maker-shadow-x","shape-maker-shadow-y"];
-const shapeLabels = {rectangle:"Rectángulo",rounded:"Rectángulo redondeado",circle:"Círculo",ellipse:"Óvalo",star:"Estrella",heart:"Corazón",hexagon:"Hexágono",triangle:"Triángulo",speech:"Globo de diálogo",lightning:"Rayo",cloud:"Nube"};
+const shapeLabels = {rectangle:"Rectángulo",rounded:"Rectángulo redondeado",circle:"Círculo",ellipse:"Óvalo",star:"Estrella",heart:"Corazón",hexagon:"Hexágono",pentagon:"Pentágono",octagon:"Octágono",diamond:"Rombo",trapezoid:"Trapecio",parallelogram:"Paralelogramo",cross:"Cruz",arrow:"Flecha",chevron:"Chevron",triangle:"Triángulo",speech:"Globo de diálogo",lightning:"Rayo",cloud:"Nube"};
 function shapeMakerValues() {
   const number = (id, fallback, min, max) => Math.max(min, Math.min(max, Math.round(Number(document.querySelector("#"+id).value) || fallback)));
   return {
@@ -1735,6 +1776,22 @@ function shapeSvgSource(values) {
     geometry=`<path d="M ${cx} ${bottom-2} C ${cx-innerWidth*.12} ${top+innerHeight*.68}, ${left} ${top+innerHeight*.48}, ${left+innerWidth*.07} ${top+innerHeight*.27} C ${left+innerWidth*.13} ${top+innerHeight*.02}, ${cx-innerWidth*.12} ${top}, ${cx} ${top+innerHeight*.23} C ${cx+innerWidth*.12} ${top}, ${right-innerWidth*.13} ${top+innerHeight*.02}, ${right-innerWidth*.07} ${top+innerHeight*.27} C ${right} ${top+innerHeight*.48}, ${cx+innerWidth*.12} ${top+innerHeight*.68}, ${cx} ${bottom-2} Z" />`;
   } else if(kind==="hexagon") {
     geometry=`<polygon points="${polygon([[left+innerWidth*.25,top],[right-innerWidth*.25,top],[right,top+innerHeight*.5],[right-innerWidth*.25,bottom],[left+innerWidth*.25,bottom],[left,top+innerHeight*.5]])}" />`;
+  } else if(kind==="diamond") {
+    geometry=`<polygon points="${polygon([[cx,top],[right,cy],[cx,bottom],[left,cy]])}" />`;
+  } else if(kind==="pentagon"||kind==="octagon") {
+    const sides=kind==="pentagon"?5:8,points=[];
+    for(let i=0;i<sides;i++){const angle=-Math.PI/2+i*Math.PI*2/sides;points.push([cx+Math.cos(angle)*innerWidth/2,cy+Math.sin(angle)*innerHeight/2]);}
+    geometry=`<polygon points="${polygon(points)}" />`;
+  } else if(kind==="trapezoid") {
+    geometry=`<polygon points="${polygon([[left+innerWidth*.2,top],[right-innerWidth*.2,top],[right,bottom],[left,bottom]])}" />`;
+  } else if(kind==="parallelogram") {
+    geometry=`<polygon points="${polygon([[left+innerWidth*.18,top],[right,top],[right-innerWidth*.18,bottom],[left,bottom]])}" />`;
+  } else if(kind==="cross") {
+    geometry=`<polygon points="${polygon([[cx-innerWidth*.16,top],[cx+innerWidth*.16,top],[cx+innerWidth*.16,cy-innerHeight*.16],[right,cy-innerHeight*.16],[right,cy+innerHeight*.16],[cx+innerWidth*.16,cy+innerHeight*.16],[cx+innerWidth*.16,bottom],[cx-innerWidth*.16,bottom],[cx-innerWidth*.16,cy+innerHeight*.16],[left,cy+innerHeight*.16],[left,cy-innerHeight*.16],[cx-innerWidth*.16,cy-innerHeight*.16]])}" />`;
+  } else if(kind==="arrow") {
+    geometry=`<polygon points="${polygon([[left,cy-innerHeight*.18],[left+innerWidth*.58,cy-innerHeight*.18],[left+innerWidth*.58,top],[right,bottom===top?top:cy],[left+innerWidth*.58,bottom],[left+innerWidth*.58,cy+innerHeight*.18],[left,cy+innerHeight*.18]])}" />`;
+  } else if(kind==="chevron") {
+    geometry=`<polygon points="${polygon([[left,top],[left+innerWidth*.3,top],[right,cy],[left+innerWidth*.3,bottom],[left,bottom],[left+innerWidth*.68,cy]])}" />`;
   } else if(kind==="triangle") {
     geometry=`<polygon points="${polygon([[cx,top],[right,bottom],[left,bottom]])}" />`;
   } else if(kind==="speech") {
@@ -4573,6 +4630,9 @@ function syncExportFormatControls() {
   exportPngButton.textContent = "Export " + format.toUpperCase();
   exportQualityValue.value = exportQualityInput.value + "%";
   exportQualityValue.textContent = exportQualityInput.value + "%";
+  if (mobileExportResolutionInput && mobileExportResolutionInput.value !== exportResolutionInput.value) {
+    mobileExportResolutionInput.value = exportResolutionInput.value;
+  }
 }
 
 async function exportPng() {
@@ -4589,18 +4649,23 @@ async function exportPng() {
   status.textContent = "Exporting " + format.toUpperCase() + "…";
   try {
     await ensureExportImages(state.document);
-    const exportCanvas = createPngExportCanvas(state.document);
-    renderDocumentToCanvas(state.document, exportCanvas, ({ context, document, center }) => {
+    const resolution = exportResolutionInput?.value === "hd" ? "hd" : "normal";
+    const exportScale = exportScaleForResolution(state.document, resolution);
+    const outputWidth = Math.max(1, Math.round(state.document.width * exportScale));
+    const outputHeight = Math.max(1, Math.round(state.document.height * exportScale));
+    const exportCanvas = createPngExportCanvas({ ...state.document, width: outputWidth, height: outputHeight });
+    renderDocumentToCanvas(state.document, exportCanvas, ({ context, document }) => {
       if (format === "jpeg") {
         context.save();
         context.fillStyle = exportBackgroundInput.value || "#ffffff";
-        context.fillRect(0, 0, document.width, document.height);
+        context.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
         context.restore();
       }
+      context.scale(exportScale, exportScale);
       drawDocument({
         context,
         document,
-        center,
+        center: { x: document.width / 2, y: document.height / 2 },
         transformForLayer: layer => layer.transform
       });
     });
@@ -4692,6 +4757,17 @@ if (mobileExportFormatInput) {
 }
 exportFormatInput.addEventListener("change", syncExportFormatControls);
 exportQualityInput.addEventListener("input", syncExportFormatControls);
+exportResolutionInput?.addEventListener("change", syncExportFormatControls);
+if (mobileExportResolutionInput) {
+  mobileExportResolutionInput.value = exportResolutionInput?.value || "normal";
+  mobileExportResolutionInput.addEventListener("change", () => {
+    if (exportResolutionInput) exportResolutionInput.value = mobileExportResolutionInput.value;
+    syncExportFormatControls();
+  });
+  exportResolutionInput?.addEventListener("change", () => {
+    mobileExportResolutionInput.value = exportResolutionInput.value;
+  });
+}
 syncExportFormatControls();
 
 function ensureExportImages(document) {
@@ -4777,7 +4853,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v31";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v32";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -4794,6 +4870,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/image-import.mjs",
   "./domain/image-input.mjs",
   "./domain/image-processing.mjs",
+  "./domain/crop-shape.mjs",
   "./domain/color-replacement.mjs",
   "./domain/canvas-space.mjs",
   "./domain/layer-adjustments.mjs",
