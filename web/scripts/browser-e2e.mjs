@@ -232,10 +232,13 @@ const click = async (selector, modifiers = 0) => {
 };
 
 const clickMoreGoal = async goal => {
-  const open = await evaluate('document.body.classList.contains("mobile-tools-open")');
+  // The secondary catalog is a bottom sheet on phones and a modal on desktop.
+  // Check the dialog itself so the helper works at either viewport width.
+  const open = await evaluate('document.querySelector("#toolbox-dialog")?.open === true');
   if (!open) {
-    await click('.mobile-touch-dock [data-touch-action="more"]');
-    await waitFor('document.body.classList.contains("mobile-tools-open")');
+    const mobile = await evaluate('window.matchMedia("(max-width: 920px)").matches');
+    await click(mobile ? '.mobile-touch-dock [data-touch-action="more"]' : '#toolbox-open');
+    await waitFor('document.querySelector("#toolbox-dialog")?.open === true');
   }
   await click('[data-edit-goal="' + goal + '"]');
 };
