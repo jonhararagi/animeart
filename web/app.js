@@ -586,7 +586,7 @@ function drawObjectSelectionHandle(point, kind) {
   ctx.save();
   ctx.beginPath();
   ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
-  ctx.fillStyle = kind === "close" ? "#e74f78" : kind === "rotate" ? "#168da6" : "#7058f5";
+  ctx.fillStyle = kind === "close" ? "#e74f78" : kind === "rotate" ? "#168da6" : kind === "move" ? "#0aa6a6" : "#7058f5";
   ctx.fill();
   ctx.lineWidth = 2;
   ctx.strokeStyle = "#ffffff";
@@ -601,6 +601,17 @@ function drawObjectSelectionHandle(point, kind) {
   } else if (kind === "rotate") {
     ctx.arc(point.x, point.y, 6.5, -Math.PI * 0.15, Math.PI * 1.45, false);
     ctx.moveTo(point.x + 5, point.y - 6); ctx.lineTo(point.x + 7, point.y + 0.5); ctx.lineTo(point.x + 0.5, point.y - 1);
+  } else if (kind === "move") {
+    ctx.moveTo(point.x - 8, point.y); ctx.lineTo(point.x + 8, point.y);
+    ctx.moveTo(point.x, point.y - 8); ctx.lineTo(point.x, point.y + 8);
+    ctx.moveTo(point.x - 8, point.y); ctx.lineTo(point.x - 3, point.y - 3);
+    ctx.moveTo(point.x - 8, point.y); ctx.lineTo(point.x - 3, point.y + 3);
+    ctx.moveTo(point.x + 8, point.y); ctx.lineTo(point.x + 3, point.y - 3);
+    ctx.moveTo(point.x + 8, point.y); ctx.lineTo(point.x + 3, point.y + 3);
+    ctx.moveTo(point.x, point.y - 8); ctx.lineTo(point.x - 3, point.y - 3);
+    ctx.moveTo(point.x, point.y - 8); ctx.lineTo(point.x + 3, point.y - 3);
+    ctx.moveTo(point.x, point.y + 8); ctx.lineTo(point.x - 3, point.y + 3);
+    ctx.moveTo(point.x, point.y + 8); ctx.lineTo(point.x + 3, point.y + 3);
   } else {
     ctx.moveTo(point.x - 6, point.y - 6); ctx.lineTo(point.x + 6, point.y + 6);
     ctx.moveTo(point.x - 6, point.y - 6); ctx.lineTo(point.x - 6, point.y - 1);
@@ -649,6 +660,7 @@ function drawSelectionOverlay() {
       ctx.setLineDash([]);
       drawObjectSelectionHandle(visibleGroupHandles.closeHandle, "close");
       drawObjectSelectionHandle(visibleGroupHandles.resizeHandle, "resize");
+      drawObjectSelectionHandle(visibleGroupHandles.moveHandle, "move");
       ctx.restore();
     }
   }
@@ -683,6 +695,7 @@ function drawSelectionOverlay() {
       window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__ = {
         closeHandle: visibleHandles.closeHandle,
         resizeHandle: visibleHandles.resizeHandle,
+        moveHandle: visibleHandles.moveHandle,
         rotationHandle: geometry.rotationHandle,
         center: geometry.center,
         canvasSize: canvasSize(),
@@ -699,6 +712,7 @@ function drawSelectionOverlay() {
     ctx.stroke();
     drawObjectSelectionHandle(visibleHandles.closeHandle, "close");
     drawObjectSelectionHandle(visibleHandles.resizeHandle, "resize");
+    drawObjectSelectionHandle(visibleHandles.moveHandle, "move");
     drawObjectSelectionHandle(rotationHandle, "rotate");
     ctx.restore();
   }
@@ -2632,49 +2646,6 @@ function finishTransformInteraction(cancelled = false, finalEvent = null) {
   if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
 }
 
-function keepImageTransformVisible(layer, transform) {
-  const movableImage = layer?.contentType === "image" && Boolean(layer.image);
-  const movableText = layer?.contentType === "text" && Boolean(layer.text);
-  if ((!movableImage && !movableText) || !transform) return transform;
-  const documentWidth = Number(state.document.width);
-  const documentHeight = Number(state.document.height);
-  if (!(documentWidth > 0 && documentHeight > 0)) return transform;
-  const corners = layerCorners(layer, documentCenter(state.document), transform);
-  if (!corners?.length) return transform;
-  const minX = Math.min(...corners.map(point => point.x));
-  const maxX = Math.max(...corners.map(point => point.x));
-  const minY = Math.min(...corners.map(point => point.y));
-  const maxY = Math.max(...corners.map(point => point.y));
-  const boxWidth = maxX - minX;
-  const boxHeight = maxY - minY;
-  const visibilityFloor = movableText ? 20 : 48;
-  const minVisibleX = Math.min(movableText ? 72 : 160, Math.max(visibilityFloor, Math.min(documentWidth, boxWidth) * 0.3));
-  const minVisibleY = Math.min(movableText ? 36 : 160, Math.max(visibilityFloor, Math.min(documentHeight, boxHeight) * 0.3));
-  let dx = 0;
-  let dy = 0;
-
-  // If the image fits on the document, keep the whole image on-canvas.
-  // Oversized images can still be cropped creatively, but never disappear completely.
-  if (boxWidth <= documentWidth) {
-    if (minX < 0) dx = -minX;
-    else if (maxX > documentWidth) dx = documentWidth - maxX;
-  } else if (maxX < minVisibleX) {
-    dx = minVisibleX - maxX;
-  } else if (minX > documentWidth - minVisibleX) {
-    dx = documentWidth - minVisibleX - minX;
-  }
-
-  if (boxHeight <= documentHeight) {
-    if (minY < 0) dy = -minY;
-    else if (maxY > documentHeight) dy = documentHeight - maxY;
-  } else if (maxY < minVisibleY) {
-    dy = minVisibleY - maxY;
-  } else if (minY > documentHeight - minVisibleY) {
-    dy = documentHeight - minVisibleY - minY;
-  }
-  return dx || dy ? { ...transform, x: transform.x + dx, y: transform.y + dy } : transform;
-}
-
 function updateTransformPreview(event) {
   const interaction = state.transformInteraction;
   if (!interaction || event.pointerId !== interaction.pointerId) return;
@@ -2689,10 +2660,6 @@ function updateTransformPreview(event) {
   if (interaction.type === "move") {
     preview.x = interaction.beforeTransform.x + currentDocument.x - interaction.startDocument.x;
     preview.y = interaction.beforeTransform.y + currentDocument.y - interaction.startDocument.y;
-    Object.assign(preview, keepImageTransformVisible(
-      state.document.layers.find(layer => layer.id === interaction.layerId),
-      preview
-    ));
   } else if (interaction.type === "scale") {
     const nextTransform = resizeTransformFromCorner(
       state.document.layers.find(item => item.id === interaction.layerId),
