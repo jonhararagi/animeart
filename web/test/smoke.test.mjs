@@ -29,6 +29,37 @@ test("T042 architecture uses existing Image Layer and forbids parallel reference
   assert.doesNotMatch(app + model + operations, /ReferenceImageStore|ReferenceRenderer|ReferenceHistory|ReferencePersistence|ReferenceDocument|ReferenceLayerManager/);
 });
 
+test("AA-MOBILE-CROP-SHAPES-001 exposes geometric pixel crops and expanded shape layers", async () => {
+  const html = await readFile("index.html", "utf8");
+  const app = await readFile("app.js", "utf8");
+  const processor = await readFile("domain/image-processing.mjs", "utf8");
+  const worker = await readFile("service-worker.js", "utf8");
+  assert.match(html, /id="image-crop-shape"/);
+  for (const kind of ["circle", "triangle", "diamond", "pentagon", "hexagon", "octagon", "star", "heart"]) {
+    assert.ok(html.includes('option value="' + kind + '"'), "crop selector contains " + kind);
+  }
+  for (const kind of ["diamond", "pentagon", "octagon", "trapezoid", "parallelogram", "cross", "arrow", "chevron"]) {
+    assert.ok(html.includes('option value="' + kind + '"'), "shape creator contains " + kind);
+    assert.ok(app.includes('kind==="' + kind + '"'), "shape renderer draws " + kind);
+  }
+  assert.match(processor, /globalCompositeOperation = "destination-in"/);
+  assert.match(processor, /traceCropShape/);
+  assert.match(worker, /\\.\\/domain\\/crop-shape\\.mjs/);
+});
+
+test("AA-MOBILE-EXPORT-SIZE-001 keeps the editable canvas unchanged while offering bounded HD output", async () => {
+  const html = await readFile("index.html", "utf8");
+  const app = await readFile("app.js", "utf8");
+  const exporter = await readFile("domain/png-export.mjs", "utf8");
+  assert.match(html, /Tamaño de exportación/);
+  assert.match(html, /value="normal"/);
+  assert.match(html, /value="hd"/);
+  assert.match(app, /exportScaleForResolution\\(state\\.document, resolution\\)/);
+  assert.match(app, /context\\.scale\\(exportScale, exportScale\\)/);
+  assert.match(app, /const documentBefore = JSON\\.stringify\\(state\\.document\\)/);
+  assert.match(exporter, /16_000_000/);
+});
+
 test("web entrypoint exists and references the editor", async () => {
   const html = await readFile("index.html", "utf8");
   assert.match(html, /AnimeArt Studio \\| Image Editor/);
@@ -504,8 +535,8 @@ test("editor appearance supports custom accent, workspace color and local wallpa
   assert.match(html, /id="appearance-wallpaper-file"/);
   assert.match(html, /id="appearance-open"/);
   assert.match(app, /initializeAppearanceSettings\(\)/);
-  assert.match(app, /animeart-web-shell-v31/);
-  assert.match(worker, /animeart-web-shell-v31/);
+  assert.match(app, /animeart-web-shell-v32/);
+  assert.match(worker, /animeart-web-shell-v32/);
   assert.match(worker, /\.\/appearance-settings\.js/);
   assert.match(appearance, /animeart-editor-appearance-v1/);
   assert.match(appearance, /MAX_WALLPAPER_BYTES = 2 \* 1024 \* 1024/);
@@ -566,7 +597,7 @@ test("Android native export bridge and browser fallback are wired to the canonic
   assert.ok(activity.includes("NativeExportBridge"));
   assert.ok(activity.includes("Intent.ACTION_CREATE_DOCUMENT"));
   assert.match(worker, /\.\/domain\/background-removal-profiles\.mjs/);
-  assert.match(worker, /animeart-web-shell-v31/);
+  assert.match(worker, /animeart-web-shell-v32/);
 });
 
 test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size layer thumbnails", async () => {
@@ -586,7 +617,7 @@ test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size la
   assert.match(css, /\.layer-thumbnail \{ flex: 0 0 56px; width: 56px; height: 56px/);
   assert.match(css, /\.layers #layers \.layer-select \{ min-height: 60px/);
   assert.match(removal, /seedPoints=\[\]/);
-  assert.match(worker, /animeart-web-shell-v31/);
+  assert.match(worker, /animeart-web-shell-v32/);
 });
 
 
@@ -611,8 +642,8 @@ test("AA-PICSART-UX-001 defaults to direct layer selection and exposes simple an
   assert.match(html, /data-editor-mode="interactive"/);
   assert.match(html, /data-tool="select" aria-pressed="true">🖐️ Seleccionar \/ mover/);
   assert.match(css, /\.editor-mode-switch button\.active/);
-  assert.match(worker, /animeart-web-shell-v31/);
-  assert.match(app, /animeart-web-shell-v31/);
+  assert.match(worker, /animeart-web-shell-v32/);
+  assert.match(app, /animeart-web-shell-v32/);
 });
 
 test("Magic Eraser tolerance is user-adjustable instead of hardcoded", async () => {
@@ -762,8 +793,8 @@ test("AA-TEXT-EDITOR-001 opens a dedicated text dialog with typography, outline,
   for (const preset of ["comic", "poster", "manga", "neon"]) assert.match(html, new RegExp('data-text-style-preset="' + preset + '"'));
   assert.match(js, /textEditDialog\.showModal\(\)/);
   assert.match(css, /#text-edit-dialog/);
-  assert.match(app, /animeart-web-shell-v31/);
-  assert.match(worker, /animeart-web-shell-v31/);
+  assert.match(app, /animeart-web-shell-v32/);
+  assert.match(worker, /animeart-web-shell-v32/);
   assert.match(html, /¿Qué quieres escribir\?/);
   assert.match(html, /class="text-simple-controls"/);
   assert.match(html, /<details class="text-advanced-options">/);
@@ -810,7 +841,7 @@ test("AA-EDITOR-UX-002 surfaces image import/library, compact view options, laye
   assert.ok(css.includes(".canvas-view-menu[open] .canvas-view-actions"));
   assert.ok(css.includes(".selection-mini-panel"));
   assert.ok(css.includes(".crop-reset-selection"));
-  assert.match(worker, /animeart-web-shell-v31/);
+  assert.match(worker, /animeart-web-shell-v32/);
 });
 
 
@@ -828,7 +859,7 @@ test("AA-MOBILE-SIMPLE-001 keeps the mobile canvas primary and reveals tools on 
   assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(html, /class="mobile-touch-dock"/);
   assert.match(html, /data-touch-action="more"/);
-  assert.match(worker, /animeart-web-shell-v31/);
+  assert.match(worker, /animeart-web-shell-v32/);
 });
 
 
@@ -865,7 +896,7 @@ test("AA-PICSART-CONTEXT-OBJECT-001 provides closable style and shape windows wi
   assert.match(app,/function openSelectedObjectStyle\(/);
   assert.match(app,/shapeMakerDialog\.close\(\)/);
   assert.match(css,/AA-PICSART-CONTEXT-OBJECT-001/);
-  assert.match(worker,/animeart-web-shell-v31/);
+  assert.match(worker,/animeart-web-shell-v32/);
 });
 
 test("T_TEXT_EDITOR outline controls register only one input handler each", async () => {
