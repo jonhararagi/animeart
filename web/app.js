@@ -4009,11 +4009,13 @@ if (mobileDock) {
       return;
     }
     if (action === "paint") {
+      if (toolboxDialog?.open) toolboxDialog.close();
       hideMobileToolSheets();
       void openCensorLightDialog("paint");
       return;
     }
     if (action === "crop") {
+      if (toolboxDialog?.open) toolboxDialog.close();
       openCropModeDialog();
       return;
     }
