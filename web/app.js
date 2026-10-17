@@ -1585,20 +1585,55 @@ document.addEventListener("keydown",event=>{
  runQuickEditRecipe(recipe.id);
 });
 
+function activateSelectionToolForText() {
+  const selectButton = document.querySelector('.toolbar .tool[data-tool="select"]');
+  if (state.tool !== "select") {
+    if (selectButton) selectButton.click();
+    else state.tool = "select";
+  }
+  document.querySelectorAll('.mobile-touch-dock [data-touch-action="tool"]').forEach(button => {
+    button.setAttribute("aria-pressed", String(button.dataset.tool === "select"));
+  });
+}
+
+function showTextEditorDialog() {
+  if (!textEditDialog) return false;
+  if (!textEditDialog.open) {
+    try {
+      if (typeof textEditDialog.showModal === "function") textEditDialog.showModal();
+      else textEditDialog.setAttribute("open", "");
+    } catch {
+      // Older Android WebViews can reject showModal(). Keep editing available
+      // through a fixed, non-modal fallback rather than leaving Text unresponsive.
+      textEditDialog.dataset.openFallback = "true";
+      try {
+        if (typeof textEditDialog.show === "function") textEditDialog.show();
+        else textEditDialog.setAttribute("open", "");
+      } catch {
+        textEditDialog.setAttribute("open", "");
+      }
+    }
+  }
+  if (!textEditDialog.open) {
+    textEditDialog.dataset.openFallback = "true";
+    textEditDialog.setAttribute("open", "");
+  }
+  return Boolean(textEditDialog.open);
+}
+
 function openTextEditorForLayer(layerId = selectedLayerExact()?.id) {
   const layer = state.document.layers.find(item => item.id === layerId);
   if (!layer || layer.contentType !== "text") {
     status.textContent = "Seleccioná primero un texto en el lienzo o en Capas.";
     return false;
   }
+  activateSelectionToolForText();
   newlyCreatedTextLayerId = null;
   state.textPreview = null;
   setSelection([layer.id], layer.id);
   renderLayerText();
-  try {
-    if (textEditDialog && !textEditDialog.open) textEditDialog.showModal();
-  } catch (error) {
-    status.textContent = error?.message || "No se pudo abrir el editor de texto.";
+  if (!showTextEditorDialog()) {
+    status.textContent = "No se pudo abrir el editor de texto. Cerrá otros paneles e intentá de nuevo.";
     return false;
   }
   window.requestAnimationFrame(() => {
@@ -1766,6 +1801,7 @@ document.querySelector("#delete-text-layer")?.addEventListener("click", () => {
 });
 textEditDialog?.addEventListener("close", () => {
   // Closing with X or Escape cancels an in-progress preview instead of silently applying it.
+  delete textEditDialog.dataset.openFallback;
   if (state.textPreview) state.textPreview = null;
   redraw();
   renderLayerText();
@@ -2203,6 +2239,7 @@ function beginTransformInteraction(type, event, handle = null, handleOffset = nu
       ? { x: handleOffset.x, y: handleOffset.y } : { x: 0, y: 0 },
     pointerId: event.pointerId,
     layerId: layer.id,
+    startScreen: { ...screenPoint },
     startDocument: documentPoint,
     beforeTransform: { ...layer.transform },
     previewTransform: { ...layer.transform },
@@ -2212,7 +2249,7 @@ function beginTransformInteraction(type, event, handle = null, handleOffset = nu
   return true;
 }
 
-function finishTransformInteraction(cancelled = false) {
+function finishTransformInteraction(cancelled = false, finalEvent = null) {
   const interaction = state.transformInteraction;
   if (!interaction) return;
   const pointerId = interaction.pointerId;
@@ -2227,6 +2264,19 @@ function finishTransformInteraction(cancelled = false) {
   if (!layer) {
     redraw();
     return;
+  }
+  // On touch screens a tap edits text; a deliberate drag moves it. This
+  // avoids making users find a tiny secondary edit button on the phone.
+  if (!cancelled && finalEvent?.pointerType === "touch" &&
+      interaction.type === "move" && layer.contentType === "text" &&
+      interaction.startScreen) {
+    const endScreen = screenPointFromEvent(finalEvent);
+    if (Math.hypot(endScreen.x - interaction.startScreen.x, endScreen.y - interaction.startScreen.y) <= 8) {
+      if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
+      redraw();
+      openTextEditorForLayer(layer.id);
+      return;
+    }
   }
   const before = cloneDocument(state.document);
   const start = interaction.beforeTransform;
@@ -2860,6 +2910,20 @@ canvas.addEventListener("pointerdown", event => {
     canvas.setPointerCapture(event.pointerId);
     return;
   }
+  if (state.tool !== "select") {
+    // A selected text layer is an object, not a paint surface. If a drawing
+    // tool was left active, touching text must switch to Move instead of
+    // accumulating accidental strokes on the text layer during a drag.
+    const documentPoint = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
+    const topHitLayer = [...state.document.layers].reverse().find(layer =>
+      layer.visible && hitTestLayer(layer, documentPoint, documentCenter(state.document))
+    );
+    if (topHitLayer?.contentType === "text" && !topHitLayer.locked) {
+      activateSelectionToolForText();
+      beginSelectionInteraction(event);
+      return;
+    }
+  }
   if (state.tool === "select") {
     beginSelectionInteraction(event);
     return;
@@ -3083,7 +3147,7 @@ canvas.addEventListener("pointerup", event => {
     return;
   }
   if (state.transformInteraction && event.pointerId === state.transformPointerId) {
-    finishTransformInteraction(false);
+    finishTransformInteraction(false, event);
     return;
   }
   if (state.magicEraseInteraction && event.pointerId === state.magicEraseInteraction.pointerId) {
@@ -3942,6 +4006,7 @@ document.querySelector("#add-meme-text").addEventListener("click", () => {
 });
 
 document.querySelector("#add-text-layer").addEventListener("click", () => {
+  activateSelectionToolForText();
   const index = state.document.layers.filter(layer => layer.contentType === "text").length + 1;
   const width = Math.max(300, state.document.width || canvas.width || 300);
   const height = Math.max(180, state.document.height || canvas.height || 180);
@@ -3968,7 +4033,7 @@ document.querySelector("#add-text-layer").addEventListener("click", () => {
   refreshDocument("Text layer added");
   persistDocument();
   renderLayerText();
-  if (textEditDialog && !textEditDialog.open) textEditDialog.showModal();
+  if (!showTextEditorDialog()) status.textContent = "Texto añadido. Seleccionalo y tocá Editar texto para continuar.";
 });
 
 document.querySelector("#add-sample-character").addEventListener("click", async event => {
