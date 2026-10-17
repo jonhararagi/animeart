@@ -919,6 +919,49 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer=>layer.name==="shape-mask-fixture"&&layer.image?.mask==="heart")');
   assert(await evaluate('document.querySelector("#image-mask").value==="heart"'), "shape mask participates in undo and redo");
 
+  // AA-CREATIVE-STUDIO-001: use real gallery UI, add editable assets and verify Undo.
+  const creativeBaselineIds = (await readDocument()).layers.map(layer => layer.id);
+  await clickMoreGoal("creative-studio");
+  await waitFor('document.querySelector("#creative-studio-dialog")?.open === true');
+  assert(await evaluate('document.querySelectorAll("[data-creative-tab]").length === 4'), "creative studio exposes Covers, Stickers, Words and Style Packs tabs");
+  await click('[data-creative-tab="stickers"]');
+  await click('[data-creative-action="add-sticker"][data-item-id="sakura-bloom"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image")');
+  const creativeSticker=(await readDocument()).layers.find(layer=>layer.name==="Sticker · Flor de sakura");
+  assert(creativeSticker.image?.source?.startsWith("data:image/svg+xml;charset=utf-8,")&&creativeSticker.image.width===256,"sakura sticker is a local vector image layer that can be transformed independently");
+  await click('[data-creative-tab="words"]');
+  await evaluate('document.querySelector("#creative-custom-word").value="SAKURA!!"');
+  await click('[data-creative-action="add-word"][data-item-id="cyber-idol"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Título · Neon idol"&&layer.contentType==="text"&&layer.text.value==="SAKURA!!")');
+  const creativeWord=(await readDocument()).layers.find(layer=>layer.name==="Título · Neon idol");
+  assert(creativeWord.text?.outlineWidth>0&&creativeWord.text?.shadowBlur>0,"anime word art remains editable text with actual outline and shadow styling");
+  await click('[data-creative-tab="packs"]');
+  await click('[data-creative-action="apply-pack"][data-item-id="galaxy-idol"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>layer.name.startsWith("Conjunto · Idol galáctica")).length===3');
+  const packLayers=(await readDocument()).layers.filter(layer=>layer.name.startsWith("Conjunto · Idol galáctica"));
+  assert(packLayers.some(layer=>layer.contentType==="text")&&packLayers.some(layer=>layer.contentType==="image"),"a style pack adds separately editable title, subtitle and sticker layers");
+  await click("#creative-studio-close");
+  await waitFor('document.querySelector("#creative-studio-dialog").open===false');
+  await clickMoreGoal("undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>layer.name.startsWith("Conjunto · Idol galáctica")).length===0');
+  await clickMoreGoal("undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Título · Neon idol")===false');
+  await clickMoreGoal("undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Sticker · Flor de sakura")===false');
+  assert(JSON.stringify((await readDocument()).layers.map(layer=>layer.id))===JSON.stringify(creativeBaselineIds),"Undo removes style pack, word-art title and sticker as three independent history actions");
+
+  await evaluate("window.confirm = () => true");
+  await clickMoreGoal("creative-studio");
+  await waitFor('document.querySelector("#creative-studio-dialog")?.open===true');
+  await click('[data-creative-action="select-template"][data-item-id="galactic-dream"]');
+  await evaluate('document.querySelector("#creative-cover-title").value="E2E GALAXY"; document.querySelector("#creative-cover-size").value="portrait";');
+  await click("#creative-create-cover");
+  await waitFor('document.querySelector("#creative-studio-dialog").open===false');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").width===1080&&JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers?.length===3');
+  const catalogCover=await readDocument();
+  assert(catalogCover.layers[0].image?.source?.startsWith("data:image/svg+xml;charset=utf-8,")&&catalogCover.layers[0].image.source.includes("radialGradient"),"galactic cover uses original offline vector art, not a remote thumbnail");
+  assert(catalogCover.layers[1].text?.value==="E2E GALAXY"&&catalogCover.layers[2].text?.value==="COSMIC STORY · VOL. 01","cover title and subtitle remain separate editable text layers");
+
   await evaluate("window.confirm = () => true");
   await click("#poster-templates");
   await waitFor('document.querySelector("#poster-template-dialog").open === true');
