@@ -3106,3 +3106,46 @@ body > .mobile-touch-dock .mobile-export-resolution select { width: 100%; min-wi
     padding: 8px;
   }
 }
+
+
+/* AA-TYPOGRAPHY-CANVA-002: keep the title editor reachable above the mobile dock. */
+@media (max-width: 620px) {
+  #text-edit-dialog[open] {
+    position: fixed;
+    inset: auto 8px calc(82px + env(safe-area-inset-bottom)) 8px;
+    margin: 0 auto;
+    width: calc(100vw - 16px);
+    max-width: calc(100vw - 16px);
+    max-height: min(78dvh, calc(100dvh - 104px - env(safe-area-inset-bottom)));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+#text-edit-dialog[data-open-fallback="true"] {
+  position: fixed;
+  z-index: 10000;
+  inset: auto 8px calc(82px + env(safe-area-inset-bottom)) 8px;
+  margin: 0 auto;
+  width: min(560px, calc(100vw - 16px));
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 104px - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #17141e;
+  color: var(--text, #fff);
+  border: 1px solid #49395d;
+  border-radius: 16px;
+  box-shadow: 0 28px 100px #000b;
+}
+@media (max-width: 620px) {
+  #text-edit-dialog .text-content-field textarea {
+    min-height: 84px;
+    font-size: 16px;
+  }
+  #text-edit-dialog .text-dialog-actions button,
+  #text-edit-dialog .text-style-presets button {
+    min-height: 46px;
+    touch-action: manipulation;
+  }
+}
