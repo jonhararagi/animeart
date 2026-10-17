@@ -231,6 +231,15 @@ const click = async (selector, modifiers = 0) => {
   await sleep(120);
 };
 
+const clickMoreGoal = async goal => {
+  const open = await evaluate('document.body.classList.contains("mobile-tools-open")');
+  if (!open) {
+    await click('.mobile-touch-dock [data-touch-action="more"]');
+    await waitFor('document.body.classList.contains("mobile-tools-open")');
+  }
+  await click('[data-edit-goal="' + goal + '"]');
+};
+
 const mouseDrag = async (start, end, modifiers = 0) => {
   await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: start.x, y: start.y });
   await cdp("Input.dispatchMouseEvent", { type: "mousePressed", x: start.x, y: start.y, button: "left", buttons: 1, clickCount: 1, modifiers });
@@ -1217,25 +1226,29 @@ try {
   assert(await evaluate('(() => { const header=document.querySelector(".topbar"); const style=getComputedStyle(header); const r=header.getBoundingClientRect(); const workspace=document.querySelector(".workspace").getBoundingClientRect(); return style.display!=="none" && style.visibility!=="hidden" && Number(style.opacity)>0 && r.height>=48 && r.width>=innerWidth*.95 && r.top>=0 && r.bottom<=innerHeight && r.bottom<=workspace.top+1; })()'), "mobile header is actually visible inside the viewport and does not overlap the workspace");
   assert(await evaluate('(() => { const brand=document.querySelector(".topbar .brand"); const style=getComputedStyle(brand); const r=brand.getBoundingClientRect(); return style.display!=="none" && style.visibility!=="hidden" && Number(style.opacity)>0 && r.width>=60 && r.height>=24; })()'), "AnimeArt branding is visible in the mobile header");
   assert(await evaluate('(() => { const actions=document.querySelector(".mobile-top-actions"); const style=getComputedStyle(actions); return style.display!=="none" && style.visibility!=="hidden" && Array.from(actions.querySelectorAll("button")).every(el => { const r=el.getBoundingClientRect(); const s=getComputedStyle(el); return s.display!=="none" && s.visibility!=="hidden" && r.width>=44 && r.height>=44; }); })()'), "mobile header actions are visible and meet the 44px touch-target floor");
-  assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=export]") !== null'), "mobile export remains reachable in the bottom dock");
-  assert(await evaluate('(()=>{const s=document.querySelector("#mobile-export-resolution");const r=s.getBoundingClientRect();const p=getComputedStyle(s.parentElement);return Boolean(s&&p.display!=="none"&&r.width>=55&&r.height>=30&&r.bottom<=innerHeight);})()'), "mobile Normal/HD output-size picker is visible and touch-usable");
+  assert(await evaluate('document.querySelectorAll(".mobile-touch-dock [data-touch-action]").length === 6'), "mobile dock keeps six primary actions and avoids duplicating secondary tools");
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('document.body.classList.contains("mobile-tools-open")');
+  assert(await evaluate('(()=>{const s=document.querySelector("#mobile-export-resolution");const r=s.getBoundingClientRect();const p=getComputedStyle(s.parentElement);return Boolean(s&&p.display!=="none"&&r.width>=55&&r.height>=30&&r.bottom<=innerHeight);})()'), "Normal/HD settings are touch-usable inside More, not repeated on the dock");
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('!document.body.classList.contains("mobile-tools-open")');
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "mobile editor starts without stale storage-recovery warning");
   assert(await evaluate('(() => { const doc=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const c=document.querySelector("#canvas"); const a=c.getContext("2d",{willReadFrequently:true}).getImageData(Math.floor(c.width/2),Math.floor(c.height/2),1,1).data[3]; return !doc.layers.some(layer=>layer.contentType==="image"&&layer.image?.source) && a===0; })()'),
     "new documents start as a transparent empty canvas; the checkerboard is view-only, not a background image layer");
   assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height >= 600 && document.querySelector("#canvas").getBoundingClientRect().height >= 500'), "the canvas is the dominant workspace, not a small panel");
   assert(await evaluate('getComputedStyle(document.querySelector(".workspace")).gridTemplateColumns.split(" ").length === 1'), "mobile workspace uses a single canvas column instead of the desktop sidebars");
-  assert(await evaluate('document.querySelector(".mobile-touch-dock").getBoundingClientRect().height >= 72'), "mobile quick-action dock has a usable touch target area");
+  assert(await evaluate('document.querySelector(".mobile-touch-dock").getBoundingClientRect().height >= 54'), "compact primary dock retains a usable touch target area");
   assert(await evaluate('Array.from(document.querySelectorAll(".mobile-touch-dock button")).every(el => { const r = el.getBoundingClientRect(); return r.width >= 44 && r.height >= 44; })'), "Xiaomi-sized quick-action buttons meet the 44px touch-target floor");
-  assert(await evaluate('getComputedStyle(document.querySelector(".mobile-touch-dock")).overflowX === "auto" && document.querySelector(".mobile-touch-dock").scrollWidth > document.querySelector(".mobile-touch-dock").clientWidth'), "the expanded 15-action bottom dock scrolls horizontally instead of clipping buttons");
-  assert(await evaluate('document.querySelectorAll(".mobile-touch-dock [data-touch-action]").length === 15'), "mobile dock exposes all fifteen editing actions, including rotate and flip");
+  assert(await evaluate('getComputedStyle(document.querySelector(".mobile-touch-dock")).overflowX === "auto" && document.querySelectorAll(".mobile-touch-dock [data-touch-action]").length === 6'), "the compact dock fits six common actions instead of scrolling through every tool");
+  assert(await evaluate('document.querySelectorAll(".mobile-touch-dock [data-touch-action]").length === 6'), "rotation and flip remain available in More, not as permanent dock buttons");
   await evaluate('document.querySelector(".mobile-touch-dock").scrollLeft = 0');
   assert(await evaluate('(() => { const dock=document.querySelector(".mobile-touch-dock").getBoundingClientRect(); const add=document.querySelector(".mobile-touch-dock [data-touch-action=import-image]").getBoundingClientRect(); return add.left >= dock.left && add.right <= dock.right; })()'), "the primary Add image action is visible without horizontal scrolling");
   assert(await evaluate('document.querySelector("#selection-mini-panel").hidden === true'), "empty canvas does not show a useless layer-action panel");
   await saveScreenshot("animeart-studio-mobile-home.png");
   assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=import-image]")?.textContent.includes("Añadir")'), "mobile has a visible Add image action");
-  assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=asset-library]")?.textContent.includes("Galería")'), "mobile has a visible reusable Gallery action");
-  assert(await evaluate('Boolean(document.querySelector(".mobile-touch-dock [data-touch-action=delete-selected]"))'), "mobile has direct Delete selected object action");
-  assert(await evaluate('document.querySelector(".mobile-touch-dock [data-touch-action=undo]")?.textContent.includes("Deshacer") && document.querySelector(".mobile-touch-dock [data-touch-action=redo]")?.textContent.includes("Rehacer")'), "mobile dock exposes localized Undo and Redo actions");
+  assert(await evaluate('document.querySelector("#quick-open-asset-library")?.textContent.includes("Mis imágenes")'), "reusable Gallery is available inside More instead of occupying a permanent dock slot");
+  assert(await evaluate('Boolean(document.querySelector("[data-edit-goal=delete-selected]"))'), "Delete selected object remains available from More");
+  assert(await evaluate('document.querySelector("[data-edit-goal=undo]")?.textContent.includes("Deshacer") && document.querySelector("[data-edit-goal=redo]")?.textContent.includes("Rehacer")'), "Undo and Redo remain discoverable in More");
   assert(await evaluate('document.querySelector("#selection-mini-panel").hidden === true'), "no selected-object panel is shown for an empty canvas");
   const projectBeforePickerAttempt = await evaluate('localStorage.getItem("animeart-web-document")');
   const layerCountBeforePickerAttempt = (await readLayerSummary()).length;
@@ -1248,7 +1261,9 @@ try {
   assert((await readLayerSummary()).length === layerCountBeforePickerAttempt,
     "simulated picker cancellation does not add or remove a layer");
   await evaluate('(() => { const input = document.querySelector("#image-file-input"); input.click = window.__animeArtOriginalPickerClick; })()');
-  await click('.mobile-touch-dock [data-touch-action="asset-library"]');
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('document.body.classList.contains("mobile-tools-open")');
+  await click("#quick-open-asset-library");
   await waitFor('document.querySelector("#asset-library-dialog")?.open === true');
   await click("#close-asset-library");
   await waitFor('document.querySelector("#asset-library-dialog")?.open === false');
@@ -1374,25 +1389,25 @@ try {
     "the clamped mobile X closes selection without deleting the imported image");
 
   // Undo/Redo must remain accessible from the mobile dock when the selection overlay is closed.
-  await click('.mobile-touch-dock [data-touch-action="undo"]');
+  await clickMoreGoal("undo");
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterMove), 10000);
   assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
     "Undo reverses edge resizing and preserves the moved image");
-  await click('.mobile-touch-dock [data-touch-action="redo"]');
+  await clickMoreGoal("redo");
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterResize), 10000);
   assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
     "Redo reapplies edge resizing");
-  await click('.mobile-touch-dock [data-touch-action="undo"]');
+  await clickMoreGoal("undo");
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterMove), 10000);
-  await click('.mobile-touch-dock [data-touch-action="undo"]');
+  await clickMoreGoal("undo");
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformBeforeMove), 10000);
   assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
     "mobile Undo restores the image transform from before moving and resizing");
-  await click('.mobile-touch-dock [data-touch-action="redo"]');
+  await clickMoreGoal("redo");
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterMove), 10000);
   assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
     "mobile Redo restores the image move");
-  await click('.mobile-touch-dock [data-touch-action="redo"]');
+  await clickMoreGoal("redo");
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.find(layer => layer.name === "e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterResize), 10000);
   assert((await readLayerSummary()).some(layer => layer.name === "e2e-mobile-import"),
     "mobile Redo restores the edge resize after restoring the move");
@@ -1406,7 +1421,7 @@ try {
   const visibleAfterBottomDrag = await evaluate('(() => { const doc=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const layer=doc.layers.find(item=>item.name==="e2e-mobile-import"); const t=layer.transform,p={x:doc.width/2,y:doc.height/2},w=layer.image.width,h=layer.image.height,a=(t.rotation||0)*Math.PI/180,s=t.scale; const points=[[0,0],[w,0],[w,h],[0,h]].map(([x,y])=>{const dx=(x-p.x)*s,dy=(y-p.y)*s;return{x:dx*Math.cos(a)-dy*Math.sin(a)+p.x+t.x,y:dx*Math.sin(a)+dy*Math.cos(a)+p.y+t.y};}); const minX=Math.min(...points.map(v=>v.x)),maxX=Math.max(...points.map(v=>v.x)),minY=Math.min(...points.map(v=>v.y)),maxY=Math.max(...points.map(v=>v.y)); const visibleW=Math.max(0,Math.min(doc.width,maxX)-Math.max(0,minX)),visibleH=Math.max(0,Math.min(doc.height,maxY)-Math.max(0,minY)); return {docW:doc.width,docH:doc.height,bounds:{minX,maxX,minY,maxY},visibleW,visibleH,requiredW:Math.min(doc.width,maxX-minX)*.29,requiredH:Math.min(doc.height,maxY-minY)*.29}; })()');
   assert(visibleAfterBottomDrag.visibleW >= visibleAfterBottomDrag.requiredW && visibleAfterBottomDrag.visibleH >= visibleAfterBottomDrag.requiredH,
     "dragging an image toward the canvas edge keeps a useful part visible instead of losing it off-canvas: " + JSON.stringify(visibleAfterBottomDrag));
-  await click('.mobile-touch-dock [data-touch-action="undo"]');
+  await clickMoreGoal("undo");
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) === ' + JSON.stringify(transformBeforeBottomDrag), 10000);
 
   // AA-MOBILE-REDESIGN-004: verify that mobile rotation and flip controls mutate the selected image and can be restored.
@@ -1416,11 +1431,11 @@ try {
   assert(selectedImportedRow, "mobile layer list can select the exact imported image for transform tests");
   await waitFor('document.querySelector("#selection-mini-panel").hidden === false');
   const mobileTransformBeforeButtonRotate = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation');
-  await click('.mobile-touch-dock [data-touch-action="rotate-right"]');
+  await clickMoreGoal("rotate-right");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation === ' + JSON.stringify(mobileTransformBeforeButtonRotate + 5), 10000);
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation === ' + JSON.stringify(mobileTransformBeforeButtonRotate + 5)),
     "mobile Rotate + really turns the selected image by five degrees");
-  await click('.mobile-touch-dock [data-touch-action="rotate-left"]');
+  await clickMoreGoal("rotate-left");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation === ' + JSON.stringify(mobileTransformBeforeButtonRotate), 10000);
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation === ' + JSON.stringify(mobileTransformBeforeButtonRotate)),
     "mobile Rotate − restores the prior rotation through the same history-aware operation");
@@ -1453,9 +1468,9 @@ try {
   await waitFor('Math.abs(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation - ' + JSON.stringify(rotationBeforeGesture) + ') > 5', 10000);
   const rotationAfterGesture = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation');
   assert(Math.abs(rotationAfterGesture - rotationBeforeGesture) > 5, "dragging the visible mobile rotation handle changes the selected image angle");
-  await click('.mobile-touch-dock [data-touch-action="undo"]');
+  await clickMoreGoal("undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation === ' + JSON.stringify(rotationBeforeGesture), 10000);
-  await click('.mobile-touch-dock [data-touch-action="redo"]');
+  await clickMoreGoal("redo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation === ' + JSON.stringify(rotationAfterGesture), 10000);
   assert(true, "mobile rotation-handle drag participates in Undo/Redo history");
 
@@ -1600,11 +1615,11 @@ try {
   assert(await evaluate('getComputedStyle(document.querySelector(".layers")).display === "none"'),
     "mobile typography regression runs while the layers panel is actually hidden");
   // Reproduce the reported trap: the user was drawing before switching to text.
-  await click('.mobile-touch-dock [data-touch-action="tool"][data-tool="brush"]');
+  await evaluate('document.querySelectorAll(".toolbar .tool[data-tool]").forEach(button => { if (button.dataset.tool === "brush") button.click(); })');
   await evaluate('document.querySelector("#text-edit-dialog").showModal = undefined');
   await click('.mobile-touch-dock [data-touch-action="add-text"]');
   await waitFor('document.querySelector("#text-edit-dialog")?.open === true');
-  assert(await evaluate('(() => { const d=document.querySelector("#text-edit-dialog"); const t=document.querySelector("#text-content"); const r=t.getBoundingClientRect(); const dock=document.querySelector(".mobile-touch-dock").getBoundingClientRect(); const buttons=[...document.querySelectorAll(".mobile-touch-dock [data-touch-action]")]; const select=buttons.find(button=>button.dataset.tool==="select"); const brush=buttons.find(button=>button.dataset.tool==="brush"); return d.parentElement===document.body && r.width>160 && r.height>=60 && !t.disabled && getComputedStyle(d).position==="fixed" && d.getBoundingClientRect().bottom<=dock.top+1 && select?.getAttribute("aria-pressed")==="true" && brush?.getAttribute("aria-pressed")==="false"; })()'),
+  assert(await evaluate('(() => { const d=document.querySelector("#text-edit-dialog"); const t=document.querySelector("#text-content"); const r=t.getBoundingClientRect(); const dock=document.querySelector(".mobile-touch-dock").getBoundingClientRect(); const buttons=[...document.querySelectorAll(".toolbar .tool[data-tool]")]; const select=buttons.find(button=>button.dataset.tool==="select"); const brush=buttons.find(button=>button.dataset.tool==="brush"); return d.parentElement===document.body && r.width>160 && r.height>=60 && !t.disabled && getComputedStyle(d).position==="fixed" && d.getBoundingClientRect().bottom<=dock.top+1 && select?.getAttribute("aria-pressed")==="true" && brush?.getAttribute("aria-pressed")==="false"; })()'),
     "mobile Text opens a reachable Canva-style editor above the dock and switches away from brush mode");
   const mobileTypographyLayer = (await readDocument()).layers.at(-1);
   assert(mobileTypographyLayer?.contentType === "text", "mobile typography creates a normal editable text layer");
