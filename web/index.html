@@ -495,7 +495,16 @@
         <button id="cancel-background-removal" type="button">✕ Cancelar</button>
       </header>
       <div class="background-removal-workspace">
-        <div class="background-removal-preview-wrap"><canvas id="background-removal-preview" aria-label="Background removal preview"></canvas></div>
+        <div class="background-removal-preview-column">
+          <div class="background-removal-preview-tools" role="group" aria-label="Acercar y mover la vista previa">
+            <button id="background-removal-zoom-out" type="button" aria-label="Alejar la vista previa" title="Alejar" disabled>−</button>
+            <output id="background-removal-zoom-value" aria-live="polite">Ajustar</output>
+            <button id="background-removal-zoom-in" type="button" aria-label="Acercar la vista previa" title="Acercar">＋</button>
+            <button id="background-removal-zoom-fit" type="button" aria-label="Ajustar la imagen completa">Ajustar</button>
+          </div>
+          <div class="background-removal-preview-wrap"><canvas id="background-removal-preview" aria-label="Vista previa ampliable para elegir el color y borrar zonas del fondo"></canvas></div>
+          <p class="background-removal-zoom-help">Con <b>+</b> acercás los detalles. Con la eliminación manual desactivada, arrastrá la imagen ampliada para moverte. Activala para borrar con el dedo.</p>
+        </div>
         <div class="background-removal-controls">
           <section class="background-profile-controls" aria-label="Local processing profiles">
             <label class="text-field" for="background-removal-profile">Processing profile
@@ -514,6 +523,7 @@
             <input id="background-removal-color" type="color" value="#ffffff">
           </label>
           <div class="background-removal-quick-actions" role="group" aria-label="Opciones rápidas para detectar el fondo">
+            <button id="preview-background-removal" type="button">👁 Previsualizar quitar fondo</button>
             <button id="background-auto-detect" type="button">🪄 Detectar fondo en esquina</button>
             <button id="background-preset-white" type="button">Fondo blanco</button>
             <button id="background-preset-dark" type="button">Fondo oscuro</button>
@@ -538,7 +548,7 @@
           <div class="background-removal-actions"><button id="undo-background-erase" type="button" disabled>↶ Deshacer borrado</button><button id="clear-background-erase" type="button">Limpiar trazos</button></div>
           </details>
           <p id="background-removal-status" role="status" aria-live="polite">Usá “Detectar fondo en esquina” o tocá “Elegir color” y después toca el fondo en la imagen.</p>
-          <button id="apply-background-removal" type="button">Aplicar transparencia a la imagen</button>
+          <button id="apply-background-removal" type="button" disabled>Aplicar transparencia a la imagen</button>
         </div>
       </div>
     </section>
