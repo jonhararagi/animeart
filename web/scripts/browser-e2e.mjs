@@ -1543,8 +1543,7 @@ try {
   await waitFor('document.body.classList.contains("mobile-tools-open")');
   await click('[data-edit-goal="draw"]');
   await waitFor('document.querySelector("#censor-light-dialog")?.open === true');
-  assert(await evaluate('document.querySelector("#censor-dialog-title").textContent.includes("Pintar píxeles") &&
-    document.querySelector("#censor-light-dialog").getBoundingClientRect().width >= innerWidth - 2'),
+  assert(await evaluate('document.querySelector("#censor-dialog-title").textContent.includes("Pintar píxeles") && document.querySelector("#censor-light-dialog").getBoundingClientRect().width >= innerWidth - 2'),
     "Paint opens a focused full-screen pixel studio with the real image preview");
   await evaluate('(() => { const c=document.querySelector("#censor-image-preview"); const r=c.getBoundingClientRect(); const opts={bubbles:true,cancelable:true,pointerId:71,pointerType:"touch",clientX:r.left+r.width*.35,clientY:r.top+r.height*.42}; c.dispatchEvent(new PointerEvent("pointerdown",opts)); c.dispatchEvent(new PointerEvent("pointermove",{...opts,clientX:opts.clientX+Math.max(8,r.width*.08),clientY:opts.clientY+Math.max(8,r.height*.06)})); c.dispatchEvent(new PointerEvent("pointerup",opts)); })()');
   assert(await evaluate('document.querySelector("#censor-dialog-undo").disabled === false'), "Paint studio captures a reversible preview stroke");
