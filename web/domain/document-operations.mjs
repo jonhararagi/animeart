@@ -97,6 +97,55 @@ export function rotateLayer(document, layerId, degrees) {
 }
 
 
+/**
+ * Crop the document viewport while keeping each layer's rendered content at the
+ * same document-space position minus the crop origin. This crops the composition
+ * (all visible layers together), not the source pixels of an individual image.
+ */
+export function cropDocumentCanvas(document, rectangle) {
+  if (!document || !Array.isArray(document.layers)) return null;
+  const sourceWidth = Number(document.width);
+  const sourceHeight = Number(document.height);
+  const x = Number(rectangle?.x);
+  const y = Number(rectangle?.y);
+  const width = Number(rectangle?.width);
+  const height = Number(rectangle?.height);
+  if (![sourceWidth, sourceHeight, x, y, width, height].every(Number.isFinite) ||
+      !Number.isInteger(x) || !Number.isInteger(y) ||
+      !Number.isInteger(width) || !Number.isInteger(height) ||
+      sourceWidth < 1 || sourceHeight < 1 || x < 0 || y < 0 ||
+      width < 1 || height < 1 || x + width > sourceWidth || y + height > sourceHeight) {
+    return null;
+  }
+
+  const next = cloneDocument(document);
+  const oldCenter = { x: sourceWidth / 2, y: sourceHeight / 2 };
+  const newCenter = { x: width / 2, y: height / 2 };
+  const centerDeltaX = newCenter.x - oldCenter.x;
+  const centerDeltaY = newCenter.y - oldCenter.y;
+
+  for (const layer of next.layers) {
+    const transform = layer.transform;
+    const scale = Number(transform.scale) || 1;
+    const angle = (Number(transform.rotation) || 0) * Math.PI / 180;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    // Changing document dimensions also changes the transform pivot. Compensate
+    // for that pivot shift and then subtract the crop origin for every layer.
+    const pivotCorrectionX = (scale * cos - 1) * centerDeltaX - scale * sin * centerDeltaY;
+    const pivotCorrectionY = scale * sin * centerDeltaX + (scale * cos - 1) * centerDeltaY;
+    layer.transform = normalizeTransform({
+      ...transform,
+      x: transform.x + pivotCorrectionX - x,
+      y: transform.y + pivotCorrectionY - y
+    });
+  }
+
+  next.width = width;
+  next.height = height;
+  return next;
+}
+
 export function setLayerVisibility(document, layerId, visible) {
   const next = cloneDocument(document);
   const layer = next.layers.find(item => item.id === layerId);
