@@ -3372,3 +3372,30 @@ body.mobile-tools-open .toolbar > .easy-edit-panel > .easy-edit-grid button {
   #crop-preview { max-height: 38dvh; }
   #image-edit-form .dialog-actions { position: sticky; bottom: 0; background: #151b25; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); }
 }
+
+/* Output settings live in More alongside less-frequent actions. */
+.mobile-output-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #39314a;
+  border-radius: 12px;
+  background: #191723;
+}
+.mobile-output-options label {
+  display: grid;
+  gap: 6px;
+  color: #c9c0d5;
+  font-size: .75rem;
+}
+.mobile-output-options select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid #49395d;
+  border-radius: 9px;
+  background: #0f141c;
+  color: var(--text);
+}
