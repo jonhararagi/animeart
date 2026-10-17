@@ -1522,10 +1522,13 @@ try {
     "text editor is mounted outside the mobile-hidden layers panel");
   assert(await evaluate('getComputedStyle(document.querySelector(".layers")).display === "none"'),
     "mobile typography regression runs while the layers panel is actually hidden");
+  // Reproduce the reported trap: the user was drawing before switching to text.
+  await click('.mobile-touch-dock [data-touch-action="tool"][data-tool="brush"]');
+  await evaluate('document.querySelector("#text-edit-dialog").showModal = undefined');
   await click('.mobile-touch-dock [data-touch-action="add-text"]');
   await waitFor('document.querySelector("#text-edit-dialog")?.open === true');
-  assert(await evaluate('(() => { const d=document.querySelector("#text-edit-dialog"); const t=document.querySelector("#text-content"); const r=t.getBoundingClientRect(); return d.parentElement===document.body && r.width>160 && r.height>=60 && !t.disabled; })()'),
-    "mobile Add Text opens a visible, editable typography window");
+  assert(await evaluate('(() => { const d=document.querySelector("#text-edit-dialog"); const t=document.querySelector("#text-content"); const r=t.getBoundingClientRect(); const dock=document.querySelector(".mobile-touch-dock").getBoundingClientRect(); const select=document.querySelector('.mobile-touch-dock [data-touch-action="tool"][data-tool="select"]'); const brush=document.querySelector('.mobile-touch-dock [data-touch-action="tool"][data-tool="brush"]'); return d.parentElement===document.body && r.width>160 && r.height>=60 && !t.disabled && getComputedStyle(d).position==="fixed" && d.getBoundingClientRect().bottom<=dock.top+1 && select?.getAttribute("aria-pressed")==="true" && brush?.getAttribute("aria-pressed")==="false"; })()'),
+    "mobile Text opens a reachable Canva-style editor above the dock and switches away from brush mode");
   const mobileTypographyLayer = (await readDocument()).layers.at(-1);
   assert(mobileTypographyLayer?.contentType === "text", "mobile typography creates a normal editable text layer");
   await evaluate('(() => { const el=document.querySelector("#text-content"); el.value="TÍTULO DE PRUEBA"; el.dispatchEvent(new Event("input",{bubbles:true})); el.dispatchEvent(new Event("change",{bubbles:true})); })()');
@@ -1545,7 +1548,7 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.id===' + JSON.stringify(mobileTypographyLayer.id) + ' && layer.text?.value==="SUBTÍTULO EDITADO")',10000);
   assert(true, "existing text can be reopened, changed and persisted from the mobile canvas selection");
 
-  const beforeTextMove = await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const l=d.layers.find(layer=>layer.id===' + JSON.stringify(mobileTypographyLayer.id) + '); return {x:l.transform.x,y:l.transform.y}; })()');
+  const beforeTextMove = await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const l=d.layers.find(layer=>layer.id===' + JSON.stringify(mobileTypographyLayer.id) + '); return {x:l.transform.x,y:l.transform.y,strokeCount:(l.strokes||[]).length}; })()');
   const mobileTextDragStart = await selectorCenter("#canvas");
   await cdp("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 });
   await cdp("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ id: 1, x: mobileTextDragStart.x, y: mobileTextDragStart.y, radiusX: 4, radiusY: 4, force: 1 }] });
@@ -1563,8 +1566,26 @@ try {
   assert(Number.isFinite(afterTextMove.x) && Number.isFinite(afterTextMove.y) &&
     (afterTextMove.x !== beforeTextMove.x || afterTextMove.y !== beforeTextMove.y),
     "dragging selected text on the mobile touch path commits a bounded transform without killing the editor");
+  const strokesAfterTextDrag = await evaluate('(() => { const l=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(mobileTypographyLayer.id) + '); return (l?.strokes||[]).length; })()');
+  assert(strokesAfterTextDrag === beforeTextMove.strokeCount,
+    "dragging text never adds brush strokes to the text layer");
+
+  // A tap without movement should reopen the editor; the text must remain editable after the drag.
+  const tapX = mobileTextDragStart.x + 36;
+  const tapY = mobileTextDragStart.y + 24;
+  await cdp("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 });
+  await cdp("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ id: 1, x: tapX, y: tapY, radiusX: 4, radiusY: 4, force: 1 }] });
+  await cdp("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp("Emulation.setTouchEmulationEnabled", { enabled: false });
+  await waitFor('document.querySelector("#text-edit-dialog")?.open === true', 10000);
+  assert(await evaluate('document.querySelector("#text-content")?.value === "SUBTÍTULO EDITADO"'),
+    "tapping the moved text opens the editor with its current text, not a blank/new layer");
+  await evaluate('(() => { const el=document.querySelector("#text-content"); el.value="TÍTULO FINAL"; el.dispatchEvent(new Event("input",{bubbles:true})); el.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await click("#apply-text-layer");
+  await waitFor('document.querySelector("#text-edit-dialog").open === false');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.id===' + JSON.stringify(mobileTypographyLayer.id) + ' && layer.text?.value==="TÍTULO FINAL")',10000);
   assert(await evaluate('document.readyState === "complete" && document.querySelector("#canvas") && document.querySelector("#selection-mini-edit-text")'),
-    "editor remains responsive after the text drag");
+    "editor remains responsive after moving, reopening, editing, and saving a text layer");
   await saveScreenshot("animeart-mobile-typography.png");
 
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
