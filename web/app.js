@@ -10,7 +10,7 @@ import { createViewport, panBy } from "./domain/viewport.mjs";
 import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocumentPoint, screenViewportForDocument, zoomViewportAt } from "./domain/canvas-space.mjs";
 import { distanceBetweenTouches, midpointBetweenTouches, updatePinchPanViewport } from "./domain/touch-gestures.mjs";
 import { createFrameScheduler } from "./domain/frame-scheduler.mjs";
-import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { addLayer, clearLayer, cropDocumentCanvas, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
 import { removeConnectedBackground, applyEraseStrokes } from "./domain/background-removal.mjs";
@@ -3353,15 +3353,21 @@ function drawCensorDialogPreview() {
   drawImageLayer(layer, context);
   for (const stroke of session.strokes) {
     if (!stroke.points.length) continue;
+    const erasing = stroke.mode === "erase";
+    const effect = stroke.effect || "normal";
     context.save();
-    context.globalCompositeOperation = "source-over";
-    context.globalAlpha = stroke.opacity;
-    context.strokeStyle = stroke.color;
+    context.globalCompositeOperation = erasing ? "destination-out" : "source-over";
+    context.globalAlpha = erasing ? Math.max(0.05, stroke.opacity) : stroke.opacity;
+    context.strokeStyle = erasing ? "#000000" : stroke.color;
     context.lineWidth = stroke.size;
     context.lineCap = "round";
     context.lineJoin = "round";
-    context.shadowColor = stroke.color;
-    context.shadowBlur = stroke.size * (stroke.softness / 100 * 0.5 + stroke.glow / 100 * 1.25);
+    context.shadowColor = erasing || effect === "normal" ? "transparent" : stroke.color;
+    context.shadowBlur = erasing ? 0 : stroke.mode === "censor-light"
+      ? stroke.size * (stroke.softness / 100 * 0.5 + stroke.glow / 100 * 1.25)
+      : effect === "soft" ? stroke.size * stroke.softness / 100
+        : effect === "glow" ? stroke.size * 0.55
+          : effect === "neon" ? stroke.size * 1.25 : 0;
     context.beginPath();
     context.moveTo(stroke.points[0].x, stroke.points[0].y);
     for (const point of stroke.points.slice(1)) context.lineTo(point.x, point.y);
@@ -3382,7 +3388,7 @@ function censorDialogPoint(event) {
   };
 }
 
-async function openCensorLightDialog() {
+async function openCensorLightDialog(requestedMode = "censor-light") {
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "image" || !layer.image) {
     status.textContent = "Primero seleccioná la imagen a la que querés aplicar Luz de censura.";
@@ -3393,6 +3399,7 @@ async function openCensorLightDialog() {
     status.textContent = "La imagen está fijada/bloqueada. Desfijala antes de aplicar Luz de censura.";
     return;
   }
+  const mode = ["censor-light", "paint", "erase"].includes(requestedMode) ? requestedMode : "censor-light";
   try {
     const image = await new Promise((resolve, reject) => {
       const cached = imageCache.get(layer.image.source);
@@ -3413,19 +3420,43 @@ async function openCensorLightDialog() {
       image,
       width,
       height,
-      strokes: []
+      strokes: [],
+      mode
     };
+    const studioTitles = {
+      "censor-light": "✨ Luz de censura",
+      paint: "🖌️ Pintar píxeles",
+      erase: "🧽 Borrar píxeles"
+    };
+    const studioDescriptions = {
+      "censor-light": "Pintá luz sobre la imagen. El original no cambia hasta pulsar Aplicar.",
+      paint: "Pintá sobre la imagen en una ventana independiente. Probá color, grosor y acabado; el original sigue intacto hasta Aplicar.",
+      erase: "Borrá partes de esta imagen desde la vista previa. Se conserva el original hasta Aplicar y podés deshacer el último trazo."
+    };
+    document.querySelector("#censor-dialog-title").textContent = studioTitles[mode];
+    document.querySelector("#pixel-studio-eyebrow").textContent = mode === "erase" ? "BORRADOR DE PÍXELES · VISTA PREVIA" : mode === "paint" ? "PINCEL · VISTA PREVIA" : "ESTUDIO DE PÍXELES · VISTA PREVIA";
+    document.querySelector("#censor-dialog-description").textContent = studioDescriptions[mode];
     document.querySelector("#censor-dialog-image-name").textContent = layer.name + " · " + width + " × " + height + " px";
-    document.querySelector("#censor-dialog-color").value = "#ffffff";
-    document.querySelector("#censor-dialog-size").value = "36";
-    document.querySelector("#censor-dialog-size-value").textContent = "36 px";
-    document.querySelector("#censor-dialog-opacity").value = "90";
-    document.querySelector("#censor-dialog-opacity-value").textContent = "90%";
-    document.querySelector("#censor-dialog-softness").value = "35";
-    document.querySelector("#censor-dialog-softness-value").textContent = "35%";
-    document.querySelector("#censor-dialog-glow").value = "55";
-    document.querySelector("#censor-dialog-glow-value").textContent = "55%";
-    document.querySelector("#censor-dialog-status").textContent = "Deslizá sobre la imagen para pintar. Nada se cambia hasta pulsar Aplicar.";
+    document.querySelector("#censor-dialog-color").value = mode === "erase" ? "#111318" : mode === "paint" ? "#ff4fd8" : "#ffffff";
+    document.querySelector("#censor-dialog-size").value = mode === "censor-light" ? "36" : mode === "paint" ? "18" : "32";
+    document.querySelector("#censor-dialog-size-value").textContent = document.querySelector("#censor-dialog-size").value + " px";
+    document.querySelector("#censor-dialog-opacity").value = mode === "censor-light" ? "90" : "100";
+    document.querySelector("#censor-dialog-opacity-value").textContent = document.querySelector("#censor-dialog-opacity").value + "%";
+    document.querySelector("#censor-dialog-softness").value = mode === "censor-light" ? "35" : "0";
+    document.querySelector("#censor-dialog-softness-value").textContent = document.querySelector("#censor-dialog-softness").value + "%";
+    document.querySelector("#censor-dialog-glow").value = mode === "censor-light" ? "55" : "0";
+    document.querySelector("#censor-dialog-glow-value").textContent = document.querySelector("#censor-dialog-glow").value + "%";
+    document.querySelector("#censor-dialog-effect").value = "normal";
+    document.querySelector("#censor-dialog-color-label").firstChild.textContent = mode === "erase" ? "Color de fondo de previsualización " : mode === "paint" ? "Color del pincel " : "Color de luz ";
+    document.querySelector("#censor-dialog-opacity-label").firstChild.textContent = mode === "erase" ? "Intensidad del borrado " : mode === "paint" ? "Opacidad " : "Intensidad ";
+    document.querySelector("#censor-dialog-softness").closest("label").hidden = mode === "erase";
+    document.querySelector("#censor-dialog-glow").closest("label").hidden = mode !== "censor-light";
+    document.querySelector("#censor-dialog-effect").closest("label").hidden = mode === "censor-light";
+    document.querySelector("#censor-dialog-apply").textContent = mode === "erase" ? "✓ Aplicar borrado" : mode === "paint" ? "✓ Aplicar pintura" : "✓ Aplicar a la imagen";
+    document.querySelector("#censor-dialog-status").textContent = mode === "erase"
+      ? "Deslizá sobre la vista previa para borrar. Nada cambia hasta Aplicar."
+      : mode === "paint" ? "Deslizá sobre la vista previa para pintar. Nada cambia hasta Aplicar."
+        : "Deslizá sobre la imagen para pintar. Nada se cambia hasta pulsar Aplicar.";
     if (!censorDialog.open) censorDialog.showModal();
     drawCensorDialogPreview();
   } catch (error) {
@@ -3451,6 +3482,8 @@ censorPreviewCanvas?.addEventListener("pointerdown", event => {
   if (!point) return;
   event.preventDefault();
   const stroke = {
+    mode: censorDialogSession.mode || "censor-light",
+    effect: document.querySelector("#censor-dialog-effect").value,
     color: document.querySelector("#censor-dialog-color").value,
     size: Number(document.querySelector("#censor-dialog-size").value),
     opacity: Number(document.querySelector("#censor-dialog-opacity").value) / 100,
@@ -3521,7 +3554,10 @@ document.querySelector("#censor-dialog-apply")?.addEventListener("click", async 
     state.document = next;
     setSelection([layer.id], layer.id);
     state.history.record(before, next);
-    refreshDocument("✨ Luz de censura aplicada solo a la imagen. Deshacer restaura los píxeles originales.");
+    const appliedMessage = session.mode === "erase" ? "🧽 Borrado aplicado a la imagen. Deshacer recupera los píxeles originales."
+      : session.mode === "paint" ? "🖌️ Pintura aplicada a la imagen. Deshacer restaura la versión original."
+        : "✨ Luz de censura aplicada solo a la imagen. Deshacer restaura los píxeles originales.";
+    refreshDocument(appliedMessage);
     persistDocument();
     closeCensorLightDialog();
   } catch (error) {
