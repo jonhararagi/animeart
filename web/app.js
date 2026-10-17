@@ -824,7 +824,10 @@ function drawNow() {
 function pointFromEvent(event) {
   const rect = canvas.getBoundingClientRect();
   const screenPoint = { x: event.clientX - rect.left, y: event.clientY - rect.top };
-  return createStrokePoint(screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize()));
+  const documentPoint = screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize());
+  // createStrokePoint accepts numeric x/y arguments, not a point object. Passing
+  // the object as the first argument silently normalized every freehand sample to (0, 0).
+  return createStrokePoint(documentPoint.x, documentPoint.y);
 }
 
 function screenPointFromEvent(event) {
