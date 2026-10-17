@@ -175,8 +175,16 @@ export function clampSelectionHandles(geometry, viewportSize, inset = 22) {
   };
   const originalClose = geometry.closeHandle || geometry.corners?.[1] || null;
   const originalResize = geometry.resizeHandle || geometry.corners?.[2] || null;
+  const center = geometry.center || null;
+  const centerOutsideViewport = Boolean(center && (
+    Number(center.x) < 0 || Number(center.x) > width ||
+    Number(center.y) < 0 || Number(center.y) > height
+  ));
   const closeHandle = clampPoint(originalClose);
   const resizeHandle = clampPoint(originalResize);
+  // If a layer is completely off-screen, keep a separate move grip on the
+  // nearest visible canvas edge so the user can bring it back without deselecting.
+  const moveHandle = centerOutsideViewport ? clampPoint(center) : null;
   const offset = (original, clamped) => original && clamped
     ? { x: original.x - clamped.x, y: original.y - clamped.y }
     : { x: 0, y: 0 };
@@ -185,6 +193,7 @@ export function clampSelectionHandles(geometry, viewportSize, inset = 22) {
     ...geometry,
     closeHandle,
     resizeHandle,
+    moveHandle,
     closeHandleOffset: offset(originalClose, closeHandle),
     resizeHandleOffset: offset(originalResize, resizeHandle)
   };
@@ -313,14 +322,17 @@ export function hitTestHandle(screenPoint, geometry, radius = 10) {
   const closeHandle = geometry.closeHandle || geometry.corners?.[1];
   const resizeHandle = geometry.resizeHandle || geometry.corners?.[2];
   const rotationHandle = geometry.rotationHandle;
+  const moveHandle = geometry.moveHandle;
   const closeDistance = closeHandle ? Math.hypot(screenPoint.x - closeHandle.x, screenPoint.y - closeHandle.y) : Infinity;
   const resizeDistance = resizeHandle ? Math.hypot(screenPoint.x - resizeHandle.x, screenPoint.y - resizeHandle.y) : Infinity;
   const rotationDistance = rotationHandle ? Math.hypot(screenPoint.x - rotationHandle.x, screenPoint.y - rotationHandle.y) : Infinity;
+  const moveDistance = moveHandle ? Math.hypot(screenPoint.x - moveHandle.x, screenPoint.y - moveHandle.y) : Infinity;
   if (rotationDistance <= radius) return "rotate";
   const hitsClose = closeDistance <= radius, hitsResize = resizeDistance <= radius;
   if (hitsClose && hitsResize) return closeDistance <= resizeDistance ? "close" : "scale-se";
   if (hitsClose) return "close";
   if (hitsResize) return "scale-se";
+  if (moveDistance <= radius) return "move";
   if (pointInPolygon(screenPoint, geometry.corners)) return "move";
   return null;
 }
