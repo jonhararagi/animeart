@@ -136,6 +136,12 @@
           <option value="webp">WebP · compact</option>
         </select>
       </label>
+      <label class="export-format-control" for="export-resolution">Tamaño de exportación
+        <select id="export-resolution" aria-label="Tamaño de exportación">
+          <option value="normal">Normal · tamaño del lienzo</option>
+          <option value="hd">HD · hasta 2×, límite inteligente de 16 MP</option>
+        </select>
+      </label>
       <label id="export-quality-control" class="export-format-control" for="export-quality" hidden>Quality
         <input id="export-quality" type="range" min="50" max="100" step="1" value="92">
         <output id="export-quality-value">92%</output>
@@ -347,6 +353,7 @@
     <button type="button" data-touch-action="flip-horizontal" aria-label="Voltear horizontalmente" title="Voltear horizontalmente"><span aria-hidden="true">↔</span><span>Voltear H</span></button>
     <button type="button" data-touch-action="flip-vertical" aria-label="Voltear verticalmente" title="Voltear verticalmente"><span aria-hidden="true">↕</span><span>Voltear V</span></button>
     <label class="mobile-export-format" aria-label="Formato de exportación"><span>Formato</span><select id="mobile-export-format" aria-label="Formato de exportación móvil"><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="webp">WebP</option></select></label>
+    <label class="mobile-export-resolution" aria-label="Tamaño de exportación"><span>Tamaño</span><select id="mobile-export-resolution" aria-label="Tamaño de exportación móvil"><option value="normal">Normal</option><option value="hd">HD</option></select></label>
     <button type="button" data-touch-action="add-text"><span aria-hidden="true">🔤</span><span>Texto</span></button>
     <button type="button" data-touch-action="undo" aria-label="Deshacer última acción" title="Deshacer"><span aria-hidden="true">↶</span><span>Deshacer</span></button>
     <button type="button" data-touch-action="redo" aria-label="Rehacer última acción" title="Rehacer" disabled><span aria-hidden="true">↷</span><span>Rehacer</span></button>
@@ -418,7 +425,7 @@
           <div class="shape-maker-fields">
             <label class="mini-style-field" for="shape-maker-kind">Forma
               <select id="shape-maker-kind">
-                <option value="rectangle">Rectángulo</option><option value="rounded">Rectángulo redondeado</option><option value="circle">Círculo</option><option value="ellipse">Óvalo</option><option value="star">Estrella</option><option value="heart">Corazón</option><option value="hexagon">Hexágono</option><option value="triangle">Triángulo</option><option value="speech">Globo de diálogo</option><option value="lightning">Rayo</option><option value="cloud">Nube</option>
+                <option value="rectangle">Rectángulo</option><option value="rounded">Rectángulo redondeado</option><option value="circle">Círculo</option><option value="ellipse">Óvalo</option><option value="star">Estrella</option><option value="heart">Corazón</option><option value="hexagon">Hexágono</option><option value="pentagon">Pentágono</option><option value="octagon">Octágono</option><option value="diamond">Rombo</option><option value="trapezoid">Trapecio</option><option value="parallelogram">Paralelogramo</option><option value="cross">Cruz</option><option value="arrow">Flecha</option><option value="chevron">Chevron</option><option value="triangle">Triángulo</option><option value="speech">Globo de diálogo</option><option value="lightning">Rayo</option><option value="cloud">Nube</option>
               </select>
             </label>
             <div class="mini-style-pair">
@@ -620,6 +627,21 @@
             <option value="0.6666666667">Vertical · 2:3</option>
             <option value="1.7777777778">Panorámica · 16:9</option>
             <option value="0.5625">Historia · 9:16</option>
+          </select>
+        </label>
+        <label class="image-crop-aspect-field" for="image-crop-shape">Forma de recorte
+          <select id="image-crop-shape" aria-label="Forma de recorte">
+            <option value="rectangle">Rectángulo</option>
+            <option value="rounded">Rectángulo redondeado</option>
+            <option value="circle">Círculo</option>
+            <option value="ellipse">Óvalo</option>
+            <option value="triangle">Triángulo</option>
+            <option value="diamond">Rombo</option>
+            <option value="pentagon">Pentágono</option>
+            <option value="hexagon">Hexágono</option>
+            <option value="octagon">Octágono</option>
+            <option value="star">Estrella</option>
+            <option value="heart">Corazón</option>
           </select>
         </label>
         <div class="image-edit-grid">
