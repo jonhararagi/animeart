@@ -21,6 +21,7 @@ import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot } fr
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { clampSelectionHandles, constrainTranslationToDocument, groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, layerCorners, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, exportScaleForResolution, renderDocumentToCanvas } from "./domain/png-export.mjs";
+import { CREATIVE_TEMPLATES, STICKER_CATALOG, WORD_ART_PRESETS, STYLE_PACKS, createStickerSvg, createPosterSvg, svgDataUrl, getCreativeTemplate, getSticker, getWordArtPreset, getStylePack } from "./domain/creative-catalog.mjs";
 
 const canvas = document.querySelector("#canvas");
 const removeSelectedImageButton = document.querySelector("#remove-selected-image");
@@ -4405,6 +4406,7 @@ function runEditGoal(goal) {
     redo: () => redoButton.click(),
     "delete-selected": () => removeSelectedLayer(),
     export: () => exportPngButton.click(),
+    "creative-studio": () => openCreativeStudio(),
     appearance: () => document.querySelector("#appearance-open")?.click()
   };
   actions[goal]?.();
@@ -5179,9 +5181,183 @@ function restoreStoredProject({ confirmDiscard = true } = {}) {
 }
 
 
-function posterSvgSource(width,height,background,accent,style){const bg=/^#[0-9a-fA-F]{6}$/.test(background)?background:"#171324",fg=/^#[0-9a-fA-F]{6}$/.test(accent)?accent:"#ff2b6d",band=Math.max(28,Math.round(height*.075)),secondary=style==="comic"?"#fff200":style==="manga"?"#f4f4f4":fg;const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="${bg}"/><rect width="100%" height="${band}" fill="${fg}"/><rect y="${height-band}" width="100%" height="${band}" fill="${secondary}"/><rect x="${Math.round(width*.055)}" y="${Math.round(height*.14)}" width="${Math.round(width*.89)}" height="${Math.round(height*.68)}" rx="${style==="comic"?18:4}" fill="none" stroke="${fg}" stroke-opacity=".42" stroke-width="${Math.max(2,Math.round(width*.004))}"/></svg>`;return "data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg);}
-function createPosterTemplate(templateId,background,accent,title,subtitle,dimensions){const presets={comic:{label:"Comic Cover",title:{fontFamily:"Impact",color:"#fff200",outlineColor:"#151515",outlineWidth:6,shadowColor:"#151515",shadowBlur:0,shadowOffsetX:5,shadowOffsetY:7},subtitle:{fontFamily:"Arial Black",color:"#ffffff",outlineColor:"#151515",outlineWidth:3,shadowColor:"#151515",shadowBlur:0,shadowOffsetX:3,shadowOffsetY:4}},poster:{label:"Event Poster",title:{fontFamily:"Arial Black",color:"#ffffff",outlineColor:accent,outlineWidth:2,shadowColor:"#000000",shadowBlur:14,shadowOffsetX:0,shadowOffsetY:5},subtitle:{fontFamily:"Trebuchet MS",color:"#ffffff",outlineColor:"#151515",outlineWidth:0,shadowColor:"#000000",shadowBlur:5,shadowOffsetX:1,shadowOffsetY:2}},manga:{label:"Manga Cover",title:{fontFamily:"Georgia",color:"#111111",outlineColor:"#ffffff",outlineWidth:1,shadowColor:"#ffffff",shadowBlur:0,shadowOffsetX:2,shadowOffsetY:2},subtitle:{fontFamily:"Courier New",color:"#111111",outlineColor:"#ffffff",outlineWidth:0,shadowColor:"#ffffff",shadowBlur:0,shadowOffsetX:0,shadowOffsetY:1}}};const preset=presets[templateId]||presets.poster,width=dimensions==="square"?1080:dimensions==="banner"?1920:1080,height=dimensions==="square"?1080:dimensions==="banner"?1080:dimensions==="story"?1920:1350;if(state.storageRecoveryPending){status.textContent="Saved project is protected. Choose Save before replacing it with a poster.";return;}if(state.dirty&&!window.confirm("Replace the current canvas with a new poster? Export or save your current work first if needed."))return;const next=createDocument(width,height),bg=createImageLayer("Poster background",width,height,posterSvgSource(width,height,background,accent,templateId)),titleLayer=createTextLayer("Poster title",{value:title||"YOUR HEADLINE",x:width*.5,y:height*.34,fontSize:Math.round(height*.085),...preset.title,align:"center",fontWeight:"bold"}),subtitleLayer=createTextLayer("Poster subtitle",{value:subtitle||"ADD YOUR DETAILS HERE",x:width*.5,y:height*.78,fontSize:Math.round(height*.032),...preset.subtitle,align:"center",fontWeight:"bold"});next.layers=[bg,titleLayer,subtitleLayer];state.document=next;state.history.reset(next);state.textPreview=null;setSelection([titleLayer.id],titleLayer.id);state.viewport=createViewport();state.dirty=true;refreshDocument(preset.label+" template created");persistDocument();document.querySelector("#poster-template-dialog").close();}
-const posterForm=document.querySelector("#poster-template-form");document.querySelector("#poster-templates").addEventListener("click",()=>document.querySelector("#poster-template-dialog").showModal());document.querySelector("#cancel-poster-template").addEventListener("click",()=>document.querySelector("#poster-template-dialog").close());posterForm.addEventListener("submit",event=>{event.preventDefault();createPosterTemplate(document.querySelector("#poster-template-style").value,document.querySelector("#poster-background-color").value,document.querySelector("#poster-accent-color").value,document.querySelector("#poster-title-value").value,document.querySelector("#poster-subtitle-value").value,document.querySelector("#poster-size").value);});
+function posterSvgSource(width,height,background,accent,style){return svgDataUrl(createPosterSvg(width,height,background,accent,style));}
+let activeCreativeTab="covers";
+let selectedCreativeTemplateId="anime-awakening";
+function validCreativeColor(value,fallback){return typeof value==="string"&&/^#[0-9a-fA-F]{6}$/.test(value)?value:fallback;}
+function openCreativeStudio(){
+  if(toolboxDialog?.open)toolboxDialog.close();
+  const dialog=document.querySelector("#creative-studio-dialog");
+  if(!dialog)return;
+  if(!dialog.open)dialog.showModal();
+  setCreativeTab("covers");
+  renderCreativeCatalog();
+}
+function setCreativeTab(tab){
+  activeCreativeTab=["covers","stickers","words","packs"].includes(tab)?tab:"covers";
+  document.querySelectorAll("[data-creative-tab]").forEach(button=>{
+    const active=button.dataset.creativeTab===activeCreativeTab;
+    button.setAttribute("aria-selected",String(active));
+    button.classList.toggle("is-active",active);
+  });
+  document.querySelector("#creative-template-settings").hidden=activeCreativeTab!=="covers";
+  document.querySelector("#creative-word-field").hidden=activeCreativeTab!=="words";
+  document.querySelector("#creative-create-cover").hidden=activeCreativeTab!=="covers";
+  document.querySelector("#creative-customize-template").hidden=activeCreativeTab!=="covers";
+  document.querySelector("#creative-catalog-search").placeholder=activeCreativeTab==="covers"?"Buscar anime, galaxia, sakura…":activeCreativeTab==="stickers"?"Buscar flor, planeta, brillo…":activeCreativeTab==="words"?"Buscar estilo de letra…":"Buscar conjunto de estilo…";
+}
+function selectCreativeTemplate(id,refresh=true){
+  const template=getCreativeTemplate(id);
+  if(!template)return false;
+  selectedCreativeTemplateId=template.id;
+  document.querySelector("#creative-cover-title").value=template.defaultTitle;
+  document.querySelector("#creative-cover-subtitle").value=template.defaultSubtitle;
+  document.querySelector("#creative-cover-background").value=template.background;
+  document.querySelector("#creative-cover-accent").value=template.accent;
+  document.querySelector("#creative-studio-status").textContent="Seleccionada: "+template.label+". Cambia el título, los colores o el formato y crea la portada.";
+  if(refresh)renderCreativeCatalog();
+  return true;
+}
+function createCreativeCardPreview(tab,item){
+  const preview=document.createElement("span");
+  preview.className="creative-card-preview creative-card-preview-"+tab;
+  if(tab==="covers"){
+    const image=document.createElement("img");image.alt="";image.loading="lazy";image.src=svgDataUrl(createPosterSvg(360,460,item.background,item.accent,item.id));
+    const stamp=document.createElement("span");stamp.className="creative-cover-stamp";stamp.textContent="ANIMEART ORIGINAL";
+    const sample=document.createElement("span");sample.className="creative-cover-sample";sample.textContent=item.defaultTitle;
+    preview.append(image,stamp,sample);
+  }else if(tab==="stickers"){
+    const checker=document.createElement("span");checker.className="creative-sticker-checker";
+    const image=document.createElement("img");image.alt="";image.loading="lazy";image.src=svgDataUrl(createStickerSvg(item.id));checker.append(image);preview.append(checker);
+  }else if(tab==="words"){
+    const style=item.style,sample=document.createElement("span");sample.className="creative-word-sample";sample.textContent=item.sample;
+    sample.style.color=style.color;sample.style.fontFamily=style.fontFamily;
+    sample.style.webkitTextStroke=Math.max(1,Math.min(4,style.outlineWidth/2))+"px "+style.outlineColor;
+    sample.style.textShadow=style.shadowOffsetX+"px "+style.shadowOffsetY+"px "+Math.max(1,style.shadowBlur/2)+"px "+style.shadowColor;
+    const tag=document.createElement("span");tag.className="creative-word-tag";tag.textContent="TEXTO EDITABLE";preview.append(sample,tag);
+  }else{
+    const title=document.createElement("span");title.className="creative-pack-title";title.textContent=item.title;
+    const image=document.createElement("img");image.alt="";image.loading="lazy";image.src=svgDataUrl(createStickerSvg(item.stickerId));
+    const palette=document.createElement("span");palette.className="creative-pack-palette";
+    item.colors.forEach(color=>{const swatch=document.createElement("i");swatch.style.background=color;palette.append(swatch);});
+    preview.append(title,image,palette);
+  }
+  return preview;
+}
+function renderCreativeCatalog(){
+  const grid=document.querySelector("#creative-catalog-grid");if(!grid)return;grid.replaceChildren();
+  const data={covers:CREATIVE_TEMPLATES,stickers:STICKER_CATALOG,words:WORD_ART_PRESETS,packs:STYLE_PACKS};
+  const query=document.querySelector("#creative-catalog-search").value.trim().toLocaleLowerCase();
+  const items=data[activeCreativeTab].filter(item=>{
+    const haystack=[item.label,item.category,item.description,item.keywords,item.sample,item.title,item.subtitle].filter(Boolean).join(" ").toLocaleLowerCase();
+    return !query||haystack.includes(query);
+  });
+  const actionName={covers:"select-template",stickers:"add-sticker",words:"add-word",packs:"apply-pack"}[activeCreativeTab];
+  items.forEach(item=>{
+    const card=document.createElement("button");card.type="button";card.className="creative-card creative-card-"+activeCreativeTab;
+    card.dataset.creativeAction=actionName;card.dataset.itemId=item.id;
+    card.setAttribute("aria-label",item.label+" · "+({covers:"Seleccionar portada",stickers:"Añadir sticker como capa",words:"Añadir palabra decorativa editable",packs:"Aplicar conjunto de capas"}[activeCreativeTab]));
+    const selected=activeCreativeTab==="covers"&&item.id===selectedCreativeTemplateId;
+    card.setAttribute("aria-pressed",String(selected));card.classList.toggle("is-selected",selected);
+    card.append(createCreativeCardPreview(activeCreativeTab,item));
+    const caption=document.createElement("span");caption.className="creative-card-caption";
+    const heading=document.createElement("strong");heading.textContent=item.label;
+    const description=document.createElement("small");description.textContent=item.description;
+    const action=document.createElement("span");action.className="creative-card-action-label";
+    action.textContent={covers:selected?"✓ Seleccionada":"Usar portada",stickers:"＋ Añadir sticker",words:"＋ Añadir título editable",packs:"＋ Añadir conjunto"}[activeCreativeTab];
+    caption.append(heading,description,action);card.append(caption);
+    card.addEventListener("click",()=>{
+      if(activeCreativeTab==="covers")selectCreativeTemplate(item.id);
+      else if(activeCreativeTab==="stickers")addCreativeStickerLayer(item.id);
+      else if(activeCreativeTab==="words")addCreativeWordArt(item.id);
+      else applyCreativeStylePack(item.id);
+    });
+    grid.append(card);
+  });
+  if(!items.length){const empty=document.createElement("p");empty.className="creative-catalog-empty";empty.textContent="No encontramos diseños con esa búsqueda. Prueba otra palabra.";grid.append(empty);}
+}
+function commitCreativeLayers(layers,message){
+  if(state.storageRecoveryPending){
+    const warning="El proyecto guardado está protegido. Pulsa Guardar antes de añadir elementos.";
+    status.textContent=warning;document.querySelector("#creative-studio-status").textContent=warning;return false;
+  }
+  if(!Array.isArray(layers)||!layers.length)return false;
+  const before=cloneDocument(state.document);let next=state.document;
+  for(const layer of layers){next=addLayer(next,layer);if(!next){status.textContent="No se pudo añadir el elemento al proyecto.";return false;}}
+  state.document=next;state.textPreview=null;
+  setSelection([layers[layers.length-1].id],layers[layers.length-1].id);
+  state.history.record(before,next);refreshDocument(message);persistDocument();
+  status.textContent=message;document.querySelector("#creative-studio-status").textContent=message;return true;
+}
+function createCreativeStickerLayer(id,position="center",customName=""){
+  const sticker=getSticker(id);if(!sticker)return null;
+  const width=Math.max(320,Number(state.document.width)||canvas.width||640);
+  const height=Math.max(240,Number(state.document.height)||canvas.height||480);
+  const size=Math.max(96,Math.min(360,Math.round(Math.min(width,height)*(position==="pack"?.23:.31))));
+  const scale=size/256,layer=createImageLayer(customName||("Sticker · "+sticker.label),256,256,svgDataUrl(createStickerSvg(id)));
+  const targetX=position==="pack"?width*.78:width*.5,targetY=position==="pack"?height*.24:height*.5;
+  layer.transform={x:(targetX-width/2)+scale*(width/2-128),y:(targetY-height/2)+scale*(height/2-128),scale,rotation:0};
+  return layer;
+}
+function addCreativeStickerLayer(id){
+  const sticker=getSticker(id),layer=createCreativeStickerLayer(id);
+  if(!sticker||!layer)return false;
+  return commitCreativeLayers([layer],"Sticker añadido como una capa independiente. Puedes moverlo, girarlo, cambiar su tamaño o eliminarlo.");
+}
+function addCreativeWordArt(id){
+  const preset=getWordArtPreset(id);if(!preset)return false;
+  const width=Math.max(320,Number(state.document.width)||canvas.width||640),height=Math.max(240,Number(state.document.height)||canvas.height||480);
+  const custom=document.querySelector("#creative-custom-word").value.trim();
+  const layer=createTextLayer("Título · "+preset.label,{value:custom||preset.sample,x:Math.round(width/2),y:Math.round(height*.52),fontSize:Math.max(32,Math.min(180,Math.round(height*.13))),...preset.style,align:"center"});
+  return commitCreativeLayers([layer],"Título añadido como texto editable. Selecciónalo para cambiar la frase, la letra y los efectos.");
+}
+function applyCreativeStylePack(id){
+  const pack=getStylePack(id);if(!pack)return false;
+  const titlePreset=getWordArtPreset(pack.titlePreset),subtitlePreset=getWordArtPreset(pack.subtitlePreset);
+  const sticker=createCreativeStickerLayer(pack.stickerId,"pack","Conjunto · "+pack.label+" · Sticker");
+  if(!titlePreset||!subtitlePreset||!sticker)return false;
+  const width=Math.max(320,Number(state.document.width)||canvas.width||640),height=Math.max(240,Number(state.document.height)||canvas.height||480);
+  const title=createTextLayer("Conjunto · "+pack.label+" · Título",{value:pack.title,x:Math.round(width/2),y:Math.round(height*.43),fontSize:Math.max(42,Math.min(168,Math.round(height*.13))),...titlePreset.style,align:"center"});
+  const subtitle=createTextLayer("Conjunto · "+pack.label+" · Subtítulo",{value:pack.subtitle,x:Math.round(width/2),y:Math.round(height*.56),fontSize:Math.max(22,Math.min(64,Math.round(height*.05))),...subtitlePreset.style,align:"center"});
+  return commitCreativeLayers([title,subtitle,sticker],"Conjunto añadido en 3 capas editables: título, subtítulo y sticker. Puedes ordenarlas por separado.");
+}
+function createPosterTemplate(id,background,accent,title,subtitle,dimensions){
+  const template=getCreativeTemplate(id)||getCreativeTemplate("poster"),safeBackground=validCreativeColor(background,template.background),safeAccent=validCreativeColor(accent,template.accent);
+  const width=dimensions==="square"?1080:dimensions==="banner"?1920:1080,height=dimensions==="square"?1080:dimensions==="banner"?1080:dimensions==="story"?1920:1350;
+  if(state.storageRecoveryPending){status.textContent="El proyecto guardado está protegido. Pulsa Guardar antes de reemplazarlo con una portada.";return false;}
+  if(state.dirty&&!window.confirm("¿Reemplazar el lienzo actual por una portada nueva? Guarda o exporta tu trabajo antes si lo necesitas."))return false;
+  const next=createDocument(width,height),legacy=["poster","comic","manga"].includes(template.id);
+  const bg=createImageLayer(legacy?"Poster background":"Fondo · "+template.label,width,height,posterSvgSource(width,height,safeBackground,safeAccent,template.id));
+  const heading=createTextLayer(legacy?"Poster title":"Título · "+template.label,{value:String(title||template.defaultTitle).slice(0,180),x:width*.5,y:height*.34,fontSize:Math.round(height*.085),...template.titleStyle,align:"center",fontWeight:"bold"});
+  const sub=createTextLayer(legacy?"Poster subtitle":"Subtítulo · "+template.label,{value:String(subtitle||template.defaultSubtitle).slice(0,240),x:width*.5,y:height*.78,fontSize:Math.round(height*.032),...template.subtitleStyle,align:"center",fontWeight:"bold"});
+  next.layers=[bg,heading,sub];state.document=next;state.history.reset(next);state.textPreview=null;
+  setSelection([heading.id],heading.id);state.viewport=createViewport();state.dirty=true;
+  refreshDocument("Portada creada: "+template.label+". Fondo, título y subtítulo son capas editables.");persistDocument();
+  document.querySelector("#poster-template-dialog")?.close();document.querySelector("#creative-studio-dialog")?.close();return true;
+}
+document.querySelectorAll("[data-creative-tab]").forEach(button=>button.addEventListener("click",()=>{setCreativeTab(button.dataset.creativeTab);renderCreativeCatalog();}));
+document.querySelector("#creative-catalog-search")?.addEventListener("input",renderCreativeCatalog);
+document.querySelector("#creative-studio-open")?.addEventListener("click",openCreativeStudio);
+document.querySelector("#quick-open-creative-studio")?.addEventListener("click",openCreativeStudio);
+document.querySelector("#creative-studio-x")?.addEventListener("click",()=>document.querySelector("#creative-studio-dialog")?.close());
+document.querySelector("#creative-studio-close")?.addEventListener("click",()=>document.querySelector("#creative-studio-dialog")?.close());
+document.querySelector("#creative-create-cover")?.addEventListener("click",()=>createPosterTemplate(selectedCreativeTemplateId,document.querySelector("#creative-cover-background").value,document.querySelector("#creative-cover-accent").value,document.querySelector("#creative-cover-title").value,document.querySelector("#creative-cover-subtitle").value,document.querySelector("#creative-cover-size").value));
+document.querySelector("#creative-customize-template")?.addEventListener("click",()=>{
+  const template=getCreativeTemplate(selectedCreativeTemplateId)||getCreativeTemplate("anime-awakening");
+  document.querySelector("#creative-studio-dialog")?.close();
+  document.querySelector("#poster-template-style").value=template.id;
+  document.querySelector("#poster-background-color").value=document.querySelector("#creative-cover-background").value;
+  document.querySelector("#poster-accent-color").value=document.querySelector("#creative-cover-accent").value;
+  document.querySelector("#poster-title-value").value=document.querySelector("#creative-cover-title").value;
+  document.querySelector("#poster-subtitle-value").value=document.querySelector("#creative-cover-subtitle").value;
+  document.querySelector("#poster-size").value=document.querySelector("#creative-cover-size").value;
+  document.querySelector("#poster-template-dialog")?.showModal();
+});
+const posterForm=document.querySelector("#poster-template-form");
+document.querySelector("#poster-templates").addEventListener("click",()=>{if(!document.querySelector("#poster-template-dialog").open)document.querySelector("#poster-template-dialog").showModal();});
+document.querySelector("#cancel-poster-template").addEventListener("click",()=>document.querySelector("#poster-template-dialog").close());
+posterForm.addEventListener("submit",event=>{event.preventDefault();createPosterTemplate(document.querySelector("#poster-template-style").value,document.querySelector("#poster-background-color").value,document.querySelector("#poster-accent-color").value,document.querySelector("#poster-title-value").value,document.querySelector("#poster-subtitle-value").value,document.querySelector("#poster-size").value);});
+
 
 function createNewDocumentFromForm() {
   const width = Number(widthInput.value);
