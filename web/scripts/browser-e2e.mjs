@@ -1520,6 +1520,7 @@ try {
   const layerCountBeforeShape = await evaluate('document.querySelectorAll("#layers li").length');
   await click('[data-edit-goal="shapes"]');
   await waitFor('document.querySelector("#shape-maker-dialog")?.open === true');
+  assert(await evaluate('(() => { const r=document.querySelector("#shape-maker-dialog").getBoundingClientRect(); return r.width>=innerWidth-2 && r.height>=innerHeight-2; })()'), "large shape editor fills the mobile viewport");
   await evaluate('(() => { document.querySelector("#shape-maker-kind").value="star"; document.querySelector("#shape-maker-fill").value="#ff4fd8"; document.querySelector("#shape-maker-shadow-blur").value="12"; document.querySelector("#shape-maker-fill").dispatchEvent(new Event("input",{bubbles:true})); document.querySelector("#shape-maker-shadow-blur").dispatchEvent(new Event("input",{bubbles:true})); })()');
   assert(await evaluate('document.querySelector("#shape-maker-preview").src.startsWith("data:image/svg+xml")'), "shape style window previews an SVG figure locally");
   await click("#shape-maker-apply");
@@ -1543,7 +1544,7 @@ try {
   await waitFor('document.body.classList.contains("mobile-tools-open")');
   await click('[data-edit-goal="draw"]');
   await waitFor('document.querySelector("#censor-light-dialog")?.open === true');
-  assert(await evaluate('document.querySelector("#censor-dialog-title").textContent.includes("Pintar píxeles") && document.querySelector("#censor-light-dialog").getBoundingClientRect().width >= innerWidth - 2'),
+  assert(await evaluate('(() => { const r=document.querySelector("#censor-light-dialog").getBoundingClientRect(); return document.querySelector("#censor-dialog-title").textContent.includes("Pintar píxeles") && r.width >= innerWidth - 2 && r.height >= innerHeight - 2; })()'),
     "Paint opens a focused full-screen pixel studio with the real image preview");
   await evaluate('(() => { const c=document.querySelector("#censor-image-preview"); const r=c.getBoundingClientRect(); const opts={bubbles:true,cancelable:true,pointerId:71,pointerType:"touch",clientX:r.left+r.width*.35,clientY:r.top+r.height*.42}; c.dispatchEvent(new PointerEvent("pointerdown",opts)); c.dispatchEvent(new PointerEvent("pointermove",{...opts,clientX:opts.clientX+Math.max(8,r.width*.08),clientY:opts.clientY+Math.max(8,r.height*.06)})); c.dispatchEvent(new PointerEvent("pointerup",opts)); })()');
   assert(await evaluate('document.querySelector("#censor-dialog-undo").disabled === false'), "Paint studio captures a reversible preview stroke");
@@ -1572,11 +1573,11 @@ try {
   await waitFor('document.body.classList.contains("mobile-tools-open")');
   await click('[data-edit-goal="crop"]');
   await waitFor('document.querySelector("#crop-mode-dialog")?.open === true');
-  assert(await evaluate('document.querySelector("#crop-selected-image").getBoundingClientRect().height>0 && document.querySelector("#crop-whole-canvas").getBoundingClientRect().height>0'),
+  assert(await evaluate('(() => { const d=document.querySelector("#crop-mode-dialog").getBoundingClientRect(); return d.width>=innerWidth-2 && d.height>=innerHeight-2 && document.querySelector("#crop-selected-image").getBoundingClientRect().height>0 && document.querySelector("#crop-whole-canvas").getBoundingClientRect().height>0; })()'),
     "crop chooser offers single-image crop and whole-composition crop separately");
   await click("#crop-selected-image");
   await waitFor('document.querySelector("#image-edit-dialog")?.open === true');
-  assert(await evaluate('document.querySelector("#image-edit-title").textContent.includes("recorte") || document.querySelector("#image-edit-title").textContent.includes("Recorte")'),
+  assert(await evaluate('(() => { const d=document.querySelector("#image-edit-dialog").getBoundingClientRect(); return (document.querySelector("#image-edit-title").textContent.includes("recorte") || document.querySelector("#image-edit-title").textContent.includes("Recorte")) && d.width>=innerWidth-2 && d.height>=innerHeight-2; })()'),
     "single-image crop opens the original per-image pixel crop workspace");
   await click("#cancel-image-edit");
   await waitFor('document.querySelector("#image-edit-dialog").open === false');
@@ -1588,7 +1589,7 @@ try {
   const beforeCompositionCrop = await readDocument();
   await click("#crop-whole-canvas");
   await waitFor('document.querySelector("#canvas-crop-dialog")?.open === true', 15000);
-  assert(await evaluate('document.querySelector("#canvas-crop-preview").width>0 && document.querySelector("#canvas-crop-preview").height>0 && document.querySelector("#canvas-crop-preview").getBoundingClientRect().width>100'),
+  assert(await evaluate('(() => { const d=document.querySelector("#canvas-crop-dialog").getBoundingClientRect(); return document.querySelector("#canvas-crop-preview").width>0 && document.querySelector("#canvas-crop-preview").height>0 && document.querySelector("#canvas-crop-preview").getBoundingClientRect().width>100 && d.width>=innerWidth-2 && d.height>=innerHeight-2; })()'),
     "composition crop preview shows the whole layered document, not only the selected image");
   await saveScreenshot("animeart-mobile-canvas-crop.png");
   const requestedCompositionCrop = {
@@ -1622,7 +1623,7 @@ try {
   await evaluate('document.querySelector("#text-edit-dialog").showModal = undefined');
   await click('.mobile-touch-dock [data-touch-action="add-text"]');
   await waitFor('document.querySelector("#text-edit-dialog")?.open === true');
-  assert(await evaluate('(() => { const d=document.querySelector("#text-edit-dialog"); const t=document.querySelector("#text-content"); const r=t.getBoundingClientRect(); const dock=document.querySelector(".mobile-touch-dock").getBoundingClientRect(); const buttons=[...document.querySelectorAll(".toolbar .tool[data-tool]")]; const select=buttons.find(button=>button.dataset.tool==="select"); const brush=buttons.find(button=>button.dataset.tool==="brush"); return d.parentElement===document.body && r.width>160 && r.height>=60 && !t.disabled && getComputedStyle(d).position==="fixed" && d.getBoundingClientRect().bottom<=dock.top+1 && select?.getAttribute("aria-pressed")==="true" && brush?.getAttribute("aria-pressed")==="false"; })()'),
+  assert(await evaluate('(() => { const d=document.querySelector("#text-edit-dialog"); const bounds=d.getBoundingClientRect(); const t=document.querySelector("#text-content"); const r=t.getBoundingClientRect(); const buttons=[...document.querySelectorAll(".toolbar .tool[data-tool]")]; const select=buttons.find(button=>button.dataset.tool==="select"); const brush=buttons.find(button=>button.dataset.tool==="brush"); return d.parentElement===document.body && r.width>160 && r.height>=60 && !t.disabled && getComputedStyle(d).position==="fixed" && bounds.top<=1 && bounds.left<=1 && bounds.width>=innerWidth-2 && bounds.height>=innerHeight-2 && select?.getAttribute("aria-pressed")==="true" && brush?.getAttribute("aria-pressed")==="false"; })()'),
     "mobile Text opens a reachable Canva-style editor above the dock and switches away from brush mode");
   const mobileTypographyLayer = (await readDocument()).layers.at(-1);
   assert(mobileTypographyLayer?.contentType === "text", "mobile typography creates a normal editable text layer");
