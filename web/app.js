@@ -2234,7 +2234,7 @@ function finishTransformInteraction(cancelled = false) {
   if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
 }
 
-function keepLayerTransformVisible(layer, transform) {
+function keepImageTransformVisible(layer, transform) {
   const movableImage = layer?.contentType === "image" && Boolean(layer.image);
   const movableText = layer?.contentType === "text" && Boolean(layer.text);
   if ((!movableImage && !movableText) || !transform) return transform;
@@ -2291,7 +2291,7 @@ function updateTransformPreview(event) {
   if (interaction.type === "move") {
     preview.x = interaction.beforeTransform.x + currentDocument.x - interaction.startDocument.x;
     preview.y = interaction.beforeTransform.y + currentDocument.y - interaction.startDocument.y;
-    Object.assign(preview, keepLayerTransformVisible(
+    Object.assign(preview, keepImageTransformVisible(
       state.document.layers.find(layer => layer.id === interaction.layerId),
       preview
     ));
