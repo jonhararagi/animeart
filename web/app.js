@@ -743,6 +743,17 @@ function drawNow() {
   ctx.clearRect(0, 0, rect.width, rect.height);
   ctx.save();
   applyViewport();
+  if (window.__ANIMEART_E2E_DIAGNOSTICS__) {
+    const frameSize = canvasSize();
+    window.__ANIMEART_DOCUMENT_FRAME_DIAGNOSTICS__ = {
+      topLeft: documentToScreenPoint({ x: 0, y: 0 }, state.document, state.viewport, frameSize),
+      topRight: documentToScreenPoint({ x: state.document.width, y: 0 }, state.document, state.viewport, frameSize),
+      bottomLeft: documentToScreenPoint({ x: 0, y: state.document.height }, state.document, state.viewport, frameSize),
+      bottomRight: documentToScreenPoint({ x: state.document.width, y: state.document.height }, state.document, state.viewport, frameSize),
+      width: state.document.width,
+      height: state.document.height
+    };
+  }
   drawDocument({
     context: ctx,
     document: state.document,
@@ -5429,7 +5440,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v36";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v37";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
