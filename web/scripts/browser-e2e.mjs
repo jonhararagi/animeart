@@ -1673,18 +1673,19 @@ try {
   await evaluate('document.body.classList.remove("mobile-layers-open")');
   await waitFor('!document.body.classList.contains("mobile-layers-open")');
 
-  // Zoom out first so the visible workspace has a pasteboard around the full document.
-  // At fit-to-width on a phone, left/right edges coincide with the viewport and cannot
-  // demonstrate pixels outside the page because that area would be off-screen.
-  const pasteboardZoomAnchor = await evaluate('(() => { const r=document.querySelector("#canvas").getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}; })()');
-  for (let index = 0; index < 3; index += 1) {
-    await cdp("Input.dispatchMouseEvent", { type: "mouseWheel", x: pasteboardZoomAnchor.x, y: pasteboardZoomAnchor.y, deltaX: 0, deltaY: 120 });
-    await sleep(100);
-  }
-  const pasteboardMargins = await evaluate('(() => { const f=window.__ANIMEART_DOCUMENT_FRAME_DIAGNOSTICS__; const r=document.querySelector("#canvas").getBoundingClientRect(); return {left:f?.topLeft?.x,right:f?.topRight?.x,canvasWidth:r.width}; })()');
-  assert(Number.isFinite(pasteboardMargins.left) && pasteboardMargins.left > 18 &&
-    Number.isFinite(pasteboardMargins.right) && pasteboardMargins.right < pasteboardMargins.canvasWidth - 18,
-    "zooming out exposes a visible pasteboard beyond both horizontal document edges: " + JSON.stringify(pasteboardMargins));
+  // AA-CANVAS-FREE-MOVE-UX-001: use the explicit margin action instead of relying on hidden wheel zoom.
+  const transformBeforeMarginAction = await evaluate('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform)');
+  await click("#selection-mini-margin");
+  await waitFor('(() => { const f=window.__ANIMEART_DOCUMENT_FRAME_DIAGNOSTICS__; const r=document.querySelector("#canvas").getBoundingClientRect(); return f && f.topLeft.x > 8 && f.topLeft.y > 8 && f.topRight.x < r.width - 8 && f.bottomLeft.y < r.height - 8; })()');
+  const pasteboardMargins = await evaluate('(() => { const f=window.__ANIMEART_DOCUMENT_FRAME_DIAGNOSTICS__; const r=document.querySelector("#canvas").getBoundingClientRect(); return {left:f?.topLeft?.x,right:f?.topRight?.x,top:f?.topLeft?.y,bottom:f?.bottomLeft?.y,canvasWidth:r.width,canvasHeight:r.height}; })()');
+  assert(pasteboardMargins.left > 8 && pasteboardMargins.top > 8 &&
+    pasteboardMargins.right < pasteboardMargins.canvasWidth - 8 &&
+    pasteboardMargins.bottom < pasteboardMargins.canvasHeight - 8,
+    "Ver margen exposes usable pasteboard on all four sides: " + JSON.stringify(pasteboardMargins));
+  assert(await evaluate('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) === ' + JSON.stringify(transformBeforeMarginAction)),
+    "Ver margen changes only the viewport and leaves layer transforms untouched");
+  assert(await evaluate('document.querySelector("[data-frame-boundary-mode=free]").getAttribute("aria-pressed") === "true"'),
+    "Ver margen explicitly enables free movement");
 
   // AA-CANVAS-FREE-MOVE-001: layer content may cross all four document edges.
   // Each move is reversed from the transformed object's actual center, so the

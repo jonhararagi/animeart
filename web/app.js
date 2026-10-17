@@ -4518,6 +4518,19 @@ document.querySelector("#selection-mini-fit")?.addEventListener("click", () => {
   if (!layer || layer.locked || layer.contentType !== "image" || !layer.image) return;
   document.querySelector("#fit-image-to-canvas")?.click();
 });
+document.querySelector("#selection-mini-margin")?.addEventListener("click", () => {
+  // Free movement needs visible pasteboard around the document, especially on phones
+  // where fit-to-width makes the page touch the viewport edges.
+  frameBoundaryMode = "free";
+  frameBoundaryButtons.forEach(button => {
+    button.setAttribute("aria-pressed", String(button.dataset.frameBoundaryMode === "free"));
+  });
+  state.viewport = { ...state.viewport, zoom: 0.8, panX: 0, panY: 0 };
+  redraw();
+  const message = "Movimiento libre activado. Vista centrada con margen para sacar y recuperar capas.";
+  if (window.matchMedia("(max-width: 920px)").matches) showMobileFeedback(message);
+  else status.textContent = message;
+});
 document.querySelector("#selection-mini-background")?.addEventListener("click", () => {
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "image" || !layer.image || (layer.locked && !layer.isBackground)) {

@@ -2639,11 +2639,11 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   body .selection-mini-actions button {
     display: grid !important;
     place-items: center !important;
-    flex: 0 0 42px !important;
-    width: 42px !important;
-    min-width: 42px !important;
-    height: 42px !important;
-    min-height: 42px !important;
+    flex: 0 0 44px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
     padding: 0 !important;
     border-radius: 12px !important;
     font-size: 0 !important;
@@ -2656,6 +2656,7 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   body #selection-mini-back::before { content: "↙"; }
   body #selection-mini-front::before { content: "↗"; }
   body #selection-mini-fit::before { content: "⤢"; }
+  body #selection-mini-margin::before { content: "↔"; }
   body #selection-mini-style::before { content: "✦"; }
   body #selection-mini-delete::before { content: "🗑"; }
   body .mobile-feedback {
