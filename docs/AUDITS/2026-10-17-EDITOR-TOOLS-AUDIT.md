@@ -63,4 +63,4 @@ Esta iteración agrega E2E para:
 - La aceptación táctil física en el Xiaomi `24116RACCG` continúa pendiente. Emulador y Chromium no se cuentan como prueba física.
 - La búsqueda externa de blogs o documentación interna pública de Canva/Picsart no se hizo en vivo en esta sesión; no se citan artículos inexistentes ni se atribuye a esos productos un algoritmo concreto.
 
-**Integración:** PR #89 sigue abierto. `main` no se modificó ni fusionó.
+**Integración verificada (2026-10-17):** PR #89 se fusionó por squash en `main`. Merge SHA: `28f51e8050c601a6edb45df17dab938dc140df77`. Web CI post-merge PASS: [run #39056009157](https://github.com/jonhararagi/animeart/actions/runs/39056009157). Android CI post-merge PASS: [run #39056009180](https://github.com/jonhararagi/animeart/actions/runs/39056009180). APK de `main`: [artefacto #12109711866](https://github.com/jonhararagi/animeart/actions/runs/39056009180/artifacts/12109711866), SHA-256 `a7f6f9c3b0c93201f6c9d8a3f5d1f2b8`.
