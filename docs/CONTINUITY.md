@@ -3297,3 +3297,44 @@ Corrección de inventario durante la integración: aunque la sincronización de 
 - Se añadió a `browser-e2e.mjs` un diagnóstico del marco y una comprobación real de alfa por encima del borde superior del documento; la prueba ya no depende solo de que la matriz de transformación cruce el marco. Hay que tomar el resultado de las CI ejecutadas sobre el HEAD final, no extrapolar el PASS anterior.
 - Aceptación física en Xiaomi `24116RACCG`: pendiente. La emulación de Chromium/Android no sustituye el ensayo con el dedo en el dispositivo.
 - TIMER: 1–2 horas estimadas para la corrección y la validación ampliada; el tiempo real no se ha medido.
+
+---
+
+## AA-FREE-MOVE-PREVIEW-001 — espacio de trabajo, marco y exportación (2026-10-17)
+
+**TIMER:** corrección inicial 1–2 horas estimadas. La extensión de E2E y validación adicional se ejecutó en el mismo ciclo de trabajo; el tiempo real total no se midió.
+
+**Rama:** `aa-free-move-preview-001`  
+**SHA de código y pruebas E2E:** `4d6f7b42b71dc5aed6161900b1cc13765382b188`  
+**PR:** [#89](https://github.com/jonhararagi/animeart/pull/89)  
+**Estado de integración:** PR abierto. `main` no modificado.
+
+### Comportamiento corregido
+
+- El área visible del espacio de trabajo y el marco del documento son límites distintos.
+- En modo Libre, las capas de imagen/texto pueden renderizar píxeles fuera del marco mientras sigan dentro de la zona visible del editor.
+- Fondos y trazos siguen restringidos al documento. La exportación conserva exactamente el tamaño del documento; mover una capa no cambia ni su transformación ni el tamaño exportado.
+- Los tiradores de selección se mantienen accesibles para recuperar capas fuera de pantalla.
+
+### Validación E2E final
+
+**Web CI: PASS**, [run #39047477079](https://github.com/jonhararagi/animeart/actions/runs/39047477079). En Chromium, el E2E amplía el espacio de trabajo alejando la vista y comprueba alfa real fuera de los cuatro bordes:
+- Superior: `alpha=255`.
+- Derecho: `alpha=255`.
+- Inferior: `alpha=207`.
+- Izquierdo: `alpha=255`.
+- El archivo exportado al mover la imagen fuera del marco sigue siendo PNG RGBA `640×480`, con transparencia y sin mutación de la transformación.
+- La prueba exige un margen real de pasteboard a los lados; sin alejar la vista en el ancho móvil, los bordes laterales coinciden con el viewport y el contenido estaría fuera de pantalla, no visible en el espacio de trabajo.
+
+**Android CI: PASS**, [run #39047477070](https://github.com/jonhararagi/animeart/actions/runs/39047477070). Build, verificación de recursos empaquetados, unit tests, lint, instrumentación y arranque offline completados. Evidencia de log: `Startup WebView confirmado` y `OFFLINE VALIDATION PASS`.
+
+**APK:** [artefacto Android #12106462830](https://github.com/jonhararagi/animeart/actions/runs/39047477070/artifacts/12106462830).  
+**SHA-256 del APK:** `f1bdb7995e375284ebae448d2f19b639f321a412cea8bd64ce2a1f582daa06fa`.  
+El SHA del código/PR es `4d6f7b42b71dc5aed6161900b1cc13765382b188`; el identificador que aparece en el nombre de la APK es `f4164cad812f69c5d9c6cb14a65ab302819cabb3`, usado por el checkout/compilación del PR. Son referencias distintas.
+
+### Investigación comparativa de editores
+
+**Pendiente de investigación externa con fuentes verificables.** No se debe afirmar que Canva o Picsart usan una implementación específica sin una publicación técnica o documentación pública que lo confirme. La solución aplicada a AnimeArt sigue un patrón general de editores de lienzo: transformación de capa independiente, área visible de trabajo/pasteboard, marco que delimita el arte final y recorte en el render/exportación, no en la transformación. La sesión actual no permitió hacer una búsqueda web general de blogs/documentación; por tanto no se registra ningún artículo como ya consultado.
+
+**Aceptación física pendiente:** arrastre real con dedo y recuperación de la capa en el Xiaomi `24116RACCG`. La prueba Chromium y el emulador Android no se consideran una prueba física de teléfono.
+
