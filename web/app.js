@@ -1437,6 +1437,329 @@ imageEditForm.addEventListener("submit", async event => {
   }
 });
 
+
+function hideMobileToolSheets() {
+  closeMobileContextPanel();
+  document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
+  mobileDock?.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+  mobileDock?.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
+}
+
+function openCropModeDialog() {
+  hideMobileToolSheets();
+  if (!cropModeDialog?.open) cropModeDialog?.showModal();
+}
+
+document.querySelector("#close-crop-mode")?.addEventListener("click", () => cropModeDialog?.close());
+document.querySelector("#crop-selected-image")?.addEventListener("click", () => {
+  cropModeDialog?.close();
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image) {
+    status.textContent = "Para recortar una imagen, seleccioná primero una capa de imagen. También podés elegir “Recortar lienzo completo”.";
+    return;
+  }
+  if (layer.locked) {
+    status.textContent = "La imagen está bloqueada. Desbloqueala desde Capas antes de recortar sus píxeles.";
+    return;
+  }
+  cropResizeButton?.click();
+});
+document.querySelector("#crop-whole-canvas")?.addEventListener("click", () => {
+  void openCanvasCropDialog();
+});
+
+function canvasCropPoint(event) {
+  if (!canvasCropPreview || !canvasCropDocument) return null;
+  const bounds = canvasCropPreview.getBoundingClientRect();
+  if (bounds.width <= 0 || bounds.height <= 0) return null;
+  return {
+    x: Math.max(0, Math.min(canvasCropDocument.width, (event.clientX - bounds.left) / bounds.width * canvasCropDocument.width)),
+    y: Math.max(0, Math.min(canvasCropDocument.height, (event.clientY - bounds.top) / bounds.height * canvasCropDocument.height))
+  };
+}
+
+function canvasCropFullRectangle() {
+  if (!canvasCropDocument) return { x: 0, y: 0, width: 1, height: 1 };
+  return { x: 0, y: 0, width: canvasCropDocument.width, height: canvasCropDocument.height };
+}
+
+function canvasCropIsFullRectangle(rectangle) {
+  return Boolean(canvasCropDocument && rectangle &&
+    rectangle.x === 0 && rectangle.y === 0 &&
+    rectangle.width === canvasCropDocument.width && rectangle.height === canvasCropDocument.height);
+}
+
+function updateCanvasCropFields() {
+  if (!canvasCropRectangle || !canvasCropDocument) return;
+  document.querySelector("#canvas-crop-x").value = String(canvasCropRectangle.x);
+  document.querySelector("#canvas-crop-y").value = String(canvasCropRectangle.y);
+  document.querySelector("#canvas-crop-width").value = String(canvasCropRectangle.width);
+  document.querySelector("#canvas-crop-height").value = String(canvasCropRectangle.height);
+  const full = canvasCropIsFullRectangle(canvasCropRectangle);
+  document.querySelector("#apply-canvas-crop").disabled = full;
+  canvasCropStatus.textContent = full
+    ? "Está seleccionado el lienzo completo. Arrastrá el marco o ajustá X, Y, ancho y alto para recortar."
+    : "Recorte seleccionado: " + canvasCropRectangle.width + " × " + canvasCropRectangle.height +
+      " px · " + canvasCropDocument.layers.length + " capas se conservarán.";
+}
+
+function drawCanvasCropPreview() {
+  if (!canvasCropContext || !canvasCropPreview || !canvasCropBase.width || !canvasCropBase.height ||
+      !canvasCropDocument || !canvasCropRectangle) return;
+  const width = canvasCropPreview.width, height = canvasCropPreview.height;
+  canvasCropContext.clearRect(0, 0, width, height);
+  canvasCropContext.drawImage(canvasCropBase, 0, 0, width, height);
+  const sx = width / canvasCropDocument.width;
+  const sy = height / canvasCropDocument.height;
+  const rectangle = {
+    x: canvasCropRectangle.x * sx,
+    y: canvasCropRectangle.y * sy,
+    width: canvasCropRectangle.width * sx,
+    height: canvasCropRectangle.height * sy
+  };
+  const right = rectangle.x + rectangle.width, bottom = rectangle.y + rectangle.height;
+  canvasCropContext.save();
+  canvasCropContext.fillStyle = "rgba(4, 7, 15, .60)";
+  canvasCropContext.fillRect(0, 0, width, rectangle.y);
+  canvasCropContext.fillRect(0, bottom, width, Math.max(0, height - bottom));
+  canvasCropContext.fillRect(0, rectangle.y, rectangle.x, rectangle.height);
+  canvasCropContext.fillRect(right, rectangle.y, Math.max(0, width - right), rectangle.height);
+  canvasCropContext.strokeStyle = "#fff";
+  canvasCropContext.lineWidth = Math.max(1.5, width / 500);
+  canvasCropContext.setLineDash([]);
+  canvasCropContext.strokeRect(rectangle.x, rectangle.y, rectangle.width, rectangle.height);
+  const handleSize = Math.max(6, Math.min(12, width / 45));
+  for (const [x, y] of [[rectangle.x, rectangle.y], [right, rectangle.y], [right, bottom], [rectangle.x, bottom]]) {
+    canvasCropContext.fillStyle = "#ffffff";
+    canvasCropContext.fillRect(x - handleSize / 2, y - handleSize / 2, handleSize, handleSize);
+    canvasCropContext.strokeStyle = "#17141e";
+    canvasCropContext.lineWidth = 1;
+    canvasCropContext.strokeRect(x - handleSize / 2, y - handleSize / 2, handleSize, handleSize);
+  }
+  canvasCropContext.restore();
+  updateCanvasCropFields();
+}
+
+function clampCanvasCropRect(rectangle) {
+  if (!canvasCropDocument) return null;
+  const width = canvasCropDocument.width, height = canvasCropDocument.height;
+  const cropWidth = Math.max(1, Math.min(width, Math.round(Number(rectangle.width) || 1)));
+  const cropHeight = Math.max(1, Math.min(height, Math.round(Number(rectangle.height) || 1)));
+  const x = Math.max(0, Math.min(width - cropWidth, Math.round(Number(rectangle.x) || 0)));
+  const y = Math.max(0, Math.min(height - cropHeight, Math.round(Number(rectangle.y) || 0)));
+  return { x, y, width: cropWidth, height: cropHeight };
+}
+
+function canvasCropRectangleFromDrag(start, current) {
+  const ratio = Number(document.querySelector("#canvas-crop-ratio").value);
+  let width = Math.abs(current.x - start.x);
+  let height = Math.abs(current.y - start.y);
+  if (Number.isFinite(ratio) && ratio > 0) {
+    if (width > height * ratio) height = width / ratio;
+    else width = height * ratio;
+  }
+  const x = current.x < start.x ? start.x - width : start.x;
+  const y = current.y < start.y ? start.y - height : start.y;
+  return clampCanvasCropRect({ x, y, width, height });
+}
+
+async function openCanvasCropDialog() {
+  hideMobileToolSheets();
+  if (cropModeDialog?.open) cropModeDialog.close();
+  const current = state.document;
+  if (!current || !Number.isInteger(current.width) || current.width < 1 ||
+      !Number.isInteger(current.height) || current.height < 1) {
+    status.textContent = "Primero creá un lienzo con ancho y alto válidos.";
+    return;
+  }
+  try {
+    canvasCropDocument = cloneDocument(current);
+    const maxPreviewDimension = 1400;
+    canvasCropPreviewScale = Math.min(1, maxPreviewDimension / Math.max(current.width, current.height));
+    const width = Math.max(1, Math.round(current.width * canvasCropPreviewScale));
+    const height = Math.max(1, Math.round(current.height * canvasCropPreviewScale));
+    canvasCropBase.width = width;
+    canvasCropBase.height = height;
+    canvasCropPreview.width = width;
+    canvasCropPreview.height = height;
+
+    // Load all image assets first so the preview actually represents the entire
+    // flattened composition rather than a thumbnail of only the selected layer.
+    await Promise.all(canvasCropDocument.layers
+      .filter(layer => layer.visible && layer.contentType === "image" && layer.image?.source)
+      .map(layer => new Promise((resolve, reject) => {
+        const cached = imageCache.get(layer.image.source);
+        if (cached?.complete && cached.naturalWidth > 0) { resolve(cached); return; }
+        const image = cached || new Image();
+        image.onload = () => { imageCache.set(layer.image.source, image); resolve(image); };
+        image.onerror = () => reject(new Error("No se pudo cargar una imagen de la composición para previsualizar el recorte."));
+        image.src = layer.image.source;
+        imageCache.set(layer.image.source, image);
+      })));
+
+    renderDocumentToCanvas(canvasCropDocument, canvasCropBase, ({ context, document: model }) => {
+      context.scale(canvasCropPreviewScale, canvasCropPreviewScale);
+      drawDocument({
+        context,
+        document: model,
+        center: documentCenter(model),
+        transformForLayer: layer => layer.transform
+      });
+    });
+    const insetX = Math.round(current.width * 0.06);
+    const insetY = Math.round(current.height * 0.06);
+    canvasCropRectangle = clampCanvasCropRect({
+      x: insetX, y: insetY,
+      width: Math.max(1, current.width - insetX * 2),
+      height: Math.max(1, current.height - insetY * 2)
+    });
+    document.querySelector("#canvas-crop-document-size").textContent =
+      current.width + " × " + current.height + " px · " + canvasCropDocument.layers.length + " capas";
+    document.querySelector("#canvas-crop-ratio").value = "";
+    if (!canvasCropDialog.open) canvasCropDialog.showModal();
+    drawCanvasCropPreview();
+  } catch (error) {
+    canvasCropDocument = null;
+    canvasCropRectangle = null;
+    status.textContent = error?.message || "No se pudo preparar la vista previa del lienzo completo.";
+  }
+}
+
+canvasCropPreview?.addEventListener("pointerdown", event => {
+  if (!canvasCropDocument || !canvasCropRectangle) return;
+  const point = canvasCropPoint(event);
+  if (!point) return;
+  const rectangle = canvasCropRectangle;
+  const bounds = canvasCropPreview.getBoundingClientRect();
+  const toleranceX = canvasCropDocument.width * 16 / Math.max(1, bounds.width);
+  const toleranceY = canvasCropDocument.height * 16 / Math.max(1, bounds.height);
+  const corners = {
+    nw: { x: rectangle.x, y: rectangle.y },
+    ne: { x: rectangle.x + rectangle.width, y: rectangle.y },
+    se: { x: rectangle.x + rectangle.width, y: rectangle.y + rectangle.height },
+    sw: { x: rectangle.x, y: rectangle.y + rectangle.height }
+  };
+  let mode = null;
+  for (const [name, corner] of Object.entries(corners)) {
+    if (Math.abs(point.x - corner.x) <= toleranceX && Math.abs(point.y - corner.y) <= toleranceY) {
+      mode = "resize-" + name;
+      break;
+    }
+  }
+  if (!mode && point.x >= rectangle.x && point.x <= rectangle.x + rectangle.width &&
+      point.y >= rectangle.y && point.y <= rectangle.y + rectangle.height) mode = "move";
+  if (!mode) mode = "new";
+  canvasCropDrag = { pointerId: event.pointerId, start: point, before: { ...rectangle }, mode };
+  event.preventDefault();
+  try { canvasCropPreview.setPointerCapture(event.pointerId); } catch {}
+});
+
+canvasCropPreview?.addEventListener("pointermove", event => {
+  const drag = canvasCropDrag;
+  if (!drag || drag.pointerId !== event.pointerId || !canvasCropDocument) return;
+  const point = canvasCropPoint(event);
+  if (!point) return;
+  if (drag.mode === "new") {
+    const next = canvasCropRectangleFromDrag(drag.start, point);
+    if (next && next.width > 2 && next.height > 2) canvasCropRectangle = next;
+  } else if (drag.mode === "move") {
+    canvasCropRectangle = clampCanvasCropRect({
+      ...drag.before,
+      x: drag.before.x + point.x - drag.start.x,
+      y: drag.before.y + point.y - drag.start.y
+    });
+  } else {
+    const name = drag.mode.slice("resize-".length);
+    const leftSide = name.endsWith("w");
+    const topSide = name.startsWith("n");
+    const anchorX = leftSide ? drag.before.x + drag.before.width : drag.before.x;
+    const anchorY = topSide ? drag.before.y + drag.before.height : drag.before.y;
+    const ratio = Number(document.querySelector("#canvas-crop-ratio").value);
+    let nextWidth = Math.max(1, Math.abs(point.x - anchorX));
+    let nextHeight = Math.max(1, Math.abs(point.y - anchorY));
+    if (Number.isFinite(ratio) && ratio > 0) {
+      if (nextWidth > nextHeight * ratio) nextHeight = nextWidth / ratio;
+      else nextWidth = nextHeight * ratio;
+    }
+    canvasCropRectangle = clampCanvasCropRect({
+      x: leftSide ? anchorX - nextWidth : anchorX,
+      y: topSide ? anchorY - nextHeight : anchorY,
+      width: nextWidth, height: nextHeight
+    });
+  }
+  drawCanvasCropPreview();
+});
+function finishCanvasCropDrag(event) {
+  if (!canvasCropDrag || canvasCropDrag.pointerId !== event.pointerId) return;
+  canvasCropDrag = null;
+  try { if (canvasCropPreview.hasPointerCapture(event.pointerId)) canvasCropPreview.releasePointerCapture(event.pointerId); } catch {}
+  drawCanvasCropPreview();
+}
+canvasCropPreview?.addEventListener("pointerup", finishCanvasCropDrag);
+canvasCropPreview?.addEventListener("pointercancel", finishCanvasCropDrag);
+
+for (const id of ["x", "y", "width", "height"]) {
+  document.querySelector("#canvas-crop-" + id)?.addEventListener("change", () => {
+    if (!canvasCropDocument || !canvasCropRectangle) return;
+    const candidate = {
+      x: Number(document.querySelector("#canvas-crop-x").value),
+      y: Number(document.querySelector("#canvas-crop-y").value),
+      width: Number(document.querySelector("#canvas-crop-width").value),
+      height: Number(document.querySelector("#canvas-crop-height").value)
+    };
+    if (![candidate.x, candidate.y, candidate.width, candidate.height].every(Number.isFinite)) return;
+    canvasCropRectangle = clampCanvasCropRect(candidate);
+    drawCanvasCropPreview();
+  });
+}
+document.querySelector("#canvas-crop-ratio")?.addEventListener("change", () => {
+  if (!canvasCropDocument || !canvasCropRectangle) return;
+  const ratio = Number(document.querySelector("#canvas-crop-ratio").value);
+  if (Number.isFinite(ratio) && ratio > 0) {
+    let width = canvasCropRectangle.width, height = canvasCropRectangle.height;
+    if (width / height > ratio) width = Math.round(height * ratio);
+    else height = Math.round(width / ratio);
+    canvasCropRectangle = clampCanvasCropRect({
+      x: canvasCropRectangle.x + Math.round((canvasCropRectangle.width - width) / 2),
+      y: canvasCropRectangle.y + Math.round((canvasCropRectangle.height - height) / 2),
+      width, height
+    });
+  }
+  drawCanvasCropPreview();
+});
+document.querySelector("#canvas-crop-reset")?.addEventListener("click", () => {
+  canvasCropRectangle = canvasCropFullRectangle();
+  drawCanvasCropPreview();
+});
+document.querySelector("#close-canvas-crop")?.addEventListener("click", () => canvasCropDialog?.close());
+document.querySelector("#cancel-canvas-crop")?.addEventListener("click", () => canvasCropDialog?.close());
+canvasCropDialog?.addEventListener("close", () => {
+  canvasCropDrag = null;
+  canvasCropDocument = null;
+  canvasCropRectangle = null;
+});
+document.querySelector("#apply-canvas-crop")?.addEventListener("click", () => {
+  if (!canvasCropRectangle || !canvasCropDocument || canvasCropIsFullRectangle(canvasCropRectangle)) return;
+  if (state.storageRecoveryPending) {
+    canvasCropStatus.textContent = "El proyecto está protegido. Guardalo primero antes de cambiar el lienzo.";
+    return;
+  }
+  const before = cloneDocument(state.document);
+  const next = cropDocumentCanvas(state.document, canvasCropRectangle);
+  if (!next) {
+    canvasCropStatus.textContent = "El marco de recorte no es válido. Ajustá X, Y, ancho y alto.";
+    return;
+  }
+  const selectedIds = [...state.selectedLayerIds];
+  const selectedId = selectedLayerExact()?.id || selectedIds.at(-1) || null;
+  state.document = next;
+  state.history.record(before, next);
+  setSelection(selectedIds.filter(id => next.layers.some(layer => layer.id === id)), selectedId && next.layers.some(layer => layer.id === selectedId) ? selectedId : null);
+  refreshDocument("✂️ Lienzo recortado: todas las capas se conservaron en el nuevo encuadre.");
+  persistDocument();
+  canvasCropDialog.close();
+});
+
 function getWorkingLayerAdjustments(layer) {
   if (state.adjustmentPreview?.layerId === layer?.id) return state.adjustmentPreview.values;
   return normalizeLayerAdjustments(layer?.adjustments);
