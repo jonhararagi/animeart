@@ -525,12 +525,23 @@ function drawDrawingLayer(layer, context, documentModel) {
   context.drawImage(raster, 0, 0, width, height);
 }
 
-function drawDocument({ context = ctx, document = state.document, center = documentCenter(document), transformForLayer = layerTransformForRender } = {}) {
+function drawDocument({ context = ctx, document = state.document, center = documentCenter(document), transformForLayer = layerTransformForRender, allowOffDocumentPreview = false } = {}) {
   const layersInRenderOrder = [...document.layers].sort((a, b) => Number(Boolean(b.isBackground)) - Number(Boolean(a.isBackground)));
   for (const layer of layersInRenderOrder) {
     if (!layer.visible) continue;
     const transform = transformForLayer(layer);
     context.save();
+    // The editable workspace may reveal image/text pixels beyond the document in Libre mode.
+    // Backgrounds and paint layers stay inside the page; export/crop renderers use the safe default.
+    const allowOutsideDocument = allowOffDocumentPreview &&
+      frameBoundaryMode === "free" &&
+      !layer.isBackground &&
+      (layer.contentType === "image" || layer.contentType === "text");
+    if (!allowOutsideDocument) {
+      context.beginPath();
+      context.rect(0, 0, Number(document.width) || 0, Number(document.height) || 0);
+      context.clip();
+    }
     const previewAdjustments = state.adjustmentPreview?.layerId === layer.id
       ? state.adjustmentPreview.values
       : layer.adjustments;
@@ -732,12 +743,12 @@ function drawNow() {
   ctx.clearRect(0, 0, rect.width, rect.height);
   ctx.save();
   applyViewport();
-  if (state.document.width > 0 && state.document.height > 0) {
-    ctx.beginPath();
-    ctx.rect(0, 0, state.document.width, state.document.height);
-    ctx.clip();
-  }
-  drawDocument({ context: ctx, document: state.document, center: documentCenter(state.document) });
+  drawDocument({
+    context: ctx,
+    document: state.document,
+    center: documentCenter(state.document),
+    allowOffDocumentPreview: frameBoundaryMode === "free"
+  });
   ctx.restore();
   if (!transparencyPreview) drawSelectionOverlay();
   updateRemoveImageControl();
@@ -5418,7 +5429,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v35";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v36";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
