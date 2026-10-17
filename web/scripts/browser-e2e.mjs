@@ -1646,10 +1646,10 @@ try {
   await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="e2e-mobile-import")', 10000);
   assert(await evaluate('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="e2e-mobile-import")'),
     "the canvas X removes the selected mobile image");
-  await click("#undo");
+  await click('.mobile-top-actions [data-mobile-top-action="undo"]');
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.transform) === ' + JSON.stringify(importedTransformAfterResize), 10000);
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="e2e-mobile-import")'),
-    "Undo restores the image removed with the canvas X and preserves its transform");
+    "mobile Undo restores the image removed with the canvas X and preserves its transform");
 
   // Zoom out first so the visible workspace has a pasteboard around the full document.
   // At fit-to-width on a phone, left/right edges coincide with the viewport and cannot
