@@ -36,6 +36,8 @@ jobs:
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           unzip -l "$APK" | grep -q "assets/web/domain/image-processing.mjs"
+          unzip -l "$APK" | grep -q "assets/web/domain/creative-catalog.mjs"
+          unzip -p "$APK" assets/web/index.html | grep -q 'id="creative-studio-dialog"'
           unzip -p "$APK" assets/web/index.html | grep -q 'id="crop-preview"'
           unzip -p "$APK" assets/web/index.html | grep -q 'id="add-text-layer"'
           unzip -p "$APK" assets/web/index.html | grep -q 'id="layer-adjustment-controls"'

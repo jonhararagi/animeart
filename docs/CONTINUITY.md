@@ -3402,3 +3402,27 @@ El workflow de publicación web terminó con el trabajo `deploy` omitido; no se 
 
 **Aceptación física pendiente:** arrastre real con el dedo, dibujo sobre el lienzo vacío, borrado tras zoom/pan y exportación en Xiaomi `24116RACCG`. Chromium y emulador no sustituyen esta prueba.
 
+
+
+---
+
+## AA-CREATIVE-STUDIO-001 — catálogo original de portadas, stickers y títulos (2026-10-17)
+
+**TIMER:** 2–4 horas estimadas para primera versión, validación E2E y empaquetado Android; el tiempo real no se midió.
+
+**Implementado en la rama de integración previa a su fusión en main.** El catálogo web/domain/creative-catalog.mjs contiene recursos vectoriales originales locales, sin dependencias de imágenes remotas ni servicios pagos.
+
+### Funciones
+- Estudio creativo accesible desde la barra de herramientas y desde Más → Estudio creativo en móvil, con cuatro pestañas: Portadas, Stickers, Palabras y Conjuntos.
+- Diez portadas configurables en formatos vertical, cuadrado, historia y banner. Incluyen Despertar shōnen, Sueño galáctico, Sakura nocturna, Neon idol, Manga explosivo, Romance celestial y Heroína lunar.
+- Doce stickers vectoriales originales que se añaden como capas de imagen independientes y conservan mover, escalar, rotar, opacidad, orden y deshacer.
+- Ocho estilos de palabras. El texto se almacena en capas editables con color, contorno y sombra reales; permite una frase personalizada.
+- Cuatro conjuntos que agregan título, subtítulo y sticker en tres capas separadas.
+- Una portada genera fondo vectorial + título + subtítulo en tres capas. Título y subtítulo continúan editables por separado.
+- La caché offline PWA se actualiza a v39 y Android CI verifica que el módulo creativo quede incluido en la APK.
+
+### Validación prevista
+- Pruebas unitarias para categorías, SVG originales, colores, estilos y referencias de conjuntos.
+- Chromium E2E agrega sticker, palabra decorativa y conjunto desde la interfaz real; comprueba capas independientes y deshacer; después crea una portada galáctica y verifica los textos editables.
+- Android CI verifica el módulo creativo dentro de la APK.
+- La aceptación física sigue pendiente en el Xiaomi 24116RACCG. Chromium y el emulador no sustituyen la prueba en teléfono real.
