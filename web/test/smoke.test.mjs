@@ -589,6 +589,11 @@ test("selected images can cross canvas edges and transparent new documents do no
   assert.match(app, /drawObjectSelectionHandle\(visibleHandles\.moveHandle, "move"\)/);
   assert.match(selection, /const moveHandle = centerOutsideViewport \? clampPoint\(center\) : null/);
   assert.match(html, /data-canvas-background="checkerboard"/);
+  assert.match(html, /data-frame-boundary-mode="free"/);
+  assert.match(html, /data-frame-boundary-mode="inside"/);
+  assert.match(app, /function setFrameBoundaryMode\(mode\)/);
+  assert.match(app, /Movimiento libre: las capas pueden salir del marco/);
+  assert.match(app, /Marco bloqueado: al mover capas/);
   assert.match(css, /\.canvas-wrap\[data-background="checkerboard"\] canvas/);
   assert.match(png, /createPngExportCanvas/);
 });
