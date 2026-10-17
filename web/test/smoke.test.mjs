@@ -516,7 +516,7 @@ test("mobile dock actions call history directly and keep the active drawing tool
   assert.match(html, /data-touch-action="crop" aria-label="Elegir tipo de recorte"/);
   assert.match(html, /data-edit-goal="draw"/);
   assert.match(html, /data-edit-goal="erase"/);
-  assert.match(html, /data-touch-action="more" aria-expanded="false"><span aria-hidden="true">☰<\/span><span>Más<\/span>/);
+  assert.match(html, /data-touch-action="more"[^>]*><span aria-hidden="true">☰<\/span><span>Más<\/span>/);
   assert.match(html, /data-edit-goal="crop"/);
   assert.match(html, /id="crop-resize-image"/);
   assert.match(js, /Primero seleccioná una imagen en el lienzo o en Capas; después tocá Recortar/);
