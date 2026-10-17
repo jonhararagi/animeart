@@ -742,6 +742,7 @@ try {
   await saveScreenshot("animeart-studio-meme-captions.png");
 
   const exportDocumentSize = await evaluate('(()=>{const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}");return {width:d.width,height:d.height};})()');
+  const pngFilesBeforeHdExport = readdirSync(downloadDir).filter(name => /^animeart(?: \(\d+\))?\.png$/.test(name));
   await evaluate('(()=>{const select=document.querySelector("#export-resolution");select.value="hd";select.dispatchEvent(new Event("change",{bubbles:true}));})()');
   assert(await evaluate('document.querySelector("#export-resolution").value==="hd" && document.querySelector("#mobile-export-resolution").value==="hd"'), "Normal/HD selector synchronizes desktop settings and mobile dock");
   await click("#export-png");
@@ -753,8 +754,16 @@ try {
   while (Date.now() < downloadDeadline && !statSync(downloadedPng, { throwIfNoEntry: false })) await sleep(100);
   const pngStat = statSync(downloadedPng, { throwIfNoEntry: false });
   assert(Boolean(pngStat && pngStat.size > 0), "real browser PNG export produces a non-empty downloaded PNG file");
-  const newestPngName = readdirSync(downloadDir).filter(name => /^animeart(?: \(\d+\))?\.png$/.test(name)).sort((left,right) => statSync(join(downloadDir,right)).mtimeMs-statSync(join(downloadDir,left)).mtimeMs)[0];
-  const hdPng = readFileSync(join(downloadDir,newestPngName || "animeart.png"));
+  const hdDownloadDeadline = Date.now() + 10000;
+  let newestPngName = null;
+  while (Date.now() < hdDownloadDeadline) {
+    newestPngName = readdirSync(downloadDir).find(name => /^animeart(?: \(\d+\))?\.png$/.test(name) && !pngFilesBeforeHdExport.includes(name)) || null;
+    if (newestPngName && statSync(join(downloadDir,newestPngName)).size > 0) break;
+    newestPngName = null;
+    await sleep(100);
+  }
+  assert(Boolean(newestPngName), "HD export creates a new PNG download rather than reusing an older file");
+  const hdPng = readFileSync(join(downloadDir,newestPngName));
   const hdWidth = hdPng.readUInt32BE(16), hdHeight = hdPng.readUInt32BE(20);
   const expectedHdScale = Math.max(1,Math.min(2,Math.sqrt(16_000_000/(exportDocumentSize.width*exportDocumentSize.height))));
   assert(hdWidth===Math.round(exportDocumentSize.width*expectedHdScale) && hdHeight===Math.round(exportDocumentSize.height*expectedHdScale), "HD export uses selected output dimensions without changing the editable document canvas");
