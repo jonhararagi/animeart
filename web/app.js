@@ -104,6 +104,7 @@ const backgroundRemovalContext = backgroundRemovalCanvas?.getContext("2d", { wil
 let backgroundRemovalSession = null;
 let backgroundRemovalSampleMode = false;
 let backgroundRemovalPointerId = null;
+let backgroundRemovalPan = null;
 let backgroundRemovalZoom = 1;
 const flipImageHorizontalButton = document.querySelector("#flip-image-horizontal");
 const flipImageVerticalButton = document.querySelector("#flip-image-vertical");
@@ -2128,8 +2129,8 @@ function keepImageTransformVisible(layer, transform) {
   const maxY = Math.max(...corners.map(point => point.y));
   const boxWidth = maxX - minX;
   const boxHeight = maxY - minY;
-  const minVisibleX = Math.min(48, documentWidth / 4);
-  const minVisibleY = Math.min(48, documentHeight / 4);
+  const minVisibleX = Math.min(160, Math.max(48, Math.min(documentWidth, boxWidth) * 0.3));
+  const minVisibleY = Math.min(160, Math.max(48, Math.min(documentHeight, boxHeight) * 0.3));
   let dx = 0;
   let dy = 0;
 
@@ -4051,6 +4052,7 @@ async function openBackgroundRemoval() {
     const original = backgroundRemovalContext.getImageData(0, 0, width, height);
     backgroundRemovalSession = { layerId: layer.id, source: layer.image.source, width, height, original, automatic: original, removalRequested: false, strokes: [], activeStroke: null };
     backgroundRemovalZoom = 1;
+    backgroundRemovalPan = null;
     backgroundRemovalSampleMode = false;
     document.querySelector("#background-removal-manual").checked = false;
     document.querySelector("#background-removal-color").value = "#ffffff";
@@ -4079,6 +4081,7 @@ document.querySelector("#cancel-background-removal").addEventListener("click", (
   backgroundRemovalSession = null;
   backgroundRemovalSampleMode = false;
   backgroundRemovalZoom = 1;
+  backgroundRemovalPan = null;
 });
 function setQuickBackgroundColor(color, tolerance, feather) {
   if (backgroundRemovalSession) backgroundRemovalSession.removalRequested = true;
@@ -4153,7 +4156,21 @@ backgroundRemovalCanvas.addEventListener("pointerdown", event => {
     renderBackgroundRemovalPreview(true);
     return;
   }
-  if (!document.querySelector("#background-removal-manual").checked) return;
+  if (!document.querySelector("#background-removal-manual").checked) {
+    if (backgroundRemovalZoom > 1.001) {
+      const wrap = document.querySelector(".background-removal-preview-wrap");
+      backgroundRemovalPan = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        scrollLeft: wrap.scrollLeft,
+        scrollTop: wrap.scrollTop
+      };
+      event.preventDefault();
+      backgroundRemovalCanvas.setPointerCapture(event.pointerId);
+    }
+    return;
+  }
   event.preventDefault();
   backgroundRemovalPointerId = event.pointerId;
   backgroundRemovalCanvas.setPointerCapture(event.pointerId);
@@ -4162,11 +4179,21 @@ backgroundRemovalCanvas.addEventListener("pointerdown", event => {
   renderBackgroundRemovalPreview(false);
 });
 backgroundRemovalCanvas.addEventListener("pointermove", event => {
+  if (backgroundRemovalPan?.pointerId === event.pointerId) {
+    const wrap = document.querySelector(".background-removal-preview-wrap");
+    wrap.scrollLeft = backgroundRemovalPan.scrollLeft - (event.clientX - backgroundRemovalPan.startX);
+    wrap.scrollTop = backgroundRemovalPan.scrollTop - (event.clientY - backgroundRemovalPan.startY);
+    return;
+  }
   if (!backgroundRemovalSession || backgroundRemovalPointerId !== event.pointerId || !backgroundRemovalSession.activeStroke) return;
   backgroundRemovalSession.activeStroke.points.push(backgroundRemovalPoint(event));
   renderBackgroundRemovalPreview(false);
 });
 function finishBackgroundRemovalStroke(event) {
+  if (backgroundRemovalPan?.pointerId === event.pointerId) {
+    backgroundRemovalPan = null;
+    return;
+  }
   if (backgroundRemovalPointerId !== event.pointerId) return;
   backgroundRemovalPointerId = null;
   if (backgroundRemovalSession) backgroundRemovalSession.activeStroke = null;
