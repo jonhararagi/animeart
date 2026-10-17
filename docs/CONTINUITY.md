@@ -3285,3 +3285,81 @@ Corrección de inventario durante la integración: aunque la sincronización de 
 - La tarjeta `Estilo del objeto` enruta al editor adecuado: texto reutiliza el editor tipográfico existente; formas SVG vuelven a su ventana de forma; imágenes exponen opacidad, máscara, brillo/contraste/saturación y acceso a reemplazo de color; las capas de trazos permiten cambiar el estilo de sus trazos existentes sin alterar borrados.
 - Las ventanas incluyen X, Cancelar y confirmación explícita. Los cambios del creador de formas no se aplican hasta confirmar; cancelar cierra sin sustituir la capa. Se actualiza la caché PWA a `animeart-web-shell-v28` y se incorporan tests estáticos/E2E que crean una estrella, confirman una capa y comprueban la cancelación del editor.
 - TIMER: 2–4 horas activas estimadas para esta iteración, más CI y prueba física. La aceptación depende de CI sobre el nuevo HEAD, revisión de la forma exportada y prueba táctil en Xiaomi 24116RACCG. No declarar PASS de CI ni validar físicamente antes de disponer de evidencia.
+
+## AA-FREE-MOVE-PREVIEW-001 — contenido visible fuera del marco (2026-10-17)
+
+- Rama de trabajo: `aa-free-move-preview-001`, PR #89. `main` permanece sin modificar mientras se valida la prueba ampliada.
+- Causa confirmada en código: `drawNow()` recortaba todo el render al rectángulo del documento después de `applyViewport()`. El modelo de capa podía moverse fuera del marco, pero los píxeles se descartaban en pantalla. Es coherente con el síntoma de que la transformación cambia pero la imagen parece desaparecer antes de lo esperado.
+- Corrección: retirar el recorte global del render de edición y aplicar recorte por capa. Con **Libre**, las capas normales de imagen y texto se pueden dibujar fuera del marco dentro del espacio de trabajo. Capas de fondo y de dibujo permanecen recortadas. Las vistas auxiliares y exportación siguen usando el render seguro por defecto.
+- Modelo de UX aplicado: separar espacio de trabajo visible, marco/documento y exportación. Es un patrón general de los editores por capas; no se afirma haber inspeccionado el código propietario de Canva/Picsart.
+- Caché PWA actualizada a `animeart-web-shell-v37`.
+- Evidencia previa a añadir la comprobación de píxeles: Web CI #39042515681 PASS y Android CI #39042515678 PASS en SHA `fea3c2a96a52d157df667c4e6b91eaf828b2965b`. APK anterior: artefacto #12104468089. Esa evidencia no valida los últimos cambios.
+- Se añadió a `browser-e2e.mjs` un diagnóstico del marco y una comprobación real de alfa por encima del borde superior del documento; la prueba ya no depende solo de que la matriz de transformación cruce el marco. Hay que tomar el resultado de las CI ejecutadas sobre el HEAD final, no extrapolar el PASS anterior.
+- Aceptación física en Xiaomi `24116RACCG`: pendiente. La emulación de Chromium/Android no sustituye el ensayo con el dedo en el dispositivo.
+- TIMER: 1–2 horas estimadas para la corrección y la validación ampliada; el tiempo real no se ha medido.
+
+---
+
+## AA-FREE-MOVE-PREVIEW-001 — espacio de trabajo, marco y exportación (2026-10-17)
+
+**TIMER:** corrección inicial 1–2 horas estimadas. La extensión de E2E y validación adicional se ejecutó en el mismo ciclo de trabajo; el tiempo real total no se midió.
+
+**Rama:** `aa-free-move-preview-001`  
+**SHA de código y pruebas E2E:** `4d6f7b42b71dc5aed6161900b1cc13765382b188`  
+**PR:** [#89](https://github.com/jonhararagi/animeart/pull/89)  
+**Estado de integración:** PR abierto. `main` no modificado.
+
+### Comportamiento corregido
+
+- El área visible del espacio de trabajo y el marco del documento son límites distintos.
+- En modo Libre, las capas de imagen/texto pueden renderizar píxeles fuera del marco mientras sigan dentro de la zona visible del editor.
+- Fondos y trazos siguen restringidos al documento. La exportación conserva exactamente el tamaño del documento; mover una capa no cambia ni su transformación ni el tamaño exportado.
+- Los tiradores de selección se mantienen accesibles para recuperar capas fuera de pantalla.
+
+### Validación E2E final
+
+**Web CI: PASS**, [run #39047477079](https://github.com/jonhararagi/animeart/actions/runs/39047477079). En Chromium, el E2E amplía el espacio de trabajo alejando la vista y comprueba alfa real fuera de los cuatro bordes:
+- Superior: `alpha=255`.
+- Derecho: `alpha=255`.
+- Inferior: `alpha=207`.
+- Izquierdo: `alpha=255`.
+- El archivo exportado al mover la imagen fuera del marco sigue siendo PNG RGBA `640×480`, con transparencia y sin mutación de la transformación.
+- La prueba exige un margen real de pasteboard a los lados; sin alejar la vista en el ancho móvil, los bordes laterales coinciden con el viewport y el contenido estaría fuera de pantalla, no visible en el espacio de trabajo.
+
+**Android CI: PASS**, [run #39047477070](https://github.com/jonhararagi/animeart/actions/runs/39047477070). Build, verificación de recursos empaquetados, unit tests, lint, instrumentación y arranque offline completados. Evidencia de log: `Startup WebView confirmado` y `OFFLINE VALIDATION PASS`.
+
+**APK:** [artefacto Android #12106462830](https://github.com/jonhararagi/animeart/actions/runs/39047477070/artifacts/12106462830).  
+**SHA-256 del APK:** `f1bdb7995e375284ebae448d2f19b639f321a412cea8bd64ce2a1f582daa06fa`.  
+El SHA del código/PR es `4d6f7b42b71dc5aed6161900b1cc13765382b188`; el identificador que aparece en el nombre de la APK es `f4164cad812f69c5d9c6cb14a65ab302819cabb3`, usado por el checkout/compilación del PR. Son referencias distintas.
+
+### Investigación comparativa de editores
+
+**Pendiente de investigación externa con fuentes verificables.** No se debe afirmar que Canva o Picsart usan una implementación específica sin una publicación técnica o documentación pública que lo confirme. La solución aplicada a AnimeArt sigue un patrón general de editores de lienzo: transformación de capa independiente, área visible de trabajo/pasteboard, marco que delimita el arte final y recorte en el render/exportación, no en la transformación. La sesión actual no permitió hacer una búsqueda web general de blogs/documentación; por tanto no se registra ningún artículo como ya consultado.
+
+**Aceptación física pendiente:** arrastre real con dedo y recuperación de la capa en el Xiaomi `24116RACCG`. La prueba Chromium y el emulador Android no se consideran una prueba física de teléfono.
+
+---
+
+## AA-EDITOR-TOOLS-AUDIT-001 — auditoría y mejoras de herramientas (2026-10-17)
+
+**TIMER:** 2–4 horas estimadas para revisión, mejoras, pruebas y validación; tiempo real no medido.  
+**Rama:** `aa-free-move-preview-001`  
+**PR:** [#89](https://github.com/jonhararagi/animeart/pull/89)
+
+### Hallazgos confirmados
+- El botón móvil prominente “Pintar” abría el estudio raster por imagen, aunque el usuario esperaba dibujar en una capa y trabajar aun con el lienzo vacío.
+- Borrar/restaurar acumulaban puntos durante el gesto, pero no dibujaban la ruta previa en el lienzo principal.
+- La gestión de capas ya admitía duplicar, visibilidad, bloqueo, opacidad, renombrado, referencia, eliminación y orden; algunas acciones eran inglesas y los controles de ciclo de vida quedaban comprimidos en móvil.
+- Quitar fondo es un algoritmo local de región conectada por color, útil sobre todo con fondos lisos; no es segmentación semántica de IA.
+
+### Cambios incorporados
+- Separación explícita entre **Dibujar en capa**, **Pintar píxeles**, **Borrar con pincel** y el estudio **Borrar píxeles**.
+- El botón principal móvil activa el pincel de capas; las pruebas dibujan sobre el lienzo vacío y deshacen el trazo.
+- Previsualización de alto contraste para el recorrido del borrador y del pincel Restaurar, incluida la fase de procesamiento; cancelación limpia el overlay sin aplicar cambios.
+- Acciones de capa en español y objetivos táctiles de 44 px o más para gestión móvil. Las acciones secundarias se pueden desplazar horizontalmente sin reducir el tamaño táctil.
+- Caché PWA v38 y pruebas E2E adicionales para proteger los flujos de dibujo y borrado.
+
+**Documento detallado:** [`docs/AUDITS/2026-10-17-EDITOR-TOOLS-AUDIT.md`](./AUDITS/2026-10-17-EDITOR-TOOLS-AUDIT.md)
+
+**CI del código y pruebas:** PASS sobre `6cb21972b26e626613148e24a61899a4297f1dd6`. Web CI [#39055005733](https://github.com/jonhararagi/animeart/actions/runs/39055005733) y Android CI [#39055005730](https://github.com/jonhararagi/animeart/actions/runs/39055005730) pasaron sobre el mismo SHA. La nueva comprobación móvil certifica la bandeja de dibujo táctil, trazos editables/deshacer, controles de capa de `44×44` px CSS o más y cambio real del orden de capas. Se añadió la actualización documental actual después de ese SHA; el HEAD documental también vuelve a ejecutarse en CI. La prueba física con el Xiaomi `24116RACCG` sigue pendiente.
+

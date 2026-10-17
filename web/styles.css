@@ -3691,3 +3691,95 @@ body.mobile-tools-open .toolbar > .easy-edit-panel > .easy-edit-grid button {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+
+/* AA-EDITOR-TOOLS-AUDIT-001: layer management must stay touch-usable on narrow phones. */
+@media (max-width: 920px) {
+  body.mobile-layers-open > .workspace > .layers #layers li {
+    min-height: 0 !important;
+    gap: 7px !important;
+    padding: 8px !important;
+  }
+  body.mobile-layers-open > .workspace > .layers #layers .layer-controls {
+    grid-template-columns: 44px 44px minmax(120px, 1fr) !important;
+    gap: 6px !important;
+  }
+  body.mobile-layers-open > .workspace > .layers #layers .layer-toggle {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    padding: 6px !important;
+    font-size: .9rem !important;
+  }
+  body.mobile-layers-open > .workspace > .layers #layers .layer-opacity {
+    min-height: 44px !important;
+    padding: 0 6px !important;
+    touch-action: pan-x;
+  }
+  body.mobile-layers-open > .workspace > .layers #layers .layer-lifecycle {
+    display: flex !important;
+    gap: 6px !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overscroll-behavior-x: contain;
+    padding: 2px 0 6px !important;
+    scrollbar-width: thin;
+    touch-action: pan-x;
+  }
+  body.mobile-layers-open > .workspace > .layers #layers .layer-action {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 46px !important;
+    min-height: 44px !important;
+    padding: 6px 10px !important;
+    font-size: .72rem !important;
+    white-space: nowrap !important;
+    touch-action: manipulation;
+  }
+}
+
+/* AA-EDITOR-TOOLS-AUDIT-001: the mobile draw panel must not hide or intercept the canvas. */
+@media (max-width: 920px) {
+  body.mobile-tools-open.mobile-draw-panel-open::before {
+    display: none !important;
+    pointer-events: none !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar {
+    display: grid !important;
+    position: fixed !important;
+    top: auto !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: calc(66px + env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: min(34dvh, 300px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    align-content: start !important;
+    gap: 7px !important;
+    padding: 10px !important;
+    border: 1px solid #4a415e !important;
+    border-radius: 16px !important;
+    background: linear-gradient(160deg, #201a2d 0%, #111724 100%) !important;
+    box-shadow: 0 -10px 30px #0008 !important;
+    z-index: 75 !important;
+    pointer-events: auto !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > #mobile-context-heading,
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > .brush-palette {
+    grid-column: 1 / -1 !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > .brush-control:not(.magic-tolerance-control) {
+    grid-column: auto !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > .brush-control input,
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > .brush-control select {
+    min-width: 0 !important;
+  }
+}
+
