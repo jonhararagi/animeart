@@ -1251,6 +1251,8 @@ try {
   // AA-EDITOR-TOOLS-AUDIT-001: the prominent mobile Draw action must work on an empty canvas.
   await click('.mobile-touch-dock [data-touch-action="paint"]');
   await waitFor('document.querySelector(".toolbar .tool[data-tool=brush]")?.classList.contains("active") && document.querySelector("#mobile-context-heading")?.hidden === false');
+  assert(await evaluate('(() => { const panel=document.querySelector(".toolbar"),canvas=document.querySelector("#canvas"); const p=panel.getBoundingClientRect(),c=canvas.getBoundingClientRect(),s=getComputedStyle(panel),x=c.left+c.width/2,y=Math.min(c.top+c.height/2,p.top-12); return s.display!=="none"&&p.height>0&&y>c.top+10&&document.elementFromPoint(x,y)===canvas; })()'),
+    "mobile drawing controls are visible in a compact sheet while the canvas remains the touch target above them");
   const blankDrawCenter = await selectorCenter("#canvas");
   await mouseDrag(
     { x: blankDrawCenter.x - 42, y: blankDrawCenter.y + 8 },
