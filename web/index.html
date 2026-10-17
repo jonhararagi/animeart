@@ -93,7 +93,8 @@
       <button id="add-layer">+ Capa</button>
       <button id="add-text-layer">+ Texto</button>
       <button id="add-meme-text" title="Añadir títulos superior e inferior con contorno">+ Texto meme</button>
-      <button id="poster-templates" type="button">Plantillas de cartel</button>
+      <button id="creative-studio-open" type="button">🎨 Estudio creativo</button>
+       <button id="poster-templates" type="button">Portada personalizada</button>
       <button id="add-image-layer" title="Importar imágenes de hasta 25 MB. Las imágenes grandes se optimizan localmente para guardar el proyecto.">+ Imagen / referencia</button>
       <button id="crop-resize-image" disabled>Recortar / redimensionar imagen</button>
       <button id="fit-image-to-canvas" type="button" disabled title="Encajar la imagen seleccionada en el lienzo sin cambiar su resolución en píxeles">Encajar imagen</button>
@@ -356,6 +357,7 @@
         <div class="asset-quick-actions" role="group" aria-label="Importar y organizar imágenes">
           <button type="button" id="quick-import-images"><span aria-hidden="true">＋</span><b>Importar imágenes</b><small>Desde tu dispositivo</small></button>
           <button type="button" id="quick-open-asset-library"><span aria-hidden="true">▦</span><b>Mis imágenes</b><small>Biblioteca reutilizable</small></button>
+          <button type="button" id="quick-open-creative-studio"><span aria-hidden="true">✦</span><b>Stickers y portadas</b><small>Diseños anime listos para usar</small></button>
         </div>
         <div class="mobile-output-options" role="group" aria-label="Formato y tamaño de exportación">
           <label for="mobile-export-format">Formato<select id="mobile-export-format" aria-label="Formato de exportación móvil"><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="webp">WebP</option></select></label>
@@ -387,8 +389,40 @@
           <button type="button" data-edit-goal="redo"><span aria-hidden="true">↷</span><b>Rehacer</b><small>Recupera el cambio deshecho</small></button>
           <button type="button" data-edit-goal="export"><span aria-hidden="true">💾</span><b>Guardar / Exportar</b><small>Conserva tu edición</small></button>
           <button type="button" data-edit-goal="appearance"><span aria-hidden="true">⚙️</span><b>Apariencia</b><small>Personaliza el editor</small></button>
+          <button type="button" data-edit-goal="creative-studio"><span aria-hidden="true">✨</span><b>Estudio creativo</b><small>Portadas, stickers y títulos anime</small></button>
         </div>
       <p class="toolbox-note">Dibujar crea trazos en una capa editable. Pintar y Borrar píxeles abren un estudio de la imagen con vista previa y confirmación; Borrar con pincel trabaja directamente en la capa seleccionada. Recortar permite elegir una imagen o toda la composición.</p>
+    </section>
+  </dialog>
+
+  <dialog id="creative-studio-dialog" class="creative-studio-dialog" aria-labelledby="creative-studio-title">
+    <section class="creative-studio-shell">
+      <header class="creative-studio-header">
+        <div><p class="eyebrow">ANIMEART · ESTUDIO CREATIVO</p><h2 id="creative-studio-title">Diseños listos para personalizar</h2><p>Portadas originales, stickers y títulos. Cada elemento se añade como una capa independiente.</p></div>
+        <button type="button" id="creative-studio-x" class="mini-dialog-close" aria-label="Cerrar estudio creativo">✕</button>
+      </header>
+      <nav class="creative-studio-tabs" role="tablist" aria-label="Catálogo creativo">
+        <button type="button" data-creative-tab="covers" role="tab" aria-selected="true">🖼 Portadas</button>
+        <button type="button" data-creative-tab="stickers" role="tab" aria-selected="false">✨ Stickers</button>
+        <button type="button" data-creative-tab="words" role="tab" aria-selected="false">🔤 Palabras</button>
+        <button type="button" data-creative-tab="packs" role="tab" aria-selected="false">🎨 Conjuntos</button>
+      </nav>
+      <div class="creative-studio-search-row">
+        <label for="creative-catalog-search">Buscar en el catálogo<input id="creative-catalog-search" type="search" placeholder="Anime, galaxia, sakura, neón…"></label>
+        <label id="creative-word-field" for="creative-custom-word" hidden>Tu palabra o frase<input id="creative-custom-word" maxlength="180" type="text" placeholder="Escribe algo para tu título…"></label>
+      </div>
+      <section id="creative-template-settings" class="creative-template-settings" aria-label="Personalizar portada seleccionada">
+        <label for="creative-cover-title">Título<input id="creative-cover-title" maxlength="180" value="NUEVO DESPERTAR"></label>
+        <label for="creative-cover-subtitle">Subtítulo<input id="creative-cover-subtitle" maxlength="240" value="UN NUEVO ARCO COMIENZA"></label>
+        <label for="creative-cover-size">Formato<select id="creative-cover-size"><option value="portrait">Portada vertical · 1080 × 1350</option><option value="square">Cuadrado · 1080 × 1080</option><option value="story">Historia · 1080 × 1920</option><option value="banner">Banner · 1920 × 1080</option></select></label>
+        <label for="creative-cover-background">Fondo<input id="creative-cover-background" type="color" value="#0b102a"></label>
+        <label for="creative-cover-accent">Color de acento<input id="creative-cover-accent" type="color" value="#ffd84d"></label>
+      </section>
+      <div id="creative-catalog-grid" class="creative-catalog-grid" role="region" aria-label="Resultados del catálogo" aria-live="polite"></div>
+      <footer class="creative-studio-footer">
+        <p id="creative-studio-status" role="status" aria-live="polite">Todo es original y funciona sin conexión.</p>
+        <div class="creative-studio-footer-actions"><button type="button" id="creative-customize-template">Más ajustes de portada</button><button type="button" id="creative-create-cover" class="creative-primary">Crear portada</button><button type="button" id="creative-studio-close">Listo</button></div>
+      </footer>
     </section>
   </dialog>
 
@@ -549,14 +583,15 @@
 
   <dialog id="poster-template-dialog" aria-labelledby="poster-template-title">
     <form id="poster-template-form" method="dialog">
-      <h2 id="poster-template-title">Create a poster</h2>
-      <label>Style<select id="poster-template-style"><option value="poster">Event poster</option><option value="comic">Comic cover</option><option value="manga">Manga cover</option></select></label>
-      <label>Canvas size<select id="poster-size"><option value="portrait">Portrait 1080 × 1350</option><option value="square">Square 1080 × 1080</option><option value="story">Story 1080 × 1920</option><option value="banner">Banner 1920 × 1080</option></select></label>
-      <label>Background<input id="poster-background-color" type="color" value="#171324"></label>
-      <label>Accent<input id="poster-accent-color" type="color" value="#ff2b6d"></label>
-      <label>Title<input id="poster-title-value" maxlength="180" value="YOUR HEADLINE"></label>
-      <label>Subtitle<input id="poster-subtitle-value" maxlength="240" value="ADD YOUR DETAILS HERE"></label>
-      <div class="dialog-actions"><button type="button" id="cancel-poster-template">Cancel</button><button type="submit">Create poster</button></div>
+      <h2 id="poster-template-title">Personalizar portada</h2>
+      <p class="poster-form-note">Fondo vectorial con título y subtítulo en capas editables.</p>
+      <label>Estilo<select id="poster-template-style"><option value="anime-awakening">Despertar shōnen</option><option value="galactic-dream">Sueño galáctico</option><option value="sakura-night">Sakura nocturna</option><option value="cyber-idol">Neon idol</option><option value="manga-action">Manga explosivo</option><option value="celestial-romance">Romance celestial</option><option value="moon-magic">Heroína lunar</option><option value="poster">Cartel editorial</option><option value="comic">Cómic clásico</option><option value="manga">Manga elegante</option></select></label>
+      <label>Formato<select id="poster-size"><option value="portrait">Portada vertical · 1080 × 1350</option><option value="square">Cuadrado · 1080 × 1080</option><option value="story">Historia · 1080 × 1920</option><option value="banner">Banner · 1920 × 1080</option></select></label>
+      <label>Color de fondo<input id="poster-background-color" type="color" value="#171324"></label>
+      <label>Color de acento<input id="poster-accent-color" type="color" value="#ff2b6d"></label>
+      <label>Título editable<input id="poster-title-value" maxlength="180" value="YOUR HEADLINE"></label>
+      <label>Subtítulo editable<input id="poster-subtitle-value" maxlength="240" value="ADD YOUR DETAILS HERE"></label>
+      <div class="dialog-actions"><button type="button" id="cancel-poster-template">Cancelar</button><button type="submit">Crear portada</button></div>
     </form>
   </dialog>
   <dialog id="magic-eraser-preview-dialog" aria-labelledby="magic-eraser-preview-title">
