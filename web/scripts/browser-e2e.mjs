@@ -483,6 +483,21 @@ try {
   const groupCenterOnScreen = documentToScreenPoint(groupGeometry.center, beforeMulti, testViewport, screenSize);
   const dragStartScreen = { x: canvasMetrics.left + groupCenterOnScreen.x, y: canvasMetrics.top + groupCenterOnScreen.y };
   await evaluate("window.__ANIMEART_E2E_DIAGNOSTICS__ = true");
+
+  // AA-MULTI-TOUCH-ANCHOR-001: a stationary pointer must not move a selected group
+  // if responsive layout changes the canvas bounding rectangle mid-gesture.
+  const multiTransformsBeforeReflow = await evaluate('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>'+
+    JSON.stringify(selectedLayerIds)+'.includes(layer.id)).map(layer=>({id:layer.id,transform:layer.transform})))');
+  await cdp("Input.dispatchMouseEvent", { type:"mouseMoved", x:dragStartScreen.x, y:dragStartScreen.y });
+  await cdp("Input.dispatchMouseEvent", { type:"mousePressed", x:dragStartScreen.x, y:dragStartScreen.y, button:"left", buttons:1, clickCount:1 });
+  await evaluate('document.querySelector("#canvas").style.transform = "translateY(44px)"');
+  await cdp("Input.dispatchMouseEvent", { type:"mouseReleased", x:dragStartScreen.x, y:dragStartScreen.y, button:"left", buttons:0, clickCount:1 });
+  await evaluate('(() => { const canvas=document.querySelector("#canvas"); canvas.style.transform=""; window.dispatchEvent(new Event("resize")); })()');
+  const multiTransformsAfterReflow = await evaluate('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>'+
+    JSON.stringify(selectedLayerIds)+'.includes(layer.id)).map(layer=>({id:layer.id,transform:layer.transform})))');
+  assert(multiTransformsAfterReflow === multiTransformsBeforeReflow,
+    "stationary multi-selection gesture does not move selected layers when the canvas rectangle changes");
+
   await mouseDrag(dragStartScreen, { x: dragStartScreen.x + 50, y: dragStartScreen.y });
   console.log("MULTI_SELECTION_INTERACTION_DIAGNOSTICS", JSON.stringify(browserDiagnostics.filter(item => /AA_MULTI_POINTER/.test(item.args || ""))));
   const afterMulti = await readDocument();

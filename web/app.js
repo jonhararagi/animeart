@@ -2849,6 +2849,8 @@ function beginSelectionInteraction(event) {
           type: "move",
           layerIds: layers.map(layer => layer.id),
           startDocument: documentPoint,
+          startClient: { x: event.clientX, y: event.clientY },
+          screenScaleAtStart: Math.max(Number.EPSILON, documentFitScale(state.document, canvasSize()) * state.viewport.zoom),
           previewDelta: { x: 0, y: 0 }
         };
         canvas.setPointerCapture(event.pointerId);
@@ -2879,6 +2881,8 @@ function beginSelectionInteraction(event) {
         type: "move",
         layerIds: layers.map(layer => layer.id),
         startDocument: documentPoint,
+        startClient: { x: event.clientX, y: event.clientY },
+        screenScaleAtStart: Math.max(Number.EPSILON, documentFitScale(state.document, canvasSize()) * state.viewport.zoom),
         previewDelta: { x: 0, y: 0 }
       };
       canvas.setPointerCapture(event.pointerId);
@@ -3464,7 +3468,13 @@ canvas.addEventListener("pointermove", event => {
     const targetScreen = handleOffset
       ? { x: currentScreen.x + handleOffset.x, y: currentScreen.y + handleOffset.y }
       : currentScreen;
-    const current = screenToDocumentPoint(targetScreen, state.document, state.viewport, canvasSize());
+    const current = interaction.type === "move" && interaction.startClient &&
+      Number.isFinite(interaction.screenScaleAtStart) && interaction.screenScaleAtStart > 0
+      ? {
+          x: interaction.startDocument.x + (Number(event.clientX) - interaction.startClient.x) / interaction.screenScaleAtStart,
+          y: interaction.startDocument.y + (Number(event.clientY) - interaction.startClient.y) / interaction.screenScaleAtStart
+        }
+      : screenToDocumentPoint(targetScreen, state.document, state.viewport, canvasSize());
     const layers = interactionLayers(interaction);
     if (interaction.type === "move") {
       const start = interaction.startDocument;
@@ -3538,7 +3548,13 @@ canvas.addEventListener("pointerup", event => {
     const targetScreen = handleOffset
       ? { x: currentScreen.x + handleOffset.x, y: currentScreen.y + handleOffset.y }
       : currentScreen;
-    const current = screenToDocumentPoint(targetScreen, state.document, state.viewport, canvasSize());
+    const current = interaction.type === "move" && interaction.startClient &&
+      Number.isFinite(interaction.screenScaleAtStart) && interaction.screenScaleAtStart > 0
+      ? {
+          x: interaction.startDocument.x + (Number(event.clientX) - interaction.startClient.x) / interaction.screenScaleAtStart,
+          y: interaction.startDocument.y + (Number(event.clientY) - interaction.startClient.y) / interaction.screenScaleAtStart
+        }
+      : screenToDocumentPoint(targetScreen, state.document, state.viewport, canvasSize());
     const layers = interactionLayers(interaction);
     if (interaction.type === "move") {
       interaction.previewDelta = constrainMoveDelta(layers, current.x - interaction.startDocument.x, current.y - interaction.startDocument.y);
@@ -5750,7 +5766,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v40";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v41";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",

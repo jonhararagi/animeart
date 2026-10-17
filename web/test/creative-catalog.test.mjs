@@ -62,7 +62,7 @@ test("creative studio UI is discoverable, searchable, offline-ready and packaged
   assert.match(app,/function applyCreativeStylePack\(/);
   assert.match(app,/createPosterSvg\(/);
   assert.match(css,/AA-CREATIVE-STUDIO-001/);
-  assert.match(worker,/animeart-web-shell-v40/);
+  assert.match(worker,/animeart-web-shell-v41/);
   assert.match(worker,/\.\/domain\/creative-catalog\.mjs/);
   assert.match(android,/assets\/web\/domain\/creative-catalog\.mjs/);
 });
