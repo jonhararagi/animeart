@@ -1267,6 +1267,8 @@ try {
   await waitFor('document.querySelector("#asset-library-dialog")?.open === true');
   await click("#close-asset-library");
   await waitFor('document.querySelector("#asset-library-dialog")?.open === false');
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('!document.body.classList.contains("mobile-tools-open")');
   await evaluate('document.querySelector(".mobile-touch-dock").scrollLeft = 0');
   await saveScreenshot("animeart-studio-mobile-initial.png");
   // Enable handle-position evidence before importing, so the actual redraw records the visible geometry.
@@ -1425,7 +1427,7 @@ try {
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) === ' + JSON.stringify(transformBeforeBottomDrag), 10000);
 
   // AA-MOBILE-REDESIGN-004: verify that mobile rotation and flip controls mutate the selected image and can be restored.
-  await click('.mobile-touch-dock [data-touch-action="layers"]');
+  await clickMoreGoal("layers");
   await waitFor('document.body.classList.contains("mobile-layers-open")');
   const selectedImportedRow = await evaluate('(() => { const doc=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const layer=doc.layers?.find(item=>item.name==="e2e-mobile-import"); const row=layer ? document.querySelector("#layers li[data-layer-id=\\\"" + layer.id + "\\\"] button.layer-select") : null; row?.click(); return Boolean(row); })()');
   assert(selectedImportedRow, "mobile layer list can select the exact imported image for transform tests");
@@ -1442,16 +1444,16 @@ try {
 
   for (const [action, field] of [["flip-horizontal", "flipX"], ["flip-vertical", "flipY"]]) {
     const before = await evaluate('Boolean(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").image.' + field + ')');
-    await click('.mobile-touch-dock [data-touch-action="' + action + '"]');
+    await clickMoreGoal(action);
     await waitFor('Boolean(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").image.' + field + ') === ' + JSON.stringify(!before), 10000);
     assert(await evaluate('Boolean(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").image.' + field + ') === ' + JSON.stringify(!before)),
       "mobile " + (field === "flipX" ? "horizontal" : "vertical") + " flip changes the saved image transform");
-    await click('.mobile-touch-dock [data-touch-action="' + action + '"]');
+    await clickMoreGoal(action);
     await waitFor('Boolean(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").image.' + field + ') === ' + JSON.stringify(before), 10000);
   }
 
   // The rotation handle itself must respond to a real pointer drag, not just the +/- buttons.
-  await click('.mobile-touch-dock [data-touch-action="layers"]');
+  await evaluate('document.body.classList.remove("mobile-layers-open")');
   await waitFor('!document.body.classList.contains("mobile-layers-open")');
   // The sheet has a CSS closing transition. Wait for the canvas position to settle before reading screen-space handles.
   await sleep(400);
@@ -1474,13 +1476,15 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform.rotation === ' + JSON.stringify(rotationAfterGesture), 10000);
   assert(true, "mobile rotation-handle drag participates in Undo/Redo history");
 
-  assert(await evaluate('(() => { const label=document.querySelector(".mobile-export-format"); const select=document.querySelector("#mobile-export-format"); const r=select.getBoundingClientRect(); const s=getComputedStyle(label); return Boolean(select && s.display!=="none" && s.visibility!=="hidden" && r.width>=60 && r.height>=30 && r.bottom<=innerHeight); })()'),
-    "mobile export format picker stays visible and touch-usable at a 393px viewport");
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('document.body.classList.contains("mobile-tools-open")');
+  assert(await evaluate('(() => { const wrap=document.querySelector(".mobile-output-options"); const select=document.querySelector("#mobile-export-format"); const r=select.getBoundingClientRect(); const s=getComputedStyle(wrap); return Boolean(select && s.display!=="none" && s.visibility!=="hidden" && r.width>=60 && r.height>=30 && r.bottom<=innerHeight); })()'),
+    "mobile export format picker stays visible and touch-usable inside More at a 393px viewport");
 
   // Export a real JPEG via the mobile dock and decode the downloaded file, not only a mocked Blob.
   const expectedJpegSize = await evaluate('({width:JSON.parse(localStorage.getItem("animeart-web-document")||"{}").width,height:JSON.parse(localStorage.getItem("animeart-web-document")||"{}").height})');
   await evaluate('(() => { const select=document.querySelector("#mobile-export-format"); select.value="jpeg"; select.dispatchEvent(new Event("change",{bubbles:true})); })()');
-  await click('.mobile-touch-dock [data-touch-action="export"]');
+  await clickMoreGoal("export");
   await waitFor('document.querySelector("#status").textContent === "JPEG exported"', 15000);
   const jpegPath = join(downloadDir, "animeart.jpeg");
   for (let attempt = 0; attempt < 100 && !existsSync(jpegPath); attempt++) await sleep(100);
@@ -1492,7 +1496,11 @@ try {
   const decodedJpeg = await evaluate('new Promise(resolve => { const image=new Image(); image.onload=()=>resolve({width:image.naturalWidth,height:image.naturalHeight,ok:true}); image.onerror=()=>resolve({ok:false}); image.src="data:image/jpeg;base64,' + jpegBytes.toString("base64") + '"; })');
   assert(decodedJpeg.ok && decodedJpeg.width === expectedJpegSize.width && decodedJpeg.height === expectedJpegSize.height,
     "downloaded JPEG decodes successfully at the exact document dimensions");
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('document.body.classList.contains("mobile-tools-open")');
   await evaluate('(() => { const select=document.querySelector("#mobile-export-format"); select.value="png"; select.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await click('.mobile-touch-dock [data-touch-action="more"]');
+  await waitFor('!document.body.classList.contains("mobile-tools-open")');
 
 
   await click('.mobile-touch-dock [data-touch-action="more"]');
