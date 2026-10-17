@@ -1935,7 +1935,11 @@ function showTextEditorDialog() {
   if (!textEditDialog.open) {
     try {
       if (typeof textEditDialog.showModal === "function") textEditDialog.showModal();
-      else textEditDialog.setAttribute("open", "");
+      else {
+        // Mark non-modal Android WebView fallback so it can sit above the fixed dock.
+        textEditDialog.dataset.openFallback = "true";
+        textEditDialog.setAttribute("open", "");
+      }
     } catch {
       // Older Android WebViews can reject showModal(). Keep editing available
       // through a fixed, non-modal fallback rather than leaving Text unresponsive.
