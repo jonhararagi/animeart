@@ -85,7 +85,7 @@ test("censor light uses a cancellable per-image preview instead of the drawing t
  assert.match(app, /function closeCensorLightDialog\(\)/);
  assert.match(app, /censor: \(\) => openCensorLightDialog\("censor-light"\)/);
  assert.match(app, /refreshDocument\(appliedMessage\)/);
- assert.match(app, /censor-light: "✨ Luz de censura"/);
+ assert.match(app, /"censor-light": "✨ Luz de censura"/);
  assert.match(app, /replaceImageLayer\(state\.document, layer\.id/);
  assert.match(css, /#censor-image-preview[\s\S]*?touch-action: none/);
 });
