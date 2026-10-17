@@ -62,9 +62,22 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -noaudio -no-boot-anim -no-snapshot -no-snapshot-save -gpu swiftshader_indirect
           script: gradle connectedDebugAndroidTest && bash scripts/android-startup-smoke.sh
-      - name: Upload debug APK
+      - name: Prepare clearly versioned APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_APK="app/build/outputs/apk/debug/app-debug.apk"
+          VERSIONED_APK="AnimeArt-Android-aa-mobile-redesign-004-${GITHUB_SHA}.apk"
+          test -s "$SOURCE_APK"
+          cp "$SOURCE_APK" "$VERSIONED_APK"
+          sha256sum "$VERSIONED_APK" | tee "$VERSIONED_APK.sha256"
+          echo "Prepared APK: $VERSIONED_APK"
+          ls -lh "$VERSIONED_APK" "$VERSIONED_APK.sha256"
+      - name: Upload versioned Android APK
         uses: actions/upload-artifact@v7
         with:
-          name: animeart-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: animeart-android-aa-mobile-redesign-004-${{ github.sha }}
+          path: |
+            AnimeArt-Android-aa-mobile-redesign-004-${{ github.sha }}.apk
+            AnimeArt-Android-aa-mobile-redesign-004-${{ github.sha }}.apk.sha256
           if-no-files-found: error

@@ -218,11 +218,24 @@ export async function applyImageFileImport(file, { document, history, persist, R
     throw imageImportError("Image import transaction is not configured");
   }
   const { layer, optimized } = await importImageFile(file, { Reader, ImageCtor, documentObject });
-  if (Number(document.width) > 0 && Number(document.height) > 0) {
-    layer.transform = { ...layer.transform, ...fitImportedImageTransform(layer.image.width, layer.image.height, document.width, document.height) };
-  }
   const before = cloneDocument(document);
   const next = cloneDocument(document);
+
+  // A fresh editor or a recovered empty workspace can legitimately have no canvas
+  // dimensions yet. In that case, promote the imported image to the initial document
+  // size so a phone photo is fitted to the workspace instead of being drawn at its
+  // native pixel size at the canvas origin.
+  if (!Number.isFinite(Number(next.width)) || Number(next.width) <= 0) {
+    next.width = layer.image.width;
+  }
+  if (!Number.isFinite(Number(next.height)) || Number(next.height) <= 0) {
+    next.height = layer.image.height;
+  }
+
+  layer.transform = {
+    ...layer.transform,
+    ...fitImportedImageTransform(layer.image.width, layer.image.height, next.width, next.height)
+  };
   next.layers.push(layer);
   if (!history.record(before, next)) {
     throw imageImportError("Image import did not create a history operation");

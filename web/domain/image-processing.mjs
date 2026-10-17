@@ -73,11 +73,32 @@ function encodeRaster(canvas) {
   return { source, format };
 }
 
-export async function cropImageSource(source, rectangle, { ImageCtor = globalThis.Image, documentObject = globalThis.document } = {}) {
+import { normalizeCropShape, traceCropShape } from "./crop-shape.mjs";
+
+export async function cropImageSource(source, rectangle, {
+  ImageCtor = globalThis.Image,
+  documentObject = globalThis.document,
+  shape = "rectangle",
+  flipX = false,
+  flipY = false
+} = {}) {
   const decoded = await decodeImage(source, ImageCtor);
   const crop = normalizeImageCrop(rectangle, decoded.width, decoded.height);
   const { canvas, context } = createOutputCanvas(crop.width, crop.height, documentObject);
   context.drawImage(decoded.image, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+  const mask = normalizeCropShape(shape);
+  if (mask !== "rectangle") {
+    context.save();
+    context.globalCompositeOperation = "destination-in";
+    context.save();
+    if (flipX) { context.translate(crop.width, 0); context.scale(-1, 1); }
+    if (flipY) { context.translate(0, crop.height); context.scale(1, -1); }
+    traceCropShape(context, 0, 0, crop.width, crop.height, mask);
+    context.fillStyle = "#ffffff";
+    context.fill();
+    context.restore();
+    context.restore();
+  }
   return { ...encodeRaster(canvas), width: crop.width, height: crop.height };
 }
 

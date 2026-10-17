@@ -4,6 +4,20 @@ const FORMAT_MIME_TYPES = Object.freeze({
   webp: "image/webp"
 });
 
+/**
+ * Returns an export-only scale. The editable document and its layers stay untouched.
+ * HD targets 2x pixels where possible and limits extra work to roughly 16 MP on phones.
+ */
+export function exportScaleForResolution(documentModel, resolution = "normal") {
+  const width = Number(documentModel?.width);
+  const height = Number(documentModel?.height);
+  if (!Number.isInteger(width) || width < 1 || !Number.isInteger(height) || height < 1) {
+    throw new TypeError("Image export requires positive document dimensions");
+  }
+  if (resolution !== "hd") return 1;
+  return Math.max(1, Math.min(2, Math.sqrt(16_000_000 / (width * height))));
+}
+
 function normalizedFormat(format) {
   const value = String(format || "png").toLowerCase();
   if (!Object.hasOwn(FORMAT_MIME_TYPES, value)) {

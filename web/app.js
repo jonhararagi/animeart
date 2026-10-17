@@ -2,6 +2,7 @@ import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, create
 import { initializeAssetLibrary } from "./asset-library.js";
 import { getEditingHelpPreference, initializeAppearanceSettings, setEditingHelpPreference } from "./appearance-settings.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
+import { traceCropShape } from "./domain/crop-shape.mjs";
 import { replaceColorRange } from "./domain/color-replacement.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
@@ -9,7 +10,7 @@ import { createViewport, panBy } from "./domain/viewport.mjs";
 import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocumentPoint, screenViewportForDocument, zoomViewportAt } from "./domain/canvas-space.mjs";
 import { distanceBetweenTouches, midpointBetweenTouches, updatePinchPanViewport } from "./domain/touch-gestures.mjs";
 import { createFrameScheduler } from "./domain/frame-scheduler.mjs";
-import { addLayer, clearLayer, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { addLayer, clearLayer, cropDocumentCanvas, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
 import { removeConnectedBackground, applyEraseStrokes } from "./domain/background-removal.mjs";
@@ -18,8 +19,8 @@ import { fitImportedImageTransform } from "./domain/image-import.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
-import { groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
-import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, renderDocumentToCanvas } from "./domain/png-export.mjs";
+import { clampSelectionHandles, groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, layerCorners, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
+import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, exportScaleForResolution, renderDocumentToCanvas } from "./domain/png-export.mjs";
 
 const canvas = document.querySelector("#canvas");
 const removeSelectedImageButton = document.querySelector("#remove-selected-image");
@@ -56,6 +57,9 @@ const resetLayerAdjustmentsButton = document.querySelector("#reset-layer-adjustm
 const adjustmentPresetButtons = [...document.querySelectorAll("[data-adjustment-preset]")];
 const textPanel = document.querySelector("#text-panel");
 const textEditDialog = document.querySelector("#text-edit-dialog");
+// .layers is hidden in the mobile workspace. Keep this modal at the document root so Android WebView can always display it.
+if (textEditDialog && textEditDialog.parentElement !== document.body) document.body.append(textEditDialog);
+let newlyCreatedTextLayerId = null;
 const closeTextEditButton = document.querySelector("#close-text-edit");
 const textContentInput = document.querySelector("#text-content");
 const textFontSizeInput = document.querySelector("#text-font-size");
@@ -84,6 +88,10 @@ const textAlignInput = document.querySelector("#text-align");
 const textLayerName = document.querySelector("#text-layer-name");
 const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
+const mobileTopUndoButton = document.querySelector('.mobile-top-actions [data-mobile-top-action="undo"]');
+const mobileTopRedoButton = document.querySelector('.mobile-top-actions [data-mobile-top-action="redo"]');
+const mobileUndoButton = document.querySelector('.mobile-touch-dock [data-touch-action="undo"]');
+const mobileRedoButton = document.querySelector('.mobile-touch-dock [data-touch-action="redo"]');
 const imageFileInput = document.querySelector("#image-file-input");
 const cropResizeButton = document.querySelector("#crop-resize-image");
 const removeBackgroundButton = document.querySelector("#remove-background");
@@ -99,8 +107,21 @@ const backgroundRemovalContext = backgroundRemovalCanvas?.getContext("2d", { wil
 let backgroundRemovalSession = null;
 let backgroundRemovalSampleMode = false;
 let backgroundRemovalPointerId = null;
+let backgroundRemovalPan = null;
+let backgroundRemovalZoom = 1;
 const flipImageHorizontalButton = document.querySelector("#flip-image-horizontal");
 const flipImageVerticalButton = document.querySelector("#flip-image-vertical");
+const toolboxDialog = document.querySelector("#toolbox-dialog");
+const cropModeDialog = document.querySelector("#crop-mode-dialog");
+const canvasCropDialog = document.querySelector("#canvas-crop-dialog");
+const canvasCropPreview = document.querySelector("#canvas-crop-preview");
+const canvasCropStatus = document.querySelector("#canvas-crop-status");
+const canvasCropBase = document.createElement("canvas");
+const canvasCropContext = canvasCropPreview?.getContext("2d");
+let canvasCropDocument = null;
+let canvasCropRectangle = null;
+let canvasCropDrag = null;
+let canvasCropPreviewScale = 1;
 const imageEditDialog = document.querySelector("#image-edit-dialog");
 const imageEditForm = document.querySelector("#image-edit-form");
 const imageEditSourceSize = document.querySelector("#image-edit-source-size");
@@ -113,6 +134,9 @@ const imageCropHeight = document.querySelector("#image-crop-height");
 const cropPreviewCanvas = document.querySelector("#crop-preview");
 const cropPreviewHint = document.querySelector("#crop-preview-hint");
 const cropAspectInput = document.querySelector("#image-crop-aspect");
+const cropShapeInput = document.querySelector("#image-crop-shape");
+const cropPreviewOverlayCanvas = document.createElement("canvas");
+const cropPreviewOverlayContext = cropPreviewOverlayCanvas.getContext("2d");
 const imageResizeWidth = document.querySelector("#image-resize-width");
 const imageResizeHeight = document.querySelector("#image-resize-height");
 const imageResizeKeepAspect = document.querySelector("#image-resize-keep-aspect");
@@ -129,6 +153,8 @@ const projectFileInput = document.querySelector("#project-file-input");
 const saveButton = document.querySelector("#save");
 const exportPngButton = document.querySelector("#export-png");
 const exportFormatInput = document.querySelector("#export-format");
+const exportResolutionInput = document.querySelector("#export-resolution");
+const mobileExportResolutionInput = document.querySelector("#mobile-export-resolution");
 const exportQualityControl = document.querySelector("#export-quality-control");
 const exportQualityInput = document.querySelector("#export-quality");
 const exportQualityValue = document.querySelector("#export-quality-value");
@@ -220,8 +246,29 @@ function setSelection(layerIds, anchorId = null) {
 function updateSelectionMiniPanel(layer = selectedLayerExact()) {
   const panel = document.querySelector("#selection-mini-panel");
   if (!panel) return;
-  panel.hidden = !layer;
-  if (!layer) return;
+  const hasEditableContent = Boolean(layer && (
+    (layer.contentType === "image" && layer.image) ||
+    (layer.contentType === "text" && layer.text) ||
+    (Array.isArray(layer.strokes) && layer.strokes.some(stroke => Array.isArray(stroke.points) && stroke.points.length > 0))
+  ));
+  panel.hidden = !hasEditableContent;
+  const editText = document.querySelector("#selection-mini-edit-text");
+  const selectedText = layer?.contentType === "text";
+  if (editText) {
+    editText.hidden = !selectedText;
+    editText.disabled = !selectedText || Boolean(layer?.locked);
+    editText.title = layer?.locked ? "Desbloqueá la capa para editar el texto" : "Abrir el editor de texto y tipografía";
+  }
+  // On mobile the contextual canvas strip is intentionally hidden. Reuse the
+  // always-visible bottom-dock action and make its purpose explicit for a text selection.
+  const mobileTextAction = document.querySelector('.mobile-touch-dock [data-touch-action="add-text"]');
+  if (mobileTextAction) {
+    const label = mobileTextAction.querySelector("span:last-child");
+    mobileTextAction.setAttribute("aria-label", selectedText ? "Editar texto seleccionado" : "Añadir título o texto");
+    mobileTextAction.title = selectedText ? "Editar el texto seleccionado" : "Añadir un título o texto";
+    if (label) label.textContent = selectedText ? "Editar texto" : "Texto";
+  }
+  if (!hasEditableContent) return;
 
   const name = document.querySelector("#selection-mini-layer-name");
   if (name) name.textContent = layer.name + (layer.locked ? " · bloqueada" : "");
@@ -241,6 +288,13 @@ function updateSelectionMiniPanel(layer = selectedLayerExact()) {
 
   const fit = document.querySelector("#selection-mini-fit");
   if (fit) fit.disabled = layer.locked || layer.contentType !== "image" || !layer.image;
+  const background = document.querySelector("#selection-mini-background");
+  if (background) {
+    background.disabled = !(layer.contentType === "image" && layer.image) || (layer.locked && !layer.isBackground);
+    background.setAttribute("aria-pressed", String(Boolean(layer.isBackground)));
+    background.textContent = layer.isBackground ? "↩ Desfijar fondo" : "🖼️ Como fondo";
+    background.title = layer.isBackground ? "Volver a tratar la imagen como una capa normal" : "Fijar esta imagen al fondo del lienzo";
+  }
   const remove = document.querySelector("#selection-mini-delete");
   if (remove) remove.disabled = Boolean(layer.locked);
   const mobileRemove = document.querySelector('.mobile-touch-dock [data-touch-action="delete-selected"]');
@@ -327,9 +381,18 @@ function canvasSize() {
   return { width: rect.width, height: rect.height };
 }
 
+function canvasRenderDpr(rect) {
+  const deviceDpr = Math.max(1, Number(window.devicePixelRatio) || 1);
+  const mobile = window.matchMedia("(max-width: 920px)").matches;
+  const deviceCap = mobile ? 1.5 : 2;
+  const pixelBudget = mobile ? 1_500_000 : 4_000_000;
+  const cssPixels = Math.max(1, rect.width * rect.height);
+  return Math.max(1, Math.min(deviceDpr, deviceCap, Math.sqrt(pixelBudget / cssPixels)));
+}
+
 function resizeCanvas() {
   const rect = canvas.getBoundingClientRect();
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const dpr = canvasRenderDpr(rect);
   canvas.width = Math.round(rect.width * dpr);
   canvas.height = Math.round(rect.height * dpr);
   redraw();
@@ -461,7 +524,8 @@ function drawDrawingLayer(layer, context, documentModel) {
 }
 
 function drawDocument({ context = ctx, document = state.document, center = documentCenter(document), transformForLayer = layerTransformForRender } = {}) {
-  for (const layer of document.layers) {
+  const layersInRenderOrder = [...document.layers].sort((a, b) => Number(Boolean(b.isBackground)) - Number(Boolean(a.isBackground)));
+  for (const layer of layersInRenderOrder) {
     if (!layer.visible) continue;
     const transform = transformForLayer(layer);
     context.save();
@@ -512,7 +576,44 @@ function drawDocument({ context = ctx, document = state.document, center = docum
   }
 }
 
+function selectionHandleInset() {
+  return window.matchMedia("(max-width: 920px)").matches ? 22 : 21;
+}
+
+function drawObjectSelectionHandle(point, kind) {
+  if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) return;
+  const radius = window.matchMedia("(max-width: 920px)").matches ? 20 : 19;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+  ctx.fillStyle = kind === "close" ? "#e74f78" : kind === "rotate" ? "#168da6" : "#7058f5";
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = "#ffffff";
+  ctx.stroke();
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  if (kind === "close") {
+    ctx.moveTo(point.x - 5.5, point.y - 5.5); ctx.lineTo(point.x + 5.5, point.y + 5.5);
+    ctx.moveTo(point.x + 5.5, point.y - 5.5); ctx.lineTo(point.x - 5.5, point.y + 5.5);
+  } else if (kind === "rotate") {
+    ctx.arc(point.x, point.y, 6.5, -Math.PI * 0.15, Math.PI * 1.45, false);
+    ctx.moveTo(point.x + 5, point.y - 6); ctx.lineTo(point.x + 7, point.y + 0.5); ctx.lineTo(point.x + 0.5, point.y - 1);
+  } else {
+    ctx.moveTo(point.x - 6, point.y - 6); ctx.lineTo(point.x + 6, point.y + 6);
+    ctx.moveTo(point.x - 6, point.y - 6); ctx.lineTo(point.x - 6, point.y - 1);
+    ctx.moveTo(point.x - 6, point.y - 6); ctx.lineTo(point.x - 1, point.y - 6);
+    ctx.moveTo(point.x + 6, point.y + 6); ctx.lineTo(point.x + 6, point.y + 1);
+    ctx.moveTo(point.x + 6, point.y + 6); ctx.lineTo(point.x + 1, point.y + 6);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawSelectionOverlay() {
+  if (window.__ANIMEART_E2E_DIAGNOSTICS__) window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__ = null;
   const selectedLayers = selectedLayersExact();
   if (selectedLayers.length > 1) {
     const geometry = multiSelectionGeometry(selectedLayers.map(layer => ({
@@ -524,8 +625,19 @@ function drawSelectionOverlay() {
       const corners = geometry.corners.map(point => documentToScreenPoint(point, state.document, state.viewport, viewportSize));
       const groupGeometry = {
         corners,
-        center: documentToScreenPoint(geometry.center, state.document, state.viewport, viewportSize)
+        center: documentToScreenPoint(geometry.center, state.document, state.viewport, viewportSize),
+        closeHandle: corners[1],
+        resizeHandle: corners[2]
       };
+      const visibleGroupHandles = clampSelectionHandles(groupGeometry, viewportSize, selectionHandleInset());
+      if (window.__ANIMEART_E2E_DIAGNOSTICS__) {
+        window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__ = {
+          closeHandle: visibleGroupHandles.closeHandle,
+          resizeHandle: visibleGroupHandles.resizeHandle,
+          canvasSize: viewportSize,
+          kind: "group"
+        };
+      }
       ctx.save();
       ctx.setLineDash([6, 4]);
       ctx.strokeStyle = "#2f80ed";
@@ -534,28 +646,9 @@ function drawSelectionOverlay() {
       corners.forEach((corner, index) => index === 0 ? ctx.moveTo(corner.x, corner.y) : ctx.lineTo(corner.x, corner.y));
       ctx.closePath();
       ctx.stroke();
-      const topMid = { x: (corners[0].x + corners[1].x) / 2, y: (corners[0].y + corners[1].y) / 2 };
-      const outward = { x: topMid.x - groupGeometry.center.x, y: topMid.y - groupGeometry.center.y };
-      const length = Math.hypot(outward.x, outward.y) || 1;
-      groupGeometry.rotationHandle = { x: topMid.x + outward.x / length * 32, y: topMid.y + outward.y / length * 32 };
       ctx.setLineDash([]);
-      for (const corner of corners) {
-        ctx.fillStyle = "#ffffff";
-        ctx.strokeStyle = "#2f80ed";
-        ctx.beginPath();
-        ctx.rect(corner.x - 5, corner.y - 5, 10, 10);
-        ctx.fill();
-        ctx.stroke();
-      }
-      ctx.beginPath();
-      ctx.moveTo(topMid.x, topMid.y);
-      ctx.lineTo(groupGeometry.rotationHandle.x, groupGeometry.rotationHandle.y);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(groupGeometry.rotationHandle.x, groupGeometry.rotationHandle.y, 5, 0, Math.PI * 2);
-      ctx.fillStyle = "#ffffff";
-      ctx.fill();
-      ctx.stroke();
+      drawObjectSelectionHandle(visibleGroupHandles.closeHandle, "close");
+      drawObjectSelectionHandle(visibleGroupHandles.resizeHandle, "resize");
       ctx.restore();
     }
   }
@@ -585,24 +678,28 @@ function drawSelectionOverlay() {
       continue;
     }
     ctx.setLineDash([]);
+    const visibleHandles = clampSelectionHandles(geometry, canvasSize(), selectionHandleInset());
+    if (window.__ANIMEART_E2E_DIAGNOSTICS__) {
+      window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__ = {
+        closeHandle: visibleHandles.closeHandle,
+        resizeHandle: visibleHandles.resizeHandle,
+        rotationHandle: geometry.rotationHandle,
+        center: geometry.center,
+        canvasSize: canvasSize(),
+        kind: "layer"
+      };
+    }
+    const rotationHandle = geometry.rotationHandle;
     const topMid = { x: (geometry.corners[0].x + geometry.corners[1].x) / 2, y: (geometry.corners[0].y + geometry.corners[1].y) / 2 };
     ctx.beginPath();
     ctx.moveTo(topMid.x, topMid.y);
-    ctx.lineTo(geometry.rotationHandle.x, geometry.rotationHandle.y);
+    ctx.lineTo(rotationHandle.x, rotationHandle.y);
+    ctx.strokeStyle = "#8bdcf0";
+    ctx.lineWidth = 1.5;
     ctx.stroke();
-    for (const corner of geometry.corners) {
-      ctx.fillStyle = "#ffffff";
-      ctx.strokeStyle = "#2f80ed";
-      ctx.beginPath();
-      ctx.rect(corner.x - 5, corner.y - 5, 10, 10);
-      ctx.fill();
-      ctx.stroke();
-    }
-    ctx.beginPath();
-    ctx.arc(geometry.rotationHandle.x, geometry.rotationHandle.y, 5, 0, Math.PI * 2);
-    ctx.fillStyle = "#ffffff";
-    ctx.fill();
-    ctx.stroke();
+    drawObjectSelectionHandle(visibleHandles.closeHandle, "close");
+    drawObjectSelectionHandle(visibleHandles.resizeHandle, "resize");
+    drawObjectSelectionHandle(rotationHandle, "rotate");
     ctx.restore();
   }
 }
@@ -614,7 +711,7 @@ function redraw() {
 
 function drawNow() {
   const rect = canvas.getBoundingClientRect();
-  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  const dpr = canvasRenderDpr(rect);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, rect.width, rect.height);
   ctx.save();
@@ -708,7 +805,7 @@ function renderLayers() {
     selectButton.className = "layer-select";
     const layerName = document.createElement("span");
     layerName.className = "layer-name";
-    layerName.textContent = layer.name + (layer.contentType === "image" ? (layer.isReference ? " [Reference]" : " [Image]") : layer.contentType === "text" ? " [Text]" : "");
+    layerName.textContent = layer.name + (layer.isBackground ? " [Fondo fijo]" : layer.contentType === "image" ? (layer.isReference ? " [Referencia]" : " [Imagen]") : layer.contentType === "text" ? " [Texto]" : "");
     selectButton.append(createLayerThumbnail(layer), layerName);
     selectButton.setAttribute("aria-label", "Select " + layer.name);
     selectButton.addEventListener("click", event => {
@@ -882,16 +979,37 @@ function drawCropPreview() {
   const top = cropPreviewClamp(imageCropY.value, sourceHeight) / sourceHeight * height;
   const right = cropPreviewClamp(Number(imageCropX.value) + Number(imageCropWidth.value), sourceWidth) / sourceWidth * width;
   const bottom = cropPreviewClamp(Number(imageCropY.value) + Number(imageCropHeight.value), sourceHeight) / sourceHeight * height;
-  context.fillStyle = "rgba(5, 9, 15, 0.62)";
-  context.fillRect(0, 0, width, Math.max(0, top));
-  context.fillRect(0, bottom, width, Math.max(0, height - bottom));
-  context.fillRect(0, top, Math.max(0, left), Math.max(0, bottom - top));
-  context.fillRect(right, top, Math.max(0, width - right), Math.max(0, bottom - top));
+  if (cropPreviewOverlayCanvas.width !== width) cropPreviewOverlayCanvas.width = width;
+  if (cropPreviewOverlayCanvas.height !== height) cropPreviewOverlayCanvas.height = height;
+  if (cropPreviewOverlayContext) {
+    cropPreviewOverlayContext.clearRect(0, 0, width, height);
+    cropPreviewOverlayContext.globalCompositeOperation = "source-over";
+    cropPreviewOverlayContext.fillStyle = "rgba(5, 9, 15, 0.62)";
+    cropPreviewOverlayContext.fillRect(0, 0, width, height);
+    cropPreviewOverlayContext.globalCompositeOperation = "destination-out";
+    traceCropShape(cropPreviewOverlayContext, left, top, right - left, bottom - top, cropShapeInput?.value || "rectangle");
+    cropPreviewOverlayContext.fill();
+    cropPreviewOverlayContext.globalCompositeOperation = "source-over";
+    context.drawImage(cropPreviewOverlayCanvas, 0, 0);
+  } else {
+    context.fillStyle = "rgba(5, 9, 15, 0.62)";
+    context.fillRect(0, 0, width, Math.max(0, top));
+    context.fillRect(0, bottom, width, Math.max(0, height - bottom));
+    context.fillRect(0, top, Math.max(0, left), Math.max(0, bottom - top));
+    context.fillRect(right, top, Math.max(0, width - right), Math.max(0, bottom - top));
+  }
 
   if (right - left < 1 || bottom - top < 1) return;
+  context.save();
+  traceCropShape(context, left, top, right - left, bottom - top, cropShapeInput?.value || "rectangle");
   context.strokeStyle = "#f5fbff";
   context.lineWidth = 2;
-  context.strokeRect(left + 1, top + 1, Math.max(0, right - left - 2), Math.max(0, bottom - top - 2));
+  context.stroke();
+  context.restore();
+
+  context.save();
+  traceCropShape(context, left, top, right - left, bottom - top, cropShapeInput?.value || "rectangle");
+  context.clip();
   context.strokeStyle = "rgba(255,255,255,0.58)";
   context.lineWidth = 1;
   for (const fraction of [1 / 3, 2 / 3]) {
@@ -902,6 +1020,7 @@ function drawCropPreview() {
     context.lineTo(right, top + (bottom - top) * fraction);
     context.stroke();
   }
+  context.restore();
   const centerX = (left + right) / 2;
   const centerY = (top + bottom) / 2;
   const handleSize = Math.max(6, Math.min(10, Math.min(width, height) / 55));
@@ -1069,6 +1188,7 @@ cropResizeButton.addEventListener("click", () => {
   imageResizeWidth.value = String(layer.image.width); imageResizeHeight.value = String(layer.image.height);
   imageResizeKeepAspect.checked = true;
   cropAspectInput.value = "";
+  if (cropShapeInput) cropShapeInput.value = "rectangle";
   document.querySelector('input[name="image-edit-mode"][value="crop"]').checked = true;
   loadCropPreview(layer.image.source);
   syncImageEditMode();
@@ -1077,6 +1197,7 @@ cropResizeButton.addEventListener("click", () => {
 });
 
 document.querySelector("#cancel-image-edit").addEventListener("click", () => imageEditDialog.close());
+document.querySelector("#close-image-edit")?.addEventListener("click", () => imageEditDialog.close());
 imageEditDialog.addEventListener("close", () => {
   cropPreviewDrag = null;
   if (imageEditPreviewImage) {
@@ -1089,6 +1210,14 @@ document.querySelectorAll('input[name="image-edit-mode"]').forEach(input => inpu
 imageResizeWidth.addEventListener("input", syncAspectRatioFromWidth);
 imageResizeHeight.addEventListener("input", syncAspectRatioFromHeight);
 cropAspectInput.addEventListener("change", applyCropAspectPreset);
+cropShapeInput?.addEventListener("change", () => {
+  if (cropShapeInput.value === "circle" && cropAspectInput.value !== "1") {
+    cropAspectInput.value = "1";
+    applyCropAspectPreset();
+    return;
+  }
+  drawCropPreview();
+});
 for (const input of [imageCropX, imageCropY, imageCropWidth, imageCropHeight]) {
   input.addEventListener("input", drawCropPreview);
 }
@@ -1274,7 +1403,11 @@ imageEditForm.addEventListener("submit", async event => {
       const width = Number(imageCropWidth.value), height = Number(imageCropHeight.value);
       const sourceX = layer.image.flipX ? layer.image.width - x - width : x;
       const sourceY = layer.image.flipY ? layer.image.height - y - height : y;
-      replacement = await cropImageSource(layer.image.source, { x: sourceX, y: sourceY, width, height });
+      replacement = await cropImageSource(layer.image.source, { x: sourceX, y: sourceY, width, height }, {
+        shape: cropShapeInput?.value || "rectangle",
+        flipX: layer.image.flipX === true,
+        flipY: layer.image.flipY === true
+      });
       // Layer offset uses the visible crop origin; raster crop uses source pixel coordinates.
       options = { cropOrigin: { x, y } };
     } else {
@@ -1303,6 +1436,329 @@ imageEditForm.addEventListener("submit", async event => {
   } finally {
     applyButton.disabled = false;
   }
+});
+
+
+function hideMobileToolSheets() {
+  closeMobileContextPanel();
+  document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
+  mobileDock?.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+  mobileDock?.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
+}
+
+function openCropModeDialog() {
+  hideMobileToolSheets();
+  if (!cropModeDialog?.open) cropModeDialog?.showModal();
+}
+
+document.querySelector("#close-crop-mode")?.addEventListener("click", () => cropModeDialog?.close());
+document.querySelector("#crop-selected-image")?.addEventListener("click", () => {
+  cropModeDialog?.close();
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image) {
+    status.textContent = "Para recortar una imagen, seleccioná primero una capa de imagen. También podés elegir “Recortar lienzo completo”.";
+    return;
+  }
+  if (layer.locked) {
+    status.textContent = "La imagen está bloqueada. Desbloqueala desde Capas antes de recortar sus píxeles.";
+    return;
+  }
+  cropResizeButton?.click();
+});
+document.querySelector("#crop-whole-canvas")?.addEventListener("click", () => {
+  void openCanvasCropDialog();
+});
+
+function canvasCropPoint(event) {
+  if (!canvasCropPreview || !canvasCropDocument) return null;
+  const bounds = canvasCropPreview.getBoundingClientRect();
+  if (bounds.width <= 0 || bounds.height <= 0) return null;
+  return {
+    x: Math.max(0, Math.min(canvasCropDocument.width, (event.clientX - bounds.left) / bounds.width * canvasCropDocument.width)),
+    y: Math.max(0, Math.min(canvasCropDocument.height, (event.clientY - bounds.top) / bounds.height * canvasCropDocument.height))
+  };
+}
+
+function canvasCropFullRectangle() {
+  if (!canvasCropDocument) return { x: 0, y: 0, width: 1, height: 1 };
+  return { x: 0, y: 0, width: canvasCropDocument.width, height: canvasCropDocument.height };
+}
+
+function canvasCropIsFullRectangle(rectangle) {
+  return Boolean(canvasCropDocument && rectangle &&
+    rectangle.x === 0 && rectangle.y === 0 &&
+    rectangle.width === canvasCropDocument.width && rectangle.height === canvasCropDocument.height);
+}
+
+function updateCanvasCropFields() {
+  if (!canvasCropRectangle || !canvasCropDocument) return;
+  document.querySelector("#canvas-crop-x").value = String(canvasCropRectangle.x);
+  document.querySelector("#canvas-crop-y").value = String(canvasCropRectangle.y);
+  document.querySelector("#canvas-crop-width").value = String(canvasCropRectangle.width);
+  document.querySelector("#canvas-crop-height").value = String(canvasCropRectangle.height);
+  const full = canvasCropIsFullRectangle(canvasCropRectangle);
+  document.querySelector("#apply-canvas-crop").disabled = full;
+  canvasCropStatus.textContent = full
+    ? "Está seleccionado el lienzo completo. Arrastrá el marco o ajustá X, Y, ancho y alto para recortar."
+    : "Recorte seleccionado: " + canvasCropRectangle.width + " × " + canvasCropRectangle.height +
+      " px · " + canvasCropDocument.layers.length + " capas se conservarán.";
+}
+
+function drawCanvasCropPreview() {
+  if (!canvasCropContext || !canvasCropPreview || !canvasCropBase.width || !canvasCropBase.height ||
+      !canvasCropDocument || !canvasCropRectangle) return;
+  const width = canvasCropPreview.width, height = canvasCropPreview.height;
+  canvasCropContext.clearRect(0, 0, width, height);
+  canvasCropContext.drawImage(canvasCropBase, 0, 0, width, height);
+  const sx = width / canvasCropDocument.width;
+  const sy = height / canvasCropDocument.height;
+  const rectangle = {
+    x: canvasCropRectangle.x * sx,
+    y: canvasCropRectangle.y * sy,
+    width: canvasCropRectangle.width * sx,
+    height: canvasCropRectangle.height * sy
+  };
+  const right = rectangle.x + rectangle.width, bottom = rectangle.y + rectangle.height;
+  canvasCropContext.save();
+  canvasCropContext.fillStyle = "rgba(4, 7, 15, .60)";
+  canvasCropContext.fillRect(0, 0, width, rectangle.y);
+  canvasCropContext.fillRect(0, bottom, width, Math.max(0, height - bottom));
+  canvasCropContext.fillRect(0, rectangle.y, rectangle.x, rectangle.height);
+  canvasCropContext.fillRect(right, rectangle.y, Math.max(0, width - right), rectangle.height);
+  canvasCropContext.strokeStyle = "#fff";
+  canvasCropContext.lineWidth = Math.max(1.5, width / 500);
+  canvasCropContext.setLineDash([]);
+  canvasCropContext.strokeRect(rectangle.x, rectangle.y, rectangle.width, rectangle.height);
+  const handleSize = Math.max(6, Math.min(12, width / 45));
+  for (const [x, y] of [[rectangle.x, rectangle.y], [right, rectangle.y], [right, bottom], [rectangle.x, bottom]]) {
+    canvasCropContext.fillStyle = "#ffffff";
+    canvasCropContext.fillRect(x - handleSize / 2, y - handleSize / 2, handleSize, handleSize);
+    canvasCropContext.strokeStyle = "#17141e";
+    canvasCropContext.lineWidth = 1;
+    canvasCropContext.strokeRect(x - handleSize / 2, y - handleSize / 2, handleSize, handleSize);
+  }
+  canvasCropContext.restore();
+  updateCanvasCropFields();
+}
+
+function clampCanvasCropRect(rectangle) {
+  if (!canvasCropDocument) return null;
+  const width = canvasCropDocument.width, height = canvasCropDocument.height;
+  const cropWidth = Math.max(1, Math.min(width, Math.round(Number(rectangle.width) || 1)));
+  const cropHeight = Math.max(1, Math.min(height, Math.round(Number(rectangle.height) || 1)));
+  const x = Math.max(0, Math.min(width - cropWidth, Math.round(Number(rectangle.x) || 0)));
+  const y = Math.max(0, Math.min(height - cropHeight, Math.round(Number(rectangle.y) || 0)));
+  return { x, y, width: cropWidth, height: cropHeight };
+}
+
+function canvasCropRectangleFromDrag(start, current) {
+  const ratio = Number(document.querySelector("#canvas-crop-ratio").value);
+  let width = Math.abs(current.x - start.x);
+  let height = Math.abs(current.y - start.y);
+  if (Number.isFinite(ratio) && ratio > 0) {
+    if (width > height * ratio) height = width / ratio;
+    else width = height * ratio;
+  }
+  const x = current.x < start.x ? start.x - width : start.x;
+  const y = current.y < start.y ? start.y - height : start.y;
+  return clampCanvasCropRect({ x, y, width, height });
+}
+
+async function openCanvasCropDialog() {
+  hideMobileToolSheets();
+  if (cropModeDialog?.open) cropModeDialog.close();
+  const current = state.document;
+  if (!current || !Number.isInteger(current.width) || current.width < 1 ||
+      !Number.isInteger(current.height) || current.height < 1) {
+    status.textContent = "Primero creá un lienzo con ancho y alto válidos.";
+    return;
+  }
+  try {
+    canvasCropDocument = cloneDocument(current);
+    const maxPreviewDimension = 1400;
+    canvasCropPreviewScale = Math.min(1, maxPreviewDimension / Math.max(current.width, current.height));
+    const width = Math.max(1, Math.round(current.width * canvasCropPreviewScale));
+    const height = Math.max(1, Math.round(current.height * canvasCropPreviewScale));
+    canvasCropBase.width = width;
+    canvasCropBase.height = height;
+    canvasCropPreview.width = width;
+    canvasCropPreview.height = height;
+
+    // Load all image assets first so the preview actually represents the entire
+    // flattened composition rather than a thumbnail of only the selected layer.
+    await Promise.all(canvasCropDocument.layers
+      .filter(layer => layer.visible && layer.contentType === "image" && layer.image?.source)
+      .map(layer => new Promise((resolve, reject) => {
+        const cached = imageCache.get(layer.image.source);
+        if (cached?.complete && cached.naturalWidth > 0) { resolve(cached); return; }
+        const image = cached || new Image();
+        image.onload = () => { imageCache.set(layer.image.source, image); resolve(image); };
+        image.onerror = () => reject(new Error("No se pudo cargar una imagen de la composición para previsualizar el recorte."));
+        image.src = layer.image.source;
+        imageCache.set(layer.image.source, image);
+      })));
+
+    renderDocumentToCanvas(canvasCropDocument, canvasCropBase, ({ context, document: model }) => {
+      context.scale(canvasCropPreviewScale, canvasCropPreviewScale);
+      drawDocument({
+        context,
+        document: model,
+        center: documentCenter(model),
+        transformForLayer: layer => layer.transform
+      });
+    });
+    const insetX = Math.round(current.width * 0.06);
+    const insetY = Math.round(current.height * 0.06);
+    canvasCropRectangle = clampCanvasCropRect({
+      x: insetX, y: insetY,
+      width: Math.max(1, current.width - insetX * 2),
+      height: Math.max(1, current.height - insetY * 2)
+    });
+    document.querySelector("#canvas-crop-document-size").textContent =
+      current.width + " × " + current.height + " px · " + canvasCropDocument.layers.length + " capas";
+    document.querySelector("#canvas-crop-ratio").value = "";
+    if (!canvasCropDialog.open) canvasCropDialog.showModal();
+    drawCanvasCropPreview();
+  } catch (error) {
+    canvasCropDocument = null;
+    canvasCropRectangle = null;
+    status.textContent = error?.message || "No se pudo preparar la vista previa del lienzo completo.";
+  }
+}
+
+canvasCropPreview?.addEventListener("pointerdown", event => {
+  if (!canvasCropDocument || !canvasCropRectangle) return;
+  const point = canvasCropPoint(event);
+  if (!point) return;
+  const rectangle = canvasCropRectangle;
+  const bounds = canvasCropPreview.getBoundingClientRect();
+  const toleranceX = canvasCropDocument.width * 16 / Math.max(1, bounds.width);
+  const toleranceY = canvasCropDocument.height * 16 / Math.max(1, bounds.height);
+  const corners = {
+    nw: { x: rectangle.x, y: rectangle.y },
+    ne: { x: rectangle.x + rectangle.width, y: rectangle.y },
+    se: { x: rectangle.x + rectangle.width, y: rectangle.y + rectangle.height },
+    sw: { x: rectangle.x, y: rectangle.y + rectangle.height }
+  };
+  let mode = null;
+  for (const [name, corner] of Object.entries(corners)) {
+    if (Math.abs(point.x - corner.x) <= toleranceX && Math.abs(point.y - corner.y) <= toleranceY) {
+      mode = "resize-" + name;
+      break;
+    }
+  }
+  if (!mode && point.x >= rectangle.x && point.x <= rectangle.x + rectangle.width &&
+      point.y >= rectangle.y && point.y <= rectangle.y + rectangle.height) mode = "move";
+  if (!mode) mode = "new";
+  canvasCropDrag = { pointerId: event.pointerId, start: point, before: { ...rectangle }, mode };
+  event.preventDefault();
+  try { canvasCropPreview.setPointerCapture(event.pointerId); } catch {}
+});
+
+canvasCropPreview?.addEventListener("pointermove", event => {
+  const drag = canvasCropDrag;
+  if (!drag || drag.pointerId !== event.pointerId || !canvasCropDocument) return;
+  const point = canvasCropPoint(event);
+  if (!point) return;
+  if (drag.mode === "new") {
+    const next = canvasCropRectangleFromDrag(drag.start, point);
+    if (next && next.width > 2 && next.height > 2) canvasCropRectangle = next;
+  } else if (drag.mode === "move") {
+    canvasCropRectangle = clampCanvasCropRect({
+      ...drag.before,
+      x: drag.before.x + point.x - drag.start.x,
+      y: drag.before.y + point.y - drag.start.y
+    });
+  } else {
+    const name = drag.mode.slice("resize-".length);
+    const leftSide = name.endsWith("w");
+    const topSide = name.startsWith("n");
+    const anchorX = leftSide ? drag.before.x + drag.before.width : drag.before.x;
+    const anchorY = topSide ? drag.before.y + drag.before.height : drag.before.y;
+    const ratio = Number(document.querySelector("#canvas-crop-ratio").value);
+    let nextWidth = Math.max(1, Math.abs(point.x - anchorX));
+    let nextHeight = Math.max(1, Math.abs(point.y - anchorY));
+    if (Number.isFinite(ratio) && ratio > 0) {
+      if (nextWidth > nextHeight * ratio) nextHeight = nextWidth / ratio;
+      else nextWidth = nextHeight * ratio;
+    }
+    canvasCropRectangle = clampCanvasCropRect({
+      x: leftSide ? anchorX - nextWidth : anchorX,
+      y: topSide ? anchorY - nextHeight : anchorY,
+      width: nextWidth, height: nextHeight
+    });
+  }
+  drawCanvasCropPreview();
+});
+function finishCanvasCropDrag(event) {
+  if (!canvasCropDrag || canvasCropDrag.pointerId !== event.pointerId) return;
+  canvasCropDrag = null;
+  try { if (canvasCropPreview.hasPointerCapture(event.pointerId)) canvasCropPreview.releasePointerCapture(event.pointerId); } catch {}
+  drawCanvasCropPreview();
+}
+canvasCropPreview?.addEventListener("pointerup", finishCanvasCropDrag);
+canvasCropPreview?.addEventListener("pointercancel", finishCanvasCropDrag);
+
+for (const id of ["x", "y", "width", "height"]) {
+  document.querySelector("#canvas-crop-" + id)?.addEventListener("change", () => {
+    if (!canvasCropDocument || !canvasCropRectangle) return;
+    const candidate = {
+      x: Number(document.querySelector("#canvas-crop-x").value),
+      y: Number(document.querySelector("#canvas-crop-y").value),
+      width: Number(document.querySelector("#canvas-crop-width").value),
+      height: Number(document.querySelector("#canvas-crop-height").value)
+    };
+    if (![candidate.x, candidate.y, candidate.width, candidate.height].every(Number.isFinite)) return;
+    canvasCropRectangle = clampCanvasCropRect(candidate);
+    drawCanvasCropPreview();
+  });
+}
+document.querySelector("#canvas-crop-ratio")?.addEventListener("change", () => {
+  if (!canvasCropDocument || !canvasCropRectangle) return;
+  const ratio = Number(document.querySelector("#canvas-crop-ratio").value);
+  if (Number.isFinite(ratio) && ratio > 0) {
+    let width = canvasCropRectangle.width, height = canvasCropRectangle.height;
+    if (width / height > ratio) width = Math.round(height * ratio);
+    else height = Math.round(width / ratio);
+    canvasCropRectangle = clampCanvasCropRect({
+      x: canvasCropRectangle.x + Math.round((canvasCropRectangle.width - width) / 2),
+      y: canvasCropRectangle.y + Math.round((canvasCropRectangle.height - height) / 2),
+      width, height
+    });
+  }
+  drawCanvasCropPreview();
+});
+document.querySelector("#canvas-crop-reset")?.addEventListener("click", () => {
+  canvasCropRectangle = canvasCropFullRectangle();
+  drawCanvasCropPreview();
+});
+document.querySelector("#close-canvas-crop")?.addEventListener("click", () => canvasCropDialog?.close());
+document.querySelector("#cancel-canvas-crop")?.addEventListener("click", () => canvasCropDialog?.close());
+canvasCropDialog?.addEventListener("close", () => {
+  canvasCropDrag = null;
+  canvasCropDocument = null;
+  canvasCropRectangle = null;
+});
+document.querySelector("#apply-canvas-crop")?.addEventListener("click", () => {
+  if (!canvasCropRectangle || !canvasCropDocument || canvasCropIsFullRectangle(canvasCropRectangle)) return;
+  if (state.storageRecoveryPending) {
+    canvasCropStatus.textContent = "El proyecto está protegido. Guardalo primero antes de cambiar el lienzo.";
+    return;
+  }
+  const before = cloneDocument(state.document);
+  const next = cropDocumentCanvas(state.document, canvasCropRectangle);
+  if (!next) {
+    canvasCropStatus.textContent = "El marco de recorte no es válido. Ajustá X, Y, ancho y alto.";
+    return;
+  }
+  const selectedIds = [...state.selectedLayerIds];
+  const selectedId = selectedLayerExact()?.id || selectedIds.at(-1) || null;
+  state.document = next;
+  state.history.record(before, next);
+  setSelection(selectedIds.filter(id => next.layers.some(layer => layer.id === id)), selectedId && next.layers.some(layer => layer.id === selectedId) ? selectedId : null);
+  refreshDocument("✂️ Lienzo recortado: todas las capas se conservaron en el nuevo encuadre.");
+  persistDocument();
+  canvasCropDialog.close();
 });
 
 function getWorkingLayerAdjustments(layer) {
@@ -1463,6 +1919,70 @@ document.addEventListener("keydown",event=>{
  runQuickEditRecipe(recipe.id);
 });
 
+function activateSelectionToolForText() {
+  const selectButton = document.querySelector('.toolbar .tool[data-tool="select"]');
+  if (state.tool !== "select") {
+    if (selectButton) selectButton.click();
+    else state.tool = "select";
+  }
+  document.querySelectorAll('.mobile-touch-dock [data-touch-action="tool"]').forEach(button => {
+    button.setAttribute("aria-pressed", String(button.dataset.tool === "select"));
+  });
+}
+
+function showTextEditorDialog() {
+  if (!textEditDialog) return false;
+  if (!textEditDialog.open) {
+    try {
+      if (typeof textEditDialog.showModal === "function") textEditDialog.showModal();
+      else {
+        // Mark non-modal Android WebView fallback so it can sit above the fixed dock.
+        textEditDialog.dataset.openFallback = "true";
+        textEditDialog.setAttribute("open", "");
+      }
+    } catch {
+      // Older Android WebViews can reject showModal(). Keep editing available
+      // through a fixed, non-modal fallback rather than leaving Text unresponsive.
+      textEditDialog.dataset.openFallback = "true";
+      try {
+        if (typeof textEditDialog.show === "function") textEditDialog.show();
+        else textEditDialog.setAttribute("open", "");
+      } catch {
+        textEditDialog.setAttribute("open", "");
+      }
+    }
+  }
+  if (!textEditDialog.open) {
+    textEditDialog.dataset.openFallback = "true";
+    textEditDialog.setAttribute("open", "");
+  }
+  return Boolean(textEditDialog.open);
+}
+
+function openTextEditorForLayer(layerId = selectedLayerExact()?.id) {
+  const layer = state.document.layers.find(item => item.id === layerId);
+  if (!layer || layer.contentType !== "text") {
+    status.textContent = "Seleccioná primero un texto en el lienzo o en Capas.";
+    return false;
+  }
+  activateSelectionToolForText();
+  newlyCreatedTextLayerId = null;
+  state.textPreview = null;
+  setSelection([layer.id], layer.id);
+  renderLayerText();
+  if (!showTextEditorDialog()) {
+    status.textContent = "No se pudo abrir el editor de texto. Cerrá otros paneles e intentá de nuevo.";
+    return false;
+  }
+  window.requestAnimationFrame(() => {
+    if (!textEditDialog?.open || layer.locked || !textContentInput) return;
+    textContentInput.focus({ preventScroll: true });
+    const end = textContentInput.value.length;
+    textContentInput.setSelectionRange(newlyCreatedTextLayerId === layer.id ? 0 : end, end);
+  });
+  return true;
+}
+
 function getWorkingLayerText(layer) {
   if (state.textPreview?.layerId === layer?.id) return state.textPreview.values;
   return normalizeTextLayer(layer?.text);
@@ -1579,7 +2099,27 @@ textShadowXInput.addEventListener("input", () => { const v = Number(textShadowXI
 textShadowXInput.addEventListener("change", () => commitTextPreview("Text shadow horizontal offset updated"));
 textShadowYInput.addEventListener("input", () => { const v = Number(textShadowYInput.value); textShadowYValue.textContent = v + " px"; updateTextPreview({ shadowOffsetY: v }); });
 textShadowYInput.addEventListener("change", () => commitTextPreview("Text shadow vertical offset updated"));
-closeTextEditButton?.addEventListener("click", () => { commitTextPreview(); textEditDialog?.close(); });
+function cancelNewlyCreatedTextLayer() {
+  const id = newlyCreatedTextLayerId;
+  newlyCreatedTextLayerId = null;
+  if (!id) return false;
+  const layer = state.document.layers.find(item => item.id === id && item.contentType === "text");
+  if (!layer) return false;
+  setSelection([layer.id], layer.id);
+  const removed = removeSelectedLayer();
+  if (textEditDialog?.open) textEditDialog.close();
+  return removed;
+}
+closeTextEditButton?.addEventListener("click", () => {
+  if (newlyCreatedTextLayerId) { cancelNewlyCreatedTextLayer(); return; }
+  textEditDialog?.close();
+});
+textEditDialog?.addEventListener("cancel", event => {
+  if (newlyCreatedTextLayerId) {
+    event.preventDefault();
+    cancelNewlyCreatedTextLayer();
+  }
+});
 document.querySelector("#apply-text-layer")?.addEventListener("click", () => {
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "text") {
@@ -1587,24 +2127,51 @@ document.querySelector("#apply-text-layer")?.addEventListener("click", () => {
     return;
   }
   commitTextPreview("Texto aplicado al lienzo");
+  newlyCreatedTextLayerId = null;
   textEditDialog?.close();
   status.textContent = "Texto aplicado al lienzo. Podés moverlo o eliminarlo desde la barra inferior.";
 });
 document.querySelector("#delete-text-layer")?.addEventListener("click", () => {
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "text") return;
+  newlyCreatedTextLayerId = null;
   if (removeSelectedLayer()) textEditDialog?.close();
 });
-textEditDialog?.addEventListener("close", () => commitTextPreview());
-textStylePresetButtons.forEach(button=>button.addEventListener("click",()=>{const layer=selectedLayerExact();if(!layer||layer.contentType!=="text"||layer.locked)return;const p={comic:{fontFamily:"Impact",fontWeight:"bold",color:"#fff200",outlineColor:"#171717",outlineWidth:5,shadowColor:"#171717",shadowBlur:0,shadowOffsetX:5,shadowOffsetY:6},poster:{fontFamily:"Arial Black",fontWeight:"bold",color:"#ffffff",outlineColor:"#101014",outlineWidth:2,shadowColor:"#000000",shadowBlur:8,shadowOffsetX:2,shadowOffsetY:4},manga:{fontFamily:"Georgia",fontWeight:"bold",color:"#111111",outlineColor:"#ffffff",outlineWidth:0,shadowColor:"#777777",shadowBlur:1,shadowOffsetX:1,shadowOffsetY:2},neon:{fontFamily:"Arial Black",fontWeight:"bold",color:"#ffffff",outlineColor:"#f000c8",outlineWidth:3,shadowColor:"#00dfff",shadowBlur:18,shadowOffsetX:0,shadowOffsetY:0}}[button.dataset.textStylePreset];if(p){updateTextPreview(p);commitTextPreview(button.dataset.textStylePreset+" text style applied");}}));
+textEditDialog?.addEventListener("close", () => {
+  // Closing with X or Escape cancels an in-progress preview instead of silently applying it.
+  delete textEditDialog.dataset.openFallback;
+  if (state.textPreview) state.textPreview = null;
+  redraw();
+  renderLayerText();
+});
+textStylePresetButtons.forEach(button => button.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "text" || layer.locked) return;
+  const presets = {
+    title: { fontFamily: "Arial Black", fontWeight: "bold", fontSize: 76, color: "#ffffff", outlineWidth: 0, shadowColor: "#10131a", shadowBlur: 5, shadowOffsetX: 0, shadowOffsetY: 3, align: "center" },
+    subtitle: { fontFamily: "Georgia", fontWeight: "bold", fontSize: 44, color: "#f4f3ff", outlineWidth: 0, shadowColor: "#171323", shadowBlur: 2, shadowOffsetX: 0, shadowOffsetY: 2, align: "center" },
+    body: { fontFamily: "Arial", fontWeight: "normal", fontSize: 30, color: "#f4f5f7", outlineWidth: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0, align: "left" },
+    quote: { fontFamily: "Palatino Linotype", fontWeight: "normal", fontSize: 50, color: "#fff4dd", outlineWidth: 0, shadowColor: "#20180f", shadowBlur: 3, shadowOffsetX: 0, shadowOffsetY: 2, align: "center" },
+    label: { fontFamily: "Arial Black", fontWeight: "bold", fontSize: 26, color: "#ffe08a", outlineWidth: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0, align: "left" },
+    elegant: { fontFamily: "Georgia", fontWeight: "normal", fontSize: 62, color: "#f5e7d5", outlineWidth: 0, shadowColor: "#30201c", shadowBlur: 2, shadowOffsetX: 0, shadowOffsetY: 2, align: "center" },
+    comic: { fontFamily: "Impact", fontWeight: "bold", color: "#fff200", outlineColor: "#171717", outlineWidth: 5, shadowColor: "#171717", shadowBlur: 0, shadowOffsetX: 5, shadowOffsetY: 6 },
+    poster: { fontFamily: "Arial Black", fontWeight: "bold", color: "#ffffff", outlineColor: "#101014", outlineWidth: 2, shadowColor: "#000000", shadowBlur: 8, shadowOffsetX: 2, shadowOffsetY: 4 },
+    manga: { fontFamily: "Georgia", fontWeight: "bold", color: "#111111", outlineColor: "#ffffff", outlineWidth: 0, shadowColor: "#777777", shadowBlur: 1, shadowOffsetX: 1, shadowOffsetY: 2 },
+    neon: { fontFamily: "Arial Black", fontWeight: "bold", color: "#ffffff", outlineColor: "#f000c8", outlineWidth: 3, shadowColor: "#00dfff", shadowBlur: 18, shadowOffsetX: 0, shadowOffsetY: 0 }
+  }[button.dataset.textStylePreset];
+  if (presets) {
+    updateTextPreview(presets);
+    commitTextPreview(button.dataset.textStylePreset + " text style applied");
+  }
+}));
 
 function renderImageMask(){if(!imageMaskPanel||!imageMaskInput)return;const layer=selectedLayerExact(),isImage=layer?.contentType==="image"&&Boolean(layer.image);imageMaskPanel.hidden=!isImage;imageMaskInput.disabled=!isImage||layer.locked;imageMaskInput.value=isImage?(layer.image.mask||"none"):"none";}
 imageMaskInput.addEventListener("change",()=>{const layer=selectedLayerExact();if(!layer||layer.contentType!=="image"||!layer.image||layer.locked)return;const before=cloneDocument(state.document),next=setImageMask(state.document,layer.id,imageMaskInput.value);if(!next)return;state.document=next;state.history.record(before,next);refreshDocument("Image mask updated");persistDocument();});
 
 
-const SHAPE_MAKER_KINDS = new Set(["rectangle","rounded","circle","ellipse","star","heart","hexagon","triangle","speech","lightning","cloud"]);
+const SHAPE_MAKER_KINDS = new Set(["rectangle","rounded","circle","ellipse","star","heart","hexagon","pentagon","octagon","diamond","trapezoid","parallelogram","cross","arrow","chevron","triangle","speech","lightning","cloud"]);
 const shapeFieldIds = ["shape-maker-kind","shape-maker-width","shape-maker-height","shape-maker-fill","shape-maker-stroke","shape-maker-stroke-width","shape-maker-shadow-color","shape-maker-shadow-blur","shape-maker-shadow-x","shape-maker-shadow-y"];
-const shapeLabels = {rectangle:"Rectángulo",rounded:"Rectángulo redondeado",circle:"Círculo",ellipse:"Óvalo",star:"Estrella",heart:"Corazón",hexagon:"Hexágono",triangle:"Triángulo",speech:"Globo de diálogo",lightning:"Rayo",cloud:"Nube"};
+const shapeLabels = {rectangle:"Rectángulo",rounded:"Rectángulo redondeado",circle:"Círculo",ellipse:"Óvalo",star:"Estrella",heart:"Corazón",hexagon:"Hexágono",pentagon:"Pentágono",octagon:"Octágono",diamond:"Rombo",trapezoid:"Trapecio",parallelogram:"Paralelogramo",cross:"Cruz",arrow:"Flecha",chevron:"Chevron",triangle:"Triángulo",speech:"Globo de diálogo",lightning:"Rayo",cloud:"Nube"};
 function shapeMakerValues() {
   const number = (id, fallback, min, max) => Math.max(min, Math.min(max, Math.round(Number(document.querySelector("#"+id).value) || fallback)));
   return {
@@ -1654,6 +2221,22 @@ function shapeSvgSource(values) {
     geometry=`<path d="M ${cx} ${bottom-2} C ${cx-innerWidth*.12} ${top+innerHeight*.68}, ${left} ${top+innerHeight*.48}, ${left+innerWidth*.07} ${top+innerHeight*.27} C ${left+innerWidth*.13} ${top+innerHeight*.02}, ${cx-innerWidth*.12} ${top}, ${cx} ${top+innerHeight*.23} C ${cx+innerWidth*.12} ${top}, ${right-innerWidth*.13} ${top+innerHeight*.02}, ${right-innerWidth*.07} ${top+innerHeight*.27} C ${right} ${top+innerHeight*.48}, ${cx+innerWidth*.12} ${top+innerHeight*.68}, ${cx} ${bottom-2} Z" />`;
   } else if(kind==="hexagon") {
     geometry=`<polygon points="${polygon([[left+innerWidth*.25,top],[right-innerWidth*.25,top],[right,top+innerHeight*.5],[right-innerWidth*.25,bottom],[left+innerWidth*.25,bottom],[left,top+innerHeight*.5]])}" />`;
+  } else if(kind==="diamond") {
+    geometry=`<polygon points="${polygon([[cx,top],[right,cy],[cx,bottom],[left,cy]])}" />`;
+  } else if(kind==="pentagon"||kind==="octagon") {
+    const sides=kind==="pentagon"?5:8,points=[];
+    for(let i=0;i<sides;i++){const angle=-Math.PI/2+i*Math.PI*2/sides;points.push([cx+Math.cos(angle)*innerWidth/2,cy+Math.sin(angle)*innerHeight/2]);}
+    geometry=`<polygon points="${polygon(points)}" />`;
+  } else if(kind==="trapezoid") {
+    geometry=`<polygon points="${polygon([[left+innerWidth*.2,top],[right-innerWidth*.2,top],[right,bottom],[left,bottom]])}" />`;
+  } else if(kind==="parallelogram") {
+    geometry=`<polygon points="${polygon([[left+innerWidth*.18,top],[right,top],[right-innerWidth*.18,bottom],[left,bottom]])}" />`;
+  } else if(kind==="cross") {
+    geometry=`<polygon points="${polygon([[cx-innerWidth*.16,top],[cx+innerWidth*.16,top],[cx+innerWidth*.16,cy-innerHeight*.16],[right,cy-innerHeight*.16],[right,cy+innerHeight*.16],[cx+innerWidth*.16,cy+innerHeight*.16],[cx+innerWidth*.16,bottom],[cx-innerWidth*.16,bottom],[cx-innerWidth*.16,cy+innerHeight*.16],[left,cy+innerHeight*.16],[left,cy-innerHeight*.16],[cx-innerWidth*.16,cy-innerHeight*.16]])}" />`;
+  } else if(kind==="arrow") {
+    geometry=`<polygon points="${polygon([[left,cy-innerHeight*.18],[left+innerWidth*.58,cy-innerHeight*.18],[left+innerWidth*.58,top],[right,bottom===top?top:cy],[left+innerWidth*.58,bottom],[left+innerWidth*.58,cy+innerHeight*.18],[left,cy+innerHeight*.18]])}" />`;
+  } else if(kind==="chevron") {
+    geometry=`<polygon points="${polygon([[left,top],[left+innerWidth*.3,top],[right,cy],[left+innerWidth*.3,bottom],[left,bottom],[left+innerWidth*.68,cy]])}" />`;
   } else if(kind==="triangle") {
     geometry=`<polygon points="${polygon([[cx,top],[right,bottom],[left,bottom]])}" />`;
   } else if(kind==="speech") {
@@ -1715,8 +2298,7 @@ function openSelectedObjectStyle() {
   const layer=selectedLayerExact();
   if(!layer){status.textContent="Seleccioná primero un objeto en el lienzo o en Capas.";return;}
   if(layer.contentType==="text") {
-    renderLayerText();
-    if(textEditDialog&&!textEditDialog.open)textEditDialog.showModal();
+    openTextEditorForLayer(layer.id);
     return;
   }
   if(selectedShapeMetadata(layer)){openShapeMaker(layer);return;}
@@ -1792,6 +2374,7 @@ document.querySelector("#object-style-apply")?.addEventListener("click",()=>{
   state.document=next;state.history.record(before,next);state.dirty=true;refreshDocument("Estilo aplicado: "+layer.name);persistDocument();objectStyleDialog.close();
 });
 document.querySelector("#selection-mini-style")?.addEventListener("click",openSelectedObjectStyle);
+document.querySelector("#selection-mini-edit-text")?.addEventListener("click", () => openTextEditorForLayer());
 
 
 function setStorageRecoveryPending(pending, message = "") {
@@ -1833,8 +2416,14 @@ function persistDocument({ markSaved = false } = {}) {
 }
 
 function refreshHistoryControls() {
-  undoButton.disabled = !state.history.canUndo();
-  redoButton.disabled = !state.history.canRedo();
+  const canUndo = state.history.canUndo();
+  const canRedo = state.history.canRedo();
+  undoButton.disabled = !canUndo;
+  redoButton.disabled = !canRedo;
+  if (mobileTopUndoButton) mobileTopUndoButton.disabled = !canUndo;
+  if (mobileTopRedoButton) mobileTopRedoButton.disabled = !canRedo;
+  if (mobileUndoButton) mobileUndoButton.disabled = !canUndo;
+  if (mobileRedoButton) mobileRedoButton.disabled = !canRedo;
 }
 
 function syncSelection() {
@@ -1975,7 +2564,7 @@ function applyMultiLayerMove(deltaX, deltaY, message = "Layers moved", layerIds 
   return true;
 }
 
-function beginTransformInteraction(type, event, handle = null) {
+function beginTransformInteraction(type, event, handle = null, handleOffset = null) {
   const layer = selectedLayerExact();
   if (!layer || layer.locked) return false;
   const screenPoint = screenPointFromEvent(event);
@@ -1984,8 +2573,11 @@ function beginTransformInteraction(type, event, handle = null) {
   state.transformInteraction = {
     type,
     handle,
+    handleOffset: handleOffset && Number.isFinite(handleOffset.x) && Number.isFinite(handleOffset.y)
+      ? { x: handleOffset.x, y: handleOffset.y } : { x: 0, y: 0 },
     pointerId: event.pointerId,
     layerId: layer.id,
+    startScreen: { ...screenPoint },
     startDocument: documentPoint,
     beforeTransform: { ...layer.transform },
     previewTransform: { ...layer.transform },
@@ -1995,7 +2587,7 @@ function beginTransformInteraction(type, event, handle = null) {
   return true;
 }
 
-function finishTransformInteraction(cancelled = false) {
+function finishTransformInteraction(cancelled = false, finalEvent = null) {
   const interaction = state.transformInteraction;
   if (!interaction) return;
   const pointerId = interaction.pointerId;
@@ -2010,6 +2602,19 @@ function finishTransformInteraction(cancelled = false) {
   if (!layer) {
     redraw();
     return;
+  }
+  // On touch screens a tap edits text; a deliberate drag moves it. This
+  // avoids making users find a tiny secondary edit button on the phone.
+  if (!cancelled && finalEvent?.pointerType === "touch" &&
+      interaction.type === "move" && layer.contentType === "text" &&
+      interaction.startScreen) {
+    const endScreen = screenPointFromEvent(finalEvent);
+    if (Math.hypot(endScreen.x - interaction.startScreen.x, endScreen.y - interaction.startScreen.y) <= 8) {
+      if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
+      redraw();
+      openTextEditorForLayer(layer.id);
+      return;
+    }
   }
   const before = cloneDocument(state.document);
   const start = interaction.beforeTransform;
@@ -2027,16 +2632,67 @@ function finishTransformInteraction(cancelled = false) {
   if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
 }
 
+function keepImageTransformVisible(layer, transform) {
+  const movableImage = layer?.contentType === "image" && Boolean(layer.image);
+  const movableText = layer?.contentType === "text" && Boolean(layer.text);
+  if ((!movableImage && !movableText) || !transform) return transform;
+  const documentWidth = Number(state.document.width);
+  const documentHeight = Number(state.document.height);
+  if (!(documentWidth > 0 && documentHeight > 0)) return transform;
+  const corners = layerCorners(layer, documentCenter(state.document), transform);
+  if (!corners?.length) return transform;
+  const minX = Math.min(...corners.map(point => point.x));
+  const maxX = Math.max(...corners.map(point => point.x));
+  const minY = Math.min(...corners.map(point => point.y));
+  const maxY = Math.max(...corners.map(point => point.y));
+  const boxWidth = maxX - minX;
+  const boxHeight = maxY - minY;
+  const visibilityFloor = movableText ? 20 : 48;
+  const minVisibleX = Math.min(movableText ? 72 : 160, Math.max(visibilityFloor, Math.min(documentWidth, boxWidth) * 0.3));
+  const minVisibleY = Math.min(movableText ? 36 : 160, Math.max(visibilityFloor, Math.min(documentHeight, boxHeight) * 0.3));
+  let dx = 0;
+  let dy = 0;
+
+  // If the image fits on the document, keep the whole image on-canvas.
+  // Oversized images can still be cropped creatively, but never disappear completely.
+  if (boxWidth <= documentWidth) {
+    if (minX < 0) dx = -minX;
+    else if (maxX > documentWidth) dx = documentWidth - maxX;
+  } else if (maxX < minVisibleX) {
+    dx = minVisibleX - maxX;
+  } else if (minX > documentWidth - minVisibleX) {
+    dx = documentWidth - minVisibleX - minX;
+  }
+
+  if (boxHeight <= documentHeight) {
+    if (minY < 0) dy = -minY;
+    else if (maxY > documentHeight) dy = documentHeight - maxY;
+  } else if (maxY < minVisibleY) {
+    dy = minVisibleY - maxY;
+  } else if (minY > documentHeight - minVisibleY) {
+    dy = documentHeight - minVisibleY - minY;
+  }
+  return dx || dy ? { ...transform, x: transform.x + dx, y: transform.y + dy } : transform;
+}
+
 function updateTransformPreview(event) {
   const interaction = state.transformInteraction;
   if (!interaction || event.pointerId !== interaction.pointerId) return;
   const currentScreen = screenPointFromEvent(event);
-  const currentDocument = screenToDocumentPoint(currentScreen, state.document, state.viewport, canvasSize());
+  const targetOffset = interaction.type === "scale" ? interaction.handleOffset : null;
+  const targetScreen = targetOffset
+    ? { x: currentScreen.x + targetOffset.x, y: currentScreen.y + targetOffset.y }
+    : currentScreen;
+  const currentDocument = screenToDocumentPoint(targetScreen, state.document, state.viewport, canvasSize());
   const pivot = interaction.pivot;
   const preview = { ...interaction.previewTransform };
   if (interaction.type === "move") {
     preview.x = interaction.beforeTransform.x + currentDocument.x - interaction.startDocument.x;
     preview.y = interaction.beforeTransform.y + currentDocument.y - interaction.startDocument.y;
+    Object.assign(preview, keepImageTransformVisible(
+      state.document.layers.find(layer => layer.id === interaction.layerId),
+      preview
+    ));
   } else if (interaction.type === "scale") {
     const nextTransform = resizeTransformFromCorner(
       state.document.layers.find(item => item.id === interaction.layerId),
@@ -2059,26 +2715,55 @@ function updateTransformPreview(event) {
   redraw();
 }
 
+function closeSelectionBox() {
+  setSelection([], null);
+  const message = "Selección cerrada. El elemento sigue en el lienzo.";
+  if (window.matchMedia("(max-width: 920px)").matches) showMobileFeedback(message);
+  else status.textContent = message;
+  redraw();
+}
+
 function beginSelectionInteraction(event) {
   const screenPoint = screenPointFromEvent(event);
   const selected = selectedLayerExact();
-  const selectedGeometry = selected ? selectionGeometry(selected, screenViewportForDocument(state.document, state.viewport, canvasSize()), documentCenter(state.document)) : null;
+  const rawSelectedGeometry = selected ? selectionGeometry(selected, screenViewportForDocument(state.document, state.viewport, canvasSize()), documentCenter(state.document)) : null;
+  const selectedGeometry = clampSelectionHandles(rawSelectedGeometry, canvasSize(), selectionHandleInset());
   const selectedHit = hitTestHandle(screenPoint, selectedGeometry, HANDLE_RADIUS);
+  if (window.__ANIMEART_E2E_DIAGNOSTICS__) {
+    window.__ANIMEART_LAST_SELECTION_POINTER__ = {
+      point: screenPoint,
+      hit: selectedHit,
+      layerId: selected?.id || null,
+      selectedLayerIds: [...state.selectedLayerIds],
+      rotationHandle: selectedGeometry?.rotationHandle || null,
+      closeHandle: selectedGeometry?.closeHandle || null,
+      resizeHandle: selectedGeometry?.resizeHandle || null
+    };
+  }
+  // In multi-selection, prefer the group bounds before interpreting the anchor layer's X.
+  // Otherwise a group-interior drag can overlap the active layer's own close handle.
+  if (selectedHit === "close" && state.selectedLayerIds.length <= 1) {
+    closeSelectionBox();
+    return;
+  }
   if (state.selectedLayerIds.length > 1) {
     const layers = selectedLayersExact();
     const documentPoint = screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize());
     const groupDocumentGeometry = multiSelectionGeometry(layers, documentCenter(state.document));
-    const groupScreenGeometry = groupDocumentGeometry ? {
+    const groupScreenGeometry = groupDocumentGeometry ? clampSelectionHandles({
       ...groupDocumentGeometry,
       corners: groupDocumentGeometry.corners.map(point => documentToScreenPoint(point, state.document, state.viewport, canvasSize())),
-      center: documentToScreenPoint(groupDocumentGeometry.center, state.document, state.viewport, canvasSize())
-    } : null;
+      center: documentToScreenPoint(groupDocumentGeometry.center, state.document, state.viewport, canvasSize()),
+      closeHandle: documentToScreenPoint(groupDocumentGeometry.corners[1], state.document, state.viewport, canvasSize()),
+      resizeHandle: documentToScreenPoint(groupDocumentGeometry.corners[2], state.document, state.viewport, canvasSize())
+    }, canvasSize(), selectionHandleInset()) : null;
     if (groupScreenGeometry) {
-      const topMid = { x: (groupScreenGeometry.corners[0].x + groupScreenGeometry.corners[1].x) / 2, y: (groupScreenGeometry.corners[0].y + groupScreenGeometry.corners[1].y) / 2 };
-      const outward = { x: topMid.x - groupScreenGeometry.center.x, y: topMid.y - groupScreenGeometry.center.y };
-      const length = Math.hypot(outward.x, outward.y) || 1;
-      groupScreenGeometry.rotationHandle = { x: topMid.x + outward.x / length * 32, y: topMid.y + outward.y / length * 32 };
       const groupHit = hitTestHandle(screenPoint, groupScreenGeometry, HANDLE_RADIUS);
+      if (window.__ANIMEART_E2E_DIAGNOSTICS__) console.error("AA_MULTI_POINTERDOWN", JSON.stringify({screenPoint, groupHit, pointerId: event.pointerId, selectedIds: layers.map(layer => layer.id), corners: groupScreenGeometry.corners}));
+      if (groupHit === "close") {
+        closeSelectionBox();
+        return;
+      }
       // A hit inside the group bounds is itself a valid drag target. Do not
       // depend on a second per-layer hit test, which can miss edge pixels.
       if (groupHit === "move") {
@@ -2095,7 +2780,7 @@ function beginSelectionInteraction(event) {
       }
       if (groupHit === "scale-nw" || groupHit === "scale-ne" || groupHit === "scale-se" || groupHit === "scale-sw") {
         if (layers.some(layer => layer.locked)) return;
-        state.multiTransformInteraction = { pointerId: event.pointerId, type: "scale", handle: groupHit, startDocument: documentPoint, layerIds: layers.map(layer => layer.id), previewTransforms: new Map(layers.map(layer => [layer.id, { ...layer.transform }])) };
+        state.multiTransformInteraction = { pointerId: event.pointerId, type: "scale", handle: groupHit, handleOffset: groupScreenGeometry.resizeHandleOffset, startDocument: documentPoint, layerIds: layers.map(layer => layer.id), previewTransforms: new Map(layers.map(layer => [layer.id, { ...layer.transform }])) };
         canvas.setPointerCapture(event.pointerId);
         return;
       }
@@ -2127,7 +2812,7 @@ function beginSelectionInteraction(event) {
   if (selectedHit === "move" && state.selectedLayerIds.length === 1) {
     return beginTransformInteraction("move", event);
   }
-  if (selectedHit?.startsWith("scale-")) return beginTransformInteraction("scale", event, selectedHit);
+  if (selectedHit?.startsWith("scale-")) return beginTransformInteraction("scale", event, selectedHit, selectedGeometry?.resizeHandleOffset);
   if (selectedHit === "rotate") return beginTransformInteraction("rotate", event);
   const documentPoint = screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize());
   for (const layer of [...state.document.layers].reverse()) {
@@ -2539,6 +3224,12 @@ async function finishImageErase(interaction) {
   refreshDocument("🧽 Image pixels erased · Undo can restore them");
 }
 
+canvas.addEventListener("dblclick", event => {
+  const point = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
+  const layer = [...state.document.layers].reverse().find(item => item.visible && item.contentType === "text" && item.text && hitTestLayer(item, point, documentCenter(state.document)));
+  if (layer) openTextEditorForLayer(layer.id);
+});
+
 canvas.addEventListener("pointerdown", event => {
   if (event.pointerType === "touch") {
     activeTouchPointers.set(event.pointerId, { ...screenPointFromEvent(event), pointerId: event.pointerId });
@@ -2556,6 +3247,20 @@ canvas.addEventListener("pointerdown", event => {
     state.lastPanPoint = screenPointFromEvent(event);
     canvas.setPointerCapture(event.pointerId);
     return;
+  }
+  if (state.tool !== "select") {
+    // A selected text layer is an object, not a paint surface. If a drawing
+    // tool was left active, touching text must switch to Move instead of
+    // accumulating accidental strokes on the text layer during a drag.
+    const documentPoint = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
+    const topHitLayer = [...state.document.layers].reverse().find(layer =>
+      layer.visible && hitTestLayer(layer, documentPoint, documentCenter(state.document))
+    );
+    if (topHitLayer?.contentType === "text" && !topHitLayer.locked) {
+      activateSelectionToolForText();
+      beginSelectionInteraction(event);
+      return;
+    }
   }
   if (state.tool === "select") {
     beginSelectionInteraction(event);
@@ -2602,13 +3307,10 @@ canvas.addEventListener("pointerdown", event => {
   if (hitImage && hitImage.id !== state.selectedLayerId &&
       ["brush", "eraser", "censor-light"].includes(state.tool) &&
       !keepPaintingLayer) {
+    // Select the hit image but keep processing this same pointer gesture. Previously
+    // the early return made the first drawing/erase touch appear to do nothing.
     setSelection([hitImage.id], hitImage.id);
     renderLayers();
-    redraw();
-    status.textContent = "🖼️ Imagen seleccionada. Volvé a tocar para usar " +
-      (state.tool === "eraser" ? "Borrar" : state.tool === "censor-light" ? "Luz de censura" : "Dibujar") +
-      " sobre la capa correcta.";
-    return;
   }
   let layer = selectedLayer();
   if (!layer || layer.locked) return;
@@ -2665,11 +3367,17 @@ canvas.addEventListener("pointermove", event => {
   }
   if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
     const interaction = state.multiTransformInteraction;
-    const current = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
+    const currentScreen = screenPointFromEvent(event);
+    const handleOffset = interaction.type === "scale" ? interaction.handleOffset : null;
+    const targetScreen = handleOffset
+      ? { x: currentScreen.x + handleOffset.x, y: currentScreen.y + handleOffset.y }
+      : currentScreen;
+    const current = screenToDocumentPoint(targetScreen, state.document, state.viewport, canvasSize());
     const layers = interactionLayers(interaction);
     if (interaction.type === "move") {
       const start = interaction.startDocument;
       interaction.previewDelta = { x: current.x - start.x, y: current.y - start.y };
+      if (window.__ANIMEART_E2E_DIAGNOSTICS__) console.error("AA_MULTI_POINTERMOVE", JSON.stringify({current, start, delta: interaction.previewDelta, pointerId: event.pointerId}));
     } else if (interaction.type === "scale") {
       const transforms = groupScaleTransforms(layers, documentCenter(state.document), interaction.handle, current);
       if (transforms) interaction.previewTransforms = new Map(transforms.map(item => [item.id, item.transform]));
@@ -2729,7 +3437,12 @@ canvas.addEventListener("pointerup", event => {
   }
   if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
     const interaction = state.multiTransformInteraction;
-    const current = screenToDocumentPoint(screenPointFromEvent(event), state.document, state.viewport, canvasSize());
+    const currentScreen = screenPointFromEvent(event);
+    const handleOffset = interaction.type === "scale" ? interaction.handleOffset : null;
+    const targetScreen = handleOffset
+      ? { x: currentScreen.x + handleOffset.x, y: currentScreen.y + handleOffset.y }
+      : currentScreen;
+    const current = screenToDocumentPoint(targetScreen, state.document, state.viewport, canvasSize());
     const layers = interactionLayers(interaction);
     if (interaction.type === "move") {
       interaction.previewDelta = { x: current.x - interaction.startDocument.x, y: current.y - interaction.startDocument.y };
@@ -2747,6 +3460,7 @@ canvas.addEventListener("pointerup", event => {
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     if (interaction.type === "move") {
       const delta = interaction.previewDelta || { x: 0, y: 0 };
+      if (window.__ANIMEART_E2E_DIAGNOSTICS__) console.error("AA_MULTI_POINTERUP", JSON.stringify({delta, layerIds: interaction.layerIds}));
       if (delta.x !== 0 || delta.y !== 0) applyMultiLayerMove(delta.x, delta.y, "Layers moved", interaction.layerIds);
       else redraw();
     } else {
@@ -2771,7 +3485,7 @@ canvas.addEventListener("pointerup", event => {
     return;
   }
   if (state.transformInteraction && event.pointerId === state.transformPointerId) {
-    finishTransformInteraction(false);
+    finishTransformInteraction(false, event);
     return;
   }
   if (state.magicEraseInteraction && event.pointerId === state.magicEraseInteraction.pointerId) {
@@ -2960,6 +3674,237 @@ for (const [key, input] of Object.entries(censorInputs)) {
   });
 }
 
+const censorDialog = document.querySelector("#censor-light-dialog");
+const censorPreviewCanvas = document.querySelector("#censor-image-preview");
+const censorPreviewContext = censorPreviewCanvas?.getContext("2d");
+let censorDialogSession = null;
+let censorDialogPointer = null;
+
+function drawCensorDialogPreview() {
+  const session = censorDialogSession;
+  const context = censorPreviewContext;
+  if (!session || !context || !session.image) return;
+  const { width, height, layer } = session;
+  if (censorPreviewCanvas.width !== width) censorPreviewCanvas.width = width;
+  if (censorPreviewCanvas.height !== height) censorPreviewCanvas.height = height;
+  context.clearRect(0, 0, width, height);
+  drawImageLayer(layer, context);
+  for (const stroke of session.strokes) {
+    if (!stroke.points.length) continue;
+    const erasing = stroke.mode === "erase";
+    const effect = stroke.effect || "normal";
+    context.save();
+    context.globalCompositeOperation = erasing ? "destination-out" : "source-over";
+    context.globalAlpha = erasing ? Math.max(0.05, stroke.opacity) : stroke.opacity;
+    context.strokeStyle = erasing ? "#000000" : stroke.color;
+    context.lineWidth = stroke.size;
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.shadowColor = erasing || effect === "normal" ? "transparent" : stroke.color;
+    context.shadowBlur = erasing ? 0 : stroke.mode === "censor-light"
+      ? stroke.size * (stroke.softness / 100 * 0.5 + stroke.glow / 100 * 1.25)
+      : effect === "soft" ? stroke.size * stroke.softness / 100
+        : effect === "glow" ? stroke.size * 0.55
+          : effect === "neon" ? stroke.size * 1.25 : 0;
+    context.beginPath();
+    context.moveTo(stroke.points[0].x, stroke.points[0].y);
+    for (const point of stroke.points.slice(1)) context.lineTo(point.x, point.y);
+    context.stroke();
+    context.restore();
+  }
+  const undo = document.querySelector("#censor-dialog-undo");
+  if (undo) undo.disabled = session.strokes.length === 0;
+}
+
+function censorDialogPoint(event) {
+  if (!censorPreviewCanvas || !censorDialogSession) return null;
+  const rect = censorPreviewCanvas.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return null;
+  return {
+    x: Math.max(0, Math.min(censorDialogSession.width, (event.clientX - rect.left) / rect.width * censorDialogSession.width)),
+    y: Math.max(0, Math.min(censorDialogSession.height, (event.clientY - rect.top) / rect.height * censorDialogSession.height))
+  };
+}
+
+async function openCensorLightDialog(requestedMode = "censor-light") {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image) {
+    status.textContent = "Primero seleccioná la imagen a la que querés aplicar Luz de censura.";
+    document.querySelector("#selection-indicator")?.focus?.();
+    return;
+  }
+  if (layer.locked) {
+    status.textContent = "La imagen está fijada/bloqueada. Desfijala antes de aplicar Luz de censura.";
+    return;
+  }
+  const mode = ["censor-light", "paint", "erase"].includes(requestedMode) ? requestedMode : "censor-light";
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const cached = imageCache.get(layer.image.source);
+      if (cached?.complete && cached.naturalWidth > 0) { resolve(cached); return; }
+      const candidate = cached || new Image();
+      candidate.onload = () => resolve(candidate);
+      candidate.onerror = () => reject(new Error("No se pudo cargar la imagen seleccionada."));
+      candidate.src = layer.image.source;
+      imageCache.set(layer.image.source, candidate);
+    });
+    const width = layer.image.width;
+    const height = layer.image.height;
+    if (width * height > 16_000_000) throw new RangeError("Para evitar bloqueos, Luz de censura limita esta operación a 16 megapíxeles. Reducí el tamaño de la imagen y volvé a intentarlo.");
+    censorDialogSession = {
+      layerId: layer.id,
+      source: layer.image.source,
+      layer: { ...layer, image: { ...layer.image } },
+      image,
+      width,
+      height,
+      strokes: [],
+      mode
+    };
+    const studioTitles = {
+      "censor-light": "✨ Luz de censura",
+      paint: "🖌️ Pintar píxeles",
+      erase: "🧽 Borrar píxeles"
+    };
+    const studioDescriptions = {
+      "censor-light": "Pintá luz sobre la imagen. El original no cambia hasta pulsar Aplicar.",
+      paint: "Pintá sobre la imagen en una ventana independiente. Probá color, grosor y acabado; el original sigue intacto hasta Aplicar.",
+      erase: "Borrá partes de esta imagen desde la vista previa. Se conserva el original hasta Aplicar y podés deshacer el último trazo."
+    };
+    document.querySelector("#censor-dialog-title").textContent = studioTitles[mode];
+    document.querySelector("#pixel-studio-eyebrow").textContent = mode === "erase" ? "BORRADOR DE PÍXELES · VISTA PREVIA" : mode === "paint" ? "PINCEL · VISTA PREVIA" : "ESTUDIO DE PÍXELES · VISTA PREVIA";
+    document.querySelector("#censor-dialog-description").textContent = studioDescriptions[mode];
+    document.querySelector("#censor-dialog-image-name").textContent = layer.name + " · " + width + " × " + height + " px";
+    document.querySelector("#censor-dialog-color").value = mode === "erase" ? "#111318" : mode === "paint" ? "#ff4fd8" : "#ffffff";
+    document.querySelector("#censor-dialog-size").value = mode === "censor-light" ? "36" : mode === "paint" ? "18" : "32";
+    document.querySelector("#censor-dialog-size-value").textContent = document.querySelector("#censor-dialog-size").value + " px";
+    document.querySelector("#censor-dialog-opacity").value = mode === "censor-light" ? "90" : "100";
+    document.querySelector("#censor-dialog-opacity-value").textContent = document.querySelector("#censor-dialog-opacity").value + "%";
+    document.querySelector("#censor-dialog-softness").value = mode === "censor-light" ? "35" : "0";
+    document.querySelector("#censor-dialog-softness-value").textContent = document.querySelector("#censor-dialog-softness").value + "%";
+    document.querySelector("#censor-dialog-glow").value = mode === "censor-light" ? "55" : "0";
+    document.querySelector("#censor-dialog-glow-value").textContent = document.querySelector("#censor-dialog-glow").value + "%";
+    document.querySelector("#censor-dialog-effect").value = "normal";
+    document.querySelector("#censor-dialog-color-label").firstChild.textContent = mode === "erase" ? "Color de fondo de previsualización " : mode === "paint" ? "Color del pincel " : "Color de luz ";
+    document.querySelector("#censor-dialog-opacity-label").firstChild.textContent = mode === "erase" ? "Intensidad del borrado " : mode === "paint" ? "Opacidad " : "Intensidad ";
+    document.querySelector("#censor-dialog-softness").closest("label").hidden = mode === "erase";
+    document.querySelector("#censor-dialog-glow").closest("label").hidden = mode !== "censor-light";
+    document.querySelector("#censor-dialog-effect").closest("label").hidden = mode === "censor-light";
+    document.querySelector("#censor-dialog-apply").textContent = mode === "erase" ? "✓ Aplicar borrado" : mode === "paint" ? "✓ Aplicar pintura" : "✓ Aplicar a la imagen";
+    document.querySelector("#censor-dialog-status").textContent = mode === "erase"
+      ? "Deslizá sobre la vista previa para borrar. Nada cambia hasta Aplicar."
+      : mode === "paint" ? "Deslizá sobre la vista previa para pintar. Nada cambia hasta Aplicar."
+        : "Deslizá sobre la imagen para pintar. Nada se cambia hasta pulsar Aplicar.";
+    if (!censorDialog.open) censorDialog.showModal();
+    drawCensorDialogPreview();
+  } catch (error) {
+    censorDialogSession = null;
+    status.textContent = error?.message || "No se pudo abrir Luz de censura.";
+  }
+}
+
+function closeCensorLightDialog() {
+  censorDialogPointer = null;
+  censorDialogSession = null;
+  if (censorDialog?.open) censorDialog.close();
+}
+
+for (const [id, suffix] of [["size"," px"],["opacity","%"],["softness","%"],["glow","%"]]) {
+  document.querySelector("#censor-dialog-" + id)?.addEventListener("input", event => {
+    document.querySelector("#censor-dialog-" + id + "-value").textContent = event.currentTarget.value + suffix;
+  });
+}
+censorPreviewCanvas?.addEventListener("pointerdown", event => {
+  if (!censorDialogSession) return;
+  const point = censorDialogPoint(event);
+  if (!point) return;
+  event.preventDefault();
+  const stroke = {
+    mode: censorDialogSession.mode || "censor-light",
+    effect: document.querySelector("#censor-dialog-effect").value,
+    color: document.querySelector("#censor-dialog-color").value,
+    size: Number(document.querySelector("#censor-dialog-size").value),
+    opacity: Number(document.querySelector("#censor-dialog-opacity").value) / 100,
+    softness: Number(document.querySelector("#censor-dialog-softness").value),
+    glow: Number(document.querySelector("#censor-dialog-glow").value),
+    points: [point]
+  };
+  censorDialogSession.strokes.push(stroke);
+  censorDialogPointer = event.pointerId;
+  try { censorPreviewCanvas.setPointerCapture(event.pointerId); } catch {}
+  drawCensorDialogPreview();
+});
+censorPreviewCanvas?.addEventListener("pointermove", event => {
+  if (censorDialogPointer !== event.pointerId || !censorDialogSession) return;
+  const point = censorDialogPoint(event);
+  if (!point) return;
+  const stroke = censorDialogSession.strokes.at(-1);
+  if (!stroke) return;
+  stroke.points.push(point);
+  drawCensorDialogPreview();
+});
+function finishCensorDialogStroke(event) {
+  if (censorDialogPointer !== event.pointerId) return;
+  censorDialogPointer = null;
+  try { if (censorPreviewCanvas.hasPointerCapture(event.pointerId)) censorPreviewCanvas.releasePointerCapture(event.pointerId); } catch {}
+  drawCensorDialogPreview();
+}
+censorPreviewCanvas?.addEventListener("pointerup", finishCensorDialogStroke);
+censorPreviewCanvas?.addEventListener("pointercancel", finishCensorDialogStroke);
+document.querySelector("#censor-dialog-undo")?.addEventListener("click", () => {
+  if (!censorDialogSession) return;
+  censorDialogSession.strokes.pop();
+  document.querySelector("#censor-dialog-status").textContent = "Se quitó el último trazo. El original sigue intacto.";
+  drawCensorDialogPreview();
+});
+document.querySelector("#censor-dialog-cancel")?.addEventListener("click", closeCensorLightDialog);
+document.querySelector("#censor-dialog-close")?.addEventListener("click", closeCensorLightDialog);
+censorDialog?.addEventListener("cancel", event => {
+  event.preventDefault();
+  closeCensorLightDialog();
+});
+document.querySelector("#censor-dialog-apply")?.addEventListener("click", async event => {
+  const session = censorDialogSession;
+  if (!session || !session.strokes.length) {
+    document.querySelector("#censor-dialog-status").textContent = "Pintá al menos un trazo antes de aplicar.";
+    return;
+  }
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    if (state.storageRecoveryPending) throw new Error("El proyecto recuperado está protegido. Guardalo primero para permitir modificaciones.");
+    const layer = state.document.layers.find(item => item.id === session.layerId);
+    if (!layer || layer.contentType !== "image" || !layer.image || layer.locked || layer.image.source !== session.source) {
+      throw new Error("La imagen seleccionada cambió. Cancelá y volvé a abrir Luz de censura.");
+    }
+    drawCensorDialogPreview();
+    const source = censorPreviewCanvas.toDataURL("image/png");
+    const optimized = await optimizeImageSource(source);
+    const before = cloneDocument(state.document);
+    const next = replaceImageLayer(state.document, layer.id, { source: optimized.source, width: optimized.width, height: optimized.height }, { preserveDisplaySize: true });
+    if (!next) throw new Error("No se pudo aplicar el efecto a esta imagen.");
+    const changedLayer = next.layers.find(item => item.id === layer.id);
+    if (changedLayer?.image) {
+      changedLayer.image.flipX = false;
+      changedLayer.image.flipY = false;
+    }
+    imageCache.delete(session.source);
+    state.document = next;
+    setSelection([layer.id], layer.id);
+    state.history.record(before, next);
+    const appliedMessage = session.mode === "erase" ? "🧽 Borrado aplicado a la imagen. Deshacer recupera los píxeles originales."
+      : session.mode === "paint" ? "🖌️ Pintura aplicada a la imagen. Deshacer restaura la versión original."
+        : "✨ Luz de censura aplicada solo a la imagen. Deshacer restaura los píxeles originales.";
+    refreshDocument(appliedMessage);
+    persistDocument();
+    closeCensorLightDialog();
+  } catch (error) {
+    document.querySelector("#censor-dialog-status").textContent = error?.message || "No se pudo aplicar Luz de censura.";
+  } finally {
+    button.disabled = false;
+  }
+});
+
 document.querySelectorAll("[data-censor-preset]").forEach(button => button.addEventListener("click", () => {
   const presets = {
     point: { size: 10, opacity: 100, softness: 0, glow: 15 },
@@ -3026,10 +3971,11 @@ function openMobileContextPanel(panel = "draw") {
   if (mobileContextHeading) mobileContextHeading.hidden = false;
   const title = document.querySelector("#mobile-context-title");
   const description = document.querySelector("#mobile-context-description");
-  if (title) title.textContent = panel === "erase" ? "Borrar" : "Dibujar";
+  if (title) title.textContent = panel === "erase" ? "Borrar" : panel === "censor" ? "Luz de censura" : "Dibujar";
   if (description) description.textContent = panel === "erase"
     ? "Ajustá el borrador y deslizá sobre la zona que querés quitar."
-    : "Elegí el color, el grosor y el efecto. Después dibujá sobre el lienzo.";
+    : panel === "censor" ? "Elegí color y tamaño; dibujá una cobertura de luz sobre la zona deseada."
+      : "Elegí el color, el grosor y el efecto. Después dibujá sobre el lienzo.";
   document.querySelector('.mobile-touch-dock [data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
   document.querySelector('.mobile-touch-dock [data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
   mobileToolsToggle?.setAttribute("aria-expanded", "true");
@@ -3066,8 +4012,30 @@ if (mobileDock) {
       mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
       return;
     }
+    if (action === "paint") {
+      if (toolboxDialog?.open) toolboxDialog.close();
+      hideMobileToolSheets();
+      void openCensorLightDialog("paint");
+      return;
+    }
+    if (action === "crop") {
+      if (toolboxDialog?.open) toolboxDialog.close();
+      openCropModeDialog();
+      return;
+    }
+    if (action === "rotate-left") { document.querySelector('[data-transform="rotate-left"]')?.click(); return; }
+    if (action === "rotate-right") { document.querySelector('[data-transform="rotate-right"]')?.click(); return; }
+    if (action === "flip-horizontal") { flipImageHorizontalButton?.click(); return; }
+    if (action === "flip-vertical") { flipImageVerticalButton?.click(); return; }
     if (action === "undo") { undo(); return; }
     if (action === "redo") { redo(); return; }
+    if (action === "export") {
+      closeMobileContextPanel();
+      document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
+      mobileDock.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+      exportPngButton?.click();
+      return;
+    }
     if (action === "crop-image") {
       closeMobileContextPanel();
       document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
@@ -3117,8 +4085,7 @@ if (mobileDock) {
       mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
       const selected = selectedLayerExact();
       if (selected?.contentType === "text" && textEditDialog) {
-        renderLayerText();
-        if (!textEditDialog.open) textEditDialog.showModal();
+        openTextEditorForLayer(selected.id);
       } else {
         document.querySelector("#add-text-layer")?.click();
       }
@@ -3145,16 +4112,23 @@ if (mobileDock) {
       return;
     }
     if (action === "more") {
-      const wasDrawingPanelOpen = document.body.classList.contains("mobile-draw-panel-open");
-      const wasToolsOpen = document.body.classList.contains("mobile-tools-open");
-      closeMobileContextPanel();
-      const open = wasDrawingPanelOpen ? true : !wasToolsOpen;
-      document.body.classList.toggle("mobile-tools-open", open);
-      button.setAttribute("aria-expanded", String(open));
+      // "Más" is a separate tool catalog, not an expansion of the crowded toolbar.
+      if (toolboxDialog?.open) {
+        toolboxDialog.close();
+        document.body.classList.remove("mobile-tools-open");
+        button.setAttribute("aria-expanded", "false");
+        return;
+      }
+      hideMobileToolSheets();
       document.body.classList.remove("mobile-layers-open", "mobile-tools-collapsed");
-      mobileToolsToggle?.setAttribute("aria-expanded", String(!open));
-      mobileToolsToggle?.setAttribute("aria-label", open ? "Ocultar herramientas" : "Mostrar herramientas");
-      if (mobileToolsToggle) mobileToolsToggle.querySelector("span").textContent = open ? "⌄" : "⌃";
+      const isMobile = window.matchMedia("(max-width: 920px)").matches;
+      if (isMobile) {
+        toolboxDialog?.show(); // non-modal bottom sheet keeps the dock available for closing
+        document.body.classList.add("mobile-tools-open");
+      } else {
+        toolboxDialog?.showModal();
+      }
+      button.setAttribute("aria-expanded", "true");
       mobileDock.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
       return;
     }
@@ -3193,7 +4167,7 @@ function setInteractionMode(mode) {
   if (details && state.interactionMode === "interactive") details.open = false;
   try { sessionStorage.setItem("animeart-editor-mode-v1", state.interactionMode); } catch {}
   status.textContent = state.interactionMode === "interactive"
-    ? "Modo interactivo: tocá un elemento para moverlo; usá las esquinas para cambiar tamaño y el control superior para rotar."
+    ? "Modo interactivo: mové el elemento desde dentro del marco, usá el tirador inferior para cambiar tamaño y la herramienta Rotar para girarlo."
     : "Modo simple: elegí una tarea guiada. También podés tocar y arrastrar una imagen para acomodarla.";
 }
 document.querySelectorAll("[data-editor-mode]").forEach(button => button.addEventListener("click", () => setInteractionMode(button.dataset.editorMode)));
@@ -3208,6 +4182,7 @@ magicTolerance?.addEventListener("input", () => {
 
  document.querySelectorAll(".tool").forEach(button => {
   button.addEventListener("click", () => {
+    if (button.dataset.tool === "censor-light") { openCensorLightDialog(); return; }
     state.tool = button.dataset.tool;
     if (state.tool !== "select" && state.multiTransformInteraction) {
       state.multiTransformInteraction = null;
@@ -3229,14 +4204,14 @@ magicTolerance?.addEventListener("input", () => {
 const helpGoals = {
   move: ["Mover / acomodar", "Toca la imagen y arrástrala. Usa las esquinas para cambiar el tamaño y el tirador de arriba para girar. Pulsa fuera del elemento para quitar el cuadro de selección."],
   fit: ["Ajustar al lienzo", "Centra la imagen y haz que encaje dentro del lienzo sin deformar sus proporciones. Puedes volver a moverla después."],
-  crop: ["Recortar", "Selecciona una imagen, abre Crop / Resize Image, ajusta el marco y pulsa Aplicar."],
-  background: ["Quitar fondo", "Selecciona una imagen, toca una zona del fondo, ajusta la tolerancia, protege los contornos y pulsa Aplicar."],
+  crop: ["Recortar", "Seleccioná una imagen. Arrastrá el marco sobre la vista previa, movelo o cambiá su tamaño con los tiradores. Elige la proporción y pulsa ✂️ Recortar; la X cancela."],
+  background: ["Quitar fondo", "Seleccioná una imagen con fondo liso. Probá Detectar color de fondo o tocá el color exacto en la vista previa, revisá el resultado y pulsa Aplicar. Para casos difíciles, abrí Más ajustes."],
   erase: ["Borrar", "Elige Borrar y arrastra sobre la zona. Deshacer recupera lo borrado."],
-  censor: ["Luz de censura", "Elige Luz de censura, ajusta tamaño y color y arrastra sobre la zona. Para cubrirla por completo usa opacidad al 100%."],
-  draw: ["Dibujar", "Elige un color y arrastra sobre la imagen para pintar en una capa separada."],
-  text: ["Texto", "Pulsa Texto, escribe en el inspector y ajusta el estilo. La capa de texto sigue editable."],
+  censor: ["Luz de censura", "Seleccioná una imagen y pintá el resplandor directamente en su vista previa. Deshacer quita el último trazo; X cancela sin cambiar la foto y Aplicar confirma el resultado."],
+  draw: ["Dibujar", "Elegí el color y el grosor, luego arrastrá sobre el lienzo. Si hay una foto debajo, el primer toque también empieza a pintar en una capa transparente separada."],
+  text: ["Texto", "Al tocar Texto se abre un editor con estilos Cómic, Cartel, Manga y Neón, tipografía, tamaño, color, contorno y sombra. Aplicar conserva el texto; X cancela el texto nuevo."],
   shapes: ["Formas", "Añade rectángulos, círculos, estrellas, corazones, globos y otras figuras. Define relleno, contorno y sombra antes de insertarlas como capas."],
-  "object-style": ["Estilo del objeto", "Selecciona texto, una imagen, una forma o una capa de trazos para abrir sus controles específicos. Cada ventana se puede cerrar sin aplicar cambios."],
+  "object-style": ["Apariencia del elemento", "Seleccioná un elemento para cambiar opacidad, forma de recorte, brillo, contraste o saturación, según el tipo de capa."],
   color: ["Mejorar color", "Selecciona una imagen y ajusta brillo, contraste o saturación en Image adjustments."],
   layers: ["Capas", "Toca una capa para seleccionarla. Cambia el orden, visibilidad y opacidad con los controles disponibles."],
   undo: ["Deshacer", "Pulsa Deshacer para volver un paso atrás. Rehacer recupera el cambio."],
@@ -3258,6 +4233,16 @@ function showGoalHelp(goal) {
   list.hidden = !list.childElementCount;
   document.querySelector("#editing-help-card").hidden = !document.querySelector("#editing-help-enabled").checked;
 }
+function setMobileLayersPanelOpen(open) {
+  closeMobileContextPanel();
+  document.body.classList.toggle("mobile-layers-open", Boolean(open));
+  document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed");
+  mobileDock?.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+  mobileDock?.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", String(Boolean(open)));
+  mobileToolsToggle?.setAttribute("aria-expanded", "true");
+  mobileToolsToggle?.setAttribute("aria-label", "Mostrar u ocultar herramientas");
+}
+
 function runEditGoal(goal) {
   lastEditGoal = goal;
   showGoalHelp(goal);
@@ -3268,7 +4253,20 @@ function runEditGoal(goal) {
       status.textContent = "Toca la imagen y arrástrala para moverla. Usa las esquinas para cambiar el tamaño.";
     },
     fit: () => document.querySelector("#fit-image-to-canvas")?.click(),
-    crop: () => cropResizeButton.click(),
+    "rotate-left": () => document.querySelector('[data-transform="rotate-left"]')?.click(),
+    "rotate-right": () => document.querySelector('[data-transform="rotate-right"]')?.click(),
+    "flip-horizontal": () => flipImageHorizontalButton?.click(),
+    "flip-vertical": () => flipImageVerticalButton?.click(),
+    crop: () => openCropModeDialog(),
+    "crop-image": () => {
+      const layer = selectedLayerExact();
+      if (!layer || layer.contentType !== "image" || !layer.image || layer.locked) {
+        status.textContent = "Seleccioná una imagen desbloqueada para recortar solo sus píxeles.";
+        return;
+      }
+      cropResizeButton.click();
+    },
+    "crop-canvas": () => void openCanvasCropDialog(),
     background: () => {
       const layer = selectedLayerExact();
       if (!layer || layer.contentType !== "image" || !layer.image) {
@@ -3278,41 +4276,47 @@ function runEditGoal(goal) {
       }
       removeBackgroundButton.click();
     },
-    erase: () => {
-      if (!selectedLayerExact()) {
-        status.textContent = "Primero tocá una imagen o elegí una capa en Capas. Después usá Borrar.";
-        return;
-      }
-      document.querySelector('.toolbar [data-tool="eraser"]')?.click();
-    },
-    censor: () => document.querySelector('.toolbar [data-tool="censor-light"]')?.click(),
-    draw: () => document.querySelector('.toolbar [data-tool="brush"]')?.click(),
-    text: () => document.querySelector("#add-text-layer").click(),
+    erase: () => openCensorLightDialog("erase"),
+    censor: () => openCensorLightDialog("censor-light"),
+    draw: () => openCensorLightDialog("paint"),
+    paint: () => openCensorLightDialog("paint"),
+    text: () => selectedLayerExact()?.contentType === "text" ? openTextEditorForLayer(selectedLayerExact().id) : document.querySelector("#add-text-layer").click(),
     shapes: () => openShapeMaker(),
     "object-style": () => openSelectedObjectStyle(),
     color: () => {
-      if (window.matchMedia("(max-width: 920px)").matches && !document.body.classList.contains("mobile-layers-open")) mobileDock?.querySelector('[data-touch-action="layers"]')?.click();
+      if (window.matchMedia("(max-width: 920px)").matches) setMobileLayersPanelOpen(true);
       document.querySelector("#adjustments-title")?.scrollIntoView({ block: "nearest" });
     },
     layers: () => {
       if (window.matchMedia("(max-width: 920px)").matches) {
-        if (!document.body.classList.contains("mobile-layers-open")) mobileDock?.querySelector('[data-touch-action="layers"]')?.click();
+        setMobileLayersPanelOpen(!document.body.classList.contains("mobile-layers-open"));
       } else {
         document.querySelector("#layers")?.scrollIntoView({ block: "nearest" });
       }
     },
     undo: () => undoButton.click(),
+    redo: () => redoButton.click(),
+    "delete-selected": () => removeSelectedLayer(),
     export: () => exportPngButton.click(),
     appearance: () => document.querySelector("#appearance-open")?.click()
   };
   actions[goal]?.();
 }
+document.querySelector("#toolbox-open")?.addEventListener("click", () => {
+  if (!toolboxDialog?.open) toolboxDialog?.showModal();
+});
+document.querySelector("#toolbox-close")?.addEventListener("click", () => toolboxDialog?.close());
+toolboxDialog?.addEventListener("close", () => {
+  document.body.classList.remove("mobile-tools-open");
+  mobileDock?.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+});
 document.querySelectorAll("[data-edit-goal]").forEach(button => button.addEventListener("click", () => {
+  if (toolboxDialog?.open) toolboxDialog.close();
   const goal = button.dataset.editGoal;
   runEditGoal(goal);
   if (window.matchMedia("(max-width: 920px)").matches) {
-    if (goal === "draw" || goal === "erase") {
-      openMobileContextPanel(goal === "erase" ? "erase" : "draw");
+    if (["draw", "erase", "censor", "crop"].includes(goal)) {
+      hideMobileToolSheets();
       return;
     }
     closeMobileContextPanel();
@@ -3355,6 +4359,22 @@ document.querySelector("#selection-mini-fit")?.addEventListener("click", () => {
   const layer = selectedLayerExact();
   if (!layer || layer.locked || layer.contentType !== "image" || !layer.image) return;
   document.querySelector("#fit-image-to-canvas")?.click();
+});
+document.querySelector("#selection-mini-background")?.addEventListener("click", () => {
+  const layer = selectedLayerExact();
+  if (!layer || layer.contentType !== "image" || !layer.image || (layer.locked && !layer.isBackground)) {
+    status.textContent = "Seleccioná una imagen desbloqueada para fijarla como fondo.";
+    return;
+  }
+  const wasBackground = Boolean(layer.isBackground);
+  const before = cloneDocument(state.document);
+  const next = setLayerBackground(state.document, layer.id, !wasBackground);
+  if (!next) { status.textContent = "No se pudo cambiar el modo de fondo."; return; }
+  state.document = next;
+  setSelection([layer.id], layer.id);
+  state.history.record(before, next);
+  refreshDocument(wasBackground ? "La imagen volvió a ser una capa normal." : "Fondo fijado. Ya no se mueve por accidente; podés desfijarlo desde esta barra.");
+  persistDocument();
 });
 document.querySelector("#selection-mini-delete")?.addEventListener("click", () => removeSelectedLayer());
 
@@ -3407,11 +4427,12 @@ document.querySelector("#add-meme-text").addEventListener("click", () => {
 });
 
 document.querySelector("#add-text-layer").addEventListener("click", () => {
+  activateSelectionToolForText();
   const index = state.document.layers.filter(layer => layer.contentType === "text").length + 1;
   const width = Math.max(300, state.document.width || canvas.width || 300);
   const height = Math.max(180, state.document.height || canvas.height || 180);
   const layer = createTextLayer("Text " + index, {
-    value: "Your text",
+    value: "Escribe aquí",
     x: Math.round(width * 0.5),
     y: Math.round(height * 0.5),
     fontSize: Math.max(24, Math.min(64, Math.round(height * 0.1))),
@@ -3427,11 +4448,13 @@ document.querySelector("#add-text-layer").addEventListener("click", () => {
   if (!next) return;
   state.document = next;
   state.textPreview = null;
+  newlyCreatedTextLayerId = layer.id;
   setSelection([layer.id], layer.id);
   state.history.record(before, next);
   refreshDocument("Text layer added");
   persistDocument();
-  if (textEditDialog && !textEditDialog.open) textEditDialog.showModal();
+  renderLayerText();
+  if (!showTextEditorDialog()) status.textContent = "Texto añadido. Seleccionalo y tocá Editar texto para continuar.";
 });
 
 document.querySelector("#add-sample-character").addEventListener("click", async event => {
@@ -3498,7 +4521,7 @@ function applyBackgroundRemovalProfile(profileId, render = true) {
   document.querySelector("#background-removal-decontaminate").checked = profile.decontaminate;
   document.querySelector("#background-removal-profile-name").value = profile.name;
   document.querySelector("#delete-background-profile").disabled = !profile.id.startsWith("custom-");
-  if (render) renderBackgroundRemovalPreview(true);
+  if (render && backgroundRemovalSession?.removalRequested) renderBackgroundRemovalPreview(true);
 }
 document.querySelector("#background-removal-profile").addEventListener("change", event => {
   applyBackgroundRemovalProfile(event.currentTarget.value);
@@ -3535,11 +4558,75 @@ function backgroundRemovalPoint(event) {
     y: Math.max(0, Math.min(backgroundRemovalCanvas.height - 1, (event.clientY - rect.top) * backgroundRemovalCanvas.height / Math.max(1, rect.height)))
   };
 }
+function syncBackgroundRemovalApplyButton() {
+  const button = document.querySelector("#apply-background-removal");
+  const session = backgroundRemovalSession;
+  if (button) button.disabled = !session || (!session.removalRequested && session.strokes.length === 0);
+}
+
+function backgroundRemovalFitScale() {
+  const session = backgroundRemovalSession;
+  const wrap = document.querySelector(".background-removal-preview-wrap");
+  if (!session || !wrap) return 1;
+  const width = Math.max(1, wrap.clientWidth - 20);
+  const height = Math.max(1, wrap.clientHeight - 20);
+  return Math.max(0.01, Math.min(1, width / session.width, height / session.height));
+}
+
+function updateBackgroundRemovalZoom(nextZoom = backgroundRemovalZoom, { resetScroll = false } = {}) {
+  const session = backgroundRemovalSession;
+  const wrap = document.querySelector(".background-removal-preview-wrap");
+  const zoomOut = document.querySelector("#background-removal-zoom-out");
+  const zoomIn = document.querySelector("#background-removal-zoom-in");
+  const zoomValue = document.querySelector("#background-removal-zoom-value");
+  if (!session || !wrap) return;
+
+  const oldRect = backgroundRemovalCanvas.getBoundingClientRect();
+  const oldScale = oldRect.width > 0 ? oldRect.width / session.width : backgroundRemovalFitScale() * backgroundRemovalZoom;
+  const focusX = oldScale > 0 ? (wrap.scrollLeft + wrap.clientWidth / 2) / oldScale : session.width / 2;
+  const focusY = oldScale > 0 ? (wrap.scrollTop + wrap.clientHeight / 2) / oldScale : session.height / 2;
+  backgroundRemovalZoom = Math.min(8, Math.max(1, Number(nextZoom) || 1));
+  const scale = backgroundRemovalFitScale() * backgroundRemovalZoom;
+  backgroundRemovalCanvas.style.width = Math.max(1, Math.round(session.width * scale)) + "px";
+  backgroundRemovalCanvas.style.height = Math.max(1, Math.round(session.height * scale)) + "px";
+  wrap.classList.toggle("is-zoomed", backgroundRemovalZoom > 1.001);
+
+  if (zoomOut) zoomOut.disabled = backgroundRemovalZoom <= 1.001;
+  if (zoomIn) zoomIn.disabled = backgroundRemovalZoom >= 7.999;
+  if (zoomValue) zoomValue.textContent = backgroundRemovalZoom <= 1.001
+    ? "Ajustar"
+    : Math.round(backgroundRemovalZoom * 100) + "%";
+
+  requestAnimationFrame(() => {
+    if (resetScroll || backgroundRemovalZoom <= 1.001) {
+      wrap.scrollLeft = 0;
+      wrap.scrollTop = 0;
+      return;
+    }
+    const nextScale = backgroundRemovalCanvas.getBoundingClientRect().width / session.width;
+    wrap.scrollLeft = Math.max(0, focusX * nextScale - wrap.clientWidth / 2);
+    wrap.scrollTop = Math.max(0, focusY * nextScale - wrap.clientHeight / 2);
+  });
+}
+
+document.querySelector("#background-removal-zoom-out")?.addEventListener("click", () => {
+  updateBackgroundRemovalZoom(backgroundRemovalZoom / 1.5);
+});
+document.querySelector("#background-removal-zoom-in")?.addEventListener("click", () => {
+  updateBackgroundRemovalZoom(backgroundRemovalZoom * 1.5);
+});
+document.querySelector("#background-removal-zoom-fit")?.addEventListener("click", () => {
+  updateBackgroundRemovalZoom(1, { resetScroll: true });
+});
+window.addEventListener("resize", () => {
+  if (backgroundRemovalDialog?.open && backgroundRemovalSession) updateBackgroundRemovalZoom(backgroundRemovalZoom);
+});
+
 function renderBackgroundRemovalPreview(recompute = false) {
   const session = backgroundRemovalSession;
   if (!session || !backgroundRemovalContext) return;
   try {
-    if (recompute || !session.automatic) {
+    if (session.removalRequested && (recompute || !session.automatic || session.automatic === session.original)) {
       session.automatic = removeConnectedBackground(session.original, {
         targetColor: document.querySelector("#background-removal-color").value,
         tolerance: Number(document.querySelector("#background-removal-tolerance").value),
@@ -3549,13 +4636,18 @@ function renderBackgroundRemovalPreview(recompute = false) {
         decontaminate: document.querySelector("#background-removal-decontaminate").checked
       });
     }
-    const result = applyEraseStrokes(session.automatic, session.strokes);
+    const base = session.removalRequested ? (session.automatic || session.original) : session.original;
+    const result = applyEraseStrokes(base, session.strokes);
     backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
-    document.querySelector("#background-removal-status").textContent =
-      "Preview ready · " + result.width + " × " + result.height + " px · " + session.strokes.length + " manual erase stroke(s)";
+    document.querySelector("#background-removal-status").textContent = session.removalRequested
+      ? "Vista previa del borrado · " + result.width + " × " + result.height + " px. No se aplica hasta pulsar Aplicar."
+      : session.strokes.length
+        ? "La imagen original sigue intacta; hay " + session.strokes.length + " trazo(s) manual(es) en la vista previa."
+        : "Imagen original intacta. Pulsa “Previsualizar quitar fondo” para generar la transparencia.";
     document.querySelector("#undo-background-erase").disabled = session.strokes.length === 0;
+    syncBackgroundRemovalApplyButton();
   } catch (error) {
-    document.querySelector("#background-removal-status").textContent = error.message || "Could not process this image";
+    document.querySelector("#background-removal-status").textContent = error.message || "No se pudo procesar esta imagen";
   }
 }
 async function openBackgroundRemoval() {
@@ -3580,7 +4672,9 @@ async function openBackgroundRemoval() {
     backgroundRemovalContext.clearRect(0, 0, width, height);
     backgroundRemovalContext.drawImage(image, 0, 0, width, height);
     const original = backgroundRemovalContext.getImageData(0, 0, width, height);
-    backgroundRemovalSession = { layerId: layer.id, source: layer.image.source, width, height, original, automatic: null, strokes: [], activeStroke: null };
+    backgroundRemovalSession = { layerId: layer.id, source: layer.image.source, width, height, original, automatic: original, removalRequested: false, strokes: [], activeStroke: null };
+    backgroundRemovalZoom = 1;
+    backgroundRemovalPan = null;
     backgroundRemovalSampleMode = false;
     document.querySelector("#background-removal-manual").checked = false;
     document.querySelector("#background-removal-color").value = "#ffffff";
@@ -3597,7 +4691,8 @@ async function openBackgroundRemoval() {
     document.querySelector("#background-removal-brush-size").value = "28";
     document.querySelector("#background-removal-brush-size-value").textContent = "28 px";
     backgroundRemovalDialog.showModal();
-    renderBackgroundRemovalPreview(true);
+    updateBackgroundRemovalZoom(1, { resetScroll: true });
+    renderBackgroundRemovalPreview(false);
   } catch (error) {
     status.textContent = error.message || "Could not open background removal";
   }
@@ -3607,11 +4702,48 @@ document.querySelector("#cancel-background-removal").addEventListener("click", (
   backgroundRemovalDialog.close();
   backgroundRemovalSession = null;
   backgroundRemovalSampleMode = false;
+  backgroundRemovalZoom = 1;
+  backgroundRemovalPan = null;
 });
+function setQuickBackgroundColor(color, tolerance, feather) {
+  if (backgroundRemovalSession) backgroundRemovalSession.removalRequested = true;
+  const colorInput = document.querySelector("#background-removal-color");
+  const toleranceInput = document.querySelector("#background-removal-tolerance");
+  const featherInput = document.querySelector("#background-removal-feather");
+  colorInput.value = color;
+  toleranceInput.value = String(tolerance);
+  featherInput.value = String(feather);
+  document.querySelector("#background-removal-tolerance-value").textContent = String(tolerance);
+  document.querySelector("#background-removal-feather-value").textContent = String(feather);
+  document.querySelector("#background-removal-status").textContent = "Revisá la vista previa; los píxeles transparentes se aplican solo al pulsar Aplicar.";
+  backgroundRemovalSampleMode = false;
+  renderBackgroundRemovalPreview(true);
+}
+document.querySelector("#preview-background-removal")?.addEventListener("click", () => {
+  if (!backgroundRemovalSession) return;
+  backgroundRemovalSession.removalRequested = true;
+  renderBackgroundRemovalPreview(true);
+});
+document.querySelector("#background-auto-detect")?.addEventListener("click", () => {
+  const image = backgroundRemovalSession?.original;
+  if (!image || image.width < 1 || image.height < 1) return;
+  const points = [[0,0],[image.width-1,0],[0,image.height-1],[image.width-1,image.height-1],[Math.floor(image.width/2),0]];
+  const colors = new Map();
+  for (const [x,y] of points) {
+    const i=(y*image.width+x)*4;
+    if (image.data[i+3] < 24) continue;
+    const color="#" + [image.data[i],image.data[i+1],image.data[i+2]].map(v=>v.toString(16).padStart(2,"0")).join("");
+    colors.set(color,(colors.get(color)||0)+1);
+  }
+  const color=[...colors.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0] || "#ffffff";
+  setQuickBackgroundColor(color, 46, 20);
+});
+document.querySelector("#background-preset-white")?.addEventListener("click", () => setQuickBackgroundColor("#ffffff", 46, 20));
+document.querySelector("#background-preset-dark")?.addEventListener("click", () => setQuickBackgroundColor("#101014", 52, 18));
 document.querySelector("#sample-background-color").addEventListener("click", () => {
   backgroundRemovalSampleMode = true;
   document.querySelector("#background-removal-manual").checked = false;
-  document.querySelector("#background-removal-status").textContent = "Click a background pixel in the image preview to sample its color.";
+  document.querySelector("#background-removal-status").textContent = "Ahora tocá el color del fondo dentro de la vista previa. Después revisá el resultado.";
 });
 for (const id of ["background-removal-color", "background-removal-tolerance", "background-removal-feather", "background-removal-edge-sensitivity", "background-removal-protect-line-art", "background-removal-decontaminate"]) {
   document.querySelector("#" + id).addEventListener("input", () => {
@@ -3642,10 +4774,25 @@ backgroundRemovalCanvas.addEventListener("pointerdown", event => {
     const offset = (y * backgroundRemovalSession.width + x) * 4;
     document.querySelector("#background-removal-color").value = backgroundRemovalColorHex(backgroundRemovalSession.original.data, offset);
     backgroundRemovalSampleMode = false;
+    backgroundRemovalSession.removalRequested = true;
     renderBackgroundRemovalPreview(true);
     return;
   }
-  if (!document.querySelector("#background-removal-manual").checked) return;
+  if (!document.querySelector("#background-removal-manual").checked) {
+    if (backgroundRemovalZoom > 1.001) {
+      const wrap = document.querySelector(".background-removal-preview-wrap");
+      backgroundRemovalPan = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        scrollLeft: wrap.scrollLeft,
+        scrollTop: wrap.scrollTop
+      };
+      event.preventDefault();
+      backgroundRemovalCanvas.setPointerCapture(event.pointerId);
+    }
+    return;
+  }
   event.preventDefault();
   backgroundRemovalPointerId = event.pointerId;
   backgroundRemovalCanvas.setPointerCapture(event.pointerId);
@@ -3654,11 +4801,21 @@ backgroundRemovalCanvas.addEventListener("pointerdown", event => {
   renderBackgroundRemovalPreview(false);
 });
 backgroundRemovalCanvas.addEventListener("pointermove", event => {
+  if (backgroundRemovalPan?.pointerId === event.pointerId) {
+    const wrap = document.querySelector(".background-removal-preview-wrap");
+    wrap.scrollLeft = backgroundRemovalPan.scrollLeft - (event.clientX - backgroundRemovalPan.startX);
+    wrap.scrollTop = backgroundRemovalPan.scrollTop - (event.clientY - backgroundRemovalPan.startY);
+    return;
+  }
   if (!backgroundRemovalSession || backgroundRemovalPointerId !== event.pointerId || !backgroundRemovalSession.activeStroke) return;
   backgroundRemovalSession.activeStroke.points.push(backgroundRemovalPoint(event));
   renderBackgroundRemovalPreview(false);
 });
 function finishBackgroundRemovalStroke(event) {
+  if (backgroundRemovalPan?.pointerId === event.pointerId) {
+    backgroundRemovalPan = null;
+    return;
+  }
   if (backgroundRemovalPointerId !== event.pointerId) return;
   backgroundRemovalPointerId = null;
   if (backgroundRemovalSession) backgroundRemovalSession.activeStroke = null;
@@ -3669,12 +4826,15 @@ backgroundRemovalCanvas.addEventListener("pointercancel", finishBackgroundRemova
 document.querySelector("#apply-background-removal").addEventListener("click", async () => {
   const session = backgroundRemovalSession;
   const layer = session && state.document.layers.find(item => item.id === session.layerId);
-  if (!session || !layer || layer.locked || layer.contentType !== "image" || layer.image?.source !== session.source) {
+  if (!session || (!session.removalRequested && session.strokes.length === 0)) return;
+  if (!layer || layer.locked || layer.contentType !== "image" || layer.image?.source !== session.source) {
     document.querySelector("#background-removal-status").textContent = "The selected layer changed. Close this tool and reopen it.";
     return;
   }
   try {
-    const automatic = removeConnectedBackground(session.original, currentBackgroundRemovalSettings());
+    const automatic = session.removalRequested
+      ? removeConnectedBackground(session.original, currentBackgroundRemovalSettings())
+      : session.original;
     const result = applyEraseStrokes(automatic, session.strokes);
     backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
     const source = backgroundRemovalCanvas.toDataURL("image/webp", 0.88);
@@ -4035,6 +5195,9 @@ function syncExportFormatControls() {
   exportPngButton.textContent = "Export " + format.toUpperCase();
   exportQualityValue.value = exportQualityInput.value + "%";
   exportQualityValue.textContent = exportQualityInput.value + "%";
+  if (mobileExportResolutionInput && mobileExportResolutionInput.value !== exportResolutionInput.value) {
+    mobileExportResolutionInput.value = exportResolutionInput.value;
+  }
 }
 
 async function exportPng() {
@@ -4051,18 +5214,23 @@ async function exportPng() {
   status.textContent = "Exporting " + format.toUpperCase() + "…";
   try {
     await ensureExportImages(state.document);
-    const exportCanvas = createPngExportCanvas(state.document);
-    renderDocumentToCanvas(state.document, exportCanvas, ({ context, document, center }) => {
+    const resolution = exportResolutionInput?.value === "hd" ? "hd" : "normal";
+    const exportScale = exportScaleForResolution(state.document, resolution);
+    const outputWidth = Math.max(1, Math.round(state.document.width * exportScale));
+    const outputHeight = Math.max(1, Math.round(state.document.height * exportScale));
+    const exportCanvas = createPngExportCanvas({ ...state.document, width: outputWidth, height: outputHeight });
+    renderDocumentToCanvas(state.document, exportCanvas, ({ context, document }) => {
       if (format === "jpeg") {
         context.save();
         context.fillStyle = exportBackgroundInput.value || "#ffffff";
-        context.fillRect(0, 0, document.width, document.height);
+        context.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
         context.restore();
       }
+      context.scale(exportScale, exportScale);
       drawDocument({
         context,
         document,
-        center,
+        center: { x: document.width / 2, y: document.height / 2 },
         transformForLayer: layer => layer.transform
       });
     });
@@ -4141,8 +5309,30 @@ if (transparencyButton) {
   transparencyButton.setAttribute("aria-pressed", "false");
   transparencyButton.textContent = "Ver transparencia";
 }
+const mobileExportFormatInput = document.querySelector("#mobile-export-format");
+if (mobileExportFormatInput) {
+  mobileExportFormatInput.value = exportFormatInput.value;
+  mobileExportFormatInput.addEventListener("change", () => {
+    exportFormatInput.value = mobileExportFormatInput.value;
+    syncExportFormatControls();
+  });
+  exportFormatInput.addEventListener("change", () => {
+    mobileExportFormatInput.value = exportFormatInput.value;
+  });
+}
 exportFormatInput.addEventListener("change", syncExportFormatControls);
 exportQualityInput.addEventListener("input", syncExportFormatControls);
+exportResolutionInput?.addEventListener("change", syncExportFormatControls);
+if (mobileExportResolutionInput) {
+  mobileExportResolutionInput.value = exportResolutionInput?.value || "normal";
+  mobileExportResolutionInput.addEventListener("change", () => {
+    if (exportResolutionInput) exportResolutionInput.value = mobileExportResolutionInput.value;
+    syncExportFormatControls();
+  });
+  exportResolutionInput?.addEventListener("change", () => {
+    mobileExportResolutionInput.value = exportResolutionInput.value;
+  });
+}
 syncExportFormatControls();
 
 function ensureExportImages(document) {
@@ -4214,8 +5404,21 @@ syncBrushControls();
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
+// Mobile sheets can resize the editor without causing a window resize event.
+// Keep the backing bitmap and selection geometry aligned with the actual canvas box.
+if (typeof ResizeObserver === "function") {
+  const canvasResizeObserver = new ResizeObserver(() => {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const expectedWidth = Math.round(rect.width * dpr);
+    const expectedHeight = Math.round(rect.height * dpr);
+    if (canvas.width !== expectedWidth || canvas.height !== expectedHeight) resizeCanvas();
+  });
+  canvasResizeObserver.observe(canvas.parentElement || canvas);
+}
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v28";
+
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v35";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -4232,6 +5435,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/image-import.mjs",
   "./domain/image-input.mjs",
   "./domain/image-processing.mjs",
+  "./domain/crop-shape.mjs",
   "./domain/color-replacement.mjs",
   "./domain/canvas-space.mjs",
   "./domain/layer-adjustments.mjs",

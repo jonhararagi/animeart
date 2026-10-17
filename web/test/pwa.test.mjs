@@ -11,7 +11,7 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(html, /rel="manifest" href="\.\/manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\("\.\/service-worker\.js"\)/);
   assert.match(manifest, /"display": "standalone"/);
-  assert.match(worker, /animeart-web-shell-v28/);
+  assert.match(worker, /animeart-web-shell-v35/);
   assert.match(worker, /caches\.open/);
   assert.match(worker, /caches\.match/);
   assert.match(app, /layerAdjustmentsToCanvasFilter/);
@@ -46,6 +46,10 @@ test("export toolbar offers PNG, JPEG and WebP with quality and JPEG background 
   const app = await readFile("app.js", "utf8");
   const exporter = await readFile("domain/png-export.mjs", "utf8");
   assert.match(html, /id="export-format"/);
+  assert.match(html, /id="export-resolution"/);
+  assert.match(html, /id="mobile-export-resolution"/);
+  assert.match(app, /exportScaleForResolution/);
+  assert.match(exporter, /export function exportScaleForResolution/);
   assert.match(html, /value="png"/);
   assert.match(html, /value="jpeg"/);
   assert.match(html, /value="webp"/);
@@ -85,6 +89,9 @@ test("image editing crop/resize module is included in the offline editor shell",
   assert.match(app, /resizeImageSource/);
   assert.match(app, /replaceImageLayer/);
   assert.match(worker, /\.\/domain\/image-processing\.mjs/);
+  assert.match(worker, /\.\/domain\/crop-shape\.mjs/);
+  assert.match(app, /traceCropShape/);
+  assert.match(html, /id="image-crop-shape"/);
 });
 
 
@@ -95,7 +102,7 @@ test("canvas coordinate mapping is cached for offline rendering and editing", as
   assert.match(app, /documentFitScale/);
   assert.match(app, /screenViewportForDocument/);
   assert.match(worker, /\.\/domain\/canvas-space\.mjs/);
-  assert.match(worker, /animeart-web-shell-v28/);
+  assert.match(worker, /animeart-web-shell-v35/);
 });
 
  
@@ -111,7 +118,7 @@ test("mobile touch gestures use bounded two-finger pan/zoom and the offline shel
   assert.match(app, /pointercancel/);
   assert.match(gestures, /updatePinchPanViewport/);
   assert.match(gestures, /Math\.min\(maxZoom, Math\.max\(minZoom/);
-  assert.match(worker, /animeart-web-shell-v28/);
+  assert.match(worker, /animeart-web-shell-v35/);
   assert.match(worker, /\.\/domain\/touch-gestures\.mjs/);
   assert.match(css, /#canvas \{ touch-action: none; \}/);
   assert.match(html, /class="mobile-touch-dock"/);

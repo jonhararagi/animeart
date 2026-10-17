@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createDocument, createImageLayer } from "../domain/model.mjs";
 import { DocumentHistory } from "../domain/history.mjs";
 import { rotateLayer, scaleLayer, translateLayer, updateLayerTransform } from "../domain/document-operations.mjs";
-import { hitTestHandle, hitTestLayer, layerLocalBounds, layerCorners, resizeTransformFromCorner, selectionGeometry, transformPoint } from "../domain/selection.mjs";
+import { clampSelectionHandles, hitTestHandle, hitTestLayer, layerLocalBounds, layerCorners, resizeTransformFromCorner, selectionGeometry, transformPoint } from "../domain/selection.mjs";
 import { createViewport, documentToScreen, screenToDocument } from "../domain/viewport.mjs";
 
 function drawableDocument() {
@@ -42,10 +42,11 @@ test("hit testing respects layer translation, scale and rotation", () => {
   assert.equal(hitTestLayer(layer, { x: 20, y: 20 }, pivot), false);
 });
 
-test("screen handles distinguish scale corners, rotation and move", () => {
+test("selection box exposes a close X and one bottom-right resize handle", () => {
   const document = drawableDocument();
   const geometry = selectionGeometry(document.layers[0], createViewport(), { x: 200, y: 150 });
-  assert.equal(hitTestHandle(geometry.corners[0], geometry), "scale-nw");
+  assert.equal(hitTestHandle(geometry.closeHandle, geometry), "close");
+  assert.equal(hitTestHandle(geometry.resizeHandle, geometry), "scale-se");
   assert.equal(hitTestHandle(geometry.rotationHandle, geometry), "rotate");
   assert.equal(hitTestHandle(geometry.center, geometry), "move");
 });
@@ -241,14 +242,12 @@ test("Image Layer selection bounds follow transform and viewport zoom/pan", () =
   assert.equal(hit, true);
 });
 
-test("Image Layer exposes the same selection handles for move resize and rotate", () => {
+test("Image Layer selection box exposes close and bottom-right resize handles", () => {
   const layer = createImageLayer("Image", 120, 80);
   const viewport = createViewport(2, -30, 15);
   const geometry = selectionGeometry(layer, viewport, { x: 200, y: 150 });
-  assert.equal(hitTestHandle(geometry.corners[0], geometry), "scale-nw");
-  assert.equal(hitTestHandle(geometry.corners[1], geometry), "scale-ne");
-  assert.equal(hitTestHandle(geometry.corners[2], geometry), "scale-se");
-  assert.equal(hitTestHandle(geometry.corners[3], geometry), "scale-sw");
+  assert.equal(hitTestHandle(geometry.closeHandle, geometry), "close");
+  assert.equal(hitTestHandle(geometry.resizeHandle, geometry), "scale-se");
   assert.equal(hitTestHandle(geometry.rotationHandle, geometry), "rotate");
   const polygonCenter = {
     x: geometry.corners.reduce((sum, point) => sum + point.x, 0) / 4,
@@ -272,4 +271,36 @@ test("Image Layer resize keeps the opposite corner fixed", () => {
   const after = layerCorners(nextLayer, pivot);
   assertPointClose(after[0], before[0]);
   assert.ok(nextTransform.scale > 0);
+});
+
+
+test("selection close and resize handles stay visible at canvas edges while retaining real corner offsets", () => {
+  const original = {
+    corners: [{ x: 10, y: 10 }, { x: 125, y: -18 }, { x: 140, y: 105 }, { x: 10, y: 90 }],
+    center: { x: 68, y: 48 },
+    closeHandle: { x: 125, y: -18 },
+    resizeHandle: { x: 140, y: 105 }
+  };
+  const visible = clampSelectionHandles(original, { width: 100, height: 80 }, 22);
+
+  assert.deepEqual(visible.closeHandle, { x: 78, y: 22 });
+  assert.deepEqual(visible.resizeHandle, { x: 78, y: 58 });
+  assert.deepEqual(visible.closeHandleOffset, { x: 47, y: -40 });
+  assert.deepEqual(visible.resizeHandleOffset, { x: 62, y: 47 });
+  assert.deepEqual(visible.corners, original.corners, "selection bounds retain true transformed corners");
+  assert.equal(hitTestHandle(visible.closeHandle, visible, 22), "close");
+  assert.equal(hitTestHandle(visible.resizeHandle, visible, 22), "scale-se");
+});
+
+test("selection handle clamping handles smaller viewports without emitting out-of-bounds coordinates", () => {
+  const geometry = {
+    corners: [{ x: -4, y: -4 }, { x: 80, y: -4 }, { x: 80, y: 60 }, { x: -4, y: 60 }],
+    closeHandle: { x: 80, y: -4 },
+    resizeHandle: { x: 80, y: 60 }
+  };
+  const visible = clampSelectionHandles(geometry, { width: 28, height: 24 }, 22);
+  for (const point of [visible.closeHandle, visible.resizeHandle]) {
+    assert.ok(point.x >= 0 && point.x <= 28);
+    assert.ok(point.y >= 0 && point.y <= 24);
+  }
 });

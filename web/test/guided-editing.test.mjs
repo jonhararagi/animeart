@@ -42,11 +42,16 @@ test("selection and transparency controls are visible and explicitly wired", asy
  assert.match(css, /\.canvas-wrap\[data-background="gray"\] canvas/);
 });
 
-test("touching a different image selects it before the next edit to avoid changing the wrong layer", async () => {
+test("first brush touch on a different image keeps the gesture and starts the edit", async () => {
  const app = await readFile("app.js","utf8");
  assert.match(app, /const hitImage = \[\.\.\.state\.document\.layers\]\.reverse\(\)/);
- assert.match(app, /setSelection\(\[hitImage\.id\], hitImage\.id\)/);
- assert.match(app, /Imagen seleccionada\. Volvé a tocar para usar/);
+ const start = app.indexOf('if (hitImage && hitImage.id !== state.selectedLayerId');
+ const end = app.indexOf('let layer = selectedLayer();', start);
+ assert.ok(start >= 0 && end > start, "image hit handling is present");
+ const branch = app.slice(start, end);
+ assert.match(branch, /setSelection\(\[hitImage\.id\], hitImage\.id\)/);
+ assert.match(branch, /keep processing this same pointer gesture/);
+ assert.doesNotMatch(branch, /\breturn\s*;/, "first touch must not exit before creating the brush stroke");
 });
 
 
@@ -63,4 +68,94 @@ test("AA-UX-DELETE-001 exposes a functional selected-image removal action separa
  assert.match(app, /removeSelectedImageButton\?\.addEventListener\("click"/);
  assert.match(app, /function updateRemoveImageControl\(\)/);
  assert.match(css, /#remove-selected-image[\s\S]*?width: 46px/);
+});
+
+
+test("censor light uses a cancellable per-image preview instead of the drawing tool", async () => {
+ const [html, app, css] = await Promise.all([
+  readFile("index.html","utf8"), readFile("app.js","utf8"), readFile("styles.css","utf8")
+ ]);
+ for (const id of ["censor-light-dialog","censor-image-preview","censor-dialog-cancel","censor-dialog-undo","censor-dialog-apply"]) {
+  assert.ok(html.includes('id="' + id + '"'), "missing censor dialog control: " + id);
+ }
+ assert.match(html, /class="censor-light-controls"[^>]*hidden/);
+ assert.match(html, /<details class="background-removal-advanced">/);
+ assert.ok(html.includes('id="background-auto-detect"'));
+ assert.match(app, /async function openCensorLightDialog\(requestedMode = "censor-light"\)/);
+ assert.match(app, /function closeCensorLightDialog\(\)/);
+ assert.match(app, /censor: \(\) => openCensorLightDialog\("censor-light"\)/);
+ assert.match(app, /refreshDocument\(appliedMessage\)/);
+ assert.match(app, /"censor-light": "✨ Luz de censura"/);
+ assert.match(app, /replaceImageLayer\(state\.document, layer\.id/);
+ assert.match(css, /#censor-image-preview[\s\S]*?touch-action: none/);
+});
+
+
+test("canceling the new-text dialog removes the provisional text layer", async () => {
+ const app = await readFile("app.js","utf8");
+ assert.match(app, /function cancelNewlyCreatedTextLayer\(\)/);
+ assert.match(app, /newlyCreatedTextLayerId = layer\.id/);
+ assert.match(app, /if \(newlyCreatedTextLayerId\) \{ cancelNewlyCreatedTextLayer\(\); return; \}/);
+ assert.match(app, /event\.preventDefault\(\);\s*cancelNewlyCreatedTextLayer\(\)/);
+ assert.match(app, /newlyCreatedTextLayerId = null;\s*textEditDialog\?\.close\(\)/);
+});
+
+
+test("AA-TYPOGRAPHY-CANVA-001 keeps the text modal reachable on mobile and supports title-first editing", async () => {
+ const [html, app, css, worker, browserE2E] = await Promise.all([
+  readFile("index.html", "utf8"), readFile("app.js", "utf8"),
+  readFile("styles.css", "utf8"), readFile("service-worker.js", "utf8"),
+  readFile("scripts/browser-e2e.mjs", "utf8")
+ ]);
+ assert.match(app, /document\.body\.append\(textEditDialog\)/);
+ assert.match(app, /function openTextEditorForLayer\(/);
+ assert.match(app, /selection-mini-edit-text/);
+ assert.match(app, /text: \(\) => selectedLayerExact\(\)\?\.contentType === "text"/);
+ assert.match(app, /function canvasRenderDpr\(rect\)/);
+ assert.match(app, /function keepImageTransformVisible\(layer, transform\)/);
+ for (const preset of ["title", "subtitle", "body", "quote", "label", "elegant"]) {
+  assert.ok(html.includes('data-text-style-preset="' + preset + '"'), "missing typography preset: " + preset);
+ }
+ assert.ok(html.includes('id="selection-mini-edit-text"'));
+ assert.match(css, /AA-TYPOGRAPHY-CANVA-001/);
+ assert.match(worker, /\.\/app\.js/);
+ assert.match(browserE2E, /dragging selected text on the mobile touch path commits a bounded transform/);
+ assert.match(app, /function activateSelectionToolForText\(/);
+ assert.match(app, /function showTextEditorDialog\(/);
+ assert.match(app, /finishTransformInteraction\(false, event\)/);
+ assert.match(css, /AA-TYPOGRAPHY-CANVA-002/);
+ assert.match(css, /#text-edit-dialog\[open\]/);
+ assert.match(worker, /animeart-web-shell-v35/);
+ assert.match(browserE2E, /mobile Text fills the available app viewport, remains editable, and switches away from brush mode/);
+ assert.match(browserE2E, /dragging text never adds brush strokes/);
+ assert.match(browserE2E, /tapping the moved text opens the editor/);
+});
+
+
+test("AA-TOOL-STUDIOS-001 keeps the mobile dock focused and separates image crop from composition crop", async () => {
+ const [html, app, css, worker] = await Promise.all([
+  readFile("index.html", "utf8"), readFile("app.js", "utf8"),
+  readFile("styles.css", "utf8"), readFile("service-worker.js", "utf8")
+ ]);
+ const dockStart = html.indexOf('<nav class="mobile-touch-dock"');
+ const dockEnd = html.indexOf("</nav>", dockStart);
+ assert.ok(dockStart >= 0 && dockEnd > dockStart);
+ const dock = html.slice(dockStart, dockEnd);
+ assert.equal((dock.match(/data-touch-action=/g) || []).length, 6, "main dock should show only six common actions");
+ assert.match(html, /id="crop-mode-dialog"/);
+ assert.match(html, /id="crop-selected-image"/);
+ assert.match(html, /id="crop-whole-canvas"/);
+ assert.match(html, /id="canvas-crop-preview"/);
+ assert.match(html, /id="canvas-crop-ratio"/);
+ assert.match(app, /function openCanvasCropDialog\(/);
+ assert.match(app, /cropDocumentCanvas\(state\.document, canvasCropRectangle\)/);
+ assert.match(app, /openCensorLightDialog\("paint"\)/);
+ assert.match(app, /openCensorLightDialog\("erase"\)/);
+ assert.match(css, /AA-TOOL-STUDIOS-001/);
+ assert.match(css, /AA-TOOL-STUDIOS-002/);
+ assert.match(css, /#text-edit-dialog\[open\]/);
+ assert.match(css, /#shape-maker-dialog\[open\]/);
+ assert.match(css, /height: 100dvh/);
+ assert.match(css, /#canvas-crop-dialog/);
+ assert.match(worker, /animeart-web-shell-v35/);
 });
