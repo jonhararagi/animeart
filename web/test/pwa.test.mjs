@@ -11,7 +11,7 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(html, /rel="manifest" href="\.\/manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\("\.\/service-worker\.js"\)/);
   assert.match(manifest, /"display": "standalone"/);
-  assert.match(worker, /animeart-web-shell-v30/);
+  assert.match(worker, /animeart-web-shell-v31/);
   assert.match(worker, /caches\.open/);
   assert.match(worker, /caches\.match/);
   assert.match(app, /layerAdjustmentsToCanvasFilter/);
@@ -95,7 +95,7 @@ test("canvas coordinate mapping is cached for offline rendering and editing", as
   assert.match(app, /documentFitScale/);
   assert.match(app, /screenViewportForDocument/);
   assert.match(worker, /\.\/domain\/canvas-space\.mjs/);
-  assert.match(worker, /animeart-web-shell-v30/);
+  assert.match(worker, /animeart-web-shell-v31/);
 });
 
  
@@ -111,7 +111,7 @@ test("mobile touch gestures use bounded two-finger pan/zoom and the offline shel
   assert.match(app, /pointercancel/);
   assert.match(gestures, /updatePinchPanViewport/);
   assert.match(gestures, /Math\.min\(maxZoom, Math\.max\(minZoom/);
-  assert.match(worker, /animeart-web-shell-v30/);
+  assert.match(worker, /animeart-web-shell-v31/);
   assert.match(worker, /\.\/domain\/touch-gestures\.mjs/);
   assert.match(css, /#canvas \{ touch-action: none; \}/);
   assert.match(html, /class="mobile-touch-dock"/);
