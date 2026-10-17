@@ -470,12 +470,12 @@ try {
 
   const lifecycleCountBeforeDuplicate = lifecycle.length;
   const lifecycleIdsBeforeDuplicate = new Set(lifecycle.map(layer => layer.id));
-  await click(layerSelector(lifecycleLayerId) + ' .layer-action[title="Duplicate layer"]');
+  await click(layerSelector(lifecycleLayerId) + ' .layer-action[title="Duplicar capa"]');
   lifecycle = await readLayerSummary();
   assert(lifecycle.length === lifecycleCountBeforeDuplicate + 1, "real layer duplicate creates a new layer");
   const duplicateId = lifecycle.find(layer => !lifecycleIdsBeforeDuplicate.has(layer.id))?.id;
   assert(Boolean(duplicateId), "real layer duplicate has a distinct document id");
-  await click(layerSelector(duplicateId) + ' .layer-action[title="Delete layer"]');
+  await click(layerSelector(duplicateId) + ' .layer-action[title="Eliminar capa"]');
   lifecycle = await readLayerSummary();
   assert(lifecycle.length === lifecycleCountBeforeDuplicate, "real layer delete removes the duplicated layer");
 
