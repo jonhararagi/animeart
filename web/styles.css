@@ -3736,3 +3736,50 @@ body.mobile-tools-open .toolbar > .easy-edit-panel > .easy-edit-grid button {
     touch-action: manipulation;
   }
 }
+
+/* AA-EDITOR-TOOLS-AUDIT-001: the mobile draw panel must not hide or intercept the canvas. */
+@media (max-width: 920px) {
+  body.mobile-tools-open.mobile-draw-panel-open::before {
+    display: none !important;
+    pointer-events: none !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar {
+    display: grid !important;
+    position: fixed !important;
+    top: auto !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: calc(66px + env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: min(34dvh, 300px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    align-content: start !important;
+    gap: 7px !important;
+    padding: 10px !important;
+    border: 1px solid #4a415e !important;
+    border-radius: 16px !important;
+    background: linear-gradient(160deg, #201a2d 0%, #111724 100%) !important;
+    box-shadow: 0 -10px 30px #0008 !important;
+    z-index: 75 !important;
+    pointer-events: auto !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > #mobile-context-heading,
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > .brush-palette {
+    grid-column: 1 / -1 !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > .brush-control:not(.magic-tolerance-control) {
+    grid-column: auto !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > .brush-control input,
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > .brush-control select {
+    min-width: 0 !important;
+  }
+}
+
