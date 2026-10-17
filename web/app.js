@@ -4219,6 +4219,16 @@ function showGoalHelp(goal) {
   list.hidden = !list.childElementCount;
   document.querySelector("#editing-help-card").hidden = !document.querySelector("#editing-help-enabled").checked;
 }
+function setMobileLayersPanelOpen(open) {
+  closeMobileContextPanel();
+  document.body.classList.toggle("mobile-layers-open", Boolean(open));
+  document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed");
+  mobileDock?.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
+  mobileDock?.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", String(Boolean(open)));
+  mobileToolsToggle?.setAttribute("aria-expanded", "true");
+  mobileToolsToggle?.setAttribute("aria-label", "Mostrar u ocultar herramientas");
+}
+
 function runEditGoal(goal) {
   lastEditGoal = goal;
   showGoalHelp(goal);
@@ -4260,12 +4270,12 @@ function runEditGoal(goal) {
     shapes: () => openShapeMaker(),
     "object-style": () => openSelectedObjectStyle(),
     color: () => {
-      if (window.matchMedia("(max-width: 920px)").matches && !document.body.classList.contains("mobile-layers-open")) mobileDock?.querySelector('[data-touch-action="layers"]')?.click();
+      if (window.matchMedia("(max-width: 920px)").matches) setMobileLayersPanelOpen(true);
       document.querySelector("#adjustments-title")?.scrollIntoView({ block: "nearest" });
     },
     layers: () => {
       if (window.matchMedia("(max-width: 920px)").matches) {
-        if (!document.body.classList.contains("mobile-layers-open")) mobileDock?.querySelector('[data-touch-action="layers"]')?.click();
+        setMobileLayersPanelOpen(!document.body.classList.contains("mobile-layers-open"));
       } else {
         document.querySelector("#layers")?.scrollIntoView({ block: "nearest" });
       }
