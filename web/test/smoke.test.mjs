@@ -44,7 +44,7 @@ test("AA-MOBILE-CROP-SHAPES-001 exposes geometric pixel crops and expanded shape
   }
   assert.match(processor, /globalCompositeOperation = "destination-in"/);
   assert.match(processor, /traceCropShape/);
-  assert.match(worker, /\\.\\/domain\\/crop-shape\\.mjs/);
+  assert.ok(worker.includes("./domain/crop-shape.mjs"));
 });
 
 test("AA-MOBILE-EXPORT-SIZE-001 keeps the editable canvas unchanged while offering bounded HD output", async () => {
@@ -54,9 +54,9 @@ test("AA-MOBILE-EXPORT-SIZE-001 keeps the editable canvas unchanged while offeri
   assert.match(html, /Tamaño de exportación/);
   assert.match(html, /value="normal"/);
   assert.match(html, /value="hd"/);
-  assert.match(app, /exportScaleForResolution\\(state\\.document, resolution\\)/);
-  assert.match(app, /context\\.scale\\(exportScale, exportScale\\)/);
-  assert.match(app, /const documentBefore = JSON\\.stringify\\(state\\.document\\)/);
+  assert.ok(app.includes("exportScaleForResolution(state.document, resolution)"));
+  assert.ok(app.includes("context.scale(exportScale, exportScale)"));
+  assert.ok(app.includes("const documentBefore = JSON.stringify(state.document)"));
   assert.match(exporter, /16_000_000/);
 });
 
