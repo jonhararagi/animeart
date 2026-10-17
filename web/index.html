@@ -34,6 +34,10 @@
           <button type="button" id="quick-import-images"><span aria-hidden="true">＋</span><b>Importar imágenes</b><small>Desde tu dispositivo</small></button>
           <button type="button" id="quick-open-asset-library"><span aria-hidden="true">▦</span><b>Mis imágenes</b><small>Biblioteca reutilizable</small></button>
         </div>
+        <div class="mobile-output-options" role="group" aria-label="Formato y tamaño de exportación">
+          <label for="mobile-export-format">Formato<select id="mobile-export-format" aria-label="Formato de exportación móvil"><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="webp">WebP</option></select></label>
+          <label for="mobile-export-resolution">Tamaño<select id="mobile-export-resolution" aria-label="Resolución de exportación móvil"><option value="normal">Normal</option><option value="hd">HD</option></select></label>
+        </div>
         <div class="easy-edit-grid">
           <button type="button" data-edit-goal="move"><span aria-hidden="true">🖐️</span><b>Mover / acomodar</b><small>Arrastra y cambia tamaño</small></button>
           <button type="button" data-edit-goal="fit"><span aria-hidden="true">🎯</span><b>Ajustar al lienzo</b><small>Centra y encaja la imagen</small></button>
@@ -51,7 +55,9 @@
           <button type="button" data-edit-goal="object-style"><span aria-hidden="true">🎨</span><b>Apariencia del elemento</b><small>Opacidad, color y forma</small></button>
           <button type="button" data-edit-goal="color"><span aria-hidden="true">🎨</span><b>Mejorar color</b><small>Brillo y contraste</small></button>
           <button type="button" data-edit-goal="layers"><span aria-hidden="true">🗂️</span><b>Capas</b><small>Ordena los elementos</small></button>
+          <button type="button" data-edit-goal="delete-selected"><span aria-hidden="true">🗑️</span><b>Eliminar seleccionado</b><small>Quita el elemento actual</small></button>
           <button type="button" data-edit-goal="undo"><span aria-hidden="true">↶</span><b>Deshacer</b><small>Vuelve un paso atrás</small></button>
+          <button type="button" data-edit-goal="redo"><span aria-hidden="true">↷</span><b>Rehacer</b><small>Recupera el cambio deshecho</small></button>
           <button type="button" data-edit-goal="export"><span aria-hidden="true">💾</span><b>Guardar / Exportar</b><small>Conserva tu edición</small></button>
           <button type="button" data-edit-goal="appearance"><span aria-hidden="true">⚙️</span><b>Apariencia</b><small>Personaliza el editor</small></button>
         </div>
