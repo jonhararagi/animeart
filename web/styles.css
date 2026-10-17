@@ -3661,3 +3661,28 @@ body.mobile-tools-open .toolbar > .easy-edit-panel > .easy-edit-grid button {
   #asset-library-dialog .asset-library-shell,
   #project-dialog .project-dialog-shell { min-height: 100dvh; box-sizing: border-box; }
 }
+
+
+/* AA-TEXT-STUDIO-FULLSCREEN-001: force the text workspace to the viewport even when WebView opens dialog non-modally. */
+@media (max-width: 620px) {
+  body #text-edit-dialog[open],
+  body #text-edit-dialog[data-open-fallback="true"] {
+    position: fixed !important;
+    inset: 0 !important;
+    box-sizing: border-box !important;
+    width: 100vw !important;
+    min-width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
