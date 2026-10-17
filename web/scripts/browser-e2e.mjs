@@ -1655,7 +1655,7 @@ try {
   await waitFor('document.body.classList.contains("mobile-layers-open")');
   await click('[aria-label="Seleccionar capa e2e-mobile-import"]');
   await waitFor('document.querySelector("#selection-indicator").textContent.includes("Imagen seleccionada: e2e-mobile-import")');
-  await clickMoreGoal("layers");
+  await evaluate('document.body.classList.remove("mobile-layers-open")');
   await waitFor('!document.body.classList.contains("mobile-layers-open")');
 
   // Zoom out first so the visible workspace has a pasteboard around the full document.
