@@ -44,4 +44,23 @@ Esta iteración agrega E2E para:
 - Chromium y emulador no reemplazan la prueba física en el Xiaomi `24116RACCG`, especialmente arrastre con dedo, recuperación del objeto y aceptación del overlay.
 - La caché PWA se cambia de v37 a v38.
 
-**CI de la iteración:** pendiente de la ejecución de GitHub Actions que se inicia con el commit consolidado. No declarar PASS hasta comprobar Web CI y Android CI sobre el mismo SHA.
+### Cierre de validación funcional (2026-10-17)
+
+**SHA de código y E2E validado:** `6cb21972b26e626613148e24a61899a4297f1dd6`.
+
+- **Web CI PASS:** [run #39055005733](https://github.com/jonhararagi/animeart/actions/runs/39055005733). Build, unit tests, Chromium E2E y capturas terminados correctamente.
+- **Android CI PASS:** [run #39055005730](https://github.com/jonhararagi/animeart/actions/runs/39055005730). Build, verificación del editor empaquetado, unit tests, lint, instrumentación y arranque offline completados.
+- **Panel móvil Dibujar:** Chromium confirma que la bandeja aparece sobre el muelle sin tapar la superficie táctil del lienzo. Un gesto real deja un trazo en una capa de dibujo y Deshacer lo elimina.
+- **Capas en teléfono:** E2E confirma que visibilidad, bloqueo y acciones de ciclo de vida alcanzan al menos `44×44` píxeles CSS. Bajar/Subir modifica el índice de apilado real y vuelve a dejar la capa en su posición original.
+- El resto de pruebas del editor continúa pasando: recorte de imagen y composición, borrado mágico cancelable, quitar fondo con previsualización, borrado/restauración, texto/forma, transformaciones, transparencia y exportación con dimensiones exactas.
+- **APK del SHA validado:** [artefacto Android #12109296539](https://github.com/jonhararagi/animeart/actions/runs/39055005730/artifacts/12109296539). Tamaño aproximado: 10,1 MB. **SHA-256 del archivo APK:** `fce11d1d56d20134350c72cebe0f4353aa72233ec5e38d31c05d4330373621d4`.
+- La siguiente modificación que actualiza esta auditoría y continuidad es **solo documental**; no cambia el código ni las pruebas que pasaron en `6cb2197...`. GitHub Actions también ejecutará las comprobaciones sobre el HEAD que incluya este registro.
+
+### Límites sin ocultar
+
+- Quitar fondo es eliminación local por conectividad y color: da mejores resultados con fondos lisos. No se presenta como segmentación semántica por IA.
+- Restaurar necesita una copia de píxeles original válida con dimensiones compatibles.
+- La aceptación táctil física en el Xiaomi `24116RACCG` continúa pendiente. Emulador y Chromium no se cuentan como prueba física.
+- La búsqueda externa de blogs o documentación interna pública de Canva/Picsart no se hizo en vivo en esta sesión; no se citan artículos inexistentes ni se atribuye a esos productos un algoritmo concreto.
+
+**Integración:** PR #89 sigue abierto. `main` no se modificó ni fusionó.

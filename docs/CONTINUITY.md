@@ -3361,5 +3361,5 @@ El SHA del código/PR es `4d6f7b42b71dc5aed6161900b1cc13765382b188`; el identifi
 
 **Documento detallado:** [`docs/AUDITS/2026-10-17-EDITOR-TOOLS-AUDIT.md`](./AUDITS/2026-10-17-EDITOR-TOOLS-AUDIT.md)
 
-**CI:** pendiente para el HEAD de esta iteración; se validará con Web CI y Android CI sobre el mismo SHA. La prueba física con el Xiaomi `24116RACCG` sigue pendiente.
+**CI del código y pruebas:** PASS sobre `6cb21972b26e626613148e24a61899a4297f1dd6`. Web CI [#39055005733](https://github.com/jonhararagi/animeart/actions/runs/39055005733) y Android CI [#39055005730](https://github.com/jonhararagi/animeart/actions/runs/39055005730) pasaron sobre el mismo SHA. La nueva comprobación móvil certifica la bandeja de dibujo táctil, trazos editables/deshacer, controles de capa de `44×44` px CSS o más y cambio real del orden de capas. Se añadió la actualización documental actual después de ese SHA; el HEAD documental también vuelve a ejecutarse en CI. La prueba física con el Xiaomi `24116RACCG` sigue pendiente.
 
