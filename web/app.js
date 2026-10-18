@@ -5587,6 +5587,36 @@ async function saveBlobToDevice(blob, filename, imageFormat = null) {
   return "browser";
 }
 
+async function shareBlobToDevice(blob, filename, imageFormat) {
+  if (!(blob instanceof Blob) || blob.size < 1) throw new Error("No hay datos para compartir.");
+  const nativeBridge = globalThis.AnimeArtNative;
+  if (nativeBridge && typeof nativeBridge.shareFile === "function") {
+    if (blob.size > 50 * 1024 * 1024) throw new Error("El límite para compartir en Android es 50 MB.");
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(offset, Math.min(bytes.length, offset + chunkSize)));
+    }
+    nativeBridge.shareFile(btoa(binary), blob.type || "image/png", filename);
+    return "native";
+  }
+  if (typeof navigator.share === "function" && typeof File === "function") {
+    const file = new File([blob], filename, { type: blob.type || "image/png" });
+    try {
+      if (typeof navigator.canShare !== "function" || navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "AnimeArt · diseño" });
+        return "shared";
+      }
+    } catch (error) {
+      if (error?.name === "AbortError") throw error;
+      // Retain a local download fallback if the browser cannot share files.
+    }
+  }
+  downloadImageBlob(blob, filename, imageFormat);
+  return "download";
+}
+
 exportProjectButton.addEventListener("click", async () => {
   try {
     const serialized = serializeProjectFile(state.document);
@@ -5704,6 +5734,70 @@ async function exportPng() {
 }
 
 exportPngButton.addEventListener("click", exportPng);
+
+async function shareCurrentDesign() {
+  const shareButton = document.querySelector("#share-current-design");
+  if (shareButton?.disabled) return;
+  const hasCensorStrokes = state.document.layers.some(layer =>
+    layer.visible && (layer.strokes || []).some(stroke => stroke.tool === "censor-light")
+  );
+  if (hasCensorStrokes && !document.querySelector("#censor-permanent-export").checked) {
+    status.textContent = "Activa «Censura permanente al exportar» para confirmar que esos trazos se aplanarán.";
+    return;
+  }
+  const documentBefore = JSON.stringify(state.document);
+  const historyBeforeUndo = state.history.canUndo();
+  const historyBeforeRedo = state.history.canRedo();
+  let shareCanvas = null;
+  if (shareButton) shareButton.disabled = true;
+  status.textContent = "Preparando imagen para compartir…";
+  try {
+    await ensureExportImages(state.document);
+    const format = exportFormatInput.value;
+    const resolution = exportResolutionInput?.value === "hd" ? "hd" : "normal";
+    const exportScale = exportScaleForResolution(state.document, resolution);
+    const outputWidth = Math.max(1, Math.round(state.document.width * exportScale));
+    const outputHeight = Math.max(1, Math.round(state.document.height * exportScale));
+    shareCanvas = createPngExportCanvas({ ...state.document, width: outputWidth, height: outputHeight });
+    renderDocumentToCanvas(state.document, shareCanvas, ({ context, document }) => {
+      if (format === "jpeg") {
+        context.save();
+        context.fillStyle = exportBackgroundInput.value || "#ffffff";
+        context.fillRect(0, 0, shareCanvas.width, shareCanvas.height);
+        context.restore();
+      }
+      context.scale(exportScale, exportScale);
+      drawDocument({
+        context,
+        document,
+        center: { x: document.width / 2, y: document.height / 2 },
+        transformForLayer: layer => layer.transform
+      });
+    });
+    const quality = Number(exportQualityInput.value) / 100;
+    const blob = await canvasToImageBlob(shareCanvas, format, quality);
+    const destination = await shareBlobToDevice(blob, "animeart." + format, format);
+    if (JSON.stringify(state.document) !== documentBefore ||
+        state.history.canUndo() !== historyBeforeUndo ||
+        state.history.canRedo() !== historyBeforeRedo) {
+      throw new Error("Compartir modificó el estado del editor.");
+    }
+    status.textContent = destination === "native"
+      ? "Elige Canva u otra app compatible en el menú de Android."
+      : destination === "shared"
+        ? "Diseño compartido."
+        : "No hay una app compatible para compartir; la imagen se descargó localmente.";
+  } catch (error) {
+    status.textContent = error?.name === "AbortError"
+      ? "Compartir cancelado. Tu proyecto sigue abierto en AnimeArt."
+      : error?.message || "No se pudo compartir el diseño.";
+  } finally {
+    if (shareCanvas) { shareCanvas.width = 0; shareCanvas.height = 0; }
+    if (shareButton) shareButton.disabled = false;
+  }
+}
+
+
 const transparencyButton = document.querySelector("#view-transparency");
 const canvasWrapElement = document.querySelector(".canvas-wrap");
 const backgroundModeButtons = [...document.querySelectorAll("[data-canvas-background]")];

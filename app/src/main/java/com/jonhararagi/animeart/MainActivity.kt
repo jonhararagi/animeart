@@ -1,7 +1,10 @@
 package com.jonhararagi.animeart
 
+import android.content.ClipData
 import android.content.Intent
 import android.graphics.Color
+import java.io.File
+import androidx.core.content.FileProvider
 import android.net.Uri
 import android.os.Bundle
 import android.util.Base64
@@ -106,6 +109,44 @@ class MainActivity : ComponentActivity() {
                 } catch (error: Exception) {
                     pendingExportBytes = null
                     Toast.makeText(this@MainActivity, error.message ?: "Export failed", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun shareFile(base64Data: String, mimeType: String, requestedName: String) {
+            runOnUiThread {
+                try {
+                    val safeMime = when (mimeType.substringBefore(';').trim().lowercase()) {
+                        "image/png" -> "image/png"
+                        "image/jpeg" -> "image/jpeg"
+                        "image/webp" -> "image/webp"
+                        else -> throw IllegalArgumentException("Solo se pueden compartir PNG, JPEG o WebP.")
+                    }
+                    if (base64Data.length > 70_000_000) throw IllegalArgumentException("La imagen es demasiado grande para compartir.")
+                    val bytes = Base64.decode(base64Data, Base64.DEFAULT)
+                    if (bytes.isEmpty() || bytes.size > 50 * 1024 * 1024) {
+                        throw IllegalArgumentException("La imagen debe pesar como máximo 50 MB.")
+                    }
+                    val safeName = requestedName.replace(Regex("[^A-Za-z0-9._-]"), "_")
+                        .take(120).ifBlank { "animeart.png" }
+                    val shareDir = File(cacheDir, "animeart-share")
+                    if (!shareDir.exists() && !shareDir.mkdirs()) {
+                        throw IllegalStateException("No se pudo preparar la imagen para compartir.")
+                    }
+                    shareDir.listFiles()?.sortedByDescending { it.lastModified() }?.drop(2)?.forEach { it.delete() }
+                    val sharedFile = File(shareDir, System.currentTimeMillis().toString() + "-" + safeName)
+                    sharedFile.writeBytes(bytes)
+                    val uri = FileProvider.getUriForFile(this@MainActivity, "$packageName.fileprovider", sharedFile)
+                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = safeMime
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        clipData = ClipData.newUri(contentResolver, safeName, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    startActivity(Intent.createChooser(sendIntent, "Compartir diseño de AnimeArt"))
+                } catch (error: Exception) {
+                    Toast.makeText(this@MainActivity, error.message ?: "No se pudo compartir el diseño.", Toast.LENGTH_LONG).show()
                 }
             }
         }

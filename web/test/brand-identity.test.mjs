@@ -27,3 +27,26 @@ test("AnimeArt's identity and quick actions are discoverable and available offli
   assert.match(worker, /animeart-web-shell-v45/);
   assert.match(worker, /\.\/icons\/animeart-mark\.svg/);
 });
+
+
+test("external sharing is optional, hands off a flat image and keeps the editor local", async () => {
+  const [html, app, activity, manifest, paths, workflow] = await Promise.all([
+    readFile("index.html", "utf8"), readFile("app.js", "utf8"),
+    readFile("../app/src/main/java/com/jonhararagi/animeart/MainActivity.kt", "utf8"),
+    readFile("../app/src/main/AndroidManifest.xml", "utf8"),
+    readFile("../app/src/main/res/xml/file_paths.xml", "utf8"),
+    readFile("../.github/workflows/android.yml", "utf8")
+  ]);
+  assert.match(html, /id="share-current-design"/);
+  assert.match(html, /Canva u otra app, solo si tú la eliges/);
+  assert.match(app, /async function shareBlobToDevice\(/);
+  assert.match(app, /async function shareCurrentDesign\(/);
+  assert.match(app, /nativeBridge\.shareFile\(/);
+  assert.match(app, /navigator\.share\(/);
+  assert.match(activity, /fun shareFile\(/);
+  assert.match(activity, /Intent\.createChooser\(sendIntent, "Compartir diseño de AnimeArt"\)/);
+  assert.match(activity, /FileProvider\.getUriForFile/);
+  assert.match(manifest, /android\.support\.FILE_PROVIDER_PATHS/);
+  assert.match(paths, /animeart-share\//);
+  assert.match(workflow, /res\/xml\/file_paths\.xml/);
+});

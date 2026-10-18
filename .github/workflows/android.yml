@@ -36,7 +36,9 @@ jobs:
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           test -s app/src/main/res/drawable/ic_animeart_launcher.xml
+          test -s app/src/main/res/xml/file_paths.xml
           unzip -l "$APK" | grep -q "res/drawable/ic_animeart_launcher.xml"
+          unzip -l "$APK" | grep -q "res/xml/file_paths.xml"
           unzip -l "$APK" | grep -q "assets/web/icons/animeart-mark.svg"
           unzip -l "$APK" | grep -q "assets/web/domain/image-processing.mjs"
           unzip -l "$APK" | grep -q "assets/web/domain/creative-catalog.mjs"
