@@ -66,3 +66,12 @@ test("reuses a circular work queue while removing a large connected matte",()=>{
  assert.equal(alpha(result,Math.floor(width*height/2)),0);
  assert.equal(alpha(result,width*height-1),0);
 });
+
+test("grows the circular work queue when many explicit seeds exceed its initial capacity",()=>{
+ const width=40,height=40,white=[255,255,255],input=make(width,height,Array.from({length:width*height},()=>white));
+ const seedPoints=Array.from({length:width*height},(_,index)=>({x:index%width,y:Math.floor(index/width)}));
+ const result=removeConnectedBackground(input,{targetColor:"#ffffff",tolerance:0,feather:0,seedPoints});
+ assert.equal(result.changed,true);
+ assert.equal(alpha(result,0),0);
+ assert.equal(alpha(result,width*height-1),0);
+});

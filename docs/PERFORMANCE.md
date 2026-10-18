@@ -53,3 +53,16 @@ Web CI run [#39108544039](https://github.com/jonhararagi/animeart/actions/runs/3
 | 16 MP | 411.6 ms / 114.8 MiB | 379.1 ms / 191.3 MiB | 0.3 ms / 112.2 MiB |
 
 The high 16 MP background-removal peak was the reason for the next targeted change: replace the fixed full-document integer queue with a circular queue sized initially to the image perimeter and grown only if the active frontier actually needs more space. These measurements are Node/Linux synthetic-input diagnostics, not values observed on Android.
+
+
+### Result after circular-queue optimization
+
+Web CI [#39108794681](https://github.com/jonhararagi/animeart/actions/runs/39108794681), HEAD 5b5fb2cd2fbab4c0414e1da787ddfbe3b0e4f58a, passed all nine benchmark scenarios and Chromium E2E. Connected-background peak RSS changed as follows:
+
+| Pixels | Before queue reuse | Circular queue | Difference |
+| --- | ---: | ---: | ---: |
+| 4 MP | 88.1 MiB | 73.2 MiB | −14.9 MiB (−16.9%) |
+| 8 MP | 122 MiB | 91.6 MiB | −30.4 MiB (−24.9%) |
+| 16 MP | 191.3 MiB | 130 MiB | −61.3 MiB (−32.0%) |
+
+The follow-up removes integer modulo from the hot queue push/pop path by using a conditional wrap. The benchmark times on the later run were slower across recolor as well as background removal, so no cross-run speed claim is justified: CPU availability varied between GitHub-hosted runners. The durable measured improvement is the reduction in peak RSS; the next CI log validates the hot-path adjustment.

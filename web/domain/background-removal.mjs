@@ -10,7 +10,7 @@ function unmatte(data,offset,target,alpha){if(alpha<=0||alpha>=1)return;for(let 
  */
 export function removeConnectedBackground(imageData,{targetColor="#ffffff",tolerance=36,feather=18,edgeSensitivity=42,protectLineArt=true,decontaminate=true,seedPoints=[],mutate=false}={}){
  const{width,height,data:source}=validate(imageData,"Background removal"),target=parseColor(targetColor),threshold=Math.max(0,Math.min(255,Number(tolerance)||0)),soft=Math.max(0,Math.min(100,Number(feather)||0)),edge=Math.max(0,Math.min(180,Number(edgeSensitivity)||0)),reach=Math.min(255,threshold+soft),count=width*height,data=mutate?source:new Uint8ClampedArray(source),visited=new Uint8Array(count);let queue=new Int32Array(Math.min(count,Math.max(1024,width*2+height*2))),queueHead=0,queueTail=0,queueSize=0;
- const enqueue=index=>{if(queueSize===queue.length){if(queue.length>=count)throw new RangeError("Background-removal queue exceeded the pixel count");const nextCapacity=Math.min(count,queue.length*2),expanded=new Int32Array(nextCapacity);for(let offset=0;offset<queueSize;offset++)expanded[offset]=queue[(queueHead+offset)%queue.length];queue=expanded;queueHead=0;queueTail=queueSize;}queue[queueTail]=index;queueTail=(queueTail+1)%queue.length;queueSize++;};
+ const enqueue=index=>{if(queueSize===queue.length){if(queue.length>=count)throw new RangeError("Background-removal queue exceeded the pixel count");const nextCapacity=Math.min(count,queue.length*2),expanded=new Int32Array(nextCapacity);for(let offset=0;offset<queueSize;offset++)expanded[offset]=queue[(queueHead+offset)%queue.length];queue=expanded;queueHead=0;queueTail=queueSize;}queue[queueTail]=index;queueTail++;if(queueTail===queue.length)queueTail=0;queueSize++;};
  const d=i=>distance(data,i*4,target);
  function seed(i){if(visited[i])return;const o=i*4;if(data[o+3]===0||d(i)>threshold)return;visited[i]=1;enqueue(i);}
  const explicitSeeds=Array.isArray(seedPoints)?seedPoints.filter(p=>p&&Number.isFinite(Number(p.x))&&Number.isFinite(Number(p.y))):[];
@@ -20,7 +20,7 @@ export function removeConnectedBackground(imageData,{targetColor="#ffffff",toler
  const visitNeighbor=(n,currentOffset)=>{if(visited[n])return;const o=n*4;if(data[o+3]===0){visited[n]=1;return;}const nd=d(n);if(nd>reach)return;
   if(protectLineArt){const delta=Math.sqrt(((data[o]-data[currentOffset])**2+(data[o+1]-data[currentOffset+1])**2+(data[o+2]-data[currentOffset+2])**2)/3);if(delta>edge)return;}
   visited[n]=1;if(nd<=threshold)enqueue(n);};
- while(queueSize>0){const i=queue[queueHead];queueHead=(queueHead+1)%queue.length;queueSize--;const x=i%width,y=Math.floor(i/width),currentOffset=i*4;if(x)visitNeighbor(i-1,currentOffset);if(x+1<width)visitNeighbor(i+1,currentOffset);if(y)visitNeighbor(i-width,currentOffset);if(y+1<height)visitNeighbor(i+width,currentOffset);}
+ while(queueSize>0){const i=queue[queueHead];queueHead++;if(queueHead===queue.length)queueHead=0;queueSize--;const x=i%width,y=Math.floor(i/width),currentOffset=i*4;if(x)visitNeighbor(i-1,currentOffset);if(x+1<width)visitNeighbor(i+1,currentOffset);if(y)visitNeighbor(i-width,currentOffset);if(y+1<height)visitNeighbor(i+width,currentOffset);}
  let changed=false;for(let i=0;i<count;i++){if(!visited[i])continue;const o=i*4,dist=d(i),beforeAlpha=data[o+3];if(dist<=threshold)data[o+3]=0;else if(soft>0){const a=Math.max(0,Math.min(1,(dist-threshold)/soft));data[o+3]=Math.round(data[o+3]*a);if(decontaminate)unmatte(data,o,target,a);}if(data[o+3]!==beforeAlpha)changed=true;}
  return{width,height,data,changed};
 }

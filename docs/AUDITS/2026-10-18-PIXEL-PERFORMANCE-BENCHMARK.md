@@ -49,3 +49,10 @@ La medición de referencia de Web CI [#39108544039](https://github.com/jonharara
 - 16 MP: fondo conectado 379.1 ms, pico RSS 191.3 MiB.
 
 El pico a 16 MP justificó cambiar la cola fija de 16 millones de enteros por una cola circular que reutiliza posiciones libres, empieza con capacidad relacionada al perímetro y se expande solo cuando el conjunto de píxeles pendientes lo exige. La prueba unitaria recorre un matte conectado de 40×40, suficiente para envolver índices en una cola circular. La CI nueva medirá el pico posterior; no se supone una reducción numérica hasta leer esos resultados.
+
+
+## Medición tras la cola circular
+
+En Web CI [#39108794681](https://github.com/jonhararagi/animeart/actions/runs/39108794681), commit 5b5fb2cd2fbab4c0414e1da787ddfbe3b0e4f58a, las nueve pruebas de píxeles y Chromium E2E terminaron en PASS. El RSS pico de quitar fondo bajó de 88.1 a 73.2 MiB para 4 MP, de 122 a 91.6 MiB para 8 MP y de 191.3 a 130 MiB para 16 MP. La reducción en 16 MP fue de 61.3 MiB (32%).
+
+La cola circular se ajusta ahora además para incrementar índices y envolverlos con una condición, en lugar de ejecutar un módulo en cada enqueue/dequeue. Se añadió una prueba para forzar el crecimiento de la cola con múltiples puntos semilla. Las cifras nuevas de CI se deben consultar en el commit siguiente; las mediciones de CPU entre runners no se comparan como una prueba de mejora de velocidad.
