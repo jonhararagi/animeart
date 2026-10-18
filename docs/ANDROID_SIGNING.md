@@ -29,7 +29,7 @@ In Windows PowerShell, copy the Base64 form with:
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("animeart-signing.jks")) | Set-Clipboard
 ```
 
-After adding the secrets, rerun Android CI. The workflow signs with this key, verifies the signature using `apksigner`, verifies package/version via `aapt`, checks the checksum, and includes a `.signing.txt` report in the artifact.
+After adding the secrets, rerun Android CI on `main`. The signing-secret step is restricted to pushes to `main` and manual workflow dispatches on `main`; pull-request builds do not receive these credentials. The workflow signs with this key, verifies the signature using `apksigner`, verifies package/version via `aapt`, checks the checksum, and includes a `.signing.txt` report in the artifact.
 
 Optional: set the non-secret repository variable `ANIMEART_EXPECTED_CERT_SHA256` to the lowercase certificate fingerprint from that report. CI fails if the signer unexpectedly changes.
 

@@ -30,6 +30,7 @@ jobs:
         with:
           gradle-version: "8.11.1"
       - name: Configure stable APK signing (optional but required for repeatable updates)
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
         shell: bash
         env:
           ANIMEART_KEYSTORE_BASE64: ${{ secrets.ANIMEART_KEYSTORE_BASE64 }}
