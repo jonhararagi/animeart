@@ -3,6 +3,22 @@ import assert from "node:assert/strict";
 import { applyEraseStrokes, removeConnectedBackground } from "../domain/background-removal.mjs";
 const make=(w,h,pixels)=>({width:w,height:h,data:new Uint8ClampedArray(pixels.flatMap(p=>[...p,255]))});
 const alpha=(image,i)=>image.data[i*4+3];
+test("worker mode can remove a connected matte in place and reports whether pixels changed",()=>{
+ const source=make(3,1,[[255,255,255],[220,25,30],[255,255,255]]);
+ const originalBuffer=source.data;
+ const result=removeConnectedBackground(source,{targetColor:"#ffffff",tolerance:0,feather:0,mutate:true});
+ assert.equal(result.data,originalBuffer);
+ assert.equal(result.changed,true);
+ assert.equal(alpha(source,0),0);
+ assert.equal(alpha(source,1),255);
+});
+test("manual erase supports in-place worker buffers without changing the default API",()=>{
+ const source=make(3,1,[[220,25,30],[220,25,30],[220,25,30]]);
+ const before=[...source.data];
+ const result=applyEraseStrokes(source,[{size:2,points:[{x:1.5,y:0.5}]}],{mutate:true});
+ assert.equal(result.data,source.data);
+ assert.notDeepEqual([...source.data],before);
+});
 test("removes edge-connected background while preserving enclosed same-color pixels",()=>{
  const white=[255,255,255],red=[220,25,30],pixels=[white,white,white,white,white,white,red,red,red,white,white,red,white,red,white,white,red,red,red,white,white,white,white,white,white];
  const result=removeConnectedBackground(make(5,5,pixels),{targetColor:"#ffffff",tolerance:0,feather:0}),alpha=i=>result.data[i*4+3];

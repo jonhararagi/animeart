@@ -3,7 +3,7 @@ import { initializeAssetLibrary } from "./asset-library.js";
 import { getEditingHelpPreference, initializeAppearanceSettings, setEditingHelpPreference } from "./appearance-settings.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
 import { traceCropShape } from "./domain/crop-shape.mjs";
-import { replaceColorRange } from "./domain/color-replacement.mjs";
+import { runImageProcessing } from "./domain/image-processing-client.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
 import { DocumentHistory, cloneDocument } from "./domain/history.mjs";
 import { createViewport, panBy } from "./domain/viewport.mjs";
@@ -13,7 +13,7 @@ import { createFrameScheduler } from "./domain/frame-scheduler.mjs";
 import { addLayer, clearLayer, cropDocumentCanvas, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
-import { removeConnectedBackground, applyEraseStrokes } from "./domain/background-removal.mjs";
+
 import { BUILT_IN_BACKGROUND_PROFILES, deleteBackgroundProfile, listBackgroundProfiles, saveBackgroundProfile } from "./domain/background-removal-profiles.mjs";
 import { fitImportedImageTransform } from "./domain/image-import.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
@@ -3142,15 +3142,11 @@ async function finishMagicErase(interaction) {
     }
     const targetColor = "#" + [original.data[offset], original.data[offset + 1], original.data[offset + 2]]
       .map(value => value.toString(16).padStart(2, "0")).join("");
-    const result = removeConnectedBackground(original, {
+    const result = await runImageProcessing("remove-connected-background", original, {
       targetColor, tolerance: Number(document.querySelector("#magic-eraser-tolerance")?.value || 28), feather: 12, edgeSensitivity: 48,
       protectLineArt: true, decontaminate: true, seedPoints: [{ x, y }]
-    });
-    let changed = false;
-    for (let index = 3; index < original.data.length; index += 4) {
-      if (original.data[index] !== result.data[index]) { changed = true; break; }
-    }
-    if (!changed) {
+    }, { transferInput: true });
+    if (!result.changed) {
       status.textContent = "No se encontró una región conectada de ese color. Probá un píxel cercano o Quitar fondo.";
       return;
     }
@@ -3282,10 +3278,15 @@ async function finishImageErase(interaction) {
   context.drawImage(image, 0, 0, width, height);
   const pixels = context.getImageData(0, 0, width, height);
   const scale = Math.max(0.05, Number(layer.transform.scale) || 1);
-  const result = applyEraseStrokes(pixels, [{
-    size: Math.max(1, state.brush.size / scale),
-    points: interaction.points
-  }]);
+  let result;
+  try {
+    result = await runImageProcessing("apply-erase-strokes", pixels, {
+      strokes: [{ size: Math.max(1, state.brush.size / scale), points: interaction.points }]
+    }, { transferInput: true });
+  } catch (error) {
+    status.textContent = error?.message || "No se pudo procesar el borrado en segundo plano.";
+    return;
+  }
   context.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
   const encoded = raster.toDataURL("image/png");
   const optimized = await optimizeImageSource(encoded);
@@ -4732,7 +4733,7 @@ function backgroundRemovalPoint(event) {
 function syncBackgroundRemovalApplyButton() {
   const button = document.querySelector("#apply-background-removal");
   const session = backgroundRemovalSession;
-  if (button) button.disabled = !session || (!session.removalRequested && session.strokes.length === 0);
+  if (button) button.disabled = backgroundRemovalProcessing || !session || (!session.removalRequested && session.strokes.length === 0);
 }
 
 function backgroundRemovalFitScale() {
@@ -4793,32 +4794,72 @@ window.addEventListener("resize", () => {
   if (backgroundRemovalDialog?.open && backgroundRemovalSession) updateBackgroundRemovalZoom(backgroundRemovalZoom);
 });
 
+let backgroundPreviewRevision = 0;
+let backgroundPreviewRenderedRevision = 0;
+let backgroundPreviewRunning = false;
+let backgroundPreviewNeedsRecompute = false;
+let backgroundRemovalProcessing = false;
+
 function renderBackgroundRemovalPreview(recompute = false) {
-  const session = backgroundRemovalSession;
-  if (!session || !backgroundRemovalContext) return;
+  backgroundPreviewRevision += 1;
+  if (recompute) backgroundPreviewNeedsRecompute = true;
+  if (!backgroundPreviewRunning) void pumpBackgroundRemovalPreview();
+}
+
+async function pumpBackgroundRemovalPreview() {
+  if (backgroundPreviewRunning) return;
+  backgroundPreviewRunning = true;
+  backgroundRemovalProcessing = true;
+  syncBackgroundRemovalApplyButton();
   try {
-    if (session.removalRequested && (recompute || !session.automatic || session.automatic === session.original)) {
-      session.automatic = removeConnectedBackground(session.original, {
-        targetColor: document.querySelector("#background-removal-color").value,
-        tolerance: Number(document.querySelector("#background-removal-tolerance").value),
-        feather: Number(document.querySelector("#background-removal-feather").value),
-        edgeSensitivity: Number(document.querySelector("#background-removal-edge-sensitivity").value),
-        protectLineArt: document.querySelector("#background-removal-protect-line-art").checked,
-        decontaminate: document.querySelector("#background-removal-decontaminate").checked
-      });
+    while (backgroundRemovalSession && backgroundRemovalContext) {
+      const session = backgroundRemovalSession;
+      const revision = backgroundPreviewRevision;
+      const shouldRecompute = backgroundPreviewNeedsRecompute;
+      backgroundPreviewNeedsRecompute = false;
+      let automatic = session.automatic;
+      try {
+        if (session.removalRequested && (shouldRecompute || !automatic || automatic === session.original)) {
+          document.querySelector("#background-removal-status").textContent = "Procesando la vista previa en segundo plano…";
+          automatic = await runImageProcessing("remove-connected-background", session.original, {
+            targetColor: document.querySelector("#background-removal-color").value,
+            tolerance: Number(document.querySelector("#background-removal-tolerance").value),
+            feather: Number(document.querySelector("#background-removal-feather").value),
+            edgeSensitivity: Number(document.querySelector("#background-removal-edge-sensitivity").value),
+            protectLineArt: document.querySelector("#background-removal-protect-line-art").checked,
+            decontaminate: document.querySelector("#background-removal-decontaminate").checked
+          });
+          if (session !== backgroundRemovalSession) continue;
+          session.automatic = automatic;
+        }
+        const base = session.removalRequested ? (automatic || session.original) : session.original;
+        const result = session.strokes.length
+          ? await runImageProcessing("apply-erase-strokes", base, { strokes: session.strokes })
+          : base;
+        if (session !== backgroundRemovalSession || revision !== backgroundPreviewRevision) continue;
+        backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
+        document.querySelector("#background-removal-status").textContent = session.removalRequested
+          ? "Vista previa del borrado · " + result.width + " × " + result.height + " px. No se aplica hasta pulsar Aplicar."
+          : session.strokes.length
+            ? "La imagen original sigue intacta; hay " + session.strokes.length + " trazo(s) manual(es) en la vista previa."
+            : "Imagen original intacta. Pulsa “Previsualizar quitar fondo” para generar la transparencia.";
+        document.querySelector("#undo-background-erase").disabled = session.strokes.length === 0;
+        backgroundPreviewRenderedRevision = revision;
+        break;
+      } catch (error) {
+        if (session !== backgroundRemovalSession || revision !== backgroundPreviewRevision) continue;
+        document.querySelector("#background-removal-status").textContent = error.message || "No se pudo procesar esta imagen";
+        backgroundPreviewRenderedRevision = revision;
+        break;
+      }
     }
-    const base = session.removalRequested ? (session.automatic || session.original) : session.original;
-    const result = applyEraseStrokes(base, session.strokes);
-    backgroundRemovalContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
-    document.querySelector("#background-removal-status").textContent = session.removalRequested
-      ? "Vista previa del borrado · " + result.width + " × " + result.height + " px. No se aplica hasta pulsar Aplicar."
-      : session.strokes.length
-        ? "La imagen original sigue intacta; hay " + session.strokes.length + " trazo(s) manual(es) en la vista previa."
-        : "Imagen original intacta. Pulsa “Previsualizar quitar fondo” para generar la transparencia.";
-    document.querySelector("#undo-background-erase").disabled = session.strokes.length === 0;
+  } finally {
+    backgroundPreviewRunning = false;
+    backgroundRemovalProcessing = false;
     syncBackgroundRemovalApplyButton();
-  } catch (error) {
-    document.querySelector("#background-removal-status").textContent = error.message || "No se pudo procesar esta imagen";
+    if (backgroundRemovalSession && backgroundPreviewRenderedRevision !== backgroundPreviewRevision) {
+      void pumpBackgroundRemovalPreview();
+    }
   }
 }
 async function openBackgroundRemoval() {
@@ -5029,14 +5070,68 @@ document.querySelector("#apply-background-removal").addEventListener("click", as
 
 
 function pixelHex(data, offset) { return "#" + [data[offset],data[offset+1],data[offset+2]].map(v=>v.toString(16).padStart(2,"0")).join(""); }
+let recolorPreviewRevision = 0;
+let recolorPreviewRenderedRevision = 0;
+let recolorPreviewRunning = false;
+let recolorPreviewResult = null;
+let recolorPreviewKey = null;
+function currentRecolorOptions() {
+ return {
+  sourceColor: recolorSession?.sourceColor || "#806050",
+  targetColor: document.querySelector("#recolor-target-color").value,
+  tolerance: Number(document.querySelector("#recolor-tolerance").value),
+  softness: Number(document.querySelector("#recolor-softness").value),
+  preserveShading: document.querySelector("#recolor-preserve-shading").checked
+ };
+}
+function recolorOptionsKey(session, options) {
+ return JSON.stringify([session?.layerId, session?.source, options.sourceColor, options.targetColor, options.tolerance, options.softness, options.preserveShading]);
+}
 function renderRecolorPreview() {
- const s=recolorSession;if(!s||!recolorContext)return;
- try { const result=s.sourceColor?replaceColorRange(s.original,{sourceColor:s.sourceColor,targetColor:document.querySelector("#recolor-target-color").value,tolerance:Number(document.querySelector("#recolor-tolerance").value),softness:Number(document.querySelector("#recolor-softness").value),preserveShading:document.querySelector("#recolor-preserve-shading").checked}):s.original;
- recolorContext.putImageData(new ImageData(result.data,result.width,result.height),0,0);
- document.querySelector("#recolor-tolerance-value").textContent=document.querySelector("#recolor-tolerance").value;
- document.querySelector("#recolor-softness-value").textContent=document.querySelector("#recolor-softness").value;
- document.querySelector("#recolor-status").textContent=s.sourceColor?"Preview: source color range selected. Shading and alpha are preserved.":"Choose “Sample source color” and tap the color to replace.";
- } catch(error){document.querySelector("#recolor-status").textContent=error.message||"Preview failed";}
+ recolorPreviewRevision += 1;
+ if (!recolorPreviewRunning) void pumpRecolorPreview();
+}
+async function pumpRecolorPreview() {
+ if (recolorPreviewRunning) return;
+ recolorPreviewRunning = true;
+ const applyButton = document.querySelector("#apply-recolor");
+ if (applyButton) applyButton.disabled = true;
+ try {
+  while (recolorSession && recolorContext) {
+   const revision = recolorPreviewRevision;
+   const session = recolorSession;
+   const options = currentRecolorOptions();
+   const key = recolorOptionsKey(session, options);
+   try {
+    document.querySelector("#recolor-status").textContent = session.sourceColor
+      ? "Procesando la vista previa en segundo plano…"
+      : "Choose “Sample source color” and tap the color to replace.";
+    const result = session.sourceColor
+      ? await runImageProcessing("replace-color-range", session.original, options)
+      : session.original;
+    if (session !== recolorSession || revision !== recolorPreviewRevision) continue;
+    recolorContext.putImageData(new ImageData(result.data, result.width, result.height), 0, 0);
+    recolorPreviewResult = result;
+    recolorPreviewKey = key;
+    document.querySelector("#recolor-tolerance-value").textContent = document.querySelector("#recolor-tolerance").value;
+    document.querySelector("#recolor-softness-value").textContent = document.querySelector("#recolor-softness").value;
+    document.querySelector("#recolor-status").textContent = session.sourceColor
+      ? "Vista previa lista. El sombreado y la transparencia se conservan."
+      : "Choose “Sample source color” and tap the color to replace.";
+    recolorPreviewRenderedRevision = revision;
+    break;
+   } catch (error) {
+    if (session !== recolorSession || revision !== recolorPreviewRevision) continue;
+    document.querySelector("#recolor-status").textContent = error.message || "Preview failed";
+    recolorPreviewRenderedRevision = revision;
+    break;
+   }
+  }
+ } finally {
+  recolorPreviewRunning = false;
+  if (applyButton) applyButton.disabled = !recolorSession?.sourceColor || recolorPreviewRenderedRevision !== recolorPreviewRevision;
+  if (recolorSession && recolorPreviewRenderedRevision !== recolorPreviewRevision) void pumpRecolorPreview();
+ }
 }
 async function openRecolorTool() {
  const layer=selectedLayerExact();if(!layer||layer.contentType!=="image"||!layer.image||layer.locked)return;
@@ -5050,7 +5145,7 @@ async function openRecolorTool() {
  } catch(error){status.textContent=error.message||"Could not open color replacement";}
 }
 if(recolorButton)recolorButton.addEventListener("click",openRecolorTool);
-function closeRecolorTool(){recolorDialog.close();recolorSession=null;recolorSampleMode=false;}
+function closeRecolorTool(){recolorPreviewRevision += 1; recolorDialog.close();recolorSession=null;recolorSampleMode=false;recolorPreviewResult=null;recolorPreviewKey=null;document.querySelector("#apply-recolor").disabled=true;}
 document.querySelector("#cancel-recolor").addEventListener("click",closeRecolorTool);
 document.querySelector("#cancel-recolor-bottom").addEventListener("click",closeRecolorTool);
 document.querySelector("#sample-recolor-source").addEventListener("click",()=>{recolorSampleMode=true;document.querySelector("#recolor-status").textContent="Tap the source color in the image preview.";});
@@ -5061,8 +5156,21 @@ document.querySelector("#apply-recolor").addEventListener("click",async()=>{
  if(!s||!layer||layer.locked||layer.contentType!=="image"||layer.image?.source!==s.source){document.querySelector("#recolor-status").textContent="Selected layer changed. Close and reopen the tool.";return;}
  if(!s.sourceColor){document.querySelector("#recolor-status").textContent="Sample a source color before applying.";return;}
  const button=document.querySelector("#apply-recolor");button.disabled=true;
- try {const result=replaceColorRange(s.original,{sourceColor:s.sourceColor,targetColor:document.querySelector("#recolor-target-color").value,tolerance:Number(document.querySelector("#recolor-tolerance").value),softness:Number(document.querySelector("#recolor-softness").value),preserveShading:document.querySelector("#recolor-preserve-shading").checked});recolorContext.putImageData(new ImageData(result.data,result.width,result.height),0,0);const optimized=await optimizeImageSource(recolorCanvas.toDataURL("image/webp",0.88));const before=cloneDocument(state.document),next=replaceImageLayer(state.document,layer.id,{source:optimized.source,width:optimized.width,height:optimized.height},{preserveDisplaySize:true});if(!next)throw new Error("Recolored image exceeds the document limit. Resize it and try again.");imageCache.delete(s.source);state.document=next;state.history.record(before,next);state.dirty=true;refreshDocument("Color range replaced · shading preserved");persistDocument();closeRecolorTool();
- } catch(error){document.querySelector("#recolor-status").textContent=error.message||"Could not apply recolor";} finally{button.disabled=false;}
+ try {
+  const options = currentRecolorOptions();
+  const key = recolorOptionsKey(s, options);
+  const result = recolorPreviewKey === key && recolorPreviewResult
+    ? recolorPreviewResult
+    : await runImageProcessing("replace-color-range", s.original, options);
+  if (s !== recolorSession || state.document.layers.find(item => item.id === s.layerId)?.image?.source !== s.source) {
+    throw new Error("Selected image changed while processing. Close and reopen the tool.");
+  }
+  recolorContext.putImageData(new ImageData(result.data,result.width,result.height),0,0);
+  const optimized=await optimizeImageSource(recolorCanvas.toDataURL("image/webp",0.88));
+  const before=cloneDocument(state.document),next=replaceImageLayer(state.document,layer.id,{source:optimized.source,width:optimized.width,height:optimized.height},{preserveDisplaySize:true});
+  if(!next)throw new Error("Recolored image exceeds the document limit. Resize it and try again.");
+  imageCache.delete(s.source);state.document=next;state.history.record(before,next);state.dirty=true;refreshDocument("Color range replaced · shading preserved");persistDocument();closeRecolorTool();
+ } catch(error){document.querySelector("#recolor-status").textContent=error.message||"Could not apply recolor";} finally{button.disabled=!recolorSession?.sourceColor;}
 });
 
 async function importImageIntoEditor(file, message = "Imagen importada") {
@@ -5798,6 +5906,8 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/image-processing.mjs",
   "./domain/crop-shape.mjs",
   "./domain/color-replacement.mjs",
+  "./domain/image-processing-client.mjs",
+  "./workers/image-processing-worker.mjs",
   "./domain/canvas-space.mjs",
   "./domain/layer-adjustments.mjs",
   "./domain/quick-edit-recipes.mjs",

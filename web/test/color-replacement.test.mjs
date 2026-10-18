@@ -27,6 +27,15 @@ test("softness feathers the edge of a color range", () => {
   assert.notDeepEqual([...result.data.slice(4,7)],[130,130,130]);
   assert.deepEqual([...result.data.slice(8,11)],[255,255,255]);
 });
+test("worker mode can recolor in place while the default API stays immutable", () => {
+  const source = image([[128,64,32,255],[0,0,0,0]]);
+  const firstPixel = [...source.data.slice(0,4)];
+  const result = replaceColorRange(source,{sourceColor:"#804020",targetColor:"#00aaff",tolerance:0,softness:0,mutate:true});
+  assert.equal(result.data,source.data);
+  assert.notDeepEqual([...source.data.slice(0,3)],firstPixel.slice(0,3));
+  assert.equal(source.data[3],255);
+});
+
 test("color replacement rejects malformed rasters and invalid color values", () => {
   assert.throws(()=>replaceColorRange({width:2,height:2,data:new Uint8ClampedArray(3)}),/valid image pixels/i);
   assert.throws(()=>replaceColorRange(image([[0,0,0,255]]),{sourceColor:"blue"}),/six-digit/i);
