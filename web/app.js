@@ -5304,8 +5304,15 @@ imageFileInput.addEventListener("change", async () => {
     omitted ? " Se omitieron " + omitted + " archivos para evitar un pico de memoria; elegí un lote de hasta " + MAX_IMAGES_PER_IMPORT_BATCH + "." : "",
     rejectedForSize ? " " + rejectedForSize + " imagen(es) superaban 25 MB." : ""
   ].join("");
-  status.textContent = summary + limits;
-  showMobileFeedback(summary + limits, imported > 0 ? "success" : "error");
+  // Do not hide a storage-recovery failure behind the batch summary.
+  // A failed import must keep the protected-project warning actionable.
+  if (imported > 0 || (!state.storageRecoveryPending && !rejectedForSize)) {
+    status.textContent = summary + limits;
+    showMobileFeedback(summary + limits, imported > 0 ? "success" : "error");
+  } else if (state.storageRecoveryPending) {
+    status.textContent = "Proyecto protegido. Guardá explícitamente para reemplazarlo antes de importar.";
+    showMobileFeedback("Proyecto protegido. Guardá explícitamente para reemplazarlo antes de importar.", "error");
+  }
 });
 
 canvas.addEventListener("dragenter", event => {
