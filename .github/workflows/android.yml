@@ -42,6 +42,7 @@ jobs:
           unzip -l "$APK" | grep -q "assets/web/icons/animeart-mark.svg"
           unzip -l "$APK" | grep -q "assets/web/domain/image-processing.mjs"
           unzip -l "$APK" | grep -q "assets/web/domain/creative-catalog.mjs"
+          unzip -l "$APK" | grep -q "assets/web/domain/canvas-rendering.mjs"
           unzip -l "$APK" | grep -q "assets/web/domain/image-processing-client.mjs"
           unzip -l "$APK" | grep -q "assets/web/workers/image-processing-worker.mjs"
           unzip -p "$APK" assets/web/index.html | grep -q 'id="creative-studio-dialog"'
@@ -55,8 +56,8 @@ jobs:
           unzip -p "$APK" assets/web/styles.css | grep -q "AA-A11Y-CONTRAST-001"
           unzip -p "$APK" AndroidManifest.xml | grep -q "REQUEST_INSTALL_PACKAGES"
           unzip -p "$APK" assets/web/appearance-settings.js | grep -q "getAccentTextColor"
-          if unzip -p "$APK" assets/web/index.html | grep -qi "prompt studio"; then
-            echo "Unexpected prompt-generator UI found in image editor APK" >&2
+          if unzip -p "$APK" assets/web/index.html | grep -Eqi 'id="(prompt-studio-dialog|prompt-generator-dialog)"'; then
+            echo "Unexpected prompt-generator UI component found in image editor APK" >&2
             exit 1
           fi
       - name: Unit tests

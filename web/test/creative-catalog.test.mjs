@@ -21,7 +21,7 @@ test("original cover catalog provides anime, galaxy, manga, romance and cyberpun
 });
 
 test("sticker catalog generates local standalone vector assets with unique IDs",()=>{
-  assert.ok(STICKER_CATALOG.length>=12);
+  assert.ok(STICKER_CATALOG.length>=18);
   assert.equal(new Set(STICKER_CATALOG.map(item=>item.id)).size,STICKER_CATALOG.length);
   for(const sticker of STICKER_CATALOG){
     const svg=createStickerSvg(sticker.id);
@@ -31,6 +31,14 @@ test("sticker catalog generates local standalone vector assets with unique IDs",
     assert.equal(svg.includes("<image "),false,"sticker art is vector-only and doesn't need remote bitmap data");
   }
   assert.throws(()=>createStickerSvg("not-a-sticker"),/Unknown sticker preset/);
+});
+
+test("six original anime character stickers are transparent local SVGs",()=>{
+ for(const id of ["neon-prodigy","chrome-ronin","holo-oracle","mecha-idol","kitsune-protocol","spirit-fox"]){
+  const asset=getSticker(id);assert.ok(asset,"missing sticker "+id);assert.equal(asset.category,"Personajes originales");
+  const svg=createStickerSvg(id);assert.match(svg,/<svg[^>]+viewBox="0 0 256 256"/);assert.match(svg,/<path/);
+  assert.equal(svg.includes("<image "),false);assert.ok(svgDataUrl(svg).startsWith("data:image/svg+xml;charset=utf-8,"));
+ }
 });
 
 test("word-art presets have real typography settings and style packs reference existing components",()=>{
@@ -62,7 +70,8 @@ test("creative studio UI is discoverable, searchable, offline-ready and packaged
   assert.match(app,/function applyCreativeStylePack\(/);
   assert.match(app,/createPosterSvg\(/);
   assert.match(css,/AA-CREATIVE-STUDIO-001/);
-  assert.match(worker,/animeart-web-shell-v46/);
+  assert.match(worker,/animeart-web-shell-v47/);
   assert.match(worker,/\.\/domain\/creative-catalog\.mjs/);
   assert.match(android,/assets\/web\/domain\/creative-catalog\.mjs/);
+  assert.ok(android.includes("assets/web/domain/canvas-rendering.mjs"));
 });

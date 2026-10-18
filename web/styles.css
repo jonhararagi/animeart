@@ -3986,3 +3986,43 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .brand-apk-action b { font-size:.7rem; line-height:1.15; }
 .brand-apk-action small { color:#d2c1a8; font-size:.59rem; line-height:1.35; }
 .brand-apk-action:hover { border-color:#ffe37d; background:linear-gradient(105deg,#40301e,#33203b); }
+
+
+/* AA-CYBERPUNK-UI-003 · biblioteca visual y stickers con acabado editorial. */
+#asset-library-dialog{width:min(1180px,calc(100vw - 20px));max-width:1180px;max-height:94dvh;border-color:#4d3a70;border-radius:20px;background:#0c0b18;box-shadow:0 28px 110px #000d,0 0 42px #00eaff10}
+#asset-library-dialog::backdrop{background:#04040bd9;backdrop-filter:blur(10px)}
+.asset-library-shell{max-height:94dvh;padding:22px;gap:16px;background:radial-gradient(ellipse at 2% 0%,#ff4fd813,transparent 36%),radial-gradient(ellipse at 100% 0%,#00eaff10,transparent 32%),#0e0d1c}
+.asset-library-header{border-bottom-color:#3a2d54;align-items:center}.asset-library-header .eyebrow{margin:0 0 6px;color:#00eaff;font-size:.62rem;font-weight:900;letter-spacing:.15em}
+.asset-library-header h2{color:#fff7ff;font-size:clamp(1.1rem,2vw,1.5rem);letter-spacing:-.025em}.asset-library-header p:not(.eyebrow){color:#b8b0d3}
+.asset-library-close{flex:0 0 auto;min-width:84px;border-color:#5d3b68;background:#20162e}.asset-library-toolbar{align-items:end;gap:10px}
+.asset-library-toolbar label{color:#c9c2df;font-size:.7rem;font-weight:700}
+.asset-library-toolbar input,.asset-library-toolbar select,.asset-card input,.asset-card select{border-color:#443656;border-radius:9px;background:#0a0a15;color:#f5f3ff}
+.asset-library-toolbar input:focus,.asset-library-toolbar select:focus,.asset-card input:focus,.asset-card select:focus{border-color:#00eaff;outline:2px solid #00eaff35;outline-offset:1px}
+.asset-library-primary{border-color:#00bdd0!important;background:linear-gradient(110deg,#10404c,#342044)!important;color:#f7feff!important;box-shadow:inset 0 1px #ffffff12,0 0 16px #00eaff0d}
+#asset-library-status{min-height:1.4em;color:#7ff5d0;font-size:.75rem}#asset-library-status[data-error="true"]{color:#ffb7c9}
+.asset-library-empty{border-color:#433258;border-radius:14px;background:linear-gradient(120deg,#171225,#101321);color:#c5badb}
+.asset-library-grid{grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.asset-card{position:relative;gap:10px;padding:10px;border-color:#3b2e52;border-radius:14px;background:linear-gradient(155deg,#1b162b,#11121e 82%);box-shadow:inset 0 1px #ffffff08,0 8px 24px #0002;transition:border-color .16s ease,transform .16s ease,box-shadow .16s ease}
+.asset-card:hover{transform:translateY(-2px);border-color:#71609a;box-shadow:0 10px 28px #0005,0 0 20px #00eaff0a}
+.asset-card-preview{height:168px;border:1px solid #302844;border-radius:10px;background:repeating-conic-gradient(#242339 0% 25%,#171728 0% 50%) 50%/18px 18px}
+.asset-card-preview img{width:100%;height:100%;object-fit:contain;padding:7px;filter:drop-shadow(0 4px 9px #0007)}
+.asset-card-fields{gap:8px}.asset-card label{color:#b9b2d1;font-size:.67rem;font-weight:650}.asset-card-meta{padding-top:2px;color:#9790b3;font-size:.65rem}
+.asset-favorite{color:#f3deff!important}.asset-favorite input{accent-color:#ff4fd8}
+.asset-card-actions{grid-template-columns:minmax(0,1.5fr) minmax(72px,.7fr);gap:7px}.asset-card-actions button{min-width:0;min-height:42px;border-radius:9px;font-size:.68rem;white-space:normal}
+.asset-card-actions button:first-child{border-color:#087d91;background:linear-gradient(110deg,#123b49,#241733);color:#effeff}.asset-card-actions button:last-child{border-color:#56354e;background:#221420;color:#ffd8e8}
+.creative-card-stickers{border-color:#3e315c;background:linear-gradient(155deg,#1c162f,#121321)}.creative-card-stickers:hover{border-color:#00cfe5;box-shadow:0 10px 26px #0005,0 0 24px #00eaff13}
+.creative-card-preview-stickers{min-height:190px;background:radial-gradient(ellipse at 50% 95%,#00eaff18,transparent 60%),linear-gradient(145deg,#151326,#0c1220)}
+.creative-card-preview-portrait{min-height:230px}.creative-sticker-checker{background:repeating-conic-gradient(#24243b 0% 25%,#171729 0% 50%) 50%/16px 16px;border:1px solid #34264b;border-radius:12px;overflow:hidden;box-shadow:inset 0 0 35px #00eaff0a}
+.creative-sticker-checker img{width:100%;height:100%;object-fit:contain;padding:6px;filter:drop-shadow(0 5px 9px #0009)}
+.creative-card-preview-portrait .creative-sticker-checker{background:radial-gradient(ellipse at 50% 38%,#42274f 0%,#151326 58%,#0e1320 100%)}
+.creative-card-preview-portrait .creative-sticker-checker img{padding:0;transform:scale(1.06);filter:drop-shadow(0 0 8px #00eaff22) drop-shadow(0 9px 9px #0008)}
+.creative-card-caption strong{color:#fff7ff}.creative-card-caption small{color:#bcb2d7;line-height:1.4}.creative-card-action-label{color:#8bf5ff;font-weight:800}
+@media(max-width:650px){
+ #asset-library-dialog{width:calc(100vw - 10px);max-height:96dvh;border-radius:16px}.asset-library-shell{max-height:96dvh;padding:12px;gap:11px}
+ .asset-library-header{align-items:flex-start;gap:10px}.asset-library-header p:not(.eyebrow){font-size:.7rem}.asset-library-close{min-width:58px;padding:7px 8px;font-size:.68rem}
+ .asset-library-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.asset-library-search{grid-column:1/-1}
+ .asset-library-toolbar button{min-width:0;min-height:42px;padding:8px;font-size:.68rem}.asset-library-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .asset-card{padding:7px;gap:7px;border-radius:11px}.asset-card-preview{height:126px}.asset-card label{font-size:.63rem}
+ .asset-card-actions{grid-template-columns:1fr}.asset-card-actions button{min-height:42px;font-size:.65rem}
+ .creative-card-preview-stickers{min-height:172px}.creative-card-preview-portrait{min-height:202px}
+}

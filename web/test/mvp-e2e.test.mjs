@@ -31,6 +31,10 @@ test("T042 E2E contract: import image → reference → opacity/lock → drawing
   assert.match(html, /id="new-document"/);
   assert.match(html, /id="save"/);
   assert.match(html, /id="recover-project"/);
+  assert.ok(app.includes("clearCanvasBackingStore(ctx, canvas, dpr)"));
+  assert.ok(app.includes("function drawOffDocumentVeil(rect, dpr)"));
+  assert.ok(app.includes("drawOffDocumentVeil(rect, dpr)"));
+  assert.match(html, /Biblioteca visual/);
   assert.match(html, /id="export-png"/);
   assert.match(app, /createNewDocumentFromForm/);
   assert.match(app, /persistDocument\(\{ markSaved: true \}\)/);

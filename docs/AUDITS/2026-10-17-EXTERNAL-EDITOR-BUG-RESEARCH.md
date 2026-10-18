@@ -225,3 +225,25 @@ Web Worker solo desplaza el cómputo al hilo trabajador del mismo dispositivo. N
 ### Límites
 
 Las pruebas de CI no sustituyen una medición de memoria/batería durante una operación raster de alta resolución en el Xiaomi real. La aceptación física sigue pendiente y los issues [#73](https://github.com/jonhararagi/animeart/issues/73) y [#86](https://github.com/jonhararagi/animeart/issues/86) permanecen abiertos. Los reportes externos de Fabric.js, Photopea y Konva se usan como patrones técnicos, no como prueba de defectos idénticos en AnimeArt.
+
+
+---
+
+## AA-CANVAS-STICKER-LIBRARY-001 · Fuentes públicas adicionales (2026-10-18)
+
+- **MDN — CanvasRenderingContext2D.clearRect()**: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/clearRect. Documenta que el método convierte los píxeles del rectángulo a transparente y recomienda comenzar otra ruta con `beginPath()` antes de dibujar trazas. Se usó para revisar el borrado del backing bitmap.
+- **Krita 4.4 release notes**: https://krita.org/en/release-notes/krita-4-4-0-release-notes. Incluyen correcciones de artefactos al mover capas/herramientas, transparencia accidental del canvas y renderizado High-DPI.
+- **Krita 5.3 release notes**: https://krita.org/en/release-notes/krita-5-3-release-notes. Referencia para cambios en interacción táctil y la interfaz.
+- **Fabric.js #7085**: https://github.com/fabricjs/fabric.js/issues/7085. El usuario reportó poder dibujar solo en una parte del canvas tras aplicar zoom.
+- **Fabric.js PR #11143**: https://github.com/fabricjs/fabric.js/pull/11143. La corrección respeta zoom y pan al limitar el dibujo al canvas y añade regresiones.
+- **Photopea #5977**: https://github.com/photopea/photopea/issues/5977. Para un caso de exportación PDF pixelada, el mantenedor recomendó más DPI o "Rasterize all". No demuestra que la franja inferior de AnimeArt tenga la misma causa.
+- **HTML Standard — canvas**: https://html.spec.whatwg.org/multipage/canvas.html. Documenta opciones de suavizado al escalar contenido de canvas.
+
+### Corrección y límites
+
+1. `clearCanvasBackingStore` limpia la bitmap completa con transform identidad y restaura después el DPR.
+2. El modo Libre conserva capas fuera del documento; se añade un velo exterior y borde cian para distinguir el área que se exporta.
+3. La prueba E2E de recuperación usa un PNG generado por navegador, válido para decodificación, y no un fixture mínimo propenso al rechazo.
+4. La biblioteca pasa a español, con damero de transparencia y tarjetas cian/magenta; se incorporan seis diseños originales SVG locales.
+
+Estas fuentes orientan hipótesis y pruebas. No se copió código propietario ni se atribuye a AnimeArt el mismo defecto que otro editor sin reproducción.

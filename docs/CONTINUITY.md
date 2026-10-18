@@ -1,3 +1,13 @@
+# Estado actual · AA-CYBERPUNK-CANVAS-STICKERS-001 · 2026-10-18
+
+**TIMER:** 4–8 horas técnicas equivalentes estimadas para diagnóstico, corrección de render, actualización de stickers y mejora de biblioteca. Tiempo real no medido.
+**Alcance:** limpiar el bitmap del canvas en píxeles físicos; separar visualmente el área exportable de las capas que sobresalen en modo Libre sin quitar el movimiento libre; aumentar moderadamente la nitidez móvil con límite de píxeles; añadir seis stickers anime originales y pulir la biblioteca visual local.
+**Diagnóstico prudente:** no se adjuntó captura de la franja azul. Se cubren dos hipótesis plausibles: visualización de capas fuera del marco en modo Libre y borrado con coordenadas CSS bajo una transformación DPR. Ninguna se declara causa definitiva hasta probarlo en el Xiaomi.
+**Pruebas requeridas:** Web CI y Android CI en el mismo SHA, seguido de prueba física en Xiaomi `24116RACCG`. La CI/emulación no prueba el comportamiento del dedo en el dispositivo real.
+**Biblioteca:** al insertar un recurso se añade una capa editable independiente, con historial existente; después puede moverse, rotarse, escalarse y reordenarse desde las herramientas del lienzo.
+
+---
+
 # Estado verificado · 2026-10-18
 
 **TIMER:** 30–45 minutos de trabajo técnico equivalente para auditoría, revisión de evidencia, registro y distribución; no es tiempo activo medido.

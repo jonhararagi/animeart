@@ -10,6 +10,7 @@ import { createViewport, panBy } from "./domain/viewport.mjs";
 import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocumentPoint, screenViewportForDocument, zoomViewportAt } from "./domain/canvas-space.mjs";
 import { distanceBetweenTouches, midpointBetweenTouches, updatePinchPanViewport } from "./domain/touch-gestures.mjs";
 import { createFrameScheduler } from "./domain/frame-scheduler.mjs";
+import { clearCanvasBackingStore } from "./domain/canvas-rendering.mjs";
 import { addLayer, clearLayer, cropDocumentCanvas, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
@@ -388,8 +389,8 @@ function canvasSize() {
 function canvasRenderDpr(rect) {
   const deviceDpr = Math.max(1, Number(window.devicePixelRatio) || 1);
   const mobile = window.matchMedia("(max-width: 920px)").matches;
-  const deviceCap = mobile ? 1.5 : 2;
-  const pixelBudget = mobile ? 1_500_000 : 4_000_000;
+  const deviceCap = mobile ? 2 : 2.5;
+  const pixelBudget = mobile ? 2_000_000 : 4_000_000;
   const cssPixels = Math.max(1, rect.width * rect.height);
   return Math.max(1, Math.min(deviceDpr, deviceCap, Math.sqrt(pixelBudget / cssPixels)));
 }
@@ -666,7 +667,7 @@ function drawSelectionOverlay() {
       }
       ctx.save();
       ctx.setLineDash([6, 4]);
-      ctx.strokeStyle = "#2f80ed";
+      ctx.strokeStyle = "#00eaff";
       ctx.lineWidth = 2;
       ctx.beginPath();
       corners.forEach((corner, index) => index === 0 ? ctx.moveTo(corner.x, corner.y) : ctx.lineTo(corner.x, corner.y));
@@ -695,7 +696,7 @@ function drawSelectionOverlay() {
     ctx.save();
     ctx.lineWidth = layer.id === state.selectedLayerId ? 1.5 : 1;
     ctx.setLineDash([6, 4]);
-    ctx.strokeStyle = layer.id === state.selectedLayerId ? "#2f80ed" : "#7aa7e8";
+    ctx.strokeStyle = layer.id === state.selectedLayerId ? "#00eaff" : "#a66bff";
     ctx.beginPath();
     geometry.corners.forEach((corner, index) => index === 0 ? ctx.moveTo(corner.x, corner.y) : ctx.lineTo(corner.x, corner.y));
     ctx.closePath();
@@ -779,11 +780,47 @@ function drawPixelEditPreview() {
   ctx.restore();
 }
 
+function drawOffDocumentVeil(rect, dpr) {
+  if (frameBoundaryMode !== "free") return;
+  const viewportSize = canvasSize();
+  const corners = [
+    documentToScreenPoint({ x: 0, y: 0 }, state.document, state.viewport, viewportSize),
+    documentToScreenPoint({ x: state.document.width, y: 0 }, state.document, state.viewport, viewportSize),
+    documentToScreenPoint({ x: state.document.width, y: state.document.height }, state.document, state.viewport, viewportSize),
+    documentToScreenPoint({ x: 0, y: state.document.height }, state.document, state.viewport, viewportSize)
+  ];
+  if (!corners.every(point => Number.isFinite(point.x) && Number.isFinite(point.y))) return;
+  // Off-document pixels stay movable in Free mode, but the frame clearly shows
+  // which pixels belong to the exported document.
+  ctx.save();
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.beginPath();
+  ctx.rect(0, 0, rect.width, rect.height);
+  ctx.moveTo(corners[0].x, corners[0].y);
+  for (const point of corners.slice(1)) ctx.lineTo(point.x, point.y);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(5, 7, 18, 0.30)";
+  ctx.fill("evenodd");
+  ctx.beginPath();
+  ctx.moveTo(corners[0].x, corners[0].y);
+  for (const point of corners.slice(1)) ctx.lineTo(point.x, point.y);
+  ctx.closePath();
+  ctx.setLineDash([6, 5]);
+  ctx.strokeStyle = "rgba(0, 234, 255, 0.86)";
+  ctx.lineWidth = 1;
+  ctx.shadowColor = "rgba(0, 234, 255, 0.26)";
+  ctx.shadowBlur = 5;
+  ctx.stroke();
+  ctx.restore();
+  if (window.__ANIMEART_E2E_DIAGNOSTICS__) {
+    window.__ANIMEART_OFF_DOCUMENT_VEIL_DIAGNOSTICS__ = { enabled: true, cornerCount: corners.length, corners, devicePixelRatio: dpr };
+  }
+}
+
 function drawNow() {
   const rect = canvas.getBoundingClientRect();
   const dpr = canvasRenderDpr(rect);
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, rect.width, rect.height);
+  clearCanvasBackingStore(ctx, canvas, dpr);
   ctx.save();
   applyViewport();
   if (window.__ANIMEART_E2E_DIAGNOSTICS__) {
@@ -804,6 +841,7 @@ function drawNow() {
     allowOffDocumentPreview: frameBoundaryMode === "free"
   });
   ctx.restore();
+  drawOffDocumentVeil(rect, dpr);
   if (!transparencyPreview) drawSelectionOverlay();
   drawPixelEditPreview();
   updateRemoveImageControl();
@@ -5196,6 +5234,7 @@ async function importImageIntoEditor(file, message = "Imagen importada") {
     return true;
   } catch (error) {
     const reason = error?.message || "No se pudo importar la imagen.";
+    status.textContent = reason;
     showMobileFeedback("No se pudo añadir la imagen: " + reason, "error");
     return false;
   }
