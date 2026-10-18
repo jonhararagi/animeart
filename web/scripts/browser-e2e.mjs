@@ -721,6 +721,8 @@ try {
   assert(/^#[0-9a-f]{6}$/i.test(sampledSourceColor), "real browser samples an actual opaque pixel for selective recolor");
   await waitFor('document.querySelector("#apply-recolor").disabled === false', 15000);
   await waitFor('document.querySelector("#recolor-status").textContent.includes("Vista previa lista")', 15000);
+  const pixelWorkerDiagnostics = await evaluate("window.__ANIMEART_IMAGE_PROCESSING_DIAGNOSTICS__");
+  assert(pixelWorkerDiagnostics?.workerCreated === true && pixelWorkerDiagnostics.workerOperations > 0 && pixelWorkerDiagnostics.fallbackOperations === 0 && pixelWorkerDiagnostics.lastOperation === "replace-color-range", "real browser sends selective recolor through the dedicated worker instead of the UI-thread fallback: " + JSON.stringify(pixelWorkerDiagnostics));
   await click("#apply-recolor");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source !== window.__animeArtOriginalRecolorSource', 15000);
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.width === 944'), "real browser applies selective recolor without changing image dimensions");
