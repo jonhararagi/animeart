@@ -19,7 +19,7 @@ function contrastRatio(a, b) {
 export function getAccentTextColor(value) {
   const accent = validColor(value, DEFAULTS.accent);
   const light = "#f8f6ff";
-  const dark = "#160d20";
+  const dark = "#000000";
   return contrastRatio(accent, light) >= contrastRatio(accent, dark) ? light : dark;
 }
 function readSettings() {

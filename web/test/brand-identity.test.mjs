@@ -63,7 +63,7 @@ test("AA-A11Y-CONTRAST-001 keeps interface text readable and adapts accent-butto
   assert.match(css, /--muted:\s*#bdcbe0/i);
   assert.match(css, /\.tool-group-label,[\s\S]*?color:\s*#bdcbe0/i);
   assert.match(css, /#text-edit-dialog #text-content::placeholder\s*\{\s*color:\s*#b7c5d9;\s*opacity:\s*1;/i);
-  assert.match(css, /color:\s*var\(--accent-contrast, #160d20\)/i);
+  assert.match(css, /color:\s*var\(--accent-contrast, #000000\)/i);
   assert.match(appearance, /export function getAccentTextColor\(/);
   assert.match(appearance, /setProperty\("--accent-contrast", getAccentTextColor\(settings\.accent\)\)/);
 });
