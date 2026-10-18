@@ -550,7 +550,7 @@ test("editor appearance supports custom accent, workspace color and local wallpa
   assert.match(appearance, /animeart-editor-appearance-v1/);
   assert.match(appearance, /MAX_WALLPAPER_BYTES = 2 \* 1024 \* 1024/);
   assert.match(appearance, /--editor-workspace/);
-  assert.match(styles, /Picsart-inspired mobile-first editor polish/);
+  assert.match(styles, /AA mobile-first editor polish/);
 });
 
 test("background-removal profiles are local, reusable and wired to the existing apply pipeline", async () => {
