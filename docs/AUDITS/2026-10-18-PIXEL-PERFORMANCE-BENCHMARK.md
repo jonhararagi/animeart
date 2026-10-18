@@ -38,3 +38,14 @@ Estas fuentes orientan pruebas y arquitectura; no se usan como evidencia de un e
 - Android CI prueba la APK empaquetada desde el mismo SHA que el benchmark.
 - Prueba física en Xiaomi importando, editando y exportando imágenes de 4/8/16 MP, verificando memoria, batería, fluidez y recuperación ante cancelaciones.
 - Los issues [#73](https://github.com/jonhararagi/animeart/issues/73) y [#86](https://github.com/jonhararagi/animeart/issues/86) permanecen abiertos hasta la prueba física. No declarar aceptación física por los resultados de CI.
+
+
+## Seguimiento: reducir el pico de la cola de flood fill
+
+La medición de referencia de Web CI [#39108544039](https://github.com/jonhararagi/animeart/actions/runs/39108544039) registró, con el código previo a esta mejora:
+
+- 4 MP: fondo conectado 101.3 ms, pico RSS 88.1 MiB.
+- 8 MP: fondo conectado 237.2 ms, pico RSS 122 MiB.
+- 16 MP: fondo conectado 379.1 ms, pico RSS 191.3 MiB.
+
+El pico a 16 MP justificó cambiar la cola fija de 16 millones de enteros por una cola circular que reutiliza posiciones libres, empieza con capacidad relacionada al perímetro y se expande solo cuando el conjunto de píxeles pendientes lo exige. La prueba unitaria recorre un matte conectado de 40×40, suficiente para envolver índices en una cola circular. La CI nueva medirá el pico posterior; no se supone una reducción numérica hasta leer esos resultados.

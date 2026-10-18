@@ -57,3 +57,12 @@ test("tap-seeded magic eraser removes only the connected region around the sampl
  assert.equal(alpha(result,8),255);
  assert.equal(alpha(result,2),255);
 });
+
+test("reuses a circular work queue while removing a large connected matte",()=>{
+ const width=40,height=40,white=[255,255,255],input=make(width,height,Array.from({length:width*height},()=>white));
+ const result=removeConnectedBackground(input,{targetColor:"#ffffff",tolerance:0,feather:0});
+ assert.equal(result.changed,true);
+ assert.equal(alpha(result,0),0);
+ assert.equal(alpha(result,Math.floor(width*height/2)),0);
+ assert.equal(alpha(result,width*height-1),0);
+});
