@@ -1298,7 +1298,7 @@ try {
   await click("#new-document");
   await waitFor('document.querySelector("#project-dialog")?.open === true', 10000);
   await evaluate('document.querySelector("#document-width").value = "640"; document.querySelector("#document-height").value = "480"; document.querySelector("#project-form").requestSubmit();');
-  await waitFor('!document.querySelector("#project-dialog")?.open && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").width === 640', 10000);
+  await waitFor('!document.querySelector("#project-dialog")?.open', 10000);
   await click("#save");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").width === 640 && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").height === 480', 10000);
   assert(await evaluate('document.querySelector("#status").textContent === "Guardado localmente"'),
