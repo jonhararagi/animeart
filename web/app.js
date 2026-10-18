@@ -5314,8 +5314,10 @@ imageFileInput.addEventListener("change", async () => {
   // Do not hide a storage-recovery failure behind the batch summary.
   // A failed import must keep the protected-project warning actionable.
   if (imported > 0 || (!state.storageRecoveryPending && !rejectedForSize)) {
-    status.textContent = summary + limits;
-    showMobileFeedback(summary + limits, imported > 0 ? "success" : "error");
+    const singleImageSuccess = imported === 1 && files.length === 1 && selectedCount === 1 && !omitted && !rejectedForSize;
+    const feedbackMessage = singleImageSuccess ? "Imagen añadida al lienzo." : summary + limits;
+    status.textContent = feedbackMessage;
+    showMobileFeedback(feedbackMessage, imported > 0 ? "success" : "error");
   } else if (state.storageRecoveryPending) {
     status.textContent = "Proyecto protegido. Guardá explícitamente para reemplazarlo antes de importar.";
     showMobileFeedback("Proyecto protegido. Guardá explícitamente para reemplazarlo antes de importar.", "error");
