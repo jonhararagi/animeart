@@ -6004,6 +6004,17 @@ function initializeBrandLaunchpad() {
   });
   document.querySelector("#home-import-image")?.addEventListener("click", openImagePicker);
   document.querySelector("#share-current-design")?.addEventListener("click", shareCurrentDesign);
+  document.querySelector("#open-apk-installer")?.addEventListener("click", () => {
+    const bridge = globalThis.AnimeArtNative;
+    if (typeof bridge?.openApkInstaller === "function") {
+      bridge.openApkInstaller();
+      return;
+    }
+    showMobileFeedback(
+      "Para instalar un APK, abrilo desde la app Archivos de Android y elegí Instalador de paquetes. Esta versión web no instala aplicaciones.",
+      "info"
+    );
+  });
 }
 initializeBrandLaunchpad();
 
