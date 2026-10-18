@@ -29,6 +29,47 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "8.11.1"
+      - name: Configure stable APK signing (optional but required for repeatable updates)
+        shell: bash
+        env:
+          ANIMEART_KEYSTORE_BASE64: ${{ secrets.ANIMEART_KEYSTORE_BASE64 }}
+          ANIMEART_KEYSTORE_PASSWORD_INPUT: ${{ secrets.ANIMEART_KEYSTORE_PASSWORD }}
+          ANIMEART_KEY_ALIAS_INPUT: ${{ secrets.ANIMEART_KEY_ALIAS }}
+          ANIMEART_KEY_PASSWORD_INPUT: ${{ secrets.ANIMEART_KEY_PASSWORD }}
+          ANIMEART_EXPECTED_CERT_SHA256_INPUT: ${{ vars.ANIMEART_EXPECTED_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          present=0
+          for value in "$ANIMEART_KEYSTORE_BASE64" "$ANIMEART_KEYSTORE_PASSWORD_INPUT" "$ANIMEART_KEY_ALIAS_INPUT" "$ANIMEART_KEY_PASSWORD_INPUT"; do
+            if [[ -n "$value" ]]; then present=$((present + 1)); fi
+          done
+          if [[ "$present" -eq 0 ]]; then
+            echo "ANIMEART_SIGNING_MODE=ephemeral-debug" >> "$GITHUB_ENV"
+            {
+              echo "### APK signing warning"
+              echo "Stable signing secrets are not configured. This CI APK uses the runner-generated debug certificate; updating an installation signed with another certificate is not guaranteed."
+              echo "Configure the four signing secrets as documented in docs/ANDROID_SIGNING.md."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::Stable APK signing secrets are missing; update compatibility is not guaranteed."
+          elif [[ "$present" -ne 4 ]]; then
+            echo "::error::Stable APK signing is only partially configured. Set all four signing secrets or remove them all."
+            exit 1
+          else
+            KEYSTORE_PATH="$RUNNER_TEMP/animeart-signing.jks"
+            printf '%s' "$ANIMEART_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+            test -s "$KEYSTORE_PATH"
+            {
+              echo "ANIMEART_KEYSTORE_PATH=$KEYSTORE_PATH"
+              echo "ANIMEART_KEYSTORE_PASSWORD=$ANIMEART_KEYSTORE_PASSWORD_INPUT"
+              echo "ANIMEART_KEY_ALIAS=$ANIMEART_KEY_ALIAS_INPUT"
+              echo "ANIMEART_KEY_PASSWORD=$ANIMEART_KEY_PASSWORD_INPUT"
+              echo "ANIMEART_SIGNING_MODE=stable"
+              if [[ -n "$ANIMEART_EXPECTED_CERT_SHA256_INPUT" ]]; then
+                echo "ANIMEART_EXPECTED_CERT_SHA256=$ANIMEART_EXPECTED_CERT_SHA256_INPUT"
+              fi
+            } >> "$GITHUB_ENV"
+            echo "Stable APK signing configured from GitHub Actions secrets." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Build
         run: gradle assembleDebug
       - name: Verify APK bundles the current image editor
@@ -89,22 +130,57 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -noaudio -no-boot-anim -no-snapshot -no-snapshot-save -gpu swiftshader_indirect
           script: gradle connectedDebugAndroidTest && bash scripts/android-startup-smoke.sh
-      - name: Prepare clearly versioned APK
+      - name: Prepare, verify, and checksum APK
         shell: bash
         run: |
           set -euo pipefail
           SOURCE_APK="app/build/outputs/apk/debug/app-debug.apk"
-          VERSIONED_APK="AnimeArt-Android-v0.3.0-${GITHUB_SHA}.apk"
+          VERSIONED_APK="AnimeArt-Android-v0.3.1-${GITHUB_SHA}.apk"
           test -s "$SOURCE_APK"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          AAPT="$(find "$SDK_ROOT/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$AAPT"
+          test -n "$APKSIGNER"
+          "$APKSIGNER" verify --verbose --print-certs "$SOURCE_APK" > "$RUNNER_TEMP/animeart-apk-signature.txt" 2>&1
+          "$AAPT" dump badging "$SOURCE_APK" > "$RUNNER_TEMP/animeart-apk-badging.txt"
+          grep -F "package: name='com.jonhararagi.animeart' versionCode='4' versionName='0.3.1'" "$RUNNER_TEMP/animeart-apk-badging.txt"
+          CERT_SHA256="$(grep -m1 'Signer #1 certificate SHA-256 digest:' "$RUNNER_TEMP/animeart-apk-signature.txt" | sed 's/.*digest:[[:space:]]*//' | tr -d '\r')"
+          test -n "$CERT_SHA256"
+          if [[ -n "${ANIMEART_EXPECTED_CERT_SHA256:-}" ]]; then
+            EXPECTED_CERT_SHA256="$(printf '%s' "$ANIMEART_EXPECTED_CERT_SHA256" | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
+            ACTUAL_CERT_SHA256="$(printf '%s' "$CERT_SHA256" | tr -d ':[:space:]' | tr '[:upper:]' '[:lower:]')"
+            if [[ "$ACTUAL_CERT_SHA256" != "$EXPECTED_CERT_SHA256" ]]; then
+              echo "::error::APK signer certificate does not match ANIMEART_EXPECTED_CERT_SHA256."
+              exit 1
+            fi
+          fi
           cp "$SOURCE_APK" "$VERSIONED_APK"
-          sha256sum "$VERSIONED_APK" | tee "$VERSIONED_APK.sha256"
+          sha256sum "$VERSIONED_APK" > "$VERSIONED_APK.sha256"
+          sha256sum --check "$VERSIONED_APK.sha256"
+          SIGNING_REPORT="${VERSIONED_APK%.apk}.signing.txt"
+          {
+            echo "application_id=com.jonhararagi.animeart"
+            echo "version_code=4"
+            echo "version_name=0.3.1"
+            echo "source_sha=$GITHUB_SHA"
+            echo "signing_mode=${ANIMEART_SIGNING_MODE:-ephemeral-debug}"
+            echo "signer_certificate_sha256=$CERT_SHA256"
+            if [[ "${ANIMEART_SIGNING_MODE:-ephemeral-debug}" == "stable" ]]; then
+              echo "update_compatibility=stable key configured; compare certificate fingerprint with the installed APK"
+            else
+              echo "update_compatibility=NOT GUARANTEED; runner-generated debug key is not stable between clean runners"
+            fi
+          } > "$SIGNING_REPORT"
           echo "Prepared APK: $VERSIONED_APK"
-          ls -lh "$VERSIONED_APK" "$VERSIONED_APK.sha256"
+          cat "$SIGNING_REPORT"
+          ls -lh "$VERSIONED_APK" "$VERSIONED_APK.sha256" "$SIGNING_REPORT"
       - name: Upload versioned Android APK
         uses: actions/upload-artifact@v7
         with:
-          name: animeart-android-v0.3.0-${{ github.sha }}
+          name: animeart-android-debug-v0.3.1-${{ github.sha }}
           path: |
-            AnimeArt-Android-v0.3.0-${{ github.sha }}.apk
-            AnimeArt-Android-v0.3.0-${{ github.sha }}.apk.sha256
+            AnimeArt-Android-v0.3.1-${{ github.sha }}.apk
+            AnimeArt-Android-v0.3.1-${{ github.sha }}.apk.sha256
+            AnimeArt-Android-v0.3.1-${{ github.sha }}.signing.txt
           if-no-files-found: error

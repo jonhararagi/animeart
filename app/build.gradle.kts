@@ -7,6 +7,18 @@ plugins {
 }
 
 val generatedWebAssets = layout.buildDirectory.dir("generated/animeartWebAssets")
+
+// Stable APK signing is optional locally and is supplied only through private CI secrets.
+val stableKeystorePath = providers.environmentVariable("ANIMEART_KEYSTORE_PATH").orNull
+val stableKeystorePassword = providers.environmentVariable("ANIMEART_KEYSTORE_PASSWORD").orNull
+val stableKeyAlias = providers.environmentVariable("ANIMEART_KEY_ALIAS").orNull
+val stableKeyPassword = providers.environmentVariable("ANIMEART_KEY_PASSWORD").orNull
+val hasStableSigning = listOf(
+    stableKeystorePath,
+    stableKeystorePassword,
+    stableKeyAlias,
+    stableKeyPassword
+).all { !it.isNullOrBlank() }
 val syncWebEditorAssets = tasks.register<Sync>("syncWebEditorAssets") {
     from(rootProject.file("web")) {
         exclude(
@@ -25,6 +37,18 @@ val syncWebEditorAssets = tasks.register<Sync>("syncWebEditorAssets") {
 }
 
 android {
+    signingConfigs {
+        if (hasStableSigning) {
+            create("animeArtStable") {
+                storeFile = file(stableKeystorePath!!)
+                storeType = "JKS"
+                storePassword = stableKeystorePassword!!
+                keyAlias = stableKeyAlias!!
+                keyPassword = stableKeyPassword!!
+            }
+        }
+    }
+
     namespace = "com.jonhararagi.animeart"
     compileSdk = 35
 
@@ -32,8 +56,8 @@ android {
         applicationId = "com.jonhararagi.animeart"
         minSdk = 24
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = 4
+        versionName = "0.3.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -44,6 +68,14 @@ android {
 
     kotlinOptions {
         jvmTarget = "17"
+    }
+
+    buildTypes {
+        getByName("debug") {
+            if (hasStableSigning) {
+                signingConfig = signingConfigs.getByName("animeArtStable")
+            }
+        }
     }
 
     buildFeatures {
