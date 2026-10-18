@@ -1010,6 +1010,29 @@ test("AA-FREE-MOVE-PREVIEW-001 reveals off-document image/text layers in Libre m
 });
 
 
+test("AA-CYBERPUNK-CANVAS-ARTIFACT-001 softens the outside-page tint and keeps HiDPI resize calculations consistent", async () => {
+  const app = await readFile("app.js", "utf8");
+  const veil = app.match(/function drawOffDocumentVeil\([\s\S]*?\n\}\n\nfunction drawNow/)?.[0] || "";
+  const resizeObserver = app.match(/const canvasResizeObserver = new ResizeObserver\([\s\S]*?\n  canvasResizeObserver\.observe/)?.[0] || "";
+
+  assert.ok(veil, "the off-document preview boundary remains available for free movement");
+  assert.match(veil, /fillStyle = "rgba\(7, 7, 16, 0\.14\)"/);
+  assert.match(veil, /strokeStyle = "rgba\(255, 79, 216, 0\.62\)"/);
+  assert.match(resizeObserver, /const dpr = canvasRenderDpr\(rect\)/);
+  assert.doesNotMatch(resizeObserver, /Math\.max\(1, window\.devicePixelRatio/);
+});
+
+test("T064-R3 rejected import batches keep the protected-storage warning visible", async () => {
+  const app = await readFile("app.js", "utf8");
+  const handler = app.match(/imageFileInput\.addEventListener\("change", async \(\) => \{[\s\S]*?\n\}\);/)?.[0] || "";
+  const guardIndex = handler.indexOf("if (state.storageRecoveryPending)");
+  const decodeIndex = handler.indexOf("let imported = 0");
+
+  assert.ok(handler, "the image picker retains its bounded batch handler");
+  assert.ok(guardIndex >= 0 && decodeIndex > guardIndex, "protected recovery blocks the batch before any image decoding");
+  assert.match(handler, /El proyecto guardado está protegido|Proyecto protegido/);
+});
+
 test("AA-IMAGE-X-DELETE-AND-TOUCH-ANCHOR-001 removes the image with X and anchors movement to the original finger position", async () => {
   const [app, worker, browserE2E] = await Promise.all([
     readFile("app.js", "utf8"),

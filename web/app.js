@@ -799,17 +799,17 @@ function drawOffDocumentVeil(rect, dpr) {
   ctx.moveTo(corners[0].x, corners[0].y);
   for (const point of corners.slice(1)) ctx.lineTo(point.x, point.y);
   ctx.closePath();
-  ctx.fillStyle = "rgba(5, 7, 18, 0.30)";
+  ctx.fillStyle = "rgba(7, 7, 16, 0.14)";
   ctx.fill("evenodd");
   ctx.beginPath();
   ctx.moveTo(corners[0].x, corners[0].y);
   for (const point of corners.slice(1)) ctx.lineTo(point.x, point.y);
   ctx.closePath();
-  ctx.setLineDash([6, 5]);
-  ctx.strokeStyle = "rgba(0, 234, 255, 0.86)";
+  ctx.setLineDash([8, 6]);
+  ctx.strokeStyle = "rgba(255, 79, 216, 0.62)";
   ctx.lineWidth = 1;
-  ctx.shadowColor = "rgba(0, 234, 255, 0.26)";
-  ctx.shadowBlur = 5;
+  ctx.shadowColor = "rgba(255, 79, 216, 0.18)";
+  ctx.shadowBlur = 4;
   ctx.stroke();
   ctx.restore();
   if (window.__ANIMEART_E2E_DIAGNOSTICS__) {
@@ -5281,6 +5281,13 @@ imageFileInput.addEventListener("change", async () => {
     return;
   }
 
+  if (state.storageRecoveryPending) {
+    const warning = "El proyecto guardado está protegido. Pulsa Guardar para reemplazarlo antes de importar imágenes.";
+    status.textContent = warning;
+    showMobileFeedback(warning, "error");
+    return;
+  }
+
   let imported = 0;
   let rejectedForSize = 0;
   showMobileFeedback(
@@ -6079,7 +6086,7 @@ window.addEventListener("resize", resizeCanvas);
 if (typeof ResizeObserver === "function") {
   const canvasResizeObserver = new ResizeObserver(() => {
     const rect = canvas.getBoundingClientRect();
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const dpr = canvasRenderDpr(rect);
     const expectedWidth = Math.round(rect.width * dpr);
     const expectedHeight = Math.round(rect.height * dpr);
     if (canvas.width !== expectedWidth || canvas.height !== expectedHeight) resizeCanvas();

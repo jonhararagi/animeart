@@ -1129,7 +1129,7 @@ try {
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "warning remains visible after in-memory drawing");
   const pendingLayerCount = await evaluate('document.querySelectorAll("#layers li").length');
   await evaluate("(async () => { const source = document.createElement('canvas'); source.width = 4; source.height = 4; const sourceContext = source.getContext('2d'); sourceContext.fillStyle = '#00eaff'; sourceContext.fillRect(0, 0, 4, 4); const blob = await new Promise(resolve => source.toBlob(resolve, 'image/png')); if (!blob || !blob.size) throw new Error('Could not create valid PNG fixture'); const file = new File([blob], 'protected-import.png', { type: 'image/png' }); const transfer = new DataTransfer(); transfer.items.add(file); const input = document.querySelector('#image-file-input'); input.files = transfer.files; input.dispatchEvent(new Event('change', { bubbles: true })); })()");
-  await waitFor('document.querySelector("#status").textContent.includes("protected")', 10000);
+  await waitFor('/(protected|protegido)/i.test(document.querySelector("#status").textContent)', 10000);
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(quotaPayload)), "image import during recovery cannot overwrite the protected payload");
   assert(await evaluate('document.querySelectorAll("#layers li").length === ' + pendingLayerCount), "rejected image import does not report success or commit a layer");
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "warning remains visible after rejected image import");
