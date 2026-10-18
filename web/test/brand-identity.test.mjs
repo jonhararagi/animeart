@@ -24,7 +24,7 @@ test("AnimeArt's identity and quick actions are discoverable and available offli
   assert.match(catalog, /id:"neon-vanguard"/);
   assert.match(catalog, /id:"neon-valkyrie"/);
   assert.match(app, /function initializeBrandLaunchpad\(/);
-  assert.match(worker, /animeart-web-shell-v47/);
+  assert.match(worker, /animeart-web-shell-v48/);
   assert.match(worker, /\.\/icons\/animeart-mark\.svg/);
 });
 
