@@ -7,6 +7,8 @@ import java.io.File
 import androidx.core.content.FileProvider
 import android.net.Uri
 import android.os.Bundle
+import android.os.Build
+import android.provider.Settings
 import android.util.Base64
 import android.util.Log
 import android.widget.Toast
@@ -59,6 +61,30 @@ class MainActivity : ComponentActivity() {
             callback.onReceiveValue(selectedUris)
         }
 
+    private val apkPickerLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val apkUri = if (result.resultCode == RESULT_OK) result.data?.data else null
+            if (apkUri == null) {
+                Toast.makeText(this, "No se seleccionó ningún APK.", Toast.LENGTH_SHORT).show()
+                return@registerForActivityResult
+            }
+            try {
+                val installIntent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+                    setDataAndType(apkUri, "application/vnd.android.package-archive")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    putExtra(Intent.EXTRA_RETURN_RESULT, true)
+                }
+                startActivity(installIntent)
+            } catch (error: Exception) {
+                Log.e("AnimeArtApkInstaller", "Could not hand APK to Android Package Installer", error)
+                Toast.makeText(
+                    this,
+                    "Android no pudo abrir el instalador. Abrí el APK desde Archivos y elegí Instalador de paquetes.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+
     private val exportFileLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             val bytes = pendingExportBytes
@@ -80,6 +106,42 @@ class MainActivity : ComponentActivity() {
         }
 
     private inner class NativeExportBridge {
+        @JavascriptInterface
+        fun openApkInstaller() {
+            runOnUiThread {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Android necesita que autorices la instalación de APK para AnimeArt. Activá el permiso y luego tocá Abrir APK otra vez.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    try {
+                        startActivity(
+                            Intent(
+                                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                Uri.parse("package:$packageName")
+                            )
+                        )
+                    } catch (error: Exception) {
+                        Log.w("AnimeArtApkInstaller", "Could not open unknown-apps settings", error)
+                    }
+                    return@runOnUiThread
+                }
+
+                val picker = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "application/vnd.android.package-archive"
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                try {
+                    apkPickerLauncher.launch(picker)
+                } catch (error: Exception) {
+                    Log.e("AnimeArtApkInstaller", "Could not open APK picker", error)
+                    Toast.makeText(this@MainActivity, "No se pudo abrir el selector de APK.", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+
         @JavascriptInterface
         fun saveFile(base64Data: String, mimeType: String, requestedName: String) {
             runOnUiThread {
