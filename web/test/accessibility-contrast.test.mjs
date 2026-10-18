@@ -33,7 +33,7 @@ test("dark editor text and helper labels meet WCAG AA contrast for normal text",
 test("custom accent buttons choose a foreground with sufficient contrast", () => {
   for (const accent of ["#ff4fd8", "#21102e", "#ffffff", "#000000", "#67e8f9", "#502060"]) {
     const foreground = getAccentTextColor(accent);
-    assert.ok(["#000000", "#f8f6ff"].includes(foreground), "only safe foreground colors may be chosen");
+    assert.ok(["#000000", "#ffffff"].includes(foreground), "only safe foreground colors may be chosen");
     const ratio = contrastRatio(foreground, accent);
     assert.ok(ratio >= 4.5, "accent " + accent + " with text " + foreground + " must reach WCAG AA; got " + ratio.toFixed(2) + ":1");
   }
