@@ -24,7 +24,11 @@ class MainActivityWebViewRotationTest {
             }
             val currentEditorLoaded = evaluateJavascriptResult(
                 webView,
-                """(() => document.title === "AnimeArt Studio | Image Editor" &&
+                """(() => document.title === "AnimeArt Studio | Diseña tu mundo anime" &&
+                    !!document.querySelector(".brand-mark") &&
+                    !!document.querySelector("#home-create-cover") &&
+                    !!document.querySelector("#home-open-stickers") &&
+                    !!document.querySelector("#share-current-design") &&
                     !!document.querySelector("#crop-resize-image") &&
                     !!document.querySelector("#flip-image-horizontal") &&
                     !!document.querySelector("#export-format") && !!document.querySelector("#export-png") &&
