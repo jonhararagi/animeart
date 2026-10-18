@@ -41,6 +41,7 @@ test("external sharing is optional, hands off a flat image and keeps the editor 
   assert.match(html, /Canva u otra app, solo si tú la eliges/);
   assert.match(app, /async function shareBlobToDevice\(/);
   assert.match(app, /async function shareCurrentDesign\(/);
+  assert.match(app, /querySelector\("#share-current-design"\)\?\.addEventListener\("click", shareCurrentDesign\)/);
   assert.match(app, /nativeBridge\.shareFile\(/);
   assert.match(app, /navigator\.share\(/);
   assert.match(activity, /fun shareFile\(/);
