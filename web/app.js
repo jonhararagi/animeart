@@ -5970,6 +5970,7 @@ function initializeBrandLaunchpad() {
     document.querySelector('[data-creative-tab="stickers"]')?.click();
   });
   document.querySelector("#home-import-image")?.addEventListener("click", openImagePicker);
+  document.querySelector("#share-current-design")?.addEventListener("click", shareCurrentDesign);
 }
 initializeBrandLaunchpad();
 
