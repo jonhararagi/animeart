@@ -7,6 +7,7 @@
     "dev": "node scripts/serve.mjs",
     "start": "node scripts/serve.mjs",
     "build": "node scripts/build.mjs",
-    "test": "node --check app.js && node --test"
+    "test": "node --check app.js && node --test",
+    "benchmark:image-processing": "node scripts/image-processing-benchmark.mjs"
   }
 }

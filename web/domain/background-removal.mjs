@@ -16,12 +16,10 @@ export function removeConnectedBackground(imageData,{targetColor="#ffffff",toler
  if(explicitSeeds.length){for(const p of explicitSeeds){const x=Math.max(0,Math.min(width-1,Math.floor(Number(p.x)))),y=Math.max(0,Math.min(height-1,Math.floor(Number(p.y))));seed(y*width+x);}}
  else {for(let x=0;x<width;x++){seed(x);if(height>1)seed((height-1)*width+x);}
  for(let y=1;y<height-1;y++){seed(y*width);if(width>1)seed(y*width+width-1);}}
- while(head<tail){const i=queue[head++],x=i%width,y=Math.floor(i/width),neighbors=[];if(x)neighbors.push(i-1);if(x+1<width)neighbors.push(i+1);if(y)neighbors.push(i-width);if(y+1<height)neighbors.push(i+width);
-  for(const n of neighbors){if(visited[n])continue;const o=n*4;if(data[o+3]===0){visited[n]=1;continue;}const nd=d(n);if(nd>reach)continue;
-   if(protectLineArt){const p=i*4,delta=Math.sqrt(((data[o]-data[p])**2+(data[o+1]-data[p+1])**2+(data[o+2]-data[p+2])**2)/3);if(delta>edge)continue;}
-   visited[n]=1;if(nd<=threshold)queue[tail++]=n;
-  }
- }
+ const visitNeighbor=(n,currentOffset)=>{if(visited[n])return;const o=n*4;if(data[o+3]===0){visited[n]=1;return;}const nd=d(n);if(nd>reach)return;
+  if(protectLineArt){const delta=Math.sqrt(((data[o]-data[currentOffset])**2+(data[o+1]-data[currentOffset+1])**2+(data[o+2]-data[currentOffset+2])**2)/3);if(delta>edge)return;}
+  visited[n]=1;if(nd<=threshold)queue[tail++]=n;};
+ while(head<tail){const i=queue[head++],x=i%width,y=Math.floor(i/width),currentOffset=i*4;if(x)visitNeighbor(i-1,currentOffset);if(x+1<width)visitNeighbor(i+1,currentOffset);if(y)visitNeighbor(i-width,currentOffset);if(y+1<height)visitNeighbor(i+width,currentOffset);}
  let changed=false;for(let i=0;i<count;i++){if(!visited[i])continue;const o=i*4,dist=d(i),beforeAlpha=data[o+3];if(dist<=threshold)data[o+3]=0;else if(soft>0){const a=Math.max(0,Math.min(1,(dist-threshold)/soft));data[o+3]=Math.round(data[o+3]*a);if(decontaminate)unmatte(data,o,target,a);}if(data[o+3]!==beforeAlpha)changed=true;}
  return{width,height,data,changed};
 }

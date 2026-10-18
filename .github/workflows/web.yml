@@ -28,6 +28,8 @@ jobs:
         run: npm run build
       - name: Test
         run: npm test
+      - name: Benchmark local pixel processing (4, 8 and 16 MP)
+        run: npm run benchmark:image-processing
       - name: Verify build output
         run: test -f dist/index.html
       - name: Upload downloadable Web editor build
