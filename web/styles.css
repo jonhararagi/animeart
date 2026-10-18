@@ -3965,3 +3965,24 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   }
   .canvas-wrap { min-height: 50vh; }
 }
+
+/* AA-APK-HANDOFF-001 · acceso explícito al instalador de Android. */
+.brand-apk-action {
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:9px;
+  width:100%;
+  min-height:49px;
+  padding:8px 10px;
+  border-color:#76502a;
+  border-radius:11px;
+  color:#fff5df;
+  background:linear-gradient(105deg,#30231a,#281730);
+  text-align:left;
+}
+.brand-apk-action .aa-icon { flex:0 0 auto; color:#ffe37d; }
+.brand-apk-action span { display:grid; gap:2px; min-width:0; }
+.brand-apk-action b { font-size:.7rem; line-height:1.15; }
+.brand-apk-action small { color:#d2c1a8; font-size:.59rem; line-height:1.35; }
+.brand-apk-action:hover { border-color:#ffe37d; background:linear-gradient(105deg,#40301e,#33203b); }
