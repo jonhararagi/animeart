@@ -34,13 +34,13 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.ok(worker.includes("./domain/color-replacement.mjs"));
   assert.match(html, /id="recolor-image"/);
   assert.match(html, /id="recolor-dialog"/);
-  assert.match(app, /replaceColorRange/);
+  assert.match(worker, /replaceColorRange/);
   assert.match(app, /preserveShading:\s*document\.querySelector\("#recolor-preserve-shading"\)\.checked/);
   assert.match(html, /id="remove-background"/);
   assert.match(html, /id="background-removal-dialog"/);
   assert.match(html, /id="poster-template-dialog"/);
   assert.match(html, /class="mobile-touch-dock"/);
-  assert.match(app, /removeConnectedBackground/);
+  assert.match(worker, /removeConnectedBackground/);
   assert.match(html, /id="open-asset-library"/);
   assert.doesNotMatch(app + worker, /DocumentManager|LayerManager|CanvasManager|RendererManager|ViewportManager|HistoryManager|PersistenceManager/);
 });

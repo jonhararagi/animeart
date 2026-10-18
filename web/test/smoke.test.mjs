@@ -502,7 +502,7 @@ test("Android WebView fallback clears adjustment controls without requiring repl
 test("image eraser edits selected image pixels and records the edit for undo", async () => {
   const js = await readFile("app.js", "utf8");
   assert.match(js, /async function finishImageErase\(interaction\)/);
-  assert.match(js, /applyEraseStrokes\(pixels/);
+  assert.match(js, /runImageProcessing\("apply-erase-strokes"/);
   assert.match(js, /state\.history\.record\(before, next\)/);
   assert.match(js, /Píxeles borrados/);
   assert.match(js, /inverseTransformPoint/);
@@ -563,8 +563,8 @@ test("background-removal profiles are local, reusable and wired to the existing 
   assert.match(html, /id="save-background-profile"/);
   assert.match(html, /id="delete-background-profile"/);
   assert.match(app, /applyBackgroundRemovalProfile/);
-  assert.match(app, /const automatic = session\.removalRequested\s*\?\s*removeConnectedBackground\(session\.original, currentBackgroundRemovalSettings\(\)\)\s*:\s*session\.original/);
-  assert.match(app, /applyEraseStrokes\(automatic, session\.strokes\)/);
+  assert.match(app, /runImageProcessing\("remove-connected-background", session\.original/);
+  assert.match(app, /runImageProcessing\("apply-erase-strokes", base/);
   assert.match(profiles, /BACKGROUND_PROFILE_STORAGE_KEY/);
   assert.match(profiles, /anime-ink/);
   assert.match(profiles, /flat-color/);
