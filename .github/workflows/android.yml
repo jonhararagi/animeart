@@ -48,6 +48,8 @@ jobs:
           unzip -p "$APK" assets/web/index.html | grep -q 'id="crop-preview"'
           unzip -p "$APK" assets/web/index.html | grep -q 'id="add-text-layer"'
           unzip -p "$APK" assets/web/index.html | grep -q 'id="layer-adjustment-controls"'
+          unzip -p "$APK" assets/web/styles.css | grep -q "AA-A11Y-CONTRAST-001"
+          unzip -p "$APK" assets/web/appearance-settings.js | grep -q "getAccentTextColor"
           if unzip -p "$APK" assets/web/index.html | grep -qi "prompt studio"; then
             echo "Unexpected prompt-generator UI found in image editor APK" >&2
             exit 1
@@ -76,7 +78,7 @@ jobs:
         run: |
           set -euo pipefail
           SOURCE_APK="app/build/outputs/apk/debug/app-debug.apk"
-          VERSIONED_APK="AnimeArt-Android-aa-mobile-redesign-004-${GITHUB_SHA}.apk"
+          VERSIONED_APK="AnimeArt-Android-v0.3.0-${GITHUB_SHA}.apk"
           test -s "$SOURCE_APK"
           cp "$SOURCE_APK" "$VERSIONED_APK"
           sha256sum "$VERSIONED_APK" | tee "$VERSIONED_APK.sha256"
@@ -85,7 +87,7 @@ jobs:
       - name: Upload versioned Android APK
         uses: actions/upload-artifact@v7
         with:
-          name: animeart-android-aa-mobile-redesign-004-${{ github.sha }}
+          name: animeart-android-v0.3.0-${{ github.sha }}
           path: |
             AnimeArt-Android-aa-mobile-redesign-004-${{ github.sha }}.apk
             AnimeArt-Android-aa-mobile-redesign-004-${{ github.sha }}.apk.sha256

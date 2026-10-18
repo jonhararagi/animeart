@@ -24,7 +24,7 @@ test("AnimeArt's identity and quick actions are discoverable and available offli
   assert.match(catalog, /id:"neon-vanguard"/);
   assert.match(catalog, /id:"neon-valkyrie"/);
   assert.match(app, /function initializeBrandLaunchpad\(/);
-  assert.match(worker, /animeart-web-shell-v45/);
+  assert.match(worker, /animeart-web-shell-v46/);
   assert.match(worker, /\.\/icons\/animeart-mark\.svg/);
 });
 
@@ -50,4 +50,20 @@ test("external sharing is optional, hands off a flat image and keeps the editor 
   assert.match(manifest, /android\.support\.FILE_PROVIDER_PATHS/);
   assert.match(paths, /animeart-share\//);
   assert.match(workflow, /res\/xml\/file_paths\.xml/);
+});
+
+ 
+test("AA-A11Y-CONTRAST-001 keeps interface text readable and adapts accent-button text", async () => {
+  const [html, css, appearance] = await Promise.all([
+    readFile("index.html", "utf8"), readFile("styles.css", "utf8"), readFile("appearance-settings.js", "utf8")
+  ]);
+  assert.match(html, /id="text-color" type="color" value="#f7f5fc"/);
+  assert.match(css, /AA-A11Y-CONTRAST-001/);
+  assert.match(css, /--text:\s*#f5f7ff/i);
+  assert.match(css, /--muted:\s*#bdcbe0/i);
+  assert.match(css, /\.tool-group-label,[\s\S]*?color:\s*#bdcbe0/i);
+  assert.match(css, /#text-edit-dialog #text-content::placeholder\s*\{\s*color:\s*#b7c5d9;\s*opacity:\s*1;/i);
+  assert.match(css, /color:\s*var\(--accent-contrast, #160d20\)/i);
+  assert.match(appearance, /export function getAccentTextColor\(/);
+  assert.match(appearance, /setProperty\("--accent-contrast", getAccentTextColor\(settings\.accent\)\)/);
 });

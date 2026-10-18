@@ -29,6 +29,8 @@ class MainActivityWebViewRotationTest {
                     !!document.querySelector("#home-create-cover") &&
                     !!document.querySelector("#home-open-stickers") &&
                     !!document.querySelector("#share-current-design") &&
+                    document.querySelector("#text-color")?.value === "#f7f5fc" &&
+                    getComputedStyle(document.querySelector(".tool-group-label")).color === "rgb(189, 203, 224)" &&
                     !!document.querySelector("#crop-resize-image") &&
                     !!document.querySelector("#flip-image-horizontal") &&
                     !!document.querySelector("#export-format") && !!document.querySelector("#export-png") &&

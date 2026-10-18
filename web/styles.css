@@ -3,13 +3,13 @@
   font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
   font-synthesis: none;
   background: #0b0e14;
-  color: #e9edf6;
+  color: #f5f7ff;
   --surface: #111620;
   --surface-raised: #171e2a;
   --surface-hover: #202a39;
   --stroke: #2a3546;
-  --muted: #929eb1;
-  --text: #e9edf6;
+  --muted: #bdcbe0;
+  --text: #f5f7ff;
   --accent: #c084fc;
   --accent-strong: #a855f7;
 }
@@ -521,7 +521,7 @@ canvas {
 }
 
 
-/* Picsart-inspired mobile-first editor polish with user-owned appearance settings. */
+/* AA mobile-first editor polish with user-owned appearance settings. */
 .topbar-actions { display:flex; align-items:center; justify-content:flex-end; gap:12px; min-width:0; }
 #appearance-open { min-height:36px; border-radius:999px; padding:7px 14px; border-color:#604080; background:#281a39; color:#f1ddff; font-size:.75rem; font-weight:750; }
 #appearance-open:hover { background:#39214f; border-color:var(--accent); }
@@ -547,8 +547,8 @@ canvas {
 .appearance-upload { display:inline-flex; align-items:center; min-height:38px; padding:8px 12px; border:1px solid #65428a; border-radius:10px; background:#352044; color:#f1ddff; font-size:.72rem; font-weight:750; cursor:pointer; }
 .appearance-help, #appearance-status { color:#a99db7; font-size:.68rem; line-height:1.5; overflow-wrap:anywhere; }
 .appearance-footer { display:flex; justify-content:space-between; gap:9px; padding-top:13px; border-top:1px solid #342a41; }
-.appearance-primary { border-color:var(--accent); background:var(--accent); color:#160d20; font-weight:850; }
-.appearance-primary:hover { background:color-mix(in srgb,var(--accent) 80%,white); color:#160d20; }
+.appearance-primary { border-color:var(--accent); background:var(--accent); color:var(--accent-contrast, #160d20); font-weight:850; }
+.appearance-primary:hover { background:color-mix(in srgb,var(--accent) 80%,white); color:var(--accent-contrast, #160d20); }
 #appearance-status { margin:0; min-height:1em; }
 @media(max-width:620px) {
  .topbar { gap:8px; padding-left:12px; padding-right:12px; }
@@ -1357,7 +1357,7 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
   border: 1px solid #454057; border-radius: 12px;
   background: #0f121a; color: #f7f5fc; font: inherit; font-size: 1rem; line-height: 1.5;
 }
-#text-edit-dialog #text-content::placeholder { color: #737b8d; }
+#text-edit-dialog #text-content::placeholder { color: #b7c5d9; opacity: 1; }
 #text-edit-dialog .text-style-presets { gap: 8px; margin: 0; }
 #text-edit-dialog .text-style-presets button {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -3881,3 +3881,9 @@ body.mobile-tools-open .toolbar > .easy-edit-panel > .easy-edit-grid button {
 .brand-share-action small { color:#aabed1; font-size:.59rem; line-height:1.25; }
 .brand-share-action:hover { border-color:#00eaff; background:linear-gradient(105deg,#174254,#302039); }
 .brand-share-note { margin:0; color:#9e96b9; font-size:.58rem; line-height:1.4; }
+
+
+/* AA-A11Y-CONTRAST-001: legible controls, helper text, and user-selected accent colors. */
+:root { --text: #f5f7ff; --muted: #bdcbe0; --accent-contrast: #160d20; }
+.tool-group-label, .asset-source-link, .adjustment-layer-name, .adjustment-note, .image-edit-source-size, .image-edit-mode legend, .image-edit-fields p, .image-edit-note, #crop-preview-hint, .quick-recipe-note, .quick-recipe-grid button kbd, .appearance-header p:not(.eyebrow), .appearance-section > p, .appearance-help, #appearance-status { color: #bdcbe0; }
+#text-edit-dialog #text-content::placeholder { color: #b7c5d9; opacity: 1; }

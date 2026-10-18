@@ -6,6 +6,22 @@ const COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 function validColor(value, fallback) {
   return typeof value === "string" && COLOR_PATTERN.test(value) ? value.toLowerCase() : fallback;
 }
+function relativeLuminance(color) {
+  const channels = [1, 3, 5].map(offset => parseInt(color.slice(offset, offset + 2), 16) / 255);
+  const linear = channels.map(channel => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+}
+function contrastRatio(a, b) {
+  const first = relativeLuminance(a);
+  const second = relativeLuminance(b);
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+}
+export function getAccentTextColor(value) {
+  const accent = validColor(value, DEFAULTS.accent);
+  const light = "#f8f6ff";
+  const dark = "#160d20";
+  return contrastRatio(accent, light) >= contrastRatio(accent, dark) ? light : dark;
+}
 function readSettings() {
   try {
     const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
@@ -37,6 +53,7 @@ function applySettings(settings) {
   const root = document.documentElement;
   root.style.setProperty("--accent", settings.accent);
   root.style.setProperty("--accent-strong", settings.accent);
+  root.style.setProperty("--accent-contrast", getAccentTextColor(settings.accent));
   root.style.setProperty("--editor-workspace", settings.workspace);
   setWorkspaceWallpaper(settings.wallpaper);
   const themeColor = document.querySelector('meta[name="theme-color"]');
