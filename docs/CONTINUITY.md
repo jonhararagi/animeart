@@ -1,3 +1,39 @@
+# Estado verificado · 2026-10-18
+
+**TIMER:** 30–45 minutos de trabajo técnico equivalente para auditoría, revisión de evidencia, registro y distribución; no es tiempo activo medido.
+
+**Repositorio:** [jonhararagi/animeart](https://github.com/jonhararagi/animeart)  
+**SHA de código empaquetado y verificado:** `922704ba69942e1cb33724a6bf4a45760081b5be`  
+**PRs consolidadas:** [#87](https://github.com/jonhararagi/animeart/pull/87), [#88](https://github.com/jonhararagi/animeart/pull/88), [#89](https://github.com/jonhararagi/animeart/pull/89), [#90](https://github.com/jonhararagi/animeart/pull/90), [#91](https://github.com/jonhararagi/animeart/pull/91).
+
+## Evidencia verificada
+
+- Web CI **PASS**: [run #39114643532](https://github.com/jonhararagi/animeart/actions/runs/39114643532).
+- Android CI **PASS**: [run #39114643622](https://github.com/jonhararagi/animeart/actions/runs/39114643622). Build, comprobación del editor/catalogo dentro de la APK, unit tests, lint, instrumentación, arranque y modo offline pasaron.
+- Artefacto Android [#12132190553](https://github.com/jonhararagi/animeart/actions/runs/39114643622/artifacts/12132190553), versión v0.3.0, APK de 10.571.604 bytes.
+- SHA-256 del APK extraído y comprobado contra el checksum del mismo artefacto: `160a6d415e13d803c29d070a9982a1b76b0ec215c8c361581064e156ff6a3e21`.
+
+## Cambios ya integrados
+
+- PR #90 corrige el contrato de coordenadas de los trazos al dibujar tras zoom/pan. El E2E detectó que se entregaba un objeto donde se esperaban los dos números `x, y`; las pruebas confirman puntos guardados y alfa correcto al borrar.
+- PR #87/#88/#89 consolida el movimiento libre de capas fuera del marco, recuperación de selección y separación entre movimiento de capa y del viewport.
+- PR #91 agrega el estudio creativo offline: portadas SVG originales, stickers como capas separadas editables, estilos de títulos y conjuntos de elementos no aplanados.
+- La optimización previa de quitar fondo/recolorear reutiliza buffers y cola circular. Para la prueba sintética Linux de 16 MP, el pico RSS de quitar fondo pasó de 191,3 a 130,5 MiB. No equivale a RAM total ni batería de Android.
+
+## Investigación de bugs de otros editores
+
+La auditoría previa `docs/AUDITS/2026-10-17-EXTERNAL-EDITOR-BUG-RESEARCH.md` documenta reportes públicos de [Fabric.js #7085](https://github.com/fabricjs/fabric.js/issues/7085)/[PR #11143](https://github.com/fabricjs/fabric.js/pull/11143) (coordenadas con zoom), [Fabric.js #7056](https://github.com/fabricjs/fabric.js/issues/7056)/[PR #11150](https://github.com/fabricjs/fabric.js/pull/11150) (trazo que cambia al confirmar), [Photopea #4051](https://github.com/photopea/photopea/issues/4051) (interacción táctil Android), [Fabric.js #7278](https://github.com/fabricjs/fabric.js/issues/7278)/[PR #7289](https://github.com/fabricjs/fabric.js/pull/7289) (fondo del canvas frente a objetos borrables) y [PR #7470](https://github.com/fabricjs/fabric.js/pull/7470) (borrador con máscaras). Sirvieron como patrones de diagnóstico y pruebas de regresión; no se asumió que AnimeArt tuviera idéntico defecto sin reproducirlo.
+
+**Límite de búsqueda:** la búsqueda web general de blogs/notas de producto de Adobe, Canva o Picsart no estuvo disponible en esta ejecución. No se afirma haber consultado artículos de esas empresas; las fuentes contrastables disponibles son los issues/PRs públicos de GitHub citados.
+
+## Pendiente para aceptación total
+
+La prueba física con dedo/stylus y la medición de memoria/batería en el Xiaomi `24116RACCG` siguen pendientes. Chromium y emulador no son prueba física. En el dispositivo hay que validar importar imágenes de distintas proporciones, mover/escalar/rotar, editar y mover texto, zoom/pan, dibujar/borrar tras zoom, deshacer/rehacer y exportar PNG transparente. La [incidencia #73](https://github.com/jonhararagi/animeart/issues/73) permanece abierta hasta registrar esa aceptación.
+
+Este bloque se añade sin borrar el historial anterior. El commit posterior es documental y no modifica el motor del editor.
+
+---
+
 # LEY PERMANENTE DE DISEÑO MÓVIL
 
 La especificación vinculante del editor móvil está en [docs/MOBILE_EDITOR_LAW.md](./MOBILE_EDITOR_LAW.md). Tiene prioridad sobre notas de continuidad anteriores que contradigan esta estructura: lienzo grande y centrado, cabecera mínima, herramientas principales abajo y paneles contextuales inferiores. Todo cambio futuro debe respetarla y validar el flujo en teléfono sin confundir CI/emulador con una prueba física.
