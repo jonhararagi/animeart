@@ -17,7 +17,7 @@ import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-re
 import { BUILT_IN_BACKGROUND_PROFILES, deleteBackgroundProfile, listBackgroundProfiles, saveBackgroundProfile } from "./domain/background-removal-profiles.mjs";
 import { fitImportedImageTransform } from "./domain/image-import.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
-import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot } from "./domain/image-import.mjs";
+import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot, MAX_IMPORT_FILE_BYTES } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { clampSelectionHandles, constrainTranslationToDocument, groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, layerCorners, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, exportScaleForResolution, renderDocumentToCanvas } from "./domain/png-export.mjs";
@@ -5221,19 +5221,52 @@ document.querySelector("#canvas-open-asset-library")?.addEventListener("click", 
   document.querySelector("#open-asset-library")?.click();
 });
 
+const MAX_IMAGES_PER_IMPORT_BATCH = 3;
+
 imageFileInput.addEventListener("change", async () => {
-  const files = [...(imageFileInput.files || [])].filter(file => file && (!file.type || file.type.startsWith("image/")));
+  // Android's picker can expose a very large library. Keep only a tiny batch in
+  // memory and never try to decode every selected item at once.
+  const selected = imageFileInput.files;
+  const selectedCount = selected?.length || 0;
+  const files = [];
+  for (let index = 0; index < Math.min(selectedCount, MAX_IMAGES_PER_IMPORT_BATCH); index += 1) {
+    const file = selected.item(index);
+    if (file && (!file.type || file.type.startsWith("image/"))) files.push(file);
+  }
   imageFileInput.value = "";
-  if (!files.length) return;
+  if (!selectedCount) return;
+
+  const omitted = Math.max(0, selectedCount - files.length);
+  if (!files.length) {
+    showMobileFeedback("Elegí imágenes compatibles. Los archivos APK se abren con el instalador de Android, no como imágenes.", "error");
+    return;
+  }
+
   let imported = 0;
+  let rejectedForSize = 0;
+  showMobileFeedback(
+    "Procesando " + files.length + " imagen(es) de forma secuencial para cuidar la memoria…",
+    "info"
+  );
   for (const file of files) {
+    if (Number.isFinite(file.size) && file.size > MAX_IMPORT_FILE_BYTES) {
+      rejectedForSize += 1;
+      showMobileFeedback(
+        "Se omitió " + file.name + ": supera el límite de 25 MB por imagen. Probá una copia más liviana.",
+        "error"
+      );
+      continue;
+    }
     if (await importImageIntoEditor(file, "Imagen importada")) imported += 1;
   }
-  if (files.length > 1) {
-    status.textContent = imported === files.length
-      ? "✅ Importadas " + imported + " de " + files.length + " imágenes. Las encontrás en Capas."
-      : "Importadas " + imported + " de " + files.length + " imágenes. Revisa los avisos antes de continuar.";
-  }
+
+  const summary = "Importadas " + imported + " de " + files.length + " imágenes.";
+  const limits = [
+    omitted ? " Se omitieron " + omitted + " archivos para evitar un pico de memoria; elegí un lote de hasta " + MAX_IMAGES_PER_IMPORT_BATCH + "." : "",
+    rejectedForSize ? " " + rejectedForSize + " imagen(es) superaban 25 MB." : ""
+  ].join("");
+  status.textContent = summary + limits;
+  showMobileFeedback(summary + limits, imported > 0 ? "success" : "error");
 });
 
 canvas.addEventListener("dragenter", event => {
