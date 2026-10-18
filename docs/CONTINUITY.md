@@ -3542,3 +3542,18 @@ Sigue pendiente validar con el dedo en el Xiaomi `24116RACCG`. La búsqueda web 
 ### Pendiente de aceptación física
 
 La CI real del navegador prueba el Worker dedicado; Android CI prueba el empaquetado y arranque, pero no mide picos de memoria/batería de operaciones de 16 megapíxeles en el Xiaomi físico. Verificar con el dedo y con una imagen grande en el Xiaomi 24116RACCG antes de cerrar la aceptación final. Mantener abiertos [#73](https://github.com/jonhararagi/animeart/issues/73) y [#86](https://github.com/jonhararagi/animeart/issues/86). TIMER: 2-4 horas estimadas, tiempo real no medido.
+
+---
+
+## Estabilidad de bibliotecas grandes, estilo cyberpunk y apertura de APK · 2026-10-18
+
+**TIMER:** 3–5 horas estimadas de trabajo y CI para esta ronda; tiempo activo no medido.
+
+- Se limitó la selección de imágenes a 3 por lote, procesadas secuencialmente, con omisión temprana de archivos mayores de 25 MB y avisos visibles.
+- Se reforzó la interfaz cyberpunk con cuadrícula neón ligera, paneles violetas y acentos cian/magenta.
+- Se agregó un flujo nativo de “Abrir APK con Android”: selector SAF, comprobación del permiso de instalación desde esta fuente y entrega al instalador del sistema, que conserva su confirmación.
+- Auditoría y fuentes: [docs/AUDITS/2026-10-18-LARGE-LIBRARY-APK-CYBERPUNK.md](./AUDITS/2026-10-18-LARGE-LIBRARY-APK-CYBERPUNK.md).
+
+**Límite importante:** el documento sigue guardando las fuentes de imagen dentro de JSON en localStorage (límite conservador 2,5 millones de caracteres). La limitación de lotes reduce picos de memoria, pero no hace que un proyecto pueda guardar 200 GB ni elimina la cuota de localStorage. Para muchos recursos hay que migrar blobs a IndexedDB y referencias en el documento. No se conoce la causa exacta del cierre sin logcat/reproducción. Prueba física del selector APK pendiente.
+
+Estado: **PARTIAL** hasta que Web CI, Android CI y artefacto del HEAD final queden verificados, y hasta la prueba en Xiaomi 24116RACCG.
