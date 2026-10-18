@@ -1295,10 +1295,14 @@ try {
   await waitFor('document.readyState === "complete"');
   await waitFor('document.querySelector("#storage-recovery-notice")?.hidden === true', 10000);
   await waitForServiceWorkerReadiness();
+  await click("#new-document");
+  await waitFor('document.querySelector("#project-dialog")?.open === true', 10000);
+  await evaluate('document.querySelector("#document-width").value = "640"; document.querySelector("#document-height").value = "480"; document.querySelector("#project-form").requestSubmit();');
+  await waitFor('!document.querySelector("#project-dialog")?.open && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").width === 640', 10000);
   await click("#save");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length === 1', 10000);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").width === 640 && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").height === 480', 10000);
   assert(await evaluate('document.querySelector("#status").textContent === "Guardado localmente"'),
-    "fault-injection state is cleared and a clean document is persisted before mobile visual tests");
+    "a real 640×480 transparent document is created and persisted before mobile visual tests");
 
   // Mobile regression: use Chromium's real touch input path, not synthetic MouseEvents.
   await cdp("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 2 });
