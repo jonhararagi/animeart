@@ -33,7 +33,7 @@ test("selection and transparency controls are visible and explicitly wired", asy
  assert.ok(html.includes('id="export-transparent-png"'));
  for (const mode of ["checkerboard","white","black","gray"]) assert.ok(html.includes(`data-canvas-background="${mode}"`));
  assert.match(app, /getContext\("2d", \{ alpha: true \}\)/);
- assert.match(app, /ctx\.clearRect\(0, 0, rect\.width, rect\.height\)/);
+ assert.match(app, /clearCanvasBackingStore\(ctx, canvas, dpr\)/);
  assert.match(app, /function updateSelectionIndicator\(\)/);
  assert.match(app, /renderDocumentToCanvas\(state\.document, exportCanvas/);
  assert.match(css, /\.canvas-wrap\[data-background="checkerboard"\] canvas/);
@@ -127,7 +127,7 @@ test("AA-TYPOGRAPHY-CANVA-001 keeps the text modal reachable on mobile and suppo
  assert.match(app, /finishTransformInteraction\(false, event\)/);
  assert.match(css, /AA-TYPOGRAPHY-CANVA-002/);
  assert.match(css, /#text-edit-dialog\[open\]/);
- assert.match(worker, /animeart-web-shell-v46/);
+ assert.match(worker, /animeart-web-shell-v47/);
  assert.match(browserE2E, /mobile Text fills the available app viewport, remains editable, and switches away from brush mode/);
  assert.match(browserE2E, /dragging text never adds brush strokes/);
  assert.match(browserE2E, /tapping the moved text opens the editor/);
@@ -161,5 +161,5 @@ test("AA-TOOL-STUDIOS-001 keeps the mobile dock focused and separates image crop
  assert.match(css, /#shape-maker-dialog\[open\]/);
  assert.match(css, /height: 100dvh/);
  assert.match(css, /#canvas-crop-dialog/);
- assert.match(worker, /animeart-web-shell-v46/);
+ assert.match(worker, /animeart-web-shell-v47/);
 });

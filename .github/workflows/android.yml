@@ -34,29 +34,36 @@ jobs:
       - name: Verify APK bundles the current image editor
         shell: bash
         run: |
+          set -euo pipefail
           APK="app/build/outputs/apk/debug/app-debug.apk"
+          INSPECT="$RUNNER_TEMP/animeart-apk-inspect"
+          mkdir -p "$INSPECT"
+          unzip -q "$APK" -d "$INSPECT"
+          WEB="$INSPECT/assets/web"
           test -s app/src/main/res/drawable/ic_animeart_launcher.xml
           test -s app/src/main/res/xml/file_paths.xml
-          unzip -l "$APK" | grep -q "res/drawable/ic_animeart_launcher.xml"
-          unzip -l "$APK" | grep -q "res/xml/file_paths.xml"
-          unzip -l "$APK" | grep -q "assets/web/icons/animeart-mark.svg"
-          unzip -l "$APK" | grep -q "assets/web/domain/image-processing.mjs"
-          unzip -l "$APK" | grep -q "assets/web/domain/creative-catalog.mjs"
-          unzip -l "$APK" | grep -q "assets/web/domain/canvas-rendering.mjs"
-          unzip -l "$APK" | grep -q "assets/web/domain/image-processing-client.mjs"
-          unzip -l "$APK" | grep -q "assets/web/workers/image-processing-worker.mjs"
-          unzip -p "$APK" assets/web/index.html | grep -q 'id="creative-studio-dialog"'
-          unzip -p "$APK" assets/web/index.html | grep -q 'id="crop-preview"'
-          unzip -p "$APK" assets/web/index.html | grep -q 'id="add-text-layer"'
-          unzip -p "$APK" assets/web/index.html | grep -q 'id="layer-adjustment-controls"'
-          unzip -p "$APK" assets/web/index.html | grep -q 'id="open-apk-installer"'
-          unzip -p "$APK" assets/web/app.js | grep -q "MAX_IMAGES_PER_IMPORT_BATCH = 3"
-          unzip -p "$APK" assets/web/app.js | grep -q "openApkInstaller"
-          unzip -p "$APK" assets/web/styles.css | grep -q "AA-CYBERPUNK-UI-002"
-          unzip -p "$APK" assets/web/styles.css | grep -q "AA-A11Y-CONTRAST-001"
-          unzip -p "$APK" AndroidManifest.xml | grep -q "REQUEST_INSTALL_PACKAGES"
-          unzip -p "$APK" assets/web/appearance-settings.js | grep -q "getAccentTextColor"
-          if unzip -p "$APK" assets/web/index.html | grep -Eqi 'id="(prompt-studio-dialog|prompt-generator-dialog)"'; then
+          test -s "$INSPECT/res/drawable/ic_animeart_launcher.xml"
+          test -s "$INSPECT/res/xml/file_paths.xml"
+          test -s "$WEB/icons/animeart-mark.svg"
+          test -s "$WEB/domain/image-processing.mjs"
+          test -s "$WEB/domain/creative-catalog.mjs"
+          test -s "$WEB/domain/canvas-rendering.mjs"
+          test -s "$WEB/domain/image-processing-client.mjs"
+          test -s "$WEB/workers/image-processing-worker.mjs"
+          grep -q 'id="creative-studio-dialog"' "$WEB/index.html"
+          grep -q 'id="crop-preview"' "$WEB/index.html"
+          grep -q 'id="add-text-layer"' "$WEB/index.html"
+          grep -q 'id="layer-adjustment-controls"' "$WEB/index.html"
+          grep -q 'id="open-apk-installer"' "$WEB/index.html"
+          grep -q "MAX_IMAGES_PER_IMPORT_BATCH = 3" "$WEB/app.js"
+          grep -q "openApkInstaller" "$WEB/app.js"
+          grep -q "AA-CYBERPUNK-UI-002" "$WEB/styles.css"
+          grep -q "AA-CYBERPUNK-UI-003" "$WEB/styles.css"
+          grep -q "AA-A11Y-CONTRAST-001" "$WEB/styles.css"
+          strings "$INSPECT/AndroidManifest.xml" > "$RUNNER_TEMP/animeart-manifest-strings.txt"
+          grep -q "REQUEST_INSTALL_PACKAGES" "$RUNNER_TEMP/animeart-manifest-strings.txt"
+          grep -q "getAccentTextColor" "$WEB/appearance-settings.js"
+          if grep -Eqi 'id="(prompt-studio-dialog|prompt-generator-dialog)"' "$WEB/index.html"; then
             echo "Unexpected prompt-generator UI component found in image editor APK" >&2
             exit 1
           fi

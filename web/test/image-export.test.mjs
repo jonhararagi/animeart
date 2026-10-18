@@ -64,7 +64,7 @@ test("transparent preview uses an alpha canvas without baking its checkerboard i
   const app = await readFile(join(import.meta.dirname, "..", "app.js"), "utf8");
   const html = await readFile(join(import.meta.dirname, "..", "index.html"), "utf8");
   assert.match(app, /getContext\("2d", \{ alpha: true \}\)/);
-  assert.match(app, /ctx\.clearRect\(0, 0, rect\.width, rect\.height\)/);
+  assert.match(app, /clearCanvasBackingStore\(ctx, canvas, dpr\)/);
   assert.match(app, /renderDocumentToCanvas\(state\.document, exportCanvas/);
   assert.match(html, /id="export-transparent-png"/);
   assert.match(html, /Los cuadritos indican transparencia\. No aparecerán en el PNG/);

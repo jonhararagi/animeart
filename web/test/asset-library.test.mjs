@@ -43,10 +43,10 @@ test("Asset Library UI is wired to local storage, reusable canvas layers and pac
   assert.match(html,/id="open-asset-library"/);
   assert.match(html,/id="asset-library-files" type="file"/);
   assert.match(panel,/indexedDB\.open\(DB_NAME, DB_VERSION\)/);
-  assert.match(panel,/Add to canvas/);
+  assert.match(panel,/Insertar al lienzo/);
   assert.match(panel,/createAssetLibraryPackage/);
   assert.match(panel,/imageDataUrl/);
   assert.match(app,/initializeAssetLibrary\(\{ onImportImage: importImageIntoEditor/);
-  assert.match(worker,/animeart-web-shell-v46/);
+  assert.match(worker,/animeart-web-shell-v47/);
   assert.match(worker,/\.\/asset-library\.js/);
 });
