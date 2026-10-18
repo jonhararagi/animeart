@@ -41,6 +41,15 @@ test("six original anime character stickers are transparent local SVGs",()=>{
  }
 });
 
+test("original sticker catalog carries a premium anime-ink detail pass while remaining offline vector art", () => {
+  for (const sticker of STICKER_CATALOG) {
+    const svg = createStickerSvg(sticker.id);
+    assert.match(svg, /data-sticker-detail="anime-ink-02"/, sticker.id + " has layered finishing details");
+    assert.ok((svg.match(/stroke-width=/g) || []).length >= 3, sticker.id + " keeps editable vector linework");
+    assert.equal(svg.includes("<image "), false, sticker.id + " does not fetch or embed remote artwork");
+  }
+});
+
 test("word-art presets have real typography settings and style packs reference existing components",()=>{
   assert.ok(WORD_ART_PRESETS.length>=8);
   for(const preset of WORD_ART_PRESETS){
@@ -70,7 +79,7 @@ test("creative studio UI is discoverable, searchable, offline-ready and packaged
   assert.match(app,/function applyCreativeStylePack\(/);
   assert.match(app,/createPosterSvg\(/);
   assert.match(css,/AA-CREATIVE-STUDIO-001/);
-  assert.match(worker,/animeart-web-shell-v47/);
+  assert.match(worker,/animeart-web-shell-v48/);
   assert.match(worker,/\.\/domain\/creative-catalog\.mjs/);
   assert.match(android, /test -s "\$WEB\/domain\/creative-catalog\.mjs"/);
   assert.match(android, /test -s "\$WEB\/domain\/canvas-rendering\.mjs"/);

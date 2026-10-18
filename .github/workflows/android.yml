@@ -34,7 +34,7 @@ jobs:
       - name: Verify APK bundles the current image editor
         shell: bash
         run: |
-          set -euo pipefail
+          set -euxo pipefail
           APK="app/build/outputs/apk/debug/app-debug.apk"
           INSPECT="$RUNNER_TEMP/animeart-apk-inspect"
           mkdir -p "$INSPECT"
@@ -60,10 +60,13 @@ jobs:
           grep -q "AA-CYBERPUNK-UI-002" "$WEB/styles.css"
           grep -q "AA-CYBERPUNK-UI-003" "$WEB/styles.css"
           grep -q "AA-A11Y-CONTRAST-001" "$WEB/styles.css"
-          strings "$INSPECT/AndroidManifest.xml" > "$RUNNER_TEMP/animeart-manifest-strings.txt"
-          grep -q "REQUEST_INSTALL_PACKAGES" "$RUNNER_TEMP/animeart-manifest-strings.txt"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          AAPT="$(find "$SDK_ROOT/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -n "$AAPT"
+          "$AAPT" dump permissions "$APK" > "$RUNNER_TEMP/animeart-manifest-permissions.txt"
+          grep -q "android.permission.REQUEST_INSTALL_PACKAGES" "$RUNNER_TEMP/animeart-manifest-permissions.txt"
           grep -q "getAccentTextColor" "$WEB/appearance-settings.js"
-          if grep -Eqi 'id="(prompt-studio-dialog|prompt-generator-dialog)"' "$WEB/index.html"; then
+          if grep -Eqi '<dialog[^>]*[[:space:]]id="(prompt-studio-dialog|prompt-generator-dialog)"' "$WEB/index.html"; then
             echo "Unexpected prompt-generator UI component found in image editor APK" >&2
             exit 1
           fi

@@ -44,3 +44,35 @@ Los reportes de editores externos se usan como referencias de diagnóstico, no c
 ## Estado
 
 **PARTIAL** hasta confirmar CI del HEAD final y probar en el dispositivo. El límite de lotes es una mitigación; la migración de recursos a IndexedDB es el siguiente cambio estructural necesario para proyectos con muchas imágenes.
+
+
+## Fuentes públicas contrastadas para el diagnóstico de renderizado y edición
+
+- [Konva · Why Your HTML5 Canvas Looks Blurry](https://konvajs.org/docs/posts/Canvas_Blurry.html): explica que el tamaño de la imagen interna y el tamaño CSS deben corresponder, y distingue los problemas de DPR de los de caché/exportación. Aplicado a AnimeArt: el ResizeObserver compara ahora con el mismo DPR limitado que usa el render.
+- [Klecks · Canvas rendering is blurry on Retina/HiDPI displays, issue #217](https://github.com/bitbof/klecks/issues/217): reporta una vista previa demasiado suave en pantallas de alta densidad y el mantenedor describe el trabajo de soporte HiDPI. Se usa como referencia técnica, no como prueba de que AnimeArt tuviera exactamente el mismo defecto.
+- [Photopea · Touchscreen issues on Android, issue #4051](https://github.com/photopea/photopea/issues/4051): ejemplo de reporte público que compara gestos táctiles, selección y feedback de historial; refuerza probar interacción móvil real además de tests de escritorio.
+- [Picsart Support · Troubleshooting app crashes and freezing](https://support.picsart.com/hc/en-us/articles/35451258265501-Troubleshooting-app-crashes-and-freezing-in-Picsart): recomienda comprobar Android System WebView y Chrome cuando la aplicación se cierra o queda congelada. Esto no se usa para atribuir el problema de AnimeArt al WebView sin un logcat.
+- [Picsart Blog · Android & iOS Update](https://picsart.com/blog/android-ios-update): ejemplo de comunicación pública de nuevas opciones de edición y mejoras de uso.
+- [Adobe Community · Release Notes, May 2026](https://community.adobe.com/announcements-698/release-notes-may-2026-1625212): documenta correcciones de apertura de archivos grandes y controles/canvas que no se actualizaban de forma coherente.
+- [Android Authority · Google Photos editor buttons issue, update Sep 29 2026](https://www.androidauthority.com/google-photos-editor-unresponsive-buttons-fix-3716225): artículo de seguimiento que distingue el reporte inicial, el reconocimiento del proveedor y el aviso posterior de resolución.
+
+Estos casos sirven para formular pruebas de regresión y comunicar el estado; no se copian implementaciones privadas ni se supone que el fallo externo sea idéntico.
+
+## Iteración de octubre 18
+
+El sombreado fuera del marco se reduce a un tono neutro de baja opacidad y el borde pasa a magenta tenue para evitar que las capas que sobresalen parezcan una segunda imagen azulada. Se conserva el modo Libre: el contenido exterior sigue siendo la misma capa editable y no se incluye fuera de los límites de exportación. El ResizeObserver usa el DPR limitado por presupuesto, igual que el render principal.
+
+La importación de imágenes conserva el aviso de proyecto protegido; la prueba E2E acepta el texto de aviso en español o inglés en vez de depender de una sola cadena.
+
+La siguiente validación necesita Web CI y Android CI en el HEAD actualizado. La prueba física en Xiaomi 24116RACCG sigue pendiente.
+
+
+## Acabado del catálogo de stickers anime · AA-ANIME-STICKER-REFINEMENT-001
+
+Se añadieron detalles vectoriales originales sobre los 18 stickers locales: iris y reflejos en los personajes, líneas de tinta más expresivas, brillo de pelo/armadura, y detalles de acabado en flores, planetas, cristales, manga y órbitas. Las vistas previas de los stickers ahora tienen un marco de estudio más trabajado, contraste suave y halos cian/magenta sin sacrificar el patrón de transparencia.
+
+Los recursos siguen siendo SVG local, offline e insertables como capas independientes y editables. No se copiaron personajes, logos ni ilustraciones promocionales de franquicias existentes; por eso este pase mejora el dibujo original en lugar de empaquetar stickers protegidos sin licencia. Si se incorporan PNG de artistas externos en una futura versión, habrá que verificar y anotar su licencia y procedencia exactas en `web/assets/ASSET_SOURCES.md`.
+
+La caché offline cambió de `animeart-web-shell-v47` a `animeart-web-shell-v48` para que instalaciones PWA actualicen los nuevos estilos y el catálogo en vez de quedarse con recursos previos.
+
+**Estado:** correcciones y acabado visual en `aa-cyberpunk-render-fix-005`; requiere Web CI, Android CI y prueba real en Xiaomi para pasar a PASS. TIMER original de esta ronda: 3–5 horas estimadas, no tiempo activo medido.

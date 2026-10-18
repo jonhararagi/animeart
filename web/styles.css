@@ -4026,3 +4026,67 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
  .asset-card-actions{grid-template-columns:1fr}.asset-card-actions button{min-height:42px;font-size:.65rem}
  .creative-card-preview-stickers{min-height:172px}.creative-card-preview-portrait{min-height:202px}
 }
+
+
+/* AA-ANIME-STICKER-REFINEMENT-001 · transparent previews with a restrained neon studio treatment. */
+.creative-card-preview-stickers {
+  border: 1px solid #544776;
+  background:
+    radial-gradient(ellipse at 50% 42%, #45366d 0%, #201a38 52%, #101321 100%);
+}
+.creative-card-stickers:hover .creative-card-preview-stickers,
+.creative-card-stickers:focus-visible .creative-card-preview-stickers {
+  border-color: #00d7ed;
+  box-shadow: inset 0 0 26px #00eaff17, 0 0 18px #ff4fd81c;
+}
+.creative-card-preview-stickers .creative-sticker-checker {
+  position: relative;
+  overflow: hidden;
+  background-color: #17162a;
+  background-image:
+    radial-gradient(ellipse at 50% 45%, #a78aff18 0%, transparent 56%),
+    linear-gradient(45deg, #26233a 25%, transparent 25%),
+    linear-gradient(-45deg, #26233a 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #26233a 75%),
+    linear-gradient(-45deg, transparent 75%, #26233a 75%);
+  background-size: auto, 16px 16px, 16px 16px, 16px 16px, 16px 16px;
+  background-position: center, 0 0, 0 8px, 8px -8px, -8px 0;
+}
+.creative-card-preview-stickers .creative-sticker-checker::before {
+  content: "";
+  position: absolute;
+  inset: 7%;
+  border: 1px solid #00eaff42;
+  border-radius: 50%;
+  transform: rotate(-18deg) scaleX(.86);
+  pointer-events: none;
+}
+.creative-card-preview-stickers .creative-sticker-checker::after {
+  content: "";
+  position: absolute;
+  right: 7%;
+  bottom: 7%;
+  width: 7px;
+  height: 7px;
+  border: 1px solid #ff4fd8;
+  border-radius: 50%;
+  box-shadow: 0 0 12px #ff4fd8a6, 0 0 22px #00eaff45;
+  pointer-events: none;
+}
+.creative-card-preview-stickers .creative-sticker-checker img {
+  position: relative;
+  z-index: 1;
+  width: 90%;
+  height: 90%;
+  filter: drop-shadow(0 0 7px #00eaff26) drop-shadow(0 5px 12px #05040c99);
+  transition: transform .16s ease, filter .16s ease;
+}
+.creative-card-stickers:hover .creative-sticker-checker img,
+.creative-card-stickers:focus-visible .creative-sticker-checker img {
+  transform: scale(1.035);
+  filter: drop-shadow(0 0 10px #ff4fd83c) drop-shadow(0 5px 14px #05040cb3);
+}
+@media (prefers-reduced-motion: reduce) {
+  .creative-card-preview-stickers .creative-sticker-checker img { transition: none; }
+}
+

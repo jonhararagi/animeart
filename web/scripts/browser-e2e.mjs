@@ -1129,7 +1129,7 @@ try {
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "warning remains visible after in-memory drawing");
   const pendingLayerCount = await evaluate('document.querySelectorAll("#layers li").length');
   await evaluate("(async () => { const source = document.createElement('canvas'); source.width = 4; source.height = 4; const sourceContext = source.getContext('2d'); sourceContext.fillStyle = '#00eaff'; sourceContext.fillRect(0, 0, 4, 4); const blob = await new Promise(resolve => source.toBlob(resolve, 'image/png')); if (!blob || !blob.size) throw new Error('Could not create valid PNG fixture'); const file = new File([blob], 'protected-import.png', { type: 'image/png' }); const transfer = new DataTransfer(); transfer.items.add(file); const input = document.querySelector('#image-file-input'); input.files = transfer.files; input.dispatchEvent(new Event('change', { bubbles: true })); })()");
-  await waitFor('document.querySelector("#status").textContent.includes("protected")', 10000);
+  await waitFor('/(protected|protegido)/i.test(document.querySelector("#status").textContent)', 10000);
   assert(await evaluate('localStorage.getItem("animeart-web-document") === ' + JSON.stringify(quotaPayload)), "image import during recovery cannot overwrite the protected payload");
   assert(await evaluate('document.querySelectorAll("#layers li").length === ' + pendingLayerCount), "rejected image import does not report success or commit a layer");
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "warning remains visible after rejected image import");
@@ -1295,10 +1295,14 @@ try {
   await waitFor('document.readyState === "complete"');
   await waitFor('document.querySelector("#storage-recovery-notice")?.hidden === true', 10000);
   await waitForServiceWorkerReadiness();
+  await click("#new-document");
+  await waitFor('document.querySelector("#project-dialog")?.open === true', 10000);
+  await evaluate('document.querySelector("#document-width").value = "640"; document.querySelector("#document-height").value = "480"; document.querySelector("#project-form").requestSubmit();');
+  await waitFor('!document.querySelector("#project-dialog")?.open', 10000);
   await click("#save");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length === 1', 10000);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").width === 640 && JSON.parse(localStorage.getItem("animeart-web-document") || "{}").height === 480', 10000);
   assert(await evaluate('document.querySelector("#status").textContent === "Guardado localmente"'),
-    "fault-injection state is cleared and a clean document is persisted before mobile visual tests");
+    "a real 640×480 transparent document is created and persisted before mobile visual tests");
 
   // Mobile regression: use Chromium's real touch input path, not synthetic MouseEvents.
   await cdp("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 2 });
@@ -1340,8 +1344,11 @@ try {
   await click('.mobile-touch-dock [data-touch-action="more"]');
   await waitFor('!document.body.classList.contains("mobile-tools-open")');
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "mobile editor starts without stale storage-recovery warning");
-  assert(await evaluate('(() => { const doc=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const c=document.querySelector("#canvas"); const a=c.getContext("2d",{willReadFrequently:true}).getImageData(Math.floor(c.width/2),Math.floor(c.height/2),1,1).data[3]; return !doc.layers.some(layer=>layer.contentType==="image"&&layer.image?.source) && a===0; })()'),
-    "new documents start as a transparent empty canvas; the checkerboard is view-only, not a background image layer");
+  await evaluate('window.__ANIMEART_E2E_DIAGNOSTICS__ = true; window.dispatchEvent(new Event("resize"));');
+  await waitFor('Boolean(window.__ANIMEART_DOCUMENT_FRAME_DIAGNOSTICS__?.topLeft && window.__ANIMEART_DOCUMENT_FRAME_DIAGNOSTICS__?.bottomRight)');
+  const transparencyCheck = await evaluate('(() => { const doc=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const c=document.querySelector("#canvas"); const r=c.getBoundingClientRect(); const f=window.__ANIMEART_DOCUMENT_FRAME_DIAGNOSTICS__; if(!f?.topLeft||!f?.topRight||!f?.bottomLeft||!f?.bottomRight||!r.width||!r.height)return {ok:false,reason:"document-frame diagnostics unavailable"}; const left=Math.min(f.topLeft.x,f.bottomLeft.x); const right=Math.max(f.topRight.x,f.bottomRight.x); const top=Math.min(f.topLeft.y,f.topRight.y); const bottom=Math.max(f.bottomLeft.y,f.bottomRight.y); const visibleLeft=Math.max(2,left); const visibleRight=Math.min(r.width-2,right); const visibleTop=Math.max(2,top); const visibleBottom=Math.min(r.height-2,bottom); const visibleWidth=visibleRight-visibleLeft; const visibleHeight=visibleBottom-visibleTop; if(visibleWidth<12||visibleHeight<12)return {ok:false,reason:"page has no safe visible sample",frame:{left,right,top,bottom},canvas:{width:r.width,height:r.height}}; const cssX=visibleLeft+visibleWidth*.37; const cssY=visibleTop+visibleHeight*.37; const x=Math.max(0,Math.min(c.width-1,Math.floor(cssX*c.width/r.width))); const y=Math.max(0,Math.min(c.height-1,Math.floor(cssY*c.height/r.height))); const alpha=c.getContext("2d",{willReadFrequently:true}).getImageData(x,y,1,1).data[3]; const hasImage=doc.layers.some(layer=>layer.contentType==="image"&&layer.image?.source); return {ok:!hasImage&&alpha===0,alpha,hasImage,sample:{cssX,cssY,x,y},frame:{left,right,top,bottom},canvas:{width:c.width,height:c.height,cssWidth:r.width,cssHeight:r.height}}; })()');
+  assert(transparencyCheck.ok,
+    "new documents start as a transparent empty canvas; the checkerboard is view-only, not a background image layer: " + JSON.stringify(transparencyCheck));
   assert(await evaluate('document.querySelector(".canvas-wrap").getBoundingClientRect().height >= 600 && document.querySelector("#canvas").getBoundingClientRect().height >= 500'), "the canvas is the dominant workspace, not a small panel");
   assert(await evaluate('getComputedStyle(document.querySelector(".workspace")).gridTemplateColumns.split(" ").length === 1'), "mobile workspace uses a single canvas column instead of the desktop sidebars");
   assert(await evaluate('document.querySelector(".mobile-touch-dock").getBoundingClientRect().height >= 54'), "compact primary dock retains a usable touch target area");
