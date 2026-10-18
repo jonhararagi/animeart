@@ -147,13 +147,17 @@ jobs:
           "$AAPT" dump badging "$SOURCE_APK" > "$RUNNER_TEMP/animeart-apk-badging.txt"
           grep -F "package: name='com.jonhararagi.animeart' versionCode='4' versionName='0.3.1'" "$RUNNER_TEMP/animeart-apk-badging.txt"
           CERT_SHA256="$(awk '
-            tolower($0) ~ /sha-256 digest:/ {
-              digest=$0
-              sub(/^.*sha-256 digest:[[:space:]]*/, "", digest, "i")
-              gsub(/[^[:xdigit:]]/, "", digest)
-              if (length(digest) >= 64) {
-                print tolower(substr(digest, 1, 64))
-                exit
+            {
+              lower=tolower($0)
+              marker="sha-256 digest:"
+              position=index(lower, marker)
+              if (position > 0) {
+                digest=substr($0, position + length(marker))
+                gsub(/[^[:xdigit:]]/, "", digest)
+                if (length(digest) >= 64) {
+                  print tolower(substr(digest, 1, 64))
+                  exit
+                }
               }
             }
           ' "$RUNNER_TEMP/animeart-apk-signature.txt")"
