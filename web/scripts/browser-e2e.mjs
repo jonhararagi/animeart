@@ -719,6 +719,8 @@ try {
   await click("#sample-recolor-source");
   const sampledSourceColor = await evaluate('(() => { const c=document.querySelector("#recolor-preview"),r=c.getBoundingClientRect(),d=c.getContext("2d").getImageData(0,0,c.width,c.height).data; let i=0; while(i<d.length&&d[i+3]===0)i+=4; if(i>=d.length)throw new Error("sample character contains no opaque pixels"); const p=i/4,x=p%c.width,y=Math.floor(p/c.width); c.dispatchEvent(new MouseEvent("click",{bubbles:true,clientX:r.left+(x+.5)*r.width/c.width,clientY:r.top+(y+.5)*r.height/c.height})); return document.querySelector("#recolor-source-color").value; })()');
   assert(/^#[0-9a-f]{6}$/i.test(sampledSourceColor), "real browser samples an actual opaque pixel for selective recolor");
+  await waitFor('document.querySelector("#apply-recolor").disabled === false', 15000);
+  await waitFor('document.querySelector("#recolor-status").textContent.includes("Vista previa lista")', 15000);
   await click("#apply-recolor");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source !== window.__animeArtOriginalRecolorSource', 15000);
   assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.width === 944'), "real browser applies selective recolor without changing image dimensions");
