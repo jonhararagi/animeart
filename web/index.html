@@ -3,15 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b0e14">
+  <meta name="theme-color" content="#100d20">
+  <meta name="description" content="AnimeArt Studio: editor anime y cyber-kawaii, con capas editables y herramientas creativas locales sin conexión.">
   <link rel="manifest" href="./manifest.webmanifest">
-  <title>AnimeArt Studio | Image Editor</title>
+  <title>AnimeArt Studio | Diseña tu mundo anime</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">ANIMEART</div>
-    <div class="topbar-actions"><button id="editor-mode-toggle" type="button" aria-label="Cambiar modo de edición">Modo simple</button><button id="appearance-open" type="button" aria-label="Personalizar apariencia">Apariencia</button><div class="status" id="status">Editor local</div></div>
+    <a class="brand" href="./" aria-label="AnimeArt Studio, inicio">
+      <svg class="brand-mark" viewBox="0 0 108 108" role="img" aria-label="Símbolo AnimeArt">
+        <path d="M54 5 96 29v50L54 103 12 79V29Z" fill="#111026" stroke="#00eaff" stroke-width="3"/>
+        <path d="M54 17 85 35v37L54 90 23 72V35Z" fill="#221536" stroke="#ff4fd8" stroke-width="2"/>
+        <path d="M54 27 31 77h12l11-26 11 26h12L54 27Z" fill="#fff5ff"/>
+        <path d="M46 62h16" stroke="#00eaff" stroke-width="5" stroke-linecap="round"/>
+        <path d="M79 15l3 7 7 3-7 3-3 7-3-7-7-3 7-3Z" fill="#ff4fd8"/>
+        <circle cx="28" cy="22" r="3" fill="#00eaff"/><circle cx="81" cy="84" r="3" fill="#ffe37d"/>
+      </svg>
+      <span class="brand-copy"><strong>AnimeArt</strong><small>STUDIO CREATIVO · ANIME &amp; NEÓN</small></span>
+    </a>
+    <div class="topbar-actions"><button id="editor-mode-toggle" type="button" aria-label="Cambiar modo de edición">Modo simple</button><button id="appearance-open" type="button" aria-label="Personalizar apariencia">Apariencia</button><div class="status" id="status">Edición local</div></div>
     <div class="mobile-top-actions" role="group" aria-label="Acciones del editor">
       <button type="button" data-mobile-top-action="undo" aria-label="Deshacer" title="Deshacer">↶</button>
       <button type="button" data-mobile-top-action="redo" aria-label="Rehacer" title="Rehacer">↷</button>
@@ -22,9 +33,16 @@
   <div id="mobile-feedback" class="mobile-feedback" role="status" aria-live="polite" hidden></div>
   <main class="workspace">
     <button type="button" id="mobile-tools-toggle" class="mobile-tools-toggle" aria-expanded="true" aria-label="Ocultar herramientas" title="Ocultar herramientas para ampliar el lienzo"><span aria-hidden="true">⌄</span></button>
-    <aside class="toolbar" aria-label="Tools">
+    <aside class="toolbar" aria-label="Herramientas de edición">
       <section class="easy-edit-panel" aria-labelledby="easy-edit-title">
-        <div class="easy-edit-heading"><span aria-hidden="true">✨</span><div><h2 id="easy-edit-title">Editar fácilmente</h2><p>Elige lo que quieres hacer</p></div></div>
+        <div class="easy-edit-heading"><span class="brand-panel-kicker">AA</span><div><h2 id="easy-edit-title">Tu taller creativo</h2><p>Diseña anime, títulos y escenas neón</p></div></div>
+        <div class="brand-launchpad" aria-label="Accesos principales de AnimeArt">
+          <button type="button" id="home-create-cover" class="brand-launch-action brand-launch-cover"><svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="3"/><path d="m6.5 16 4.2-4.4 2.8 2.8 2.2-2.2 2.3 3.8"/><circle cx="15.8" cy="7.8" r="1.25"/></svg><b>Crear portada</b><small>Anime · cyberpunk</small></button>
+          <button type="button" id="home-add-title" class="brand-launch-action brand-launch-title"><svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6V4h16v2M12 4v16M8 20h8"/></svg><b>Títulos</b><small>Letras con estilo</small></button>
+          <button type="button" id="home-open-stickers" class="brand-launch-action brand-launch-stickers"><svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 14.4 9l5.9.5-4.5 3.8 1.4 5.8-5.2-3.1-5.2 3.1 1.4-5.8-4.5-3.8 5.9-.5Z"/><path d="M18.7 3.7v3.5M17 5.45h3.4"/></svg><b>Stickers</b><small>Brillos y adornos</small></button>
+          <button type="button" id="home-import-image" class="brand-launch-action brand-launch-import"><svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 19.5h16"/></svg><b>Importar</b><small>Tus imágenes</small></button>
+        </div>
+        <p class="brand-local-note"><span aria-hidden="true">●</span> Recursos originales integrados. Funciona sin conexión.</p>
         <div class="editor-mode-switch" role="group" aria-label="Modo de edición">
           <button type="button" data-editor-mode="simple" aria-pressed="true">🌱 Modo simple</button>
           <button type="button" data-editor-mode="interactive" aria-pressed="false">✋ Modo interactivo</button>

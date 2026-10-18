@@ -5863,6 +5863,22 @@ function load() {
   }
 }
 
+function initializeBrandLaunchpad() {
+  document.querySelector("#home-create-cover")?.addEventListener("click", () => {
+    document.querySelector("#creative-studio-open")?.click();
+    document.querySelector('[data-creative-tab="covers"]')?.click();
+  });
+  document.querySelector("#home-add-title")?.addEventListener("click", () => {
+    document.querySelector("#add-text-layer")?.click();
+  });
+  document.querySelector("#home-open-stickers")?.addEventListener("click", () => {
+    document.querySelector("#creative-studio-open")?.click();
+    document.querySelector('[data-creative-tab="stickers"]')?.click();
+  });
+  document.querySelector("#home-import-image")?.addEventListener("click", openImagePicker);
+}
+initializeBrandLaunchpad();
+
 initializeAssetLibrary({ onImportImage: importImageIntoEditor, onStatus: message => { status.textContent = message; } });
 initializeAppearanceSettings();
 setSelection([state.document.layers[0].id], state.document.layers[0].id);

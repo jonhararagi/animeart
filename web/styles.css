@@ -3851,3 +3851,23 @@ body.mobile-tools-open .toolbar > .easy-edit-panel > .easy-edit-grid button {
  .creative-studio-footer{align-items:stretch;flex-direction:column;gap:8px;padding-top:9px}.creative-studio-footer>p{max-width:none;min-height:1em;font-size:.64rem}
  .creative-studio-footer-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.creative-studio-footer-actions button{min-height:44px;padding:7px;font-size:.66rem}#creative-studio-close{grid-column:1/-1}
 }
+
+
+/* AA-BRAND-001 · identidad cyber-kawaii propia, accesible y ligera. */
+:root { --surface:#120f23; --surface-raised:#1b1530; --surface-hover:#282044; --stroke:#392b55; --muted:#ada4c4; --text:#f7f3ff; --accent:#ff4fd8; --accent-strong:#c346ff; --editor-workspace:#100d20; }
+.topbar { background:linear-gradient(108deg,#100d20 0%,#17122b 58%,#0d1c2a 100%); border-bottom-color:#34284d; }
+.brand { display:flex; align-items:center; gap:9px; min-width:0; color:#fff7ff; text-decoration:none; letter-spacing:0; } .brand::before { display:none!important; }
+.brand-mark { flex:0 0 auto; display:block; width:39px; height:39px; filter:drop-shadow(0 0 10px #00eaff28) drop-shadow(0 0 14px #ff4fd829); }
+.brand-copy { display:grid; gap:3px; min-width:0; } .brand-copy strong { font-size:.96rem; line-height:1; letter-spacing:.035em; font-weight:900; } .brand-copy small { color:#a4cbd8; font-size:.48rem; font-weight:850; letter-spacing:.105em; white-space:nowrap; }
+.brand-panel-kicker { display:grid; flex:0 0 auto; place-items:center; width:35px; height:35px; border:1px solid #ff4fd8; border-radius:11px; background:linear-gradient(145deg,#321a4c,#11182c); color:#fff; box-shadow:inset 0 0 0 2px #00eaff18,0 0 20px #ff4fd81c; font-size:.72rem; font-weight:950; letter-spacing:-.07em; }
+.easy-edit-panel { border-color:#463357; background:radial-gradient(ellipse at 4% 0%,#49245a44,transparent 54%),linear-gradient(155deg,#171128,#111321 78%); box-shadow:inset 0 1px #ffffff08,0 8px 22px #0002; } .easy-edit-heading h2 { color:#fff4ff; letter-spacing:-.015em; } .easy-edit-heading p { color:#b7adcf; }
+.brand-launchpad { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; min-width:0; }
+.brand-launch-action { --launch-accent:#00eaff; position:relative; display:grid; align-content:start; justify-items:start; gap:5px; min-height:82px; min-width:0; padding:10px 9px; overflow:hidden; border:1px solid #433355; border-radius:12px; background:linear-gradient(145deg,#211632,#151426 82%); text-align:left; touch-action:manipulation; }
+.brand-launch-action::after { content:""; position:absolute; width:53px; height:53px; right:-26px; top:-25px; border:1px solid color-mix(in srgb,var(--launch-accent) 65%,transparent); border-radius:13px; transform:rotate(27deg); pointer-events:none; }
+.brand-launch-action .aa-icon { width:22px; height:22px; color:var(--launch-accent); } .brand-launch-action b { color:#fff7ff; font-size:.72rem; font-weight:850; line-height:1.12; } .brand-launch-action small { color:#bcb3d0; font-size:.59rem; line-height:1.25; overflow-wrap:anywhere; }
+.brand-launch-action:hover { border-color:var(--launch-accent); background:linear-gradient(145deg,#2a1a3c,#17172c); transform:translateY(-1px); } .brand-launch-action:focus-visible { outline:2px solid #00eaff; outline-offset:2px; }
+.brand-launch-cover { --launch-accent:#ff4fd8; } .brand-launch-title { --launch-accent:#00eaff; } .brand-launch-stickers { --launch-accent:#ffe37d; } .brand-launch-import { --launch-accent:#9cf5ff; }
+.aa-icon { width:21px; height:21px; display:block; fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; }
+.brand-local-note { margin:0; color:#9994b2; font-size:.59rem; line-height:1.4; } .brand-local-note span { color:#74f4c4; font-size:.65rem; margin-right:3px; }
+.topbar-actions #appearance-open { border-color:#58305e; color:#ffddf7; background:linear-gradient(120deg,#2b193d,#172731); }
+@media(max-width:620px) { .brand { gap:7px; } .brand-mark { width:34px; height:34px; } .brand-copy strong { font-size:.86rem; } .brand-copy small { display:none; } .brand-launch-action { min-height:84px; } .brand-launch-action b { font-size:.75rem; } .brand-launch-action small { font-size:.63rem; } }
