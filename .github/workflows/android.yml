@@ -89,6 +89,6 @@ jobs:
         with:
           name: animeart-android-v0.3.0-${{ github.sha }}
           path: |
-            AnimeArt-Android-aa-mobile-redesign-004-${{ github.sha }}.apk
-            AnimeArt-Android-aa-mobile-redesign-004-${{ github.sha }}.apk.sha256
+            AnimeArt-Android-v0.3.0-${{ github.sha }}.apk
+            AnimeArt-Android-v0.3.0-${{ github.sha }}.apk.sha256
           if-no-files-found: error
