@@ -65,3 +65,14 @@ El sombreado fuera del marco se reduce a un tono neutro de baja opacidad y el bo
 La importación de imágenes conserva el aviso de proyecto protegido; la prueba E2E acepta el texto de aviso en español o inglés en vez de depender de una sola cadena.
 
 La siguiente validación necesita Web CI y Android CI en el HEAD actualizado. La prueba física en Xiaomi 24116RACCG sigue pendiente.
+
+
+## Acabado del catálogo de stickers anime · AA-ANIME-STICKER-REFINEMENT-001
+
+Se añadieron detalles vectoriales originales sobre los 18 stickers locales: iris y reflejos en los personajes, líneas de tinta más expresivas, brillo de pelo/armadura, y detalles de acabado en flores, planetas, cristales, manga y órbitas. Las vistas previas de los stickers ahora tienen un marco de estudio más trabajado, contraste suave y halos cian/magenta sin sacrificar el patrón de transparencia.
+
+Los recursos siguen siendo SVG local, offline e insertables como capas independientes y editables. No se copiaron personajes, logos ni ilustraciones promocionales de franquicias existentes; por eso este pase mejora el dibujo original en lugar de empaquetar stickers protegidos sin licencia. Si se incorporan PNG de artistas externos en una futura versión, habrá que verificar y anotar su licencia y procedencia exactas en `web/assets/ASSET_SOURCES.md`.
+
+La caché offline cambió de `animeart-web-shell-v47` a `animeart-web-shell-v48` para que instalaciones PWA actualicen los nuevos estilos y el catálogo en vez de quedarse con recursos previos.
+
+**Estado:** correcciones y acabado visual en `aa-cyberpunk-render-fix-005`; requiere Web CI, Android CI y prueba real en Xiaomi para pasar a PASS. TIMER original de esta ronda: 3–5 horas estimadas, no tiempo activo medido.
