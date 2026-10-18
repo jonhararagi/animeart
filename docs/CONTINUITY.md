@@ -3478,3 +3478,31 @@ Sigue pendiente validar con el dedo en el Xiaomi `24116RACCG`. La búsqueda web 
 - Build web [artefacto #12117788702](https://github.com/jonhararagi/animeart/actions/runs/39079788046/artifacts/12117788702); capturas E2E [#12118561170](https://github.com/jonhararagi/animeart/actions/runs/39079788046/artifacts/12118561170).
 - APK [artefacto #12118641798](https://github.com/jonhararagi/animeart/actions/runs/39079788110/artifacts/12118641798). Nombre: AnimeArt-Android-aa-mobile-redesign-004-9c33da77e7d1f05a251d757eeccc552422dfbf3f.apk. SHA-256 verificado: 16f0381bddf9476256902168aacbeb6234cb983a829dfea49a0db2b56bcb342a.
 - La validación física con el dedo en el Xiaomi 24116RACCG sigue pendiente; por eso los issues [#73](https://github.com/jonhararagi/animeart/issues/73) y [#86](https://github.com/jonhararagi/animeart/issues/86) permanecen abiertos. TIMER de esta iteración: 2–4 h estimadas, no tiempo real medido.
+
+ 
+## AA-PIXEL-WORKER-001 · aislar cálculos de píxeles del hilo de interfaz · 2026-10-18
+
+### Decisión de arquitectura
+
+- Se mantiene el editor principal local y el lienzo Canvas 2D; no se añadió Fabric.js, Konva ni un runtime gráfico pesado.
+- Se incorporó un cliente de procesamiento y un módulo Worker: web/domain/image-processing-client.mjs y web/workers/image-processing-worker.mjs.
+- Reemplazo selectivo de color, borrado conectado de fondo, borrado mágico y borrador de píxeles se ejecutan a través del cliente de procesamiento. Las vistas previas de recolor y fondo usan una cola de última revisión: varios cambios rápidos de controles se condensan en la vista más reciente, en vez de formar una cola de cálculos completos.
+- Los buffers temporales de operaciones de una sola ejecución pueden transferirse al Worker. Los algoritmos tienen un modo de mutación en el buffer recibido; las llamadas por defecto mantienen el comportamiento sin mutación.
+- Web Worker mejora la capacidad de respuesta, pero NO traslada CPU/RAM/batería fuera del móvil. Sigue siendo cálculo local. El fallback síncrono conserva compatibilidad si Worker no está disponible; la operación pesada sigue pudiendo ser costosa en ese fallback.
+- La arquitectura recomendada es híbrida y opt-in: edición, composición y guardado local; Workers para tareas de píxel que no deberían bloquear los gestos; servidor opcional únicamente para tareas realmente pesadas, como una futura eliminación de fondo con IA. No se añadió servicio remoto ni dependencia de conexión, coste de API o envío de imágenes.
+
+### Evidencia de validación
+
+- HEAD de código validado: 91594c1d104ff0fa420568372fab0aee7d099312.
+- Web CI + pruebas unitarias + E2E real de Chromium PASS: [run #39103564966](https://github.com/jonhararagi/animeart/actions/runs/39103564966).
+- El log de E2E confirma: workerCreated=true, workerOperations=1, fallbackOperations=0, lastOperation=replace-color-range. La imagen de ejemplo se recolorea y conserva sus dimensiones.
+- Despliegue web PASS: [run #39103564974](https://github.com/jonhararagi/animeart/actions/runs/39103564974).
+- Android CI PASS: [run #39103564959](https://github.com/jonhararagi/animeart/actions/runs/39103564959), incluye build, verificación de los dos módulos en el APK, unit tests, lint, instrumentación y arranque de WebView.
+- APK: [artefacto #12126599853](https://github.com/jonhararagi/animeart/actions/runs/39103564959/artifacts/12126599853).
+- Nombre: AnimeArt-Android-aa-mobile-redesign-004-91594c1d104ff0fa420568372fab0aee7d099312.apk.
+- SHA-256 del archivo APK, obtenido de sha256sum en CI: b2fb304d08b694e15d2e7877bef0fd7f55beed2b7284c004c9fe6a984bf30bfa.
+- Editor web: [artefacto #12127147546](https://github.com/jonhararagi/animeart/actions/runs/39103564966/artifacts/12127147546). Capturas E2E: [#12127082767](https://github.com/jonhararagi/animeart/actions/runs/39103564966/artifacts/12127082767).
+
+### Pendiente de aceptación física
+
+La CI real del navegador prueba el Worker dedicado; Android CI prueba el empaquetado y arranque, pero no mide picos de memoria/batería de operaciones de 16 megapíxeles en el Xiaomi físico. Verificar con el dedo y con una imagen grande en el Xiaomi 24116RACCG antes de cerrar la aceptación final. Mantener abiertos [#73](https://github.com/jonhararagi/animeart/issues/73) y [#86](https://github.com/jonhararagi/animeart/issues/86). TIMER: 2-4 horas estimadas, tiempo real no medido.

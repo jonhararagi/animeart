@@ -192,3 +192,36 @@ La prueba de navegador deja de depender de la rueda del ratón y usa el botón v
 ### Límite restante
 
 Esta evidencia verifica el comportamiento automatizado del viewport, movimiento libre y exportación, no el tacto físico en el Xiaomi 24116RACCG. Los issues [#73](https://github.com/jonhararagi/animeart/issues/73) y [#86](https://github.com/jonhararagi/animeart/issues/86) deben seguir abiertos hasta completar esa prueba. Las fuentes técnicas externas incluidas en este informe se usan como patrones de diagnóstico, no como afirmación de que todas las aplicaciones externas tengan los mismos defectos.
+
+ 
+---
+
+## AA-PIXEL-WORKER-001 · respuesta de interfaz sin prometer descarga de CPU · 2026-10-18
+
+### Hallazgo
+
+Los algoritmos de reemplazo de color, borrado conectado de fondo y borrador raster recorrían buffers RGBA desde el hilo de interfaz. Un trabajo grande podía retrasar gestos, apertura de paneles y actualizaciones del lienzo. Esto era un problema distinto de los bugs de coordenadas y gestos descritos en las incidencias públicas de Fabric.js y Photopea.
+
+### Cambio en main
+
+- Se añadió un cliente de procesamiento local y un Worker de módulo sin incorporar motores de terceros: web/domain/image-processing-client.mjs y web/workers/image-processing-worker.mjs.
+- Las herramientas de recolor, quitar fondo y borrado usan el Worker; para la vista previa, las actualizaciones repetidas se condensan a la última revisión. El cliente mantiene un fallback síncrono para entornos que no pueden crear Workers.
+- El Worker puede modificar su buffer transferido para evitar una copia RGBA completa adicional en el algoritmo. El modo público normal de las funciones no cambió a mutación.
+- La versión de shell offline cambió a animeart-web-shell-v44, incluida la lista de recursos y las comprobaciones del APK.
+
+### Respuesta a la pregunta de arquitectura
+
+Web Worker solo desplaza el cómputo al hilo trabajador del mismo dispositivo. No equivale a ejecutar en un servidor y no reduce por sí mismo la cantidad total de CPU, RAM o batería. La decisión actual protege la respuesta de la interfaz y el modo sin conexión. Para descargar trabajo del hardware, la opción razonable sería un servicio remoto optativo para tareas concretas que justifiquen latencia, conexión, privacidad y coste, no convertir las funciones básicas del editor en dependientes de internet.
+
+### Pruebas y evidencia
+
+- Web CI, pruebas unitarias y E2E Chromium PASS: [#39103564966](https://github.com/jonhararagi/animeart/actions/runs/39103564966).
+- El E2E informa workerCreated=true, workerOperations=1, fallbackOperations=0 y lastOperation=replace-color-range antes de aplicar el recolor real; el archivo cambia y conserva las dimensiones.
+- Despliegue web PASS: [#39103564974](https://github.com/jonhararagi/animeart/actions/runs/39103564974).
+- Android CI PASS con build, comprobación de activos Worker en APK, unit tests, lint, instrumentación y WebView startup: [#39103564959](https://github.com/jonhararagi/animeart/actions/runs/39103564959).
+- APK [#12126599853](https://github.com/jonhararagi/animeart/actions/runs/39103564959/artifacts/12126599853); SHA-256: b2fb304d08b694e15d2e7877bef0fd7f55beed2b7284c004c9fe6a984bf30bfa.
+- Build web [#12127147546](https://github.com/jonhararagi/animeart/actions/runs/39103564966/artifacts/12127147546); capturas [#12127082767](https://github.com/jonhararagi/animeart/actions/runs/39103564966/artifacts/12127082767).
+
+### Límites
+
+Las pruebas de CI no sustituyen una medición de memoria/batería durante una operación raster de alta resolución en el Xiaomi real. La aceptación física sigue pendiente y los issues [#73](https://github.com/jonhararagi/animeart/issues/73) y [#86](https://github.com/jonhararagi/animeart/issues/86) permanecen abiertos. Los reportes externos de Fabric.js, Photopea y Konva se usan como patrones técnicos, no como prueba de defectos idénticos en AnimeArt.
