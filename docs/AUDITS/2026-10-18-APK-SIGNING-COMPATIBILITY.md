@@ -22,3 +22,8 @@
 ## Status
 
 **PARTIAL until the new main workflow completes, stable signing secrets are configured, and physical device validation is performed.** Without the secrets, CI can publish a fresh-install APK, but does not guarantee update compatibility.
+
+
+## Follow-up: certificate fingerprint extraction
+
+The final-main Android CI run `39172223834` completed the build, APK-content checks, unit tests, lint and all nine emulator instrumentation tests, but initially failed during APK preparation because the workflow's strict `grep` parser did not produce a fingerprint. The parser has been changed to case-insensitive extraction of the first 64-hex SHA-256 digest, with clear failure diagnostics. This parser adjustment requires its own CI run before the APK handoff can be marked PASS.
