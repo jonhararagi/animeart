@@ -1,9 +1,17 @@
 {
-  "name": "AnimeArt Web",
+  "name": "AnimeArt Studio · Editor creativo",
   "short_name": "AnimeArt",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#111318",
-  "theme_color": "#111318",
-  "description": "Web-first, local-first AnimeArt editor."
+  "background_color": "#100d20",
+  "theme_color": "#100d20",
+  "description": "Editor anime y cyber-kawaii de uso local, con capas editables y recursos originales sin conexión.",
+  "icons": [
+    {
+      "src": "./icons/animeart-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }

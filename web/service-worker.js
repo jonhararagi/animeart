@@ -1,4 +1,4 @@
-const CACHE_NAME = "animeart-web-shell-v44";
+const CACHE_NAME = "animeart-web-shell-v45";
 const APP_SHELL = [
   "./index.html",
   "./styles.css",
@@ -8,6 +8,7 @@ const APP_SHELL = [
   "./domain/asset-library.mjs",
   "./domain/creative-catalog.mjs",
   "./manifest.webmanifest",
+  "./icons/animeart-mark.svg",
   "./service-worker.js",
   "./assets/cc0-detailed-anime-character.png.base64",
   "./assets/ASSET_SOURCES.md",
