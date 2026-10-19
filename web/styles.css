@@ -4090,3 +4090,99 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   .creative-card-preview-stickers .creative-sticker-checker img { transition: none; }
 }
 
+
+
+/* KAPIART-CUTE-BRAND-001: warm cocoa, cream and blush inspired by the supplied capybara-hood mascot. */
+:root {
+  --surface: #2b211f;
+  --surface-raised: #392b29;
+  --surface-hover: #4a3632;
+  --stroke: #604941;
+  --muted: #d8c3b8;
+  --text: #fff4eb;
+  --accent: #f2a2a0;
+  --accent-strong: #e6817b;
+  --brand-deep: #241a19;
+  --brand-cocoa: #4c352f;
+  --brand-hood: #6b4b40;
+  --brand-cream: #fff4eb;
+  --brand-blush: #f2a2a0;
+  --brand-coral: #e6817b;
+  color-scheme: dark;
+}
+html, body { background: var(--brand-deep) !important; color: var(--text); }
+body { background: var(--brand-deep) !important; }
+.topbar, .toolbar, .layers {
+  background: #2b211f !important;
+  border-color: #604941 !important;
+}
+.canvas-wrap { background-color: #302321 !important; }
+button:not(:disabled) {
+  color: var(--text);
+  background-color: #392b29;
+  border-color: #604941;
+}
+button:hover:not(:disabled) {
+  background-color: #4a3632 !important;
+  border-color: var(--brand-blush) !important;
+}
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline-color: var(--brand-blush) !important;
+}
+input, select, textarea {
+  border-color: #604941 !important;
+}
+.brand { gap: 10px !important; }
+.brand-mascot {
+  display: block;
+  flex: 0 0 43px;
+  width: 43px;
+  height: 43px;
+  object-fit: cover;
+  object-position: center 9%;
+  border: 2px solid var(--brand-blush);
+  border-radius: 15px;
+  background: var(--brand-cream);
+  box-shadow: 0 0 0 3px rgb(242 162 160 / 12%), 0 5px 16px rgb(12 5 5 / 35%);
+}
+.brand-copy strong { color: var(--brand-cream) !important; letter-spacing: .025em; }
+.brand-copy small { color: var(--brand-blush) !important; }
+.brand-launch-action {
+  --launch-accent: var(--brand-blush);
+  border-color: #694a43 !important;
+  border-radius: 15px !important;
+  background: linear-gradient(145deg, #44302d, #29201f 82%) !important;
+}
+.brand-launch-cover { --launch-accent: #f2a2a0; }
+.brand-launch-title { --launch-accent: #ffe2c9; }
+.brand-launch-stickers { --launch-accent: #e6817b; }
+.brand-launch-import { --launch-accent: #f6c8b1; }
+.brand-launch-action b { color: #fff4eb !important; }
+.brand-launch-action small { color: #dec8bd !important; }
+.brand-launch-action:hover { background: linear-gradient(145deg, #593a36, #302321) !important; }
+.brand-launch-action:focus-visible { outline-color: var(--brand-blush) !important; }
+.eyebrow, .brand-panel-kicker { color: var(--brand-blush) !important; }
+.toolbar > .tool.active,
+.layers li[data-selected="true"],
+.preset-button.active {
+  border-color: var(--brand-blush) !important;
+  background: #4b3230 !important;
+  color: #fff4eb !important;
+}
+.mobile-touch-dock,
+body > .mobile-touch-dock {
+  border-color: #604941 !important;
+  background: rgb(43 33 31 / 97%) !important;
+}
+body > .mobile-touch-dock button[aria-pressed="true"],
+.mobile-touch-dock button[aria-pressed="true"] {
+  border-color: var(--brand-blush) !important;
+  background: linear-gradient(145deg, #7b4946, #4b3030) !important;
+  color: #fff8f1 !important;
+}
+dialog {
+  border-color: #604941 !important;
+  background: #2b211f !important;
+  color: var(--text) !important;
+}
+::selection { background: #f2a2a0; color: #241a19; }
