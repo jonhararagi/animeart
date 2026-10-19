@@ -1,5 +1,5 @@
 const STORAGE_KEY = "animeart-editor-appearance-v1";
-const DEFAULTS = Object.freeze({ accent: "#ff4fd8", workspace: "#100d20", wallpaper: "", wallpaperName: "", editingHelpEnabled: true });
+const DEFAULTS = Object.freeze({ accent: "#f2a2a0", workspace: "#241a19", wallpaper: "", wallpaperName: "", editingHelpEnabled: true });
 const MAX_WALLPAPER_BYTES = 2 * 1024 * 1024;
 const COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 
