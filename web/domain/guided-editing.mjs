@@ -60,6 +60,16 @@ export function completeGuidedStep(progress,flowId,document) {
   const stepIndex=completed?flow.steps.length-1:Math.min(progress.stepIndex+1,flow.steps.length-1);
   return {progress:{...progress,stepIndex,completedStepIds},completed};
 }
+export function persistGuidedEditingProgress(storage, key, snapshot) {
+  if (!storage || typeof storage.setItem !== "function") return false;
+  try {
+    storage.setItem(key, JSON.stringify(snapshot));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function goToPreviousGuidedStep(progress,flowId) {
   validateProgress(progress,flowId);
   return {...progress,stepIndex:Math.max(0,progress.stepIndex-1)};

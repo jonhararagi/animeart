@@ -14,7 +14,7 @@ import { clearCanvasBackingStore } from "./domain/canvas-rendering.mjs";
 import { addLayer, clearLayer, cropDocumentCanvas, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
-import { GUIDED_EDITING_FLOWS, canCompleteGuidedStep, completeGuidedStep, createGuidedProgress, getGuidedFlow, getGuidedStep, goToPreviousGuidedStep, hasGuidedImage, isGuidedFlowComplete, recordGuidedActionLaunched } from "./domain/guided-editing.mjs";
+import { GUIDED_EDITING_FLOWS, canCompleteGuidedStep, completeGuidedStep, createGuidedProgress, getGuidedFlow, getGuidedStep, goToPreviousGuidedStep, hasGuidedImage, isGuidedFlowComplete, persistGuidedEditingProgress, recordGuidedActionLaunched } from "./domain/guided-editing.mjs";
 
 import { BUILT_IN_BACKGROUND_PROFILES, deleteBackgroundProfile, listBackgroundProfiles, saveBackgroundProfile } from "./domain/background-removal-profiles.mjs";
 import { fitImportedImageTransform } from "./domain/image-import.mjs";
@@ -4572,8 +4572,7 @@ activeGuidedFlowId=guidedEditingState.activeFlowId;
 Object.assign(guidedProgressByFlow,guidedEditingState.progressByFlow);
 function currentGuidedProgress(){return guidedProgressByFlow[activeGuidedFlowId];}
 function persistGuidedEditingState(){
- try{localStorage.setItem(GUIDED_PROGRESS_STORAGE_KEY,JSON.stringify({version:1,activeFlowId:activeGuidedFlowId,progressByFlow:guidedProgressByFlow}));}
- catch{/* Optional progress must never interrupt editing. */}
+ persistGuidedEditingProgress(localStorage,GUIDED_PROGRESS_STORAGE_KEY,{version:1,activeFlowId:activeGuidedFlowId,progressByFlow:guidedProgressByFlow});
 }
 function renderGuidedEditingDialog(){
  const flow=getGuidedFlow(activeGuidedFlowId);if(!flow)return;
@@ -6241,7 +6240,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v50";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v51";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
