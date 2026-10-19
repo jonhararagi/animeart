@@ -1,11 +1,11 @@
 {
-  "name": "AnimeArt Studio · Editor creativo",
-  "short_name": "AnimeArt",
+  "name": "KapiArt Studio · Editor creativo",
+  "short_name": "KapiArt",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#100d20",
-  "theme_color": "#100d20",
-  "description": "Editor anime y cyber-kawaii de uso local, con capas editables y recursos originales sin conexión.",
+  "background_color": "#241a19",
+  "theme_color": "#241a19",
+  "description": "Editor anime cute de uso local, inspirado en la mascota capibara, con capas editables y recursos originales sin conexión.",
   "icons": [
     {
       "src": "./icons/animeart-mark.svg",
