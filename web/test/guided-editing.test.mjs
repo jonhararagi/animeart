@@ -100,6 +100,17 @@ test("canceling the new-text dialog removes the provisional text layer", async (
  assert.match(app, /newlyCreatedTextLayerId = null;\s*textEditDialog\?\.close\(\)/);
 });
 
+test("closing an existing text editor commits pending previews while provisional cancellation stays separate", async () => {
+ const app = await readFile("app.js","utf8");
+ const start = app.indexOf('textEditDialog?.addEventListener("close", () => {');
+ const end = app.indexOf("\\ntextStylePresetButtons.forEach", start);
+ assert.ok(start >= 0 && end > start, "text editor close handler is present");
+ const closeHandler = app.slice(start, end);
+ assert.match(closeHandler, /const preview = state\.textPreview/);
+ assert.match(closeHandler, /contentType === "text"/);
+ assert.match(closeHandler, /commitLayerText\(preview\.layerId, preview\.values, "Cambios de texto guardados al cerrar el editor"\)/);
+});
+
 
 test("AA-TYPOGRAPHY-CANVA-001 keeps the text modal reachable on mobile and supports title-first editing", async () => {
  const [html, app, css, worker, browserE2E] = await Promise.all([
@@ -127,7 +138,7 @@ test("AA-TYPOGRAPHY-CANVA-001 keeps the text modal reachable on mobile and suppo
  assert.match(app, /finishTransformInteraction\(false, event\)/);
  assert.match(css, /AA-TYPOGRAPHY-CANVA-002/);
  assert.match(css, /#text-edit-dialog\[open\]/);
- assert.match(worker, /animeart-web-shell-v48/);
+ assert.match(worker, /animeart-web-shell-v49/);
  assert.match(browserE2E, /mobile Text fills the available app viewport, remains editable, and switches away from brush mode/);
  assert.match(browserE2E, /dragging text never adds brush strokes/);
  assert.match(browserE2E, /tapping the moved text opens the editor/);
@@ -161,5 +172,5 @@ test("AA-TOOL-STUDIOS-001 keeps the mobile dock focused and separates image crop
  assert.match(css, /#shape-maker-dialog\[open\]/);
  assert.match(css, /height: 100dvh/);
  assert.match(css, /#canvas-crop-dialog/);
- assert.match(worker, /animeart-web-shell-v48/);
+ assert.match(worker, /animeart-web-shell-v49/);
 });
