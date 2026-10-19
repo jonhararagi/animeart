@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
     private var webView: WebView? = null
     private var pendingFileChooser: ValueCallback<Array<Uri>>? = null
     private var pendingExportBytes: ByteArray? = null
-    private var pendingExportName: String = "animeart.png"
+    private var pendingExportName: String = "kapiart.png"
 
     private val fileChooserLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -112,7 +112,7 @@ class MainActivity : ComponentActivity() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !packageManager.canRequestPackageInstalls()) {
                     Toast.makeText(
                         this@MainActivity,
-                        "Android necesita que autorices la instalación de APK para AnimeArt. Activá el permiso y luego tocá Abrir APK otra vez.",
+                        "Android necesita que autorices la instalación de APK para KapiArt. Activá el permiso y luego tocá Abrir APK otra vez.",
                         Toast.LENGTH_LONG
                     ).show()
                     try {
@@ -206,7 +206,7 @@ class MainActivity : ComponentActivity() {
                         clipData = ClipData.newUri(contentResolver, safeName, uri)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
-                    startActivity(Intent.createChooser(sendIntent, "Compartir diseño de AnimeArt"))
+                    startActivity(Intent.createChooser(sendIntent, "Compartir diseño de KapiArt"))
                 } catch (error: Exception) {
                     Toast.makeText(this@MainActivity, error.message ?: "No se pudo compartir el diseño.", Toast.LENGTH_LONG).show()
                 }

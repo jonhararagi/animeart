@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <application
         android:allowBackup="true"
-        android:label="AnimeArt"
+        android:label="KapiArt"
         android:icon="@drawable/ic_animeart_launcher"
         android:roundIcon="@drawable/ic_animeart_launcher"
         android:supportsRtl="true"

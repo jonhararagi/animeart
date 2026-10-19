@@ -62,7 +62,7 @@ test("dev server serves the editor shell and required asset MIME types", async (
   try {
     const html = await fetch(baseUrl + "/");
     assert.equal(html.status, 200);
-    assert.match(await html.text(), /AnimeArt Studio \| Diseña tu mundo anime/);
+    assert.match(await html.text(), /KapiArt Studio \| Crea arte anime con ternura/);
 
     const css = await fetch(baseUrl + "/styles.css");
     assert.equal(css.status, 200);

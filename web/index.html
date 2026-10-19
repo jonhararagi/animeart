@@ -3,24 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#100d20">
-  <meta name="description" content="AnimeArt Studio: editor anime y cyber-kawaii, con capas editables y herramientas creativas locales sin conexión.">
+  <meta name="theme-color" content="#241a19">
+  <meta name="description" content="KapiArt Studio: editor creativo anime cute inspirado en una mascota capibara, con capas editables y herramientas locales sin conexión.">
   <link rel="manifest" href="./manifest.webmanifest">
-  <title>AnimeArt Studio | Diseña tu mundo anime</title>
+  <title>KapiArt Studio | Crea arte anime con ternura</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="./" aria-label="AnimeArt Studio, inicio">
-      <svg class="brand-mark" viewBox="0 0 108 108" role="img" aria-label="Símbolo AnimeArt">
-        <path d="M54 5 96 29v50L54 103 12 79V29Z" fill="#111026" stroke="#00eaff" stroke-width="3"/>
-        <path d="M54 17 85 35v37L54 90 23 72V35Z" fill="#221536" stroke="#ff4fd8" stroke-width="2"/>
-        <path d="M54 27 31 77h12l11-26 11 26h12L54 27Z" fill="#fff5ff"/>
-        <path d="M46 62h16" stroke="#00eaff" stroke-width="5" stroke-linecap="round"/>
-        <path d="M79 15l3 7 7 3-7 3-3 7-3-7-7-3 7-3Z" fill="#ff4fd8"/>
-        <circle cx="28" cy="22" r="3" fill="#00eaff"/><circle cx="81" cy="84" r="3" fill="#ffe37d"/>
-      </svg>
-      <span class="brand-copy"><strong>AnimeArt</strong><small>STUDIO CREATIVO · ANIME &amp; NEÓN</small></span>
+    <a class="brand" href="./" aria-label="KapiArt Studio, inicio">
+      <img class="brand-mascot" src="./assets/kapiart-mascot.png" alt="Mascota de KapiArt">
+      <span class="brand-copy"><strong>KapiArt</strong><small>ARTE ANIME · CUTE STUDIO</small></span>
     </a>
     <div class="topbar-actions"><button id="editor-mode-toggle" type="button" aria-label="Cambiar modo de edición">Modo simple</button><button id="appearance-open" type="button" aria-label="Personalizar apariencia">Apariencia</button><div class="status" id="status">Edición local</div></div>
     <div class="mobile-top-actions" role="group" aria-label="Acciones del editor">
@@ -36,7 +29,7 @@
     <aside class="toolbar" aria-label="Herramientas de edición">
       <section class="easy-edit-panel" aria-labelledby="easy-edit-title">
         <div class="easy-edit-heading"><span class="brand-panel-kicker">AA</span><div><h2 id="easy-edit-title">Tu taller creativo</h2><p>Diseña anime, títulos y escenas neón</p></div></div>
-        <div class="brand-launchpad" aria-label="Accesos principales de AnimeArt">
+        <div class="brand-launchpad" aria-label="Accesos principales de KapiArt">
           <button type="button" id="home-create-cover" class="brand-launch-action brand-launch-cover"><svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="3"/><path d="m6.5 16 4.2-4.4 2.8 2.8 2.2-2.2 2.3 3.8"/><circle cx="15.8" cy="7.8" r="1.25"/></svg><b>Crear portada</b><small>Anime · cyberpunk</small></button>
           <button type="button" id="home-add-title" class="brand-launch-action brand-launch-title"><svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6V4h16v2M12 4v16M8 20h8"/></svg><b>Títulos</b><small>Letras con estilo</small></button>
           <button type="button" id="home-open-stickers" class="brand-launch-action brand-launch-stickers"><svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 14.4 9l5.9.5-4.5 3.8 1.4 5.8-5.2-3.1-5.2 3.1 1.4-5.8-4.5-3.8 5.9-.5Z"/><path d="M18.7 3.7v3.5M17 5.45h3.4"/></svg><b>Stickers</b><small>Brillos y adornos</small></button>
@@ -47,12 +40,12 @@
           <svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.7 6.8-4.2M8.6 13.3l6.8 4.2"/></svg>
           <span><b>Compartir diseño</b><small>Canva u otra app, solo si tú la eliges</small></span>
         </button>
-        <p class="brand-share-note">Se comparte una imagen terminada. Tu proyecto y sus capas se quedan en AnimeArt.</p>
+        <p class="brand-share-note">Se comparte una imagen terminada. Tu proyecto y sus capas se quedan en KapiArt.</p>
         <button type="button" id="open-apk-installer" class="brand-apk-action">
           <svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h4"/><path d="m16 15 2 2 3-4"/></svg>
           <span><b>Abrir APK con Android</b><small>Elegí un APK y confirmá la instalación en el sistema</small></span>
         </button>
-        <p class="brand-share-note">Por seguridad, AnimeArt no instala en silencio: Android muestra sus permisos y confirmación.</p>
+        <p class="brand-share-note">Por seguridad, KapiArt no instala en silencio: Android muestra sus permisos y confirmación.</p>
         <div class="editor-mode-switch" role="group" aria-label="Modo de edición">
           <button type="button" data-editor-mode="simple" aria-pressed="true">🌱 Modo simple</button>
           <button type="button" data-editor-mode="interactive" aria-pressed="false">✋ Modo interactivo</button>
@@ -379,7 +372,7 @@
   <dialog id="toolbox-dialog" class="toolbox-dialog" aria-labelledby="toolbox-title">
     <section class="toolbox-dialog-shell">
       <header class="toolbox-dialog-header">
-        <div><p class="eyebrow">ANIMEART · HERRAMIENTAS</p><h2 id="toolbox-title">¿Qué querés hacer?</h2><p>Elegí una acción. Los estudios grandes se abren por separado para darte espacio, opciones y una vista previa antes de aplicar.</p></div>
+        <div><p class="eyebrow">KAPIART · HERRAMIENTAS</p><h2 id="toolbox-title">¿Qué querés hacer?</h2><p>Elegí una acción. Los estudios grandes se abren por separado para darte espacio, opciones y una vista previa antes de aplicar.</p></div>
         <button type="button" id="toolbox-close" class="mini-dialog-close" aria-label="Cerrar herramientas">✕</button>
       </header>
       <div class="toolbox-support-tools">
@@ -427,7 +420,7 @@
   <dialog id="creative-studio-dialog" class="creative-studio-dialog" aria-labelledby="creative-studio-title">
     <section class="creative-studio-shell">
       <header class="creative-studio-header">
-        <div><p class="eyebrow">ANIMEART · ESTUDIO CREATIVO</p><h2 id="creative-studio-title">Diseños listos para personalizar</h2><p>Portadas originales, stickers y títulos. Cada elemento se añade como una capa independiente.</p></div>
+        <div><p class="eyebrow">KAPIART · ESTUDIO CREATIVO</p><h2 id="creative-studio-title">Diseños listos para personalizar</h2><p>Portadas originales, stickers y títulos. Cada elemento se añade como una capa independiente.</p></div>
         <button type="button" id="creative-studio-x" class="mini-dialog-close" aria-label="Cerrar estudio creativo">✕</button>
       </header>
       <nav class="creative-studio-tabs" role="tablist" aria-label="Catálogo creativo">
@@ -902,7 +895,7 @@
         notice.id = "local-file-protocol-warning";
         notice.setAttribute("role", "alert");
         notice.style.cssText = "position:fixed;z-index:99999;inset:12px 12px auto;padding:18px 20px;border:2px solid #ffbd69;border-radius:12px;background:#241b12;color:#fff2dd;box-shadow:0 12px 48px #000b;font:16px/1.55 system-ui,sans-serif";
-        notice.innerHTML = "<strong style='display:block;font-size:20px;margin-bottom:8px'>AnimeArt no se puede ejecutar abriendo este archivo directamente.</strong><p style='margin:0 0 8px'>El navegador bloquea los módulos JavaScript en direcciones <code>file://</code>. Por eso los botones no responden.</p><p style='margin:0 0 8px'>En Windows, abre la carpeta completa del proyecto y ejecuta <code>START_ANIMEART.bat</code>. Se abrirá el editor en <a href='http://127.0.0.1:4173/' style='color:#7ee7ff'>http://127.0.0.1:4173/</a>.</p><p style='margin:0'>Si descargaste solo la carpeta <code>web</code>, instala Node.js 22+ y ejecuta <code>START_ANIMEART.bat</code> dentro de esa carpeta, o abre una terminal ahí y usa <code>node scripts\\serve.mjs</code>.</p>";
+        notice.innerHTML = "<strong style='display:block;font-size:20px;margin-bottom:8px'>KapiArt no se puede ejecutar abriendo este archivo directamente.</strong><p style='margin:0 0 8px'>El navegador bloquea los módulos JavaScript en direcciones <code>file://</code>. Por eso los botones no responden.</p><p style='margin:0 0 8px'>En Windows, abre la carpeta completa del proyecto y ejecuta <code>START_ANIMEART.bat</code>. Se abrirá el editor en <a href='http://127.0.0.1:4173/' style='color:#f2a2a0'>http://127.0.0.1:4173/</a>.</p><p style='margin:0'>Si descargaste solo la carpeta <code>web</code>, instala Node.js 22+ y ejecuta <code>START_ANIMEART.bat</code> dentro de esa carpeta, o abre una terminal ahí y usa <code>node scripts\\serve.mjs</code>.</p>";
         document.body.prepend(notice);
       });
     }

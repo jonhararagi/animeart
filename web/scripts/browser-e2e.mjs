@@ -387,7 +387,7 @@ try {
     throw error;
   }
 
-  assert(await evaluate("document.title") === "AnimeArt Studio | Diseña tu mundo anime", "real browser loaded the AnimeArt Studio entrypoint");
+  assert(await evaluate("document.title") === "KapiArt Studio | Crea arte anime con ternura", "real browser loaded the KapiArt entrypoint");
   const canvas = await selectorCenter("#canvas");
   assert(canvas.width > 0 && canvas.height > 0, "canvas exists and has usable layout dimensions");
   assert(await evaluate(`getComputedStyle(document.querySelector("#canvas")).visibility !== "hidden" && getComputedStyle(document.querySelector("#canvas")).display !== "none"`), "canvas is visible");
