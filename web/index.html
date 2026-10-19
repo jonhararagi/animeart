@@ -58,6 +58,7 @@
           <label class="guided-toggle"><input id="editing-help-enabled" type="checkbox" checked> Ayúdame a editar</label>
           <button type="button" id="show-edit-example">¿Cómo hago esto?</button>
           <button type="button" id="show-edit-example-action">Mostrarme un ejemplo</button>
+          <button type="button" id="guided-editing-open">🧭 Edición guiada en 3 pasos</button>
         </div>
         <section id="editing-help-card" class="editing-help-card" aria-live="polite">
           <button type="button" id="close-editing-help" aria-label="Cerrar consejo">×</button>
@@ -381,6 +382,7 @@
           <button type="button" id="quick-open-asset-library"><span aria-hidden="true">▦</span><b>Mis imágenes</b><small>Biblioteca reutilizable</small></button>
           <button type="button" id="quick-open-creative-studio"><span aria-hidden="true">✦</span><b>Stickers y portadas</b><small>Diseños anime listos para usar</small></button>
         </div>
+        <button type="button" id="guided-editing-open-mobile" class="guided-editing-mobile-launcher"><span aria-hidden="true">🧭</span> Edición guiada en 3 pasos</button>
         <div class="mobile-output-options" role="group" aria-label="Formato y tamaño de exportación">
           <label for="mobile-export-format">Formato<select id="mobile-export-format" aria-label="Formato de exportación móvil"><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="webp">WebP</option></select></label>
           <label for="mobile-export-resolution">Tamaño<select id="mobile-export-resolution" aria-label="Resolución de exportación móvil"><option value="normal">Normal</option><option value="hd">HD</option></select></label>
@@ -414,6 +416,29 @@
           <button type="button" data-edit-goal="creative-studio"><span aria-hidden="true">✨</span><b>Estudio creativo</b><small>Portadas, stickers y títulos anime</small></button>
         </div>
       <p class="toolbox-note">Dibujar crea trazos en una capa editable. Pintar y Borrar píxeles abren un estudio de la imagen con vista previa y confirmación; Borrar con pincel trabaja directamente en la capa seleccionada. Recortar permite elegir una imagen o toda la composición.</p>
+    </section>
+  </dialog>
+
+  <dialog id="guided-editing-dialog" class="guided-editing-dialog" aria-labelledby="guided-editing-title">
+    <section class="guided-editing-shell">
+      <header class="guided-editing-header">
+        <div><p class="eyebrow">KAPIART · APRENDE CREANDO</p><h2 id="guided-editing-title">Edición guiada en 3 pasos</h2><p>Usa las herramientas reales del editor. La guía acompaña tu trabajo y conserva el progreso al salir.</p></div>
+        <button type="button" id="guided-editing-close" class="mini-dialog-close" aria-label="Cerrar guía">✕</button>
+      </header>
+      <label class="guided-flow-switch" for="guided-flow-select"><span>¿Qué quieres crear?</span>
+        <select id="guided-flow-select"><option value="portrait-clean">Retrato anime limpio</option><option value="sticker-anime">Sticker anime personalizado</option><option value="anime-cover">Portada anime o kawaii</option></select>
+      </label>
+      <div class="guided-progress-heading"><strong id="guided-progress-label">Paso 1 de 3</strong><span id="guided-progress-count">0 de 3 completados</span></div>
+      <div id="guided-progress-track" class="guided-progress-track" role="progressbar" aria-label="Progreso de la guía" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0"><span id="guided-progress-fill"></span></div>
+      <ol id="guided-step-list" class="guided-step-list" aria-label="Pasos de la guía"></ol>
+      <section class="guided-current-step" aria-live="polite">
+        <p id="guided-step-kicker" class="guided-step-kicker">PASO 1</p><h3 id="guided-step-title">Prepara tu imagen</h3><p id="guided-step-description">Importa una imagen para comenzar.</p>
+        <div class="guided-learning-grid"><div><strong>Qué cambia</strong><p id="guided-step-what">La imagen se añade como una capa editable.</p></div><div><strong>Por qué conviene</strong><p id="guided-step-why">Un encuadre claro mejora la composición.</p></div></div>
+        <details class="guided-advanced-tip"><summary>Consejo avanzado</summary><p id="guided-step-advanced">Puedes ajustar los parámetros desde la herramienta original.</p></details>
+        <p id="guided-step-notice" class="guided-step-notice" role="status">Abre la herramienta indicada y vuelve para confirmar el paso.</p>
+        <div class="guided-action-row"><button type="button" id="guided-step-back">← Volver</button><button type="button" id="guided-step-secondary" hidden>Otra herramienta</button><button type="button" id="guided-step-action" class="guided-primary-action">Abrir herramienta</button><button type="button" id="guided-step-complete" class="guided-confirm-action">Confirmar paso y continuar</button></div>
+      </section>
+      <footer class="guided-editing-footer"><p>Los cambios se aplican en el editor. No se aplana ni se exporta nada sin que lo elijas.</p><button type="button" id="guided-editing-cancel">Guardar progreso y salir</button></footer>
     </section>
   </dialog>
 

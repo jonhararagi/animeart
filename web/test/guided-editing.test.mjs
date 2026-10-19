@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { GUIDED_EDITING_FLOWS, canCompleteGuidedStep, completeGuidedStep, createGuidedProgress, getGuidedFlow, getGuidedStep, goToPreviousGuidedStep, hasGuidedImage, isGuidedFlowComplete, recordGuidedActionLaunched } from "../domain/guided-editing.mjs";
 
 test("beginner panel and censor controls are connected to the canonical editor", async () => {
  const html = await readFile("index.html","utf8");
@@ -173,4 +174,61 @@ test("AA-TOOL-STUDIOS-001 keeps the mobile dock focused and separates image crop
  assert.match(css, /height: 100dvh/);
  assert.match(css, /#canvas-crop-dialog/);
  assert.match(worker, /animeart-web-shell-v50/);
+});
+
+import test from "node:test";
+import assert from "node:assert/strict";
+import { GUIDED_EDITING_FLOWS, canCompleteGuidedStep, completeGuidedStep, createGuidedProgress, getGuidedFlow, getGuidedStep, goToPreviousGuidedStep, hasGuidedImage, isGuidedFlowComplete, recordGuidedActionLaunched } from "../domain/guided-editing.mjs";
+
+test("KapiArt offers three real, three-step routes using existing editor actions",()=>{
+ assert.deepEqual(GUIDED_EDITING_FLOWS.map(flow=>flow.id),["portrait-clean","sticker-anime","anime-cover"]);
+ assert.ok(GUIDED_EDITING_FLOWS.every(flow=>flow.steps.length===3));
+ assert.ok(GUIDED_EDITING_FLOWS.every(flow=>flow.steps.every(item=>item.action&&item.actionLabel&&item.description&&item.why&&item.advancedTip)));
+ assert.equal(getGuidedFlow("sticker-anime").steps[1].action,"remove-background");
+ assert.equal(getGuidedFlow("sticker-anime").steps[2].action,"export-transparent");
+ assert.equal(getGuidedFlow("anime-cover").steps[1].action,"creative-studio");
+ assert.equal(getGuidedStep("portrait-clean",3),null);
+ assert.equal(getGuidedFlow("missing"),null);
+});
+test("guided steps cannot be marked complete before launching their real editor action",()=>{
+ const progress=createGuidedProgress("sticker-anime");
+ assert.equal(canCompleteGuidedStep(progress,progress.flowId,{layers:[{contentType:"image"}]}),false);
+ const launched=recordGuidedActionLaunched(progress,progress.flowId);
+ assert.equal(canCompleteGuidedStep(launched,launched.flowId,{layers:[]}),false);
+ assert.equal(canCompleteGuidedStep(launched,launched.flowId,{layers:[{contentType:"image"}]}),true);
+ assert.throws(()=>completeGuidedStep(progress,progress.flowId,{layers:[{contentType:"image"}]}),/Abre primero/);
+ assert.throws(()=>completeGuidedStep(launched,launched.flowId,{layers:[]}),/Importa primero/);
+});
+test("guided progress advances sequentially, supports Back, and retains completed steps",()=>{
+ const flowId="portrait-clean",document={layers:[{contentType:"image",image:{source:"fixture"}}]};
+ let progress=recordGuidedActionLaunched(createGuidedProgress(flowId),flowId);
+ progress=completeGuidedStep(progress,flowId,document).progress;
+ assert.equal(progress.stepIndex,1);
+ assert.deepEqual(progress.completedStepIds,["prepare"]);
+ progress=goToPreviousGuidedStep(progress,flowId);
+ assert.equal(progress.stepIndex,0);
+ progress=completeGuidedStep(progress,flowId,document).progress;
+ assert.equal(progress.stepIndex,1);
+ progress=recordGuidedActionLaunched(progress,flowId);
+ progress=completeGuidedStep(progress,flowId,document).progress;
+ progress=recordGuidedActionLaunched(progress,flowId);
+ const result=completeGuidedStep(progress,flowId,document);
+ assert.equal(result.completed,true);
+ assert.equal(isGuidedFlowComplete(result.progress,flowId),true);
+});
+test("image requirement prevents a guide from completing an empty project",()=>{
+ assert.equal(hasGuidedImage({layers:[]}),false);
+ assert.equal(hasGuidedImage({layers:[{contentType:"drawing"}]}),false);
+ assert.equal(hasGuidedImage({layers:[{contentType:"image"}]}),true);
+});
+
+test("three-step guide is reachable in desktop and mobile toolbox, with offline module and KapiArt palette",async()=>{
+ const [html,app,css,worker]=await Promise.all([readFile("index.html","utf8"),readFile("app.js","utf8"),readFile("styles.css","utf8"),readFile("service-worker.js","utf8")]);
+ for(const id of ["guided-editing-open","guided-editing-open-mobile","guided-editing-dialog","guided-flow-select","guided-step-action","guided-step-secondary","guided-step-back","guided-step-complete","guided-editing-cancel"])assert.ok(html.includes('id="'+id+'"'),"missing guided-editing control: "+id);
+ for(const flowId of ["portrait-clean","sticker-anime","anime-cover"])assert.ok(html.includes('value="'+flowId+'"'));
+ assert.match(app,/function launchGuidedStepAction\(actionId\)/);
+ for(const action of ["import-image","fit-image","remove-background","color-adjustments","crop-image","creative-studio","add-text","export-transparent","export-png"])assert.ok(app.includes('"'+action+'"'),"missing real editor action: "+action);
+ assert.match(app,/completeGuidedStep\(currentGuidedProgress\(\),activeGuidedFlowId,state\.document\)/);
+ assert.match(css,/#241A19/);assert.match(css,/#F2A2A0/);assert.match(css,/min-height:48px/);
+ assert.match(worker,/animeart-web-shell-v51/);assert.match(worker,/\.\/domain\/guided-editing\.mjs/);
 });
