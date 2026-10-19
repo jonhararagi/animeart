@@ -14,13 +14,16 @@ test("KapiArt's identity, mascot and quick actions are discoverable and availabl
   }
   assert.match(html, /class="brand-mascot"/);
   assert.match(html, /ARTE ANIME · CUTE STUDIO/);
-  assert.match(css, /AA-BRAND-001/);\n  assert.match(css, /KAPIART-CUTE-BRAND-001/);\n  assert.match(css, /--brand-cocoa:\\s*#4c352f/i);
+  assert.match(css, /AA-BRAND-001/);
+  assert.match(css, /KAPIART-CUTE-BRAND-001/);
+  assert.match(css, /--brand-cocoa:\s*#4c352f/i);
   assert.match(css, /\.brand-launchpad/);
   assert.match(manifest, /"name": "KapiArt Studio/);
   assert.match(manifest, /animeart-mark\.svg/);
   assert.match(icon, /<svg/);
   assert.match(icon, /#f2a2a0/i);
-  assert.doesNotMatch(icon, /#00eaff/i);\n  assert.ok(mascot.length > 100_000, "the supplied mascot should be bundled for offline use");
+  assert.doesNotMatch(icon, /#00eaff/i);
+  assert.ok(mascot.length > 100_000, "the supplied mascot should be bundled for offline use");
   assert.match(catalog, /id:"neon-vanguard"/);
   assert.match(catalog, /id:"neon-valkyrie"/);
   assert.match(app, /function initializeBrandLaunchpad\(/);
