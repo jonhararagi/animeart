@@ -29,6 +29,7 @@ test("KapiArt's identity, mascot and quick actions are discoverable and availabl
   assert.match(app, /function initializeBrandLaunchpad\(/);
   assert.match(worker, /animeart-web-shell-v50/);
   assert.match(worker, /\.\/icons\/animeart-mark\.svg/);
+  assert.match(worker, /\.\/assets\/kapiart-mascot\.png/);
 });
 
 
