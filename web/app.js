@@ -14,6 +14,7 @@ import { clearCanvasBackingStore } from "./domain/canvas-rendering.mjs";
 import { addLayer, clearLayer, cropDocumentCanvas, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
+import { GUIDED_EDITING_FLOWS, canCompleteGuidedStep, completeGuidedStep, createGuidedProgress, getGuidedFlow, getGuidedStep, goToPreviousGuidedStep, hasGuidedImage, isGuidedFlowComplete, persistGuidedEditingProgress, recordGuidedActionLaunched } from "./domain/guided-editing.mjs";
 
 import { BUILT_IN_BACKGROUND_PROFILES, deleteBackgroundProfile, listBackgroundProfiles, saveBackgroundProfile } from "./domain/background-removal-profiles.mjs";
 import { fitImportedImageTransform } from "./domain/image-import.mjs";
@@ -4540,6 +4541,142 @@ helpToggle.addEventListener("change", () => {
   document.querySelector("#editing-help-card").hidden = !helpToggle.checked;
 });
 
+
+const GUIDED_PROGRESS_STORAGE_KEY = "kapiart-guided-editing-progress-v1";
+const guidedEditingDialog = document.querySelector("#guided-editing-dialog");
+const guidedFlowSelect = document.querySelector("#guided-flow-select");
+const guidedProgressByFlow = Object.create(null);
+let activeGuidedFlowId = "portrait-clean";
+function sanitizeGuidedProgress(saved,flowId){
+ const fresh=createGuidedProgress(flowId),flow=getGuidedFlow(flowId);
+ if(!saved||saved.flowId!==flowId)return fresh;
+ const validIds=new Set(flow.steps.map(item=>item.id));
+ const completedStepIds=Array.isArray(saved.completedStepIds)?[...new Set(saved.completedStepIds.filter(id=>validIds.has(id)))]:[];
+ const launchedStepIds=Array.isArray(saved.launchedStepIds)?[...new Set(saved.launchedStepIds.filter(id=>validIds.has(id)))]:[];
+ const numericIndex=Number.isInteger(saved.stepIndex)?saved.stepIndex:0;
+ return {flowId,stepIndex:Math.max(0,Math.min(flow.steps.length-1,numericIndex)),completedStepIds,launchedStepIds};
+}
+function loadGuidedEditingState(){
+ const fallback={activeFlowId:"portrait-clean",progressByFlow:Object.create(null)};
+ for(const flow of GUIDED_EDITING_FLOWS)fallback.progressByFlow[flow.id]=createGuidedProgress(flow.id);
+ try{
+  const saved=JSON.parse(localStorage.getItem(GUIDED_PROGRESS_STORAGE_KEY)||"null");
+  if(!saved||saved.version!==1||!saved.progressByFlow)return fallback;
+  const restored={activeFlowId:getGuidedFlow(saved.activeFlowId)?saved.activeFlowId:fallback.activeFlowId,progressByFlow:Object.create(null)};
+  for(const flow of GUIDED_EDITING_FLOWS)restored.progressByFlow[flow.id]=sanitizeGuidedProgress(saved.progressByFlow[flow.id],flow.id);
+  return restored;
+ }catch{return fallback;}
+}
+let guidedEditingState=loadGuidedEditingState();
+activeGuidedFlowId=guidedEditingState.activeFlowId;
+Object.assign(guidedProgressByFlow,guidedEditingState.progressByFlow);
+function currentGuidedProgress(){return guidedProgressByFlow[activeGuidedFlowId];}
+function persistGuidedEditingState(){
+ persistGuidedEditingProgress(localStorage,GUIDED_PROGRESS_STORAGE_KEY,{version:1,activeFlowId:activeGuidedFlowId,progressByFlow:guidedProgressByFlow});
+}
+function renderGuidedEditingDialog(){
+ const flow=getGuidedFlow(activeGuidedFlowId);if(!flow)return;
+ const progress=currentGuidedProgress(),step=getGuidedStep(flow.id,progress.stepIndex);if(!step)return;
+ guidedFlowSelect.value=flow.id;
+ const completedCount=progress.completedStepIds.length,flowComplete=isGuidedFlowComplete(progress,flow.id);
+ const stepComplete=progress.completedStepIds.includes(step.id),launched=progress.launchedStepIds.includes(step.id);
+ document.querySelector("#guided-progress-label").textContent=flowComplete?"Guía completada":"Paso "+(progress.stepIndex+1)+" de "+flow.steps.length;
+ document.querySelector("#guided-progress-count").textContent=completedCount+" de "+flow.steps.length+" completados";
+ document.querySelector("#guided-progress-track").setAttribute("aria-valuenow",String(completedCount));
+ document.querySelector("#guided-progress-fill").style.width=Math.round(completedCount/flow.steps.length*100)+"%";
+ const list=document.querySelector("#guided-step-list");list.replaceChildren();
+ flow.steps.forEach((item,index)=>{
+  const li=document.createElement("li"),marker=document.createElement("span"),label=document.createElement("span");
+  marker.className="guided-step-marker";marker.textContent=progress.completedStepIds.includes(item.id)?"✓":String(index+1);
+  label.className="guided-step-list-label";label.textContent=item.title;
+  li.dataset.state=progress.completedStepIds.includes(item.id)?"complete":index===progress.stepIndex?"current":"upcoming";
+  if(index===progress.stepIndex)li.setAttribute("aria-current","step");
+  li.append(marker,label);list.append(li);
+ });
+ document.querySelector("#guided-step-kicker").textContent="PASO "+(progress.stepIndex+1);
+ document.querySelector("#guided-step-title").textContent=step.title;
+ document.querySelector("#guided-step-description").textContent=step.description;
+ document.querySelector("#guided-step-what").textContent=step.description;
+ document.querySelector("#guided-step-why").textContent=step.why;
+ document.querySelector("#guided-step-advanced").textContent=step.advancedTip;
+ const notice=document.querySelector("#guided-step-notice");
+ if(flowComplete)notice.textContent="¡Buen trabajo! La ruta está completa. Puedes seguir editando las capas o empezar otra guía.";
+ else if(stepComplete)notice.textContent="Este paso ya está confirmado. Puedes volver a revisarlo o continuar.";
+ else if(!hasGuidedImage(state.document))notice.textContent="Importa una imagen con la acción indicada. Si cancelas el selector, la guía no marcará el paso como terminado.";
+ else if(launched)notice.textContent="Ya abriste la herramienta. Revisa y confirma el resultado antes de continuar; puedes deshacer desde el editor.";
+ else notice.textContent="Abre la herramienta real, revisa su resultado y vuelve aquí para confirmar el paso.";
+ const secondary=document.querySelector("#guided-step-secondary");
+ secondary.hidden=!step.secondaryAction;secondary.textContent=step.secondaryAction?.label||"Otra herramienta";
+ document.querySelector("#guided-step-action").textContent=step.actionLabel;
+ document.querySelector("#guided-step-back").disabled=progress.stepIndex===0;
+ const completeButton=document.querySelector("#guided-step-complete");
+ completeButton.disabled=flowComplete||!canCompleteGuidedStep(progress,flow.id,state.document);
+ completeButton.textContent=flowComplete?"Guía completada ✓":stepComplete?"Continuar →":progress.stepIndex===flow.steps.length-1?"Confirmar y terminar":"Confirmar paso y continuar";
+}
+function openGuidedEditingDialog(){
+ if(toolboxDialog?.open)toolboxDialog.close();
+ renderGuidedEditingDialog();
+ if(!guidedEditingDialog.open)guidedEditingDialog.showModal();
+}
+function focusGuidedImageLayer(){
+ let layer=selectedLayerExact();
+ if(!layer||layer.contentType!=="image"||!layer.image||layer.locked)layer=[...state.document.layers].reverse().find(item=>item.contentType==="image"&&item.image&&!item.locked);
+ if(!layer){status.textContent="Primero importa una imagen y selecciona una capa de imagen desbloqueada.";return false;}
+ if(layer.id!==state.selectedLayerId)setSelection([layer.id],layer.id);
+ // setSelection updates the selection indicator, but image buttons refresh in renderLayers().
+ // Refresh the real controls now so a previously selected text layer cannot leave them disabled.
+ refreshImageEditButton();
+ return true;
+}
+function launchGuidedStepAction(actionId){
+ const actionMap={
+  "import-image":{selector:"#add-image-layer",needsImage:false,run:()=>document.querySelector("#add-image-layer")?.click()},
+  "fit-image":{selector:"#fit-image-to-canvas",needsImage:true,run:()=>runEditGoal("fit")},
+  "remove-background":{selector:"#remove-background",needsImage:true,run:()=>runEditGoal("background")},
+  "color-adjustments":{selector:"#adjustments-title",needsImage:true,run:()=>runEditGoal("color")},
+  "crop-image":{selector:"#crop-resize-image",needsImage:true,run:()=>runEditGoal("crop-image")},
+  "creative-studio":{selector:"#creative-studio-open",needsImage:false,run:()=>runEditGoal("creative-studio")},
+  "add-text":{selector:"#add-text-layer",needsImage:false,run:()=>runEditGoal("text")},
+  "export-transparent":{selector:"#export-transparent-png",needsImage:true,run:()=>document.querySelector("#export-transparent-png")?.click()},
+  "export-png":{selector:"#export-png",needsImage:true,run:()=>document.querySelector("#export-png")?.click()}
+ };
+ const action=actionMap[actionId],flow=getGuidedFlow(activeGuidedFlowId),progress=currentGuidedProgress();
+ if(!action||!flow||!getGuidedStep(flow.id,progress.stepIndex))return false;
+ if(action.needsImage&&!focusGuidedImageLayer()){
+  document.querySelector("#guided-step-notice").textContent="Esta acción necesita una capa de imagen desbloqueada. Importa o selecciona una antes de continuar.";return false;
+ }
+ const element=document.querySelector(action.selector);
+ if(!element){document.querySelector("#guided-step-notice").textContent="Esta herramienta no está disponible en esta versión. No se ha simulado la operación.";return false;}
+ if(element.disabled){document.querySelector("#guided-step-notice").textContent="Desbloquea la capa seleccionada y vuelve a abrir esta herramienta.";return false;}
+ guidedProgressByFlow[flow.id]=recordGuidedActionLaunched(progress,flow.id);
+ persistGuidedEditingState();guidedEditingDialog.close();action.run();return true;
+}
+document.querySelector("#guided-editing-open")?.addEventListener("click",openGuidedEditingDialog);
+document.querySelector("#guided-editing-open-mobile")?.addEventListener("click",openGuidedEditingDialog);
+document.querySelector("#guided-editing-close")?.addEventListener("click",()=>guidedEditingDialog.close());
+document.querySelector("#guided-editing-cancel")?.addEventListener("click",()=>{persistGuidedEditingState();guidedEditingDialog.close();});
+guidedEditingDialog?.addEventListener("close",persistGuidedEditingState);
+guidedFlowSelect?.addEventListener("change",()=>{
+ const nextFlowId=guidedFlowSelect.value;if(!getGuidedFlow(nextFlowId))return;
+ activeGuidedFlowId=nextFlowId;persistGuidedEditingState();renderGuidedEditingDialog();
+});
+document.querySelector("#guided-step-action")?.addEventListener("click",()=>{
+ const step=getGuidedStep(activeGuidedFlowId,currentGuidedProgress().stepIndex);if(step)launchGuidedStepAction(step.action);
+});
+document.querySelector("#guided-step-secondary")?.addEventListener("click",()=>{
+ const step=getGuidedStep(activeGuidedFlowId,currentGuidedProgress().stepIndex);if(step?.secondaryAction)launchGuidedStepAction(step.secondaryAction.action);
+});
+document.querySelector("#guided-step-back")?.addEventListener("click",()=>{
+ guidedProgressByFlow[activeGuidedFlowId]=goToPreviousGuidedStep(currentGuidedProgress(),activeGuidedFlowId);
+ persistGuidedEditingState();renderGuidedEditingDialog();
+});
+document.querySelector("#guided-step-complete")?.addEventListener("click",()=>{
+ try{
+  guidedProgressByFlow[activeGuidedFlowId]=completeGuidedStep(currentGuidedProgress(),activeGuidedFlowId,state.document).progress;
+  persistGuidedEditingState();renderGuidedEditingDialog();
+ }catch(error){document.querySelector("#guided-step-notice").textContent=error.message||"Revisa el paso antes de continuar.";}
+});
+
 undoButton.addEventListener("click", undo);
 
 document.querySelector("#selection-mini-lock")?.addEventListener("click", () => {
@@ -6106,7 +6243,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v50";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v51";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",

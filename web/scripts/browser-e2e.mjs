@@ -166,7 +166,7 @@ const waitFor = async (expression, timeout = 10000) => {
     if (value) return value;
     await sleep(100);
   }
-  throw new Error(`Timed out waiting for: ${expression}; url=${await evaluate("location.href").catch(() => "unavailable")}; title=${await evaluate("document.title").catch(() => "unavailable")}; readyState=${await evaluate("document.readyState").catch(() => "unavailable")}; canvasCount=${await evaluate("document.querySelectorAll(\"canvas\").length").catch(() => "unavailable")}; console=${JSON.stringify(browserDiagnostics.slice(-20))}`);
+  throw new Error(`Timed out waiting for: ${expression}; url=${await evaluate("location.href").catch(() => "unavailable")}; title=${await evaluate("document.title").catch(() => "unavailable")}; readyState=${await evaluate("document.readyState").catch(() => "unavailable")}; canvasCount=${await evaluate("document.querySelectorAll(\"canvas\").length").catch(() => "unavailable")}; status=${JSON.stringify(await evaluate("document.querySelector('#status')?.textContent || 'missing'").catch(() => "unavailable"))}; storageRecovery=${JSON.stringify(await evaluate("({hidden:document.querySelector('#storage-recovery-notice')?.hidden,text:document.querySelector('#storage-recovery-notice')?.textContent})").catch(() => "unavailable"))}; savedVersion=${JSON.stringify(await evaluate("JSON.parse(localStorage.getItem('animeart-web-document') || '{}').version ?? null").catch(() => "unavailable"))}; console=${JSON.stringify(browserDiagnostics.slice(-20))}`);
 };
 
 const readServiceWorkerDiagnostics = async () => evaluate(`(async () => {
@@ -2062,6 +2062,36 @@ try {
   assert(await evaluate('document.readyState === "complete" && document.querySelector("#canvas") && document.querySelector("#selection-mini-edit-text")'),
     "editor remains responsive after moving, reopening, editing, and saving a text layer");
   await saveScreenshot("animeart-mobile-typography.png");
+
+
+  // KapiArt's three-step learning flow launches the real importer and background-removal tool on mobile.
+  await evaluate('(() => { const text=document.querySelector("#text-edit-dialog"); if(text?.open) text.close(); const guide=document.querySelector("#guided-editing-dialog"); if(guide?.open) guide.close(); const toolbox=document.querySelector("#toolbox-dialog"); if(!toolbox.open) toolbox.showModal(); })()');
+  await waitFor('document.querySelector("#toolbox-dialog")?.open === true');
+  assert(await evaluate('(() => { const button=document.querySelector("#guided-editing-open-mobile"); const r=button.getBoundingClientRect(); const s=getComputedStyle(button); return Boolean(button&&s.display!=="none"&&r.width>=44&&r.height>=44&&r.bottom<=innerHeight); })()'),
+    "three-step learning is reachable from the mobile toolbox with a touch-sized action");
+  await click("#guided-editing-open-mobile");
+  await waitFor('document.querySelector("#guided-editing-dialog")?.open === true');
+  assert(await evaluate('document.querySelectorAll("#guided-flow-select option").length === 3 && document.querySelectorAll("#guided-step-list li").length === 3'),
+    "guided editor exposes three real three-step routes");
+  await evaluate('(() => { const select=document.querySelector("#guided-flow-select"); select.value="sticker-anime"; select.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await waitFor('document.querySelector("#guided-step-title")?.textContent === "Prepara el personaje"');
+  await evaluate('(() => { const input=document.querySelector("#image-file-input"); window.__animeArtPickerOpenCount=0; window.__animeArtOriginalPickerClick=input.click.bind(input); input.click=()=>{window.__animeArtPickerOpenCount+=1;}; })()');
+  await click("#guided-step-action");
+  await waitFor('window.__animeArtPickerOpenCount === 1');
+  assert(await evaluate('document.querySelector("#guided-editing-dialog")?.open === false'),
+    "the import action hands control to the real device picker instead of faking an image operation");
+  await evaluate('document.querySelector("#image-file-input").dispatchEvent(new Event("cancel",{bubbles:true}))');
+  await evaluate('(() => { const input=document.querySelector("#image-file-input"); input.click=window.__animeArtOriginalPickerClick; })()');
+  await evaluate('(() => { const toolbox=document.querySelector("#toolbox-dialog"); if(!toolbox.open) toolbox.showModal(); document.querySelector("#guided-editing-open-mobile").click(); })()');
+  await waitFor('document.querySelector("#guided-editing-dialog")?.open === true');
+  await click("#guided-step-complete");
+  await waitFor('document.querySelector("#guided-step-title")?.textContent === "Separa la silueta"');
+  await click("#guided-step-action");
+  await waitFor('document.querySelector("#background-removal-dialog")?.open === true');
+  assert(await evaluate('document.querySelector("#background-removal-preview")?.getBoundingClientRect().width > 0'),
+    "the sticker guide opens the actual local background-removal preview");
+  await click("#cancel-background-removal");
+  await waitFor('document.querySelector("#background-removal-dialog")?.open === false');
 
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {
