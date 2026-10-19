@@ -136,7 +136,7 @@ jobs:
         run: |
           set -euo pipefail
           SOURCE_APK="app/build/outputs/apk/debug/app-debug.apk"
-          VERSIONED_APK="AnimeArt-Android-v0.3.1-${GITHUB_SHA}.apk"
+          VERSIONED_APK="AnimeArt-Android-v0.3.2-${GITHUB_SHA}.apk"
           test -s "$SOURCE_APK"
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
           AAPT="$(find "$SDK_ROOT/build-tools" -type f -name aapt | sort -V | tail -n 1)"
@@ -145,7 +145,7 @@ jobs:
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose --print-certs "$SOURCE_APK" > "$RUNNER_TEMP/animeart-apk-signature.txt" 2>&1
           "$AAPT" dump badging "$SOURCE_APK" > "$RUNNER_TEMP/animeart-apk-badging.txt"
-          grep -F "package: name='com.jonhararagi.animeart' versionCode='4' versionName='0.3.1'" "$RUNNER_TEMP/animeart-apk-badging.txt"
+          grep -F "package: name='com.jonhararagi.animeart' versionCode='5' versionName='0.3.2'" "$RUNNER_TEMP/animeart-apk-badging.txt"
           CERT_SHA256="$(awk '
             {
               lower=tolower($0)
@@ -181,7 +181,7 @@ jobs:
           {
             echo "application_id=com.jonhararagi.animeart"
             echo "version_code=4"
-            echo "version_name=0.3.1"
+            echo "version_name=0.3.2"
             echo "source_sha=$GITHUB_SHA"
             echo "signing_mode=${ANIMEART_SIGNING_MODE:-ephemeral-debug}"
             echo "signer_certificate_sha256=$CERT_SHA256"
@@ -197,9 +197,9 @@ jobs:
       - name: Upload versioned Android APK
         uses: actions/upload-artifact@v7
         with:
-          name: animeart-android-debug-v0.3.1-${{ github.sha }}
+          name: animeart-android-debug-v0.3.2-${{ github.sha }}
           path: |
-            AnimeArt-Android-v0.3.1-${{ github.sha }}.apk
-            AnimeArt-Android-v0.3.1-${{ github.sha }}.apk.sha256
-            AnimeArt-Android-v0.3.1-${{ github.sha }}.signing.txt
+            AnimeArt-Android-v0.3.2-${{ github.sha }}.apk
+            AnimeArt-Android-v0.3.2-${{ github.sha }}.apk.sha256
+            AnimeArt-Android-v0.3.2-${{ github.sha }}.signing.txt
           if-no-files-found: error
