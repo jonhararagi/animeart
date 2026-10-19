@@ -90,6 +90,7 @@ jobs:
           test -s "$WEB/domain/image-processing.mjs"
           test -s "$WEB/domain/creative-catalog.mjs"
           test -s "$WEB/domain/canvas-rendering.mjs"
+          test -s "$WEB/domain/freehand-rendering.mjs"
           test -s "$WEB/domain/image-processing-client.mjs"
           test -s "$WEB/workers/image-processing-worker.mjs"
           grep -q 'id="creative-studio-dialog"' "$WEB/index.html"
