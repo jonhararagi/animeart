@@ -3567,3 +3567,27 @@ La CI real del navegador prueba el Worker dedicado; Android CI prueba el empaque
 **Límite importante:** el documento sigue guardando las fuentes de imagen dentro de JSON en localStorage (límite conservador 2,5 millones de caracteres). La limitación de lotes reduce picos de memoria, pero no hace que un proyecto pueda guardar 200 GB ni elimina la cuota de localStorage. Para muchos recursos hay que migrar blobs a IndexedDB y referencias en el documento. No se conoce la causa exacta del cierre sin logcat/reproducción. Prueba física del selector APK pendiente.
 
 Estado: **PARTIAL** hasta que Web CI, Android CI y artefacto del HEAD final queden verificados, y hasta la prueba en Xiaomi 24116RACCG.
+
+
+---
+
+## Continuidad · importación cancelada y matriz de referentes · 2026-10-19
+
+**TIMER:** 30–60 minutos estimados para revisar la integración, registrar la evidencia y organizar el siguiente tramo; no es tiempo activo medido.
+
+### Corrección integrada
+
+- **PR #94** [fix(import): handle cancelled image file reads](https://github.com/jonhararagi/animeart/pull/94) fue integrada mediante squash en `main`.
+- **SHA integrado:** `bb540dd0752f4aca243d2e83cd6a7e281309ad9e` ([commit](https://github.com/jonhararagi/animeart/commit/bb540dd0752f4aca243d2e83cd6a7e281309ad9e)).
+- En `web/domain/image-import.mjs`, el evento `FileReader.onabort` ahora rechaza la promesa con un error claro en vez de dejar pendiente la importación cancelada.
+- Se añadió un test de regresión en `web/test/image-import.test.mjs`.
+- Sobre el HEAD exacto de la PR `0805a6ad36b2d66ef1edc19d5c971e35c300b7c0`: [Web CI #39235368250 PASS](https://github.com/jonhararagi/animeart/actions/runs/39235368250) y [Android CI #39235368369 PASS](https://github.com/jonhararagi/animeart/actions/runs/39235368369). Incluyeron build/tests y E2E real de Chromium; Android incluyó build, lint, instrumentación/startup smoke y verificación de APK.
+- Tras integrar en `main`, [Web CI #39258039391 PASS](https://github.com/jonhararagi/animeart/actions/runs/39258039391) y [despliegue web #39258039414 PASS](https://github.com/jonhararagi/animeart/actions/runs/39258039414) sobre `bb540dd...`.
+- **Android CI posterior al merge:** al preparar este registro seguía en ejecución: [run #39258039392](https://github.com/jonhararagi/animeart/actions/runs/39258039392). No declarar todavía PASS ni afirmar que la APK ya está publicada; completar este apartado con resultado, ID real del artefacto y checksum una vez finalice.
+
+### Estado de los bloqueos móviles
+
+- Los E2E del código actual incluyen movimiento libre de capas fuera del marco, controles de recuperación y verificación de exportación recortada al tamaño del documento.
+- [Issue #73](https://github.com/jonhararagi/animeart/issues/73) y [issue #86](https://github.com/jonhararagi/animeart/issues/86) permanecen abiertos hasta validar el flujo con el dedo y comprobar estabilidad/consumo en el Xiaomi `24116RACCG`. No se considera la emulación como prueba física.
+- El workflow Android prepara AnimeArt `v0.3.2`, `versionCode=5`, pero la compatibilidad de actualización depende de la firma utilizada. Comprobar el informe de firma del artefacto antes de prometer una actualización sobre una instalación previa.
+- Se añadió la matriz [EDITOR-COMPETITOR-MATRIX](./AUDITS/2026-10-19-EDITOR-COMPETITOR-MATRIX.md). Su estado es **PARTIAL** porque la búsqueda web en vivo no estuvo disponible: contiene prioridades y pruebas de AnimeArt, pero no pretende ser una auditoría de las últimas versiones de los cinco referentes. No usarla como prueba de superioridad comparativa.
