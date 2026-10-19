@@ -4246,3 +4246,11 @@ dialog {
  .guided-editing-footer{align-items:stretch;flex-direction:column}
  .guided-editing-footer p{max-width:none}
 }
+
+/* KapiArt: optional mascot coaching uses the existing persistent editing-help preference. */
+.guided-mascot-tip{display:grid;grid-template-columns:54px minmax(0,1fr);align-items:center;gap:12px;padding:10px 12px;border:1px solid #4C352F;border-radius:14px;background:#2B211F}
+.guided-mascot-tip[hidden]{display:none}
+.guided-mascot-tip img{display:block;width:54px;height:54px;object-fit:contain;border-radius:12px;background:#392B29}
+.guided-mascot-tip strong{display:block;margin-bottom:3px;color:#F2A2A0;font-size:.82rem}
+.guided-mascot-tip p{margin:0;color:#e1cfc5;font-size:.78rem;line-height:1.45}
+@media(max-width:620px){.guided-mascot-tip{grid-template-columns:44px minmax(0,1fr);gap:9px;padding:8px 10px}.guided-mascot-tip img{width:44px;height:44px}.guided-mascot-tip p{font-size:.74rem}}

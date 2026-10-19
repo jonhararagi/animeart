@@ -4539,6 +4539,7 @@ helpToggle.checked = getEditingHelpPreference();
 helpToggle.addEventListener("change", () => {
   setEditingHelpPreference(helpToggle.checked);
   document.querySelector("#editing-help-card").hidden = !helpToggle.checked;
+  if (guidedEditingDialog?.open) renderGuidedEditingDialog();
 });
 
 
@@ -4599,6 +4600,11 @@ function renderGuidedEditingDialog(){
  document.querySelector("#guided-step-what").textContent=step.description;
  document.querySelector("#guided-step-why").textContent=step.why;
  document.querySelector("#guided-step-advanced").textContent=step.advancedTip;
+ const mascotTip=document.querySelector("#guided-mascot-tip");
+ if(mascotTip){
+  mascotTip.hidden=!helpToggle.checked;
+  document.querySelector("#guided-mascot-tip-copy").textContent=step.why;
+ }
  const notice=document.querySelector("#guided-step-notice");
  if(flowComplete)notice.textContent="¡Buen trabajo! La ruta está completa. Puedes seguir editando las capas o empezar otra guía.";
  else if(stepComplete)notice.textContent="Este paso ya está confirmado. Puedes volver a revisarlo o continuar.";
@@ -4631,14 +4637,22 @@ function focusGuidedImageLayer(){
 function launchGuidedStepAction(actionId){
  const actionMap={
   "import-image":{selector:"#add-image-layer",needsImage:false,run:()=>document.querySelector("#add-image-layer")?.click()},
+  "create-canvas":{selector:"#new-document",needsImage:false,run:()=>document.querySelector("#new-document")?.click()},
   "fit-image":{selector:"#fit-image-to-canvas",needsImage:true,run:()=>runEditGoal("fit")},
+  "quick-recipe-ice-blue":{selector:'[data-quick-recipe="ice-blue"]',needsImage:true,run:()=>document.querySelector('[data-quick-recipe="ice-blue"]')?.click()},
+  "quick-recipe-manga-ink":{selector:'[data-quick-recipe="manga-ink"]',needsImage:true,run:()=>document.querySelector('[data-quick-recipe="manga-ink"]')?.click()},
+  "quick-recipe-soft-dream":{selector:'[data-quick-recipe="soft-dream"]',needsImage:true,run:()=>document.querySelector('[data-quick-recipe="soft-dream"]')?.click()},
+  "add-drawing-layer":{selector:"#add-layer",needsImage:true,run:()=>document.querySelector("#add-layer")?.click()},
+  "draw-tool":{selector:'.toolbar .tool[data-tool="brush"]',needsImage:false,run:()=>runEditGoal("draw")},
   "remove-background":{selector:"#remove-background",needsImage:true,run:()=>runEditGoal("background")},
   "color-adjustments":{selector:"#adjustments-title",needsImage:true,run:()=>runEditGoal("color")},
   "crop-image":{selector:"#crop-resize-image",needsImage:true,run:()=>runEditGoal("crop-image")},
   "creative-studio":{selector:"#creative-studio-open",needsImage:false,run:()=>runEditGoal("creative-studio")},
   "add-text":{selector:"#add-text-layer",needsImage:false,run:()=>runEditGoal("text")},
   "export-transparent":{selector:"#export-transparent-png",needsImage:true,run:()=>document.querySelector("#export-transparent-png")?.click()},
-  "export-png":{selector:"#export-png",needsImage:true,run:()=>document.querySelector("#export-png")?.click()}
+  "export-png":{selector:"#export-png",needsImage:true,run:()=>document.querySelector("#export-png")?.click()},
+  "export-document":{selector:"#export-png",needsImage:false,run:()=>document.querySelector("#export-png")?.click()},
+  "export-jpeg":{selector:"#export-png",needsImage:true,run:()=>{const format=document.querySelector("#export-format");if(format)format.value="jpeg";document.querySelector("#export-png")?.click();}}
  };
  const action=actionMap[actionId],flow=getGuidedFlow(activeGuidedFlowId),progress=currentGuidedProgress();
  if(!action||!flow||!getGuidedStep(flow.id,progress.stepIndex))return false;
@@ -6243,7 +6257,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v51";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v52";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",

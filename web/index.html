@@ -425,8 +425,21 @@
         <div><p class="eyebrow">KAPIART · APRENDE CREANDO</p><h2 id="guided-editing-title">Edición guiada en 3 pasos</h2><p>Usa las herramientas reales del editor. La guía acompaña tu trabajo y conserva el progreso al salir.</p></div>
         <button type="button" id="guided-editing-close" class="mini-dialog-close" aria-label="Cerrar guía">✕</button>
       </header>
+      <aside id="guided-mascot-tip" class="guided-mascot-tip" hidden aria-label="Consejo de Kapi">
+        <img src="./assets/kapiart-mascot.png" alt="Mascota oficial de KapiArt" width="54" height="54">
+        <div><strong>Consejo de Kapi</strong><p id="guided-mascot-tip-copy">Un buen encuadre facilita todos los pasos posteriores.</p></div>
+      </aside>
       <label class="guided-flow-switch" for="guided-flow-select"><span>¿Qué quieres crear?</span>
-        <select id="guided-flow-select"><option value="portrait-clean">Retrato anime limpio</option><option value="sticker-anime">Sticker anime personalizado</option><option value="anime-cover">Portada anime o kawaii</option></select>
+        <select id="guided-flow-select">
+          <option value="portrait-clean">Retrato anime limpio</option>
+          <option value="sticker-anime">Sticker anime personalizado</option>
+          <option value="anime-cover">Portada anime o kawaii</option>
+          <option value="cyberpunk-neon">Anime cyberpunk neón</option>
+          <option value="manga-vignette">Viñeta manga</option>
+          <option value="colored-illustration">Ilustración coloreada</option>
+          <option value="anime-wallpaper">Fondo de pantalla anime</option>
+          <option value="photo-improve">Mejorar foto o ilustración</option>
+        </select>
       </label>
       <div class="guided-progress-heading"><strong id="guided-progress-label">Paso 1 de 3</strong><span id="guided-progress-count">0 de 3 completados</span></div>
       <div id="guided-progress-track" class="guided-progress-track" role="progressbar" aria-label="Progreso de la guía" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0"><span id="guided-progress-fill"></span></div>
