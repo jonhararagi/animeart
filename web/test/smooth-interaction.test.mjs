@@ -30,8 +30,11 @@ test("canvas rendering is frame-coalesced and freehand consumes coalesced pointe
   const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
   assert.match(app, /redrawScheduler\.schedule\(drawNow\)/);
   assert.match(app, /function drawNow\(\)/);
-  assert.match(app, /typeof event\.getCoalescedEvents === "function"/);
-  assert.match(app, /for \(const sample of \(samples\.length \? samples : \[event\]\)\)/);
+  assert.match(app, /function appendFreehandPointerSamples\(stroke, event/);
+  assert.match(app, /const points = samples\.length \? \[\.\.\.samples, event\] : \[event\]/);
+  assert.match(app, /appendFreehandPointerSamples\(stroke, event\)/);
+  assert.match(app, /appendFinalFreehandPoint\(activeStroke, event\)/);
+  assert.match(app, /traceSmoothStrokePath\(context, stroke\.points\)/);
 });
 
 test("release position is applied before committing layer transforms", async () => {
@@ -56,6 +59,8 @@ test("reduced-motion preference disables UI animation without disabling interact
   assert.match(css, /transition-duration: 0\.01ms !important/);
   assert.match(app, /canvas\.addEventListener\("pointerdown"/);
   assert.match(app, /canvas\.addEventListener\("pointercancel"/);
+  assert.match(app, /dragThreshold: event\.pointerType === "touch" \? \(layer\.contentType === "text" \? 8 : 4\) : 2/);
+  assert.match(app, /travelled < \(interaction\.dragThreshold \?\? 3\)/);
 });
 
 test("freehand event coordinates are passed to createStrokePoint as separate document x/y numbers", async () => {
