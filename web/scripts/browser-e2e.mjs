@@ -1445,12 +1445,14 @@ try {
   assert(Math.hypot(firstDrawPoint.x - expectedDrawStart.x, firstDrawPoint.y - expectedDrawStart.y) < 4 &&
     Math.hypot(lastDrawPoint.x - expectedDrawEnd.x, lastDrawPoint.y - expectedDrawEnd.y) < 4,
     "stored drawing points map back to document coordinates after zoom/pan instead of drifting: " + JSON.stringify({expectedDrawStart,expectedDrawEnd,firstDrawPoint,lastDrawPoint}));
-  const drawViewportCanvasPixelExpression = '(() => { const canvas=document.querySelector("#canvas"),r=canvas.getBoundingClientRect(),p=' + JSON.stringify({x:(drawStart.x+drawEnd.x)/2,y:(drawStart.y+drawEnd.y)/2}) + ',x=Math.max(0,Math.min(canvas.width-1,Math.round((p.x-r.left)*canvas.width/r.width))),y=Math.max(0,Math.min(canvas.height-1,Math.round((p.y-r.top)*canvas.height/r.height))); return Array.from(canvas.getContext("2d",{willReadFrequently:true}).getImageData(x,y,1,1).data); })()';
+  await saveScreenshot("animeart-studio-freehand-zoom-pan.png");
+  const drawViewportCanvasPixelExpression = '(() => { const canvas=document.querySelector("#canvas"),r=canvas.getBoundingClientRect(),p=' + JSON.stringify({x:(drawStart.x+drawEnd.x)/2,y:(drawStart.y+drawEnd.y)/2}) + ',cx=Math.max(0,Math.min(canvas.width-1,Math.round((p.x-r.left)*canvas.width/r.width))),cy=Math.max(0,Math.min(canvas.height-1,Math.round((p.y-r.top)*canvas.height/r.height))),radius=Math.ceil(10*canvas.width/r.width),x0=Math.max(0,cx-radius),y0=Math.max(0,cy-radius),x1=Math.min(canvas.width,cx+radius+1),y1=Math.min(canvas.height,cy+radius+1),data=canvas.getContext("2d",{willReadFrequently:true}).getImageData(x0,y0,x1-x0,y1-y0).data; let hits=0; for(let i=3;i<data.length;i+=4) if(data[i]>0) hits++; return hits; })()';
   // The editor deliberately coalesces canvas redraws to animation frames. Wait for
-  // the final pointer-up frame before sampling its pixels to avoid a timing race.
-  await waitFor('(' + drawViewportCanvasPixelExpression + ')[3] > 0', 5000);
-  const drawViewportCanvasPixel = await evaluate(drawViewportCanvasPixelExpression);
-  assert(drawViewportCanvasPixel[3] > 0, "the zoomed and panned drawing stroke produces actual rendered pixels");
+  // the final pointer-up frame before sampling a small neighborhood around the path:
+  // subpixel antialiasing and CSS/device-pixel ratios can move a one-pixel sample.
+  await waitFor('(' + drawViewportCanvasPixelExpression + ') > 0', 5000);
+  const drawViewportRenderedPixels = await evaluate(drawViewportCanvasPixelExpression);
+  assert(drawViewportRenderedPixels > 0, "the zoomed and panned drawing stroke produces actual rendered pixels near the expected path: " + drawViewportRenderedPixels);
   await click('.mobile-touch-dock [data-touch-action="tool"][data-tool="select"]');
   await click('.mobile-top-actions [data-mobile-top-action="undo"]');
   await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.contentType==="drawing"&&layer.strokes?.length)', 10000);
