@@ -1445,7 +1445,11 @@ try {
   assert(Math.hypot(firstDrawPoint.x - expectedDrawStart.x, firstDrawPoint.y - expectedDrawStart.y) < 4 &&
     Math.hypot(lastDrawPoint.x - expectedDrawEnd.x, lastDrawPoint.y - expectedDrawEnd.y) < 4,
     "stored drawing points map back to document coordinates after zoom/pan instead of drifting: " + JSON.stringify({expectedDrawStart,expectedDrawEnd,firstDrawPoint,lastDrawPoint}));
-  const drawViewportCanvasPixel = await evaluate('(() => { const canvas=document.querySelector("#canvas"),r=canvas.getBoundingClientRect(),p=' + JSON.stringify({x:(drawStart.x+drawEnd.x)/2,y:(drawStart.y+drawEnd.y)/2}) + ',x=Math.max(0,Math.min(canvas.width-1,Math.round((p.x-r.left)*canvas.width/r.width))),y=Math.max(0,Math.min(canvas.height-1,Math.round((p.y-r.top)*canvas.height/r.height))); return Array.from(canvas.getContext("2d",{willReadFrequently:true}).getImageData(x,y,1,1).data); })()');
+  const drawViewportCanvasPixelExpression = '(() => { const canvas=document.querySelector("#canvas"),r=canvas.getBoundingClientRect(),p=' + JSON.stringify({x:(drawStart.x+drawEnd.x)/2,y:(drawStart.y+drawEnd.y)/2}) + ',x=Math.max(0,Math.min(canvas.width-1,Math.round((p.x-r.left)*canvas.width/r.width))),y=Math.max(0,Math.min(canvas.height-1,Math.round((p.y-r.top)*canvas.height/r.height))); return Array.from(canvas.getContext("2d",{willReadFrequently:true}).getImageData(x,y,1,1).data); })()';
+  // The editor deliberately coalesces canvas redraws to animation frames. Wait for
+  // the final pointer-up frame before sampling its pixels to avoid a timing race.
+  await waitFor('(' + drawViewportCanvasPixelExpression + ')[3] > 0', 5000);
+  const drawViewportCanvasPixel = await evaluate(drawViewportCanvasPixelExpression);
   assert(drawViewportCanvasPixel[3] > 0, "the zoomed and panned drawing stroke produces actual rendered pixels");
   await click('.mobile-touch-dock [data-touch-action="tool"][data-tool="select"]');
   await click('.mobile-top-actions [data-mobile-top-action="undo"]');
