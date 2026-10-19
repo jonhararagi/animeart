@@ -166,7 +166,7 @@ const waitFor = async (expression, timeout = 10000) => {
     if (value) return value;
     await sleep(100);
   }
-  throw new Error(`Timed out waiting for: ${expression}; url=${await evaluate("location.href").catch(() => "unavailable")}; title=${await evaluate("document.title").catch(() => "unavailable")}; readyState=${await evaluate("document.readyState").catch(() => "unavailable")}; canvasCount=${await evaluate("document.querySelectorAll(\"canvas\").length").catch(() => "unavailable")}; console=${JSON.stringify(browserDiagnostics.slice(-20))}`);
+  throw new Error(`Timed out waiting for: ${expression}; url=${await evaluate("location.href").catch(() => "unavailable")}; title=${await evaluate("document.title").catch(() => "unavailable")}; readyState=${await evaluate("document.readyState").catch(() => "unavailable")}; canvasCount=${await evaluate("document.querySelectorAll(\"canvas\").length").catch(() => "unavailable")}; status=${JSON.stringify(await evaluate("document.querySelector('#status')?.textContent || 'missing'").catch(() => "unavailable"))}; storageRecovery=${JSON.stringify(await evaluate("({hidden:document.querySelector('#storage-recovery-notice')?.hidden,text:document.querySelector('#storage-recovery-notice')?.textContent})").catch(() => "unavailable"))}; savedVersion=${JSON.stringify(await evaluate("JSON.parse(localStorage.getItem('animeart-web-document') || '{}').version ?? null").catch(() => "unavailable"))}; console=${JSON.stringify(browserDiagnostics.slice(-20))}`);
 };
 
 const readServiceWorkerDiagnostics = async () => evaluate(`(async () => {
