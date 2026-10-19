@@ -37,6 +37,7 @@ export function readFileAsDataUrl(file, Reader = globalThis.FileReader) {
       else resolve(source);
     };
     reader.onerror = () => reject(imageImportError("Could not read image file"));
+    reader.onabort = () => reject(imageImportError("Image file reading was cancelled"));
     try {
       reader.readAsDataURL(file);
     } catch {
