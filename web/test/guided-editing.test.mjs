@@ -223,6 +223,11 @@ test("three-step guide is reachable in desktop and mobile toolbox, with offline 
  for(const id of ["guided-editing-open","guided-editing-open-mobile","guided-editing-dialog","guided-flow-select","guided-step-action","guided-step-secondary","guided-step-back","guided-step-complete","guided-editing-cancel"])assert.ok(html.includes('id="'+id+'"'),"missing guided-editing control: "+id);
  for(const flowId of ["portrait-clean","sticker-anime","anime-cover"])assert.ok(html.includes('value="'+flowId+'"'));
  assert.match(app,/function launchGuidedStepAction\(actionId\)/);
+ const focusStart=app.indexOf("function focusGuidedImageLayer()");
+ const focusEnd=app.indexOf("\\nfunction launchGuidedStepAction",focusStart);
+ const focusBody=app.slice(focusStart,focusEnd);
+ assert.match(focusBody,/item\\.image/);
+ assert.match(focusBody,/refreshImageEditButton\\(\\)/);
  for(const action of ["import-image","fit-image","remove-background","color-adjustments","crop-image","creative-studio","add-text","export-transparent","export-png"])assert.ok(app.includes('"'+action+'"'),"missing real editor action: "+action);
  assert.match(app,/completeGuidedStep\(currentGuidedProgress\(\),activeGuidedFlowId,state\.document\)/);
  assert.match(css,/#241A19/);assert.match(css,/#F2A2A0/);assert.match(css,/min-height:48px/);

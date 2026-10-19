@@ -4620,9 +4620,12 @@ function openGuidedEditingDialog(){
 }
 function focusGuidedImageLayer(){
  let layer=selectedLayerExact();
- if(!layer||layer.contentType!=="image"||layer.locked)layer=[...state.document.layers].reverse().find(item=>item.contentType==="image"&&!item.locked);
+ if(!layer||layer.contentType!=="image"||!layer.image||layer.locked)layer=[...state.document.layers].reverse().find(item=>item.contentType==="image"&&item.image&&!item.locked);
  if(!layer){status.textContent="Primero importa una imagen y selecciona una capa de imagen desbloqueada.";return false;}
  if(layer.id!==state.selectedLayerId)setSelection([layer.id],layer.id);
+ // setSelection updates the selection indicator, but image buttons refresh in renderLayers().
+ // Refresh the real controls now so a previously selected text layer cannot leave them disabled.
+ refreshImageEditButton();
  return true;
 }
 function launchGuidedStepAction(actionId){
