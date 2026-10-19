@@ -139,7 +139,7 @@ test("AA-TYPOGRAPHY-CANVA-001 keeps the text modal reachable on mobile and suppo
  assert.match(app, /finishTransformInteraction\(false, event\)/);
  assert.match(css, /AA-TYPOGRAPHY-CANVA-002/);
  assert.match(css, /#text-edit-dialog\[open\]/);
- assert.match(worker, /animeart-web-shell-v50/);
+ assert.match(worker, /animeart-web-shell-v51/);
  assert.match(browserE2E, /mobile Text fills the available app viewport, remains editable, and switches away from brush mode/);
  assert.match(browserE2E, /dragging text never adds brush strokes/);
  assert.match(browserE2E, /tapping the moved text opens the editor/);
@@ -173,12 +173,8 @@ test("AA-TOOL-STUDIOS-001 keeps the mobile dock focused and separates image crop
  assert.match(css, /#shape-maker-dialog\[open\]/);
  assert.match(css, /height: 100dvh/);
  assert.match(css, /#canvas-crop-dialog/);
- assert.match(worker, /animeart-web-shell-v50/);
+ assert.match(worker, /animeart-web-shell-v51/);
 });
-
-import test from "node:test";
-import assert from "node:assert/strict";
-import { GUIDED_EDITING_FLOWS, canCompleteGuidedStep, completeGuidedStep, createGuidedProgress, getGuidedFlow, getGuidedStep, goToPreviousGuidedStep, hasGuidedImage, isGuidedFlowComplete, recordGuidedActionLaunched } from "../domain/guided-editing.mjs";
 
 test("KapiArt offers three real, three-step routes using existing editor actions",()=>{
  assert.deepEqual(GUIDED_EDITING_FLOWS.map(flow=>flow.id),["portrait-clean","sticker-anime","anime-cover"]);
