@@ -62,7 +62,7 @@ test("AA-MOBILE-EXPORT-SIZE-001 keeps the editable canvas unchanged while offeri
 
 test("web entrypoint exists and references the editor", async () => {
   const html = await readFile("index.html", "utf8");
-  assert.match(html, /AnimeArt Studio \| Diseña tu mundo anime/);
+  assert.match(html, /KapiArt Studio \| Crea arte anime con ternura/);
   assert.match(html, /app\.js/);
 });
 
