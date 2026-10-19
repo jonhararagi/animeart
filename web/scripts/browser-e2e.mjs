@@ -790,6 +790,24 @@ try {
   await click("#redo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.id === ' + JSON.stringify(textLayerId) + ')?.text?.value === "AnimeArt Studio"', 10000);
 
+  // AA-TEXT-CLOSE-PRESERVES-EDITS-001: closing the editor commits a pending live style preview.
+  await evaluate('document.querySelector("#selection-mini-edit-text").click()');
+  await waitFor('document.querySelector("#text-edit-dialog").open === true', 10000);
+  const pendingTextStyle = await evaluate('(() => { const documentModel=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const layer=documentModel.layers.find(item=>item.id===' + JSON.stringify(textLayerId) + '); const input=document.querySelector("#text-font-size"); const before=layer.text.fontSize; const next=Math.min(240,before+13); input.value=String(next); input.dispatchEvent(new Event("input",{bubbles:true})); return {layerId:layer.id,before,next}; })()');
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.fontSize === ' + JSON.stringify(pendingTextStyle.before)),
+    "live text styling remains a preview until the editor is closed or applied");
+  await click("#close-text-edit");
+  await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.fontSize === ' + JSON.stringify(pendingTextStyle.next), 10000);
+  assert((await readDocument()).layers.some(layer => layer.id === textLayerId && layer.text?.fontSize === pendingTextStyle.next),
+    "closing an existing text editor with X commits its pending preview instead of discarding it");
+  await evaluate('document.querySelector("#selection-mini-edit-text").click()');
+  await waitFor('document.querySelector("#text-edit-dialog").open === true', 10000);
+  assert(await evaluate('Number(document.querySelector("#text-font-size").value) === ' + JSON.stringify(pendingTextStyle.next)),
+    "reopening the text editor restores the style committed when it was closed");
+  await click("#apply-text-layer");
+  await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
+
   await click("#add-text-layer");
   const disposableText = (await readDocument()).layers.at(-1);
   assert(disposableText?.contentType === "text", "temporary text fixture is a normal editable layer");

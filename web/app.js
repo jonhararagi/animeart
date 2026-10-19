@@ -2261,9 +2261,18 @@ document.querySelector("#delete-text-layer")?.addEventListener("click", () => {
   if (removeSelectedLayer()) textEditDialog?.close();
 });
 textEditDialog?.addEventListener("close", () => {
-  // Closing with X or Escape cancels an in-progress preview instead of silently applying it.
   delete textEditDialog.dataset.openFallback;
-  if (state.textPreview) state.textPreview = null;
+  // Keep edits to an existing text layer when the user closes the editor with X or Escape.
+  // Canceling a newly created provisional layer removes it before this close event, so its
+  // pending preview has no layer to commit and is safely discarded.
+  if (state.textPreview) {
+    const preview = state.textPreview;
+    const layer = state.document.layers.find(item => item.id === preview.layerId && item.contentType === "text");
+    state.textPreview = null;
+    if (layer) {
+      commitLayerText(preview.layerId, preview.values, "Cambios de texto guardados al cerrar el editor");
+    }
+  }
   redraw();
   renderLayerText();
 });
@@ -6097,7 +6106,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v48";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v49";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
