@@ -180,7 +180,7 @@ jobs:
           SIGNING_REPORT="${VERSIONED_APK%.apk}.signing.txt"
           {
             echo "application_id=com.jonhararagi.animeart"
-            echo "version_code=4"
+            echo "version_code=5"
             echo "version_name=0.3.2"
             echo "source_sha=$GITHUB_SHA"
             echo "signing_mode=${ANIMEART_SIGNING_MODE:-ephemeral-debug}"
