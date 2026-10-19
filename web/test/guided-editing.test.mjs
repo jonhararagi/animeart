@@ -139,7 +139,7 @@ test("AA-TYPOGRAPHY-CANVA-001 keeps the text modal reachable on mobile and suppo
  assert.match(app, /finishTransformInteraction\(false, event\)/);
  assert.match(css, /AA-TYPOGRAPHY-CANVA-002/);
  assert.match(css, /#text-edit-dialog\[open\]/);
- assert.match(worker, /animeart-web-shell-v51/);
+ assert.match(worker, /animeart-web-shell-v52/);
  assert.match(browserE2E, /mobile Text fills the available app viewport, remains editable, and switches away from brush mode/);
  assert.match(browserE2E, /dragging text never adds brush strokes/);
  assert.match(browserE2E, /tapping the moved text opens the editor/);
@@ -173,11 +173,11 @@ test("AA-TOOL-STUDIOS-001 keeps the mobile dock focused and separates image crop
  assert.match(css, /#shape-maker-dialog\[open\]/);
  assert.match(css, /height: 100dvh/);
  assert.match(css, /#canvas-crop-dialog/);
- assert.match(worker, /animeart-web-shell-v51/);
+ assert.match(worker, /animeart-web-shell-v52/);
 });
 
 test("KapiArt offers three real, three-step routes using existing editor actions",()=>{
- assert.deepEqual(GUIDED_EDITING_FLOWS.map(flow=>flow.id),["portrait-clean","sticker-anime","anime-cover"]);
+ assert.deepEqual(GUIDED_EDITING_FLOWS.map(flow=>flow.id),["portrait-clean","sticker-anime","anime-cover","cyberpunk-neon","manga-vignette","colored-illustration","anime-wallpaper","photo-improve"]);
  assert.ok(GUIDED_EDITING_FLOWS.every(flow=>flow.steps.length===3));
  assert.ok(GUIDED_EDITING_FLOWS.every(flow=>flow.steps.every(item=>item.action&&item.actionLabel&&item.description&&item.why&&item.advancedTip)));
  assert.equal(getGuidedFlow("sticker-anime").steps[1].action,"remove-background");
@@ -185,6 +185,24 @@ test("KapiArt offers three real, three-step routes using existing editor actions
  assert.equal(getGuidedFlow("anime-cover").steps[1].action,"creative-studio");
  assert.equal(getGuidedStep("portrait-clean",3),null);
  assert.equal(getGuidedFlow("missing"),null);
+});
+test("advanced routes connect to existing recipes, drawing, canvas, and export tools",()=>{
+ assert.equal(getGuidedFlow("cyberpunk-neon").steps[1].action,"quick-recipe-ice-blue");
+ assert.equal(getGuidedFlow("manga-vignette").steps[1].action,"quick-recipe-manga-ink");
+ assert.equal(getGuidedFlow("colored-illustration").steps[1].secondaryAction.action,"draw-tool");
+ assert.equal(getGuidedFlow("anime-wallpaper").steps[0].action,"create-canvas");
+ assert.equal(getGuidedFlow("anime-wallpaper").steps.every(item=>!item.requiresImage),true);
+ assert.equal(getGuidedFlow("photo-improve").steps[2].action,"export-jpeg");
+ assert.equal(getGuidedFlow("photo-improve").steps.length,3);
+});
+test("wallpaper route can continue on an empty document after the canvas action is launched",()=>{
+ const flowId="anime-wallpaper",emptyDocument={layers:[]};
+ let progress=createGuidedProgress(flowId);
+ assert.equal(canCompleteGuidedStep(progress,flowId,emptyDocument),false);
+ progress=recordGuidedActionLaunched(progress,flowId);
+ assert.equal(canCompleteGuidedStep(progress,flowId,emptyDocument),true);
+ progress=completeGuidedStep(progress,flowId,emptyDocument).progress;
+ assert.equal(progress.stepIndex,1);
 });
 test("guided steps cannot be marked complete before launching their real editor action",()=>{
  const progress=createGuidedProgress("sticker-anime");
@@ -221,15 +239,18 @@ test("image requirement prevents a guide from completing an empty project",()=>{
 test("three-step guide is reachable in desktop and mobile toolbox, with offline module and KapiArt palette",async()=>{
  const [html,app,css,worker]=await Promise.all([readFile("index.html","utf8"),readFile("app.js","utf8"),readFile("styles.css","utf8"),readFile("service-worker.js","utf8")]);
  for(const id of ["guided-editing-open","guided-editing-open-mobile","guided-editing-dialog","guided-flow-select","guided-step-action","guided-step-secondary","guided-step-back","guided-step-complete","guided-editing-cancel"])assert.ok(html.includes('id="'+id+'"'),"missing guided-editing control: "+id);
- for(const flowId of ["portrait-clean","sticker-anime","anime-cover"])assert.ok(html.includes('value="'+flowId+'"'));
+ for(const flowId of ["portrait-clean","sticker-anime","anime-cover","cyberpunk-neon","manga-vignette","colored-illustration","anime-wallpaper","photo-improve"])assert.ok(html.includes('value="'+flowId+'"'));
  assert.match(app,/function launchGuidedStepAction\(actionId\)/);
+ assert.match(app,/mascotTip\.hidden=!helpToggle\.checked/);
+ assert.match(html,/src="\.\/assets\/kapiart-mascot\.png"/);
+ assert.match(html,/id="guided-mascot-tip"/);
  const focusStart=app.indexOf("function focusGuidedImageLayer()");
  const focusEnd=app.indexOf("\\nfunction launchGuidedStepAction",focusStart);
  const focusBody=app.slice(focusStart,focusEnd);
  assert.match(focusBody,/item\.image/);
  assert.match(focusBody,/refreshImageEditButton\(\)/);
- for(const action of ["import-image","fit-image","remove-background","color-adjustments","crop-image","creative-studio","add-text","export-transparent","export-png"])assert.ok(app.includes('"'+action+'"'),"missing real editor action: "+action);
+ for(const action of ["import-image","create-canvas","fit-image","remove-background","color-adjustments","crop-image","creative-studio","add-text","add-drawing-layer","draw-tool","quick-recipe-ice-blue","quick-recipe-manga-ink","quick-recipe-soft-dream","export-transparent","export-png","export-document","export-jpeg"])assert.ok(app.includes('"'+action+'"'),"missing real editor action: "+action);
  assert.match(app,/completeGuidedStep\(currentGuidedProgress\(\),activeGuidedFlowId,state\.document\)/);
  assert.match(css,/#241A19/);assert.match(css,/#F2A2A0/);assert.match(css,/min-height:48px/);
- assert.match(worker,/animeart-web-shell-v51/);assert.match(worker,/\.\/domain\/guided-editing\.mjs/);
+ assert.match(worker,/animeart-web-shell-v52/);assert.match(worker,/\.\/domain\/guided-editing\.mjs/);
 });

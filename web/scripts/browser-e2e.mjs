@@ -2071,8 +2071,15 @@ try {
     "three-step learning is reachable from the mobile toolbox with a touch-sized action");
   await click("#guided-editing-open-mobile");
   await waitFor('document.querySelector("#guided-editing-dialog")?.open === true');
-  assert(await evaluate('document.querySelectorAll("#guided-flow-select option").length === 3 && document.querySelectorAll("#guided-step-list li").length === 3'),
-    "guided editor exposes three real three-step routes");
+  await evaluate('(() => { const toggle=document.querySelector("#editing-help-enabled"); toggle.checked=true; toggle.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  assert(await evaluate('document.querySelectorAll("#guided-flow-select option").length === 8 && document.querySelectorAll("#guided-step-list li").length === 3'),
+    "guided editor exposes eight real three-step routes");
+  assert(await evaluate('document.querySelector("#guided-mascot-tip")?.hidden === false && document.querySelector("#guided-mascot-tip img")?.getAttribute("src") === "./assets/kapiart-mascot.png"'),
+    "the guide uses KapiArt’s official bundled mascot when help is enabled");
+  await evaluate('(() => { const toggle=document.querySelector("#editing-help-enabled"); toggle.checked=false; toggle.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  assert(await evaluate('document.querySelector("#guided-mascot-tip")?.hidden === true'),
+    "disabling editing help hides the mascot card");
+  await evaluate('(() => { const toggle=document.querySelector("#editing-help-enabled"); toggle.checked=true; toggle.dispatchEvent(new Event("change",{bubbles:true})); })()');
   await evaluate('(() => { const select=document.querySelector("#guided-flow-select"); select.value="sticker-anime"; select.dispatchEvent(new Event("change",{bubbles:true})); })()');
   await waitFor('document.querySelector("#guided-step-title")?.textContent === "Prepara el personaje"');
   await evaluate('(() => { const input=document.querySelector("#image-file-input"); window.__animeArtPickerOpenCount=0; window.__animeArtOriginalPickerClick=input.click.bind(input); input.click=()=>{window.__animeArtPickerOpenCount+=1;}; })()');
