@@ -79,6 +79,18 @@ test("File API boundary converts a deterministic File-like object to data URL", 
   assert.match(source, /^data:image\/svg\+xml/);
 });
 
+test("aborted FileReader rejects instead of leaving image import pending", async () => {
+  class AbortedReader {
+    readAsDataURL() {
+      queueMicrotask(() => this.onabort?.());
+    }
+  }
+  await assert.rejects(
+    () => readFileAsDataUrl({ name: "cancelled.png" }, AbortedReader),
+    /reading was cancelled/
+  );
+});
+
 test("browser image boundary returns real decoded dimensions", async () => {
   const dimensions = await decodeImageSource("data:image/svg+xml,<svg width='17' height='11'></svg>", FakeImage);
   assert.deepEqual(dimensions, { width: 17, height: 11 });
