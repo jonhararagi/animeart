@@ -24,8 +24,8 @@ class MainActivityWebViewRotationTest {
             }
             val currentEditorLoaded = evaluateJavascriptResult(
                 webView,
-                """(() => document.title === "AnimeArt Studio | Diseña tu mundo anime" &&
-                    !!document.querySelector(".brand-mark") &&
+                """(() => document.title === "KapiArt Studio | Crea arte anime con ternura" &&
+                    !!document.querySelector(".brand-mascot") &&
                     !!document.querySelector("#home-create-cover") &&
                     !!document.querySelector("#home-open-stickers") &&
                     !!document.querySelector("#share-current-design") &&
