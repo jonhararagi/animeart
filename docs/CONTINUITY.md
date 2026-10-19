@@ -3737,3 +3737,15 @@ Cada flujo contiene tres etapas. Las acciones apuntan a controles existentes del
 5. Si se retoma la investigación comparativa, consultar fuentes oficiales verificables con fechas y enlaces y actualizar la matriz; no sustituir esa tarea por conjeturas.
 
 **Conclusión:** el modo guiado queda ampliado a ocho rutas y la mascota oficial está integrada con preferencia persistente. La versión Android se elevó a 0.3.5 y el PR #99 está integrado. La clasificación global sigue siendo `PARTIAL` hasta comprobar los workflows y el APK de main después de esta actualización de continuidad.
+
+### Evidencia final de main: APK 0.3.5 comprobada
+
+- **SHA del código de la aplicación probado y usado para la APK:** `3a2b92a592671f0021a5b71698e85f6ced47dea3`. La actualización que añadió esta evidencia a continuidad es documentación posterior, sin cambios de código de la aplicación.
+- **Web CI:** [run 39315419217](https://github.com/jonhararagi/animeart/actions/runs/39315419217), PASS sobre el SHA `3a2b92a592671f0021a5b71698e85f6ced47dea3), incluidos tests, benchmark, salida de build y Chromium E2E.
+- **Android CI:** [run 39315419247](https://github.com/jonhararagi/animeart/actions/runs/39315419247), PASS sobre el mismo SHA, incluidos build, verificación de los ocho flujos y de la mascota empaquetados, unit tests, lint, instrumentación/startup smoke, versión, firma y checksum.
+- **Artifact final de GitHub Actions:** [artefacto 12217309706](https://github.com/jonhararagi/animeart/actions/runs/39315419247/artifacts/12217309706), nombre `kapiart-android-debug-v0.3.5-3a2b92a592671f0021a5b71698e85f6ced47dea3`, tamaño del ZIP `10,721,751` bytes.
+- **APK:** `KapiArt-Android-v0.3.5-3a2b92a592671f0021a5b71698e85f6ced47dea3.apk`; tamaño `11,126,316` bytes; paquete `com.jonhararagi.animeart`; `versionCode=8`; `versionName=0.3.5`.
+- **SHA-256 de APK:** `1395d3e6eb6cd9c5699b09453dd4e270d39dd0382ec7616c6f65d2dbdd0af5c0`. El SHA-256 del archivo descargado se comprobó localmente contra el sidecar y terminó en `OK`.
+- **Certificado SHA-256:** `fe84ac7fcbda15d0a9050cc3ae1248bacc956c8020c00956fd2017daa2f99c1b`.
+- **Firma:** `ephemeral-debug`; el informe de CI marca `update_compatibility=NOT GUARANTEED`. No se garantiza instalación encima de una copia firmada con otra clave.
+- **Estado actualizado:** CI del código de aplicación en main = `PASS`; entrega APK y checksum = `PASS`; firma estable e instalación en Xiaomi físico = `PARTIAL` (sin validar). La navegación web comparativa externa no se amplió en esta sesión, por lo que no se declaran nuevas fuentes verificadas.
