@@ -3683,3 +3683,57 @@ Estado: **PARTIAL** hasta que Web CI, Android CI y artefacto del HEAD final qued
 6. La matriz de competidores `docs/AUDITS/2026-10-19-EDITOR-COMPETITOR-MATRIX.md` se conserva; no se añadió investigación web nueva en esta iteración.
 
 **Conclusión:** la edición guiada inicial está integrada y probada en CI; la APK 0.3.4 está creada y su checksum es verificable. El estado global permanece `PARTIAL` por firma de actualización no garantizada, prueba física pendiente y cinco rutas de aprendizaje todavía sin implementar.
+
+## 2026-10-19 | KapiArt Studio: ocho rutas guiadas, mascota y Android 0.3.5
+
+### Estado verificado de esta iteración
+
+- **Estado global: PARTIAL.** El PR #99 está fusionado. Las ocho rutas guiadas están en `main` y la APK 0.3.5 pasó las comprobaciones CI de la rama del PR. La validación posterior al merge y la APK producida desde el SHA final de `main` quedan pendientes de su ejecución más reciente.
+- **SHA anterior de main:** `ccb932535290174e5da55d8c33d0fb2dab25e03d`.
+- **Commit de integración PR #99:** `c1f1d4d3cfaf724172c84a5c88a606daae5d3866`. [PR #99](https://github.com/jonhararagi/animeart/pull/99).
+- **Versión Android prevista:** `versionCode=8`, `versionName=0.3.5`. Paquete sin cambios: `com.jonhararagi.animeart`.
+
+### Rutas de edición guiada
+
+Las guías disponibles son:
+
+1. **Retrato anime limpio**, ya existente.
+2. **Sticker anime personalizado**, ya existente.
+3. **Portada anime o kawaii**, ya existente.
+4. **Anime cyberpunk neón**, usa la receta editable Ice Blue y permite abrir los recursos del Estudio creativo. No promete crear un halo neón automáticamente.
+5. **Viñeta manga**, usa el recorte de imagen, la receta editable Manga Ink y texto opcional.
+6. **Ilustración coloreada**, importa el lineart, crea una capa independiente y activa el pincel.
+7. **Fondo de pantalla anime**, abre el diálogo real de Nuevo para definir dimensiones, compone con el Estudio creativo y exporta.
+8. **Mejorar foto o ilustración**, ofrece la receta Soft Dream, ajustes manuales y exportación JPEG.
+
+Cada flujo contiene tres etapas. Las acciones apuntan a controles existentes del editor y la persona debe revisar y confirmar los pasos. El flujo de fondo de pantalla permite trabajar sobre un lienzo nuevo sin exigir una capa de imagen previa.
+
+### Mascota, preferencia y modo offline
+
+- Se añadió una tarjeta pequeña con la mascota oficial `web/assets/kapiart-mascot.png` dentro de la guía.
+- La tarjeta usa la preferencia existente `Ayúdame a editar`, almacenada mediante el módulo de apariencia. Desactivarla la oculta también durante la guía.
+- Se elevó la caché de shell web de `animeart-web-shell-v51` a `animeart-web-shell-v52`, actualizando los contratos de prueba offline.
+- Android CI ahora comprueba que el paquete incluya el diálogo guiado, `web/domain/guided-editing.mjs`, la imagen oficial de la mascota y las opciones cyberpunk/fotografía.
+
+### CI observado
+
+- **Web CI del PR:** [run 39314716272](https://github.com/jonhararagi/animeart/actions/runs/39314716272), PASS sobre el head `2166bb67e576ecdc1211def3a6b357bff5e25abb). Pasaron tests, benchmark, comprobación de salida y Chromium E2E, incluida la preferencia de la mascota.
+- **Android CI del PR:** [run 39314716266](https://github.com/jonhararagi/animeart/actions/runs/39314716266), PASS. Pasaron build, verificación de recursos, unit tests, lint, instrumentación/startup smoke, verificación de versión, firma y checksum. Para un workflow de `pull_request`, el SHA de checkout/artefacto puede ser el merge ref sintético; por ello este archivo no considera ese APK como la entrega final de main.
+- Después del merge en `c1f1d4d...`, GitHub inició Web CI, Android CI y despliegue web. Sus resultados finales se deben confirmar en la ejecución más reciente de `main` antes de marcar la iteración completa.
+
+### APK, firma y limitaciones
+
+- La nueva APK debe llevar el nombre `KapiArt-Android-v0.3.5-<SHA-DE-MAIN>.apk` y el artifact `kapiart-android-debug-v0.3.5-<SHA-DE-MAIN>`.
+- La firma estable de distribución no está configurada en los secretos de Actions. El workflow usa `ephemeral-debug` y avisa explícitamente que la actualización in-place **no está garantizada** sin la misma clave que la instalación previa.
+- No se realizó una instalación física en el Xiaomi `24116RACCG`.
+- La investigación web comparativa solicitada de Photoshop, Canva, Picsart, Procreate e ibis Paint X no se pudo ampliar en esta sesión porque la herramienta de navegación estaba deshabilitada. No se inventan fuentes ni se declara actualizada la matriz de competidores.
+
+### Pendientes concretos
+
+1. Confirmar PASS de Web CI, Android CI y despliegue sobre el último SHA de main.
+2. Verificar el artefacto 0.3.5 generado por el run Android más reciente de main, su nombre, tamaño, `versionCode=8`, checksum y huella de certificado.
+3. Configurar una clave Android estable de forma segura y comparar su huella con la APK instalada antes de prometer actualización sin desinstalar.
+4. Instalar y probar la APK en el Xiaomi real antes de declarar prueba física PASS.
+5. Si se retoma la investigación comparativa, consultar fuentes oficiales verificables con fechas y enlaces y actualizar la matriz; no sustituir esa tarea por conjeturas.
+
+**Conclusión:** el modo guiado queda ampliado a ocho rutas y la mascota oficial está integrada con preferencia persistente. La versión Android se elevó a 0.3.5 y el PR #99 está integrado. La clasificación global sigue siendo `PARTIAL` hasta comprobar los workflows y el APK de main después de esta actualización de continuidad.
