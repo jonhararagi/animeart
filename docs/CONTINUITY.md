@@ -3637,3 +3637,49 @@ Estado: **PARTIAL** hasta que Web CI, Android CI y artefacto del HEAD final qued
 - No se declara superioridad comparativa frente a Photoshop, Canva, Picsart, Procreate o ibis Paint X; esta iteración se concentra en identidad, la regresión del test Android y el paquete de versión.
 
 **Estado global de esta entrega: PARTIAL.** Marca integrada, Web CI, despliegue web, Android CI y artefacto verificables: PASS. Compatibilidad de actualización por firma y validación física en el Xiaomi: pendientes.
+
+## 2026-10-19 | KapiArt Studio: edición guiada y APK Android 0.3.4
+
+### Estado verificable
+
+- **Estado global: PARTIAL.** Los cambios de edición guiada y la versión Android 0.3.4 están integrados y pasan CI. La entrega no puede considerarse completa para actualización sobre instalaciones existentes porque CI usa una clave de firma efímera y no se ha probado en el Xiaomi físico.
+- **SHA inicial de main:** `cd25da4874bb618194a501138d8b0f5341f3ccb5`.
+- **Integración de edición guiada:** PR [#97](https://github.com/jonhararagi/animeart/pull/97), SHA `8da6245f64dcd6ef7e07af8411d31fa19d07861c`.
+- **Versión Android:** PR [#98](https://github.com/jonhararagi/animeart/pull/98), SHA de release `434e88c01656420cc2b54fbc663d8514ad583914`. Ambos PR están fusionados.
+- **Aplicación:** `com.jonhararagi.animeart), `versionCode=7`, `versionName=0.3.4`. Se conserva el identificador del paquete.
+
+### Cambios de esta iteración
+
+- Nuevo módulo `web/domain/guided-editing.mjs` y diálogo accesible `#guided-editing-dialog`, con entradas para escritorio y el panel móvil.
+- Tres rutas funcionales de tres pasos: **Retrato anime limpio**, **Sticker anime personalizado** y **Portada anime o kawaii**.
+- Cada paso explica qué cambia y por qué, añade consejo avanzado opcional y abre herramientas existentes de importación, encuadre, quitar fondo, ajustes de color, recorte, Estudio creativo, texto o exportación PNG.
+- El paso no se puede confirmar hasta lanzar la acción indicada y tener una capa de imagen. El usuario confirma el resultado manualmente. La guía puede retroceder, cerrarse y guardar el progreso local de cada ruta con la clave `kapiart-guided-editing-progress-v1`.
+- No se añade un borde exterior automático de sticker porque no se validó esa capacidad en el motor existente.
+- Se actualizó la caché web offline de v50 a v51 y la lista del shell para incluir el módulo guiado.
+- Se versionó la aplicación Android a 0.3.4 y se añadió una verificación de CI para comprobar que el diálogo y el módulo de edición guiada estén dentro de los recursos empaquetados.
+
+### CI, despliegue y artefacto
+
+- **Web CI, rama de trabajo:** [run 39303446304](https://github.com/jonhararagi/animeart/actions/runs/39303446304), PASS sobre `f56118e4db2dde0f48127497041506ee422c9030`; incluye los tests web, benchmark y Chromium E2E.
+- **Android CI, rama de trabajo:** [run 39303446063](https://github.com/jonhararagi/animeart/actions/runs/39303446063), PASS sobre `f56118e4db2dde0f48127497041506ee422c9030), incluida instrumentación y startup smoke.
+- **Web CI final en main:** [run 39305228825](https://github.com/jonhararagi/animeart/actions/runs/39305228825), PASS sobre `434e88c01656420cc2b54fbc663d8514ad583914`.
+- **Android CI final en main:** [run 39305228879](https://github.com/jonhararagi/animeart/actions/runs/39305228879), PASS sobre `434e88c01656420cc2b54fbc663d8514ad583914`. Pasaron compilación, verificación de recursos guiados, unit tests, lint, instrumentación/startup smoke, validación de versión, firma y checksum.
+- **Despliegue web con la guía incluida:** [run 39304092780](https://github.com/jonhararagi/animeart/actions/runs/39304092780), PASS sobre `8da6245f64dcd6ef7e07af8411d31fa19d07861c`. El PR posterior #98 solo cambió versión y workflow Android, no el contenido web.
+- **APK final:** `KapiArt-Android-v0.3.4-434e88c01656420cc2b54fbc663d8514ad583914.apk`.
+- **Artifact de Actions:** [Descargar artefacto 12213482325](https://github.com/jonhararagi/animeart/actions/runs/39305228879/artifacts/12213482325).
+- **Tamaño APK:** 11,122,688 bytes.
+- **SHA-256 APK:** `e6f7abcf1ecffc79f4a6cbd3101c1d2fe408eba66534630d826bf89a7c77293b`. El archivo de checksum incluido en el artefacto se verificó localmente y terminó en `OK`.
+- **SHA de código fuente APK:** `434e88c01656420cc2b54fbc663d8514ad583914`.
+- **Certificado SHA-256:** `8e221ebe5899ed9a91af33fb0ee922dfb526ac488aa92a8f788fcbf99e7cd0ae`.
+- **Firma:** `ephemeral-debug`. Los secretos de firma estable no están configurados; el workflow advierte explícitamente que la compatibilidad de actualización no está garantizada.
+
+### Pendientes
+
+1. Configurar la firma Android estable en GitHub Actions con los cuatro secretos requeridos y comparar la huella del certificado con la APK instalada. No guardar claves en el repositorio.
+2. Probar la instalación real en Xiaomi `24116RACCG`. Esa prueba física **no se ha realizado**.
+3. Antes de desinstalar una APK anterior, respaldar los proyectos y otros datos locales. No se debe prometer actualización in-place hasta que certificado y comportamiento de instalación se hayan comprobado.
+4. Implementar y probar las otras cinco rutas solicitadas: cyberpunk neón, viñeta manga, ilustración coloreada, fondo de pantalla anime y mejora de fotografía/ilustración.
+5. Completar la tarjeta de ayuda con la mascota oficial dentro de la guía, si se integra sin estorbar el lienzo y con preferencia local persistente.
+6. La matriz de competidores `docs/AUDITS/2026-10-19-EDITOR-COMPETITOR-MATRIX.md` se conserva; no se añadió investigación web nueva en esta iteración.
+
+**Conclusión:** la edición guiada inicial está integrada y probada en CI; la APK 0.3.4 está creada y su checksum es verificable. El estado global permanece `PARTIAL` por firma de actualización no garantizada, prueba física pendiente y cinco rutas de aprendizaje todavía sin implementar.
