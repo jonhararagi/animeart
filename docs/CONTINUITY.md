@@ -3594,3 +3594,46 @@ Estado: **PARTIAL** hasta que Web CI, Android CI y artefacto del HEAD final qued
 - [Issue #73](https://github.com/jonhararagi/animeart/issues/73) y [issue #86](https://github.com/jonhararagi/animeart/issues/86) permanecen abiertos hasta validar el flujo con el dedo y comprobar estabilidad/consumo en el Xiaomi `24116RACCG`. No se considera la emulación como prueba física.
 - El workflow Android prepara AnimeArt `v0.3.2`, `versionCode=5`, pero la compatibilidad de actualización depende de la firma utilizada. Comprobar el informe de firma del artefacto antes de prometer una actualización sobre una instalación previa.
 - Se añadió la matriz [EDITOR-COMPETITOR-MATRIX](./AUDITS/2026-10-19-EDITOR-COMPETITOR-MATRIX.md). Su estado es **PARTIAL** porque la búsqueda web en vivo no estuvo disponible: contiene prioridades y pruebas de AnimeArt, pero no pretende ser una auditoría de las últimas versiones de los cinco referentes. No usarla como prueba de superioridad comparativa.
+
+
+---
+
+## KapiArt · identidad de mascota y APK Android v0.3.3 · 2026-10-19
+
+**TIMER:** 1–2 horas estimadas para aplicar la identidad de marca, corregir la prueba de instrumentación y validar la entrega; tiempo activo real no medido.
+
+### Integración en main
+
+- La imagen fuente de la mascota está en `pngtuber-capibara.png`. Se usa una copia incluida en los recursos web offline: `web/assets/kapiart-mascot.png`.
+- Se fusionó el [PR #96](https://github.com/jonhararagi/animeart/pull/96), por squash, en `main`.
+- **SHA de integración y de la fuente usada para compilar la APK:** `8dcdd2a496d0f37f08f9287491753fe27013ea1a` ([commit](https://github.com/jonhararagi/animeart/commit/8dcdd2a496d0f37f08f9287491753fe27013ea1a)).
+- La marca visible pasa a **KapiArt / KapiArt Studio**. La identidad usa cocoa oscuro `#241A19`, superficies `#2B211F` y `#392B29`, crema `#FFF4EB`, rosa blush `#F2A2A0` y coral `#E6817B`. La mascota aparece en cabecera e iconografía; conserva contraste, espacio para el lienzo y controles táctiles. No se cambian el ID de aplicación ni las claves existentes de persistencia.
+- Se actualizó `docs/BRAND-IDENTITY.md`, los recursos visuales, la caché offline y las pruebas de identidad/Chromium.
+- Versión Android: `applicationId=com.jonhararagi.animeart`, `versionCode=6`, `versionName=0.3.3`.
+
+### Error investigado y corrección
+
+- En la primera ronda de la rama, Android CI compiló el proyecto y pasó unit tests y lint, pero falló `MainActivityWebViewRotationTest.androidLoadsTheCurrentWebEditorWithCropFlipAndExportControls`.
+- **Causa confirmada:** la aserción aún esperaba el título `AnimeArt Studio | Diseña tu mundo anime` y el selector `.brand-mark`, aunque la UI nueva usa `KapiArt Studio | Crea arte anime con ternura` y `.brand-mascot`.
+- Se actualizaron las aserciones al contrato visible actual. Se conservó la prueba y su verificación de controles del editor; no se retiró el test para silenciar el fallo.
+
+### Pruebas y despliegues verificados
+
+- Web CI del PR: **PASS**, [run #39296568633](https://github.com/jonhararagi/animeart/actions/runs/39296568633), SHA de PR `56dfea61b02b26925ec80a2e269adef569dce324).
+- Android CI del PR: **PASS**, [run #39296568642](https://github.com/jonhararagi/animeart/actions/runs/39296568642), SHA de PR `56dfea61b02b26925ec80a2e269adef569dce324`.
+- Web CI posterior al merge: **PASS**, [run #39297291427](https://github.com/jonhararagi/animeart/actions/runs/39297291427), SHA `8dcdd2a496d0f37f08f9287491753fe27013ea1a`.
+- Despliegue web: **PASS**, [run #39297291440](https://github.com/jonhararagi/animeart/actions/runs/39297291440), SHA `8dcdd2a496d0f37f08f9287491753fe27013ea1a`.
+- Android CI posterior al merge: **PASS**, [run #39297291441](https://github.com/jonhararagi/animeart/actions/runs/39297291441), SHA `8dcdd2a496d0f37f08f9287491753fe27013ea1a`. El workflow terminó build, verificación del editor empaquetado, unit tests, lint, instrumentación/startup smoke, comprobación de firma/paquete/versión, checksum y publicación de artefacto.
+- **APK:** [artefacto #12208122039 · KapiArt Android v0.3.3](https://github.com/jonhararagi/animeart/actions/runs/39297291441/artifacts/12208122039). Artefacto no expirado, creado sobre el SHA de integración.
+- Nombre del archivo: `KapiArt-Android-v0.3.3-8dcdd2a496d0f37f08f9287491753fe27013ea1a.apk`.
+- Tamaño del APK: **11.113.438 bytes**. SHA-256 obtenido y contrastado con el sidecar incluido: `f6cf2e182e6952df3d81dd0af8a8857ffc1d69d478d9d9555f9b9eb6e9cf1198`.
+- El log Android CI confirma `package: name='com.jonhararagi.animeart' versionCode='6' versionName='0.3.3'`, verificación con `apksigner` y checksum `OK`.
+
+### Bloqueos y límites restantes
+
+- La APK se firmó en modo **`ephemeral-debug`**: no estaban configurados los cuatro secretos de firma estable. Certificado SHA-256 del artefacto: `326228223963f7d3b42dc0237edc792666da2461738b2bbdb89020dc706a9b42`.
+- El certificado de la APK anterior documentada en este archivo era `72de06e1c01b6768fd3e9fafaf8cf786511e31da52fcd512687e4600c08f1bd3`; no coincide con el certificado nuevo. **No se garantiza una actualización in-place** de esa instalación. Antes de desinstalar, exportar o respaldar los proyectos locales. Para las siguientes entregas, configurar los secretos detallados en [ANDROID_SIGNING.md](./ANDROID_SIGNING.md). Una clave nueva no sustituye a la antigua si se necesita actualizar una instalación firmada con ese certificado anterior.
+- La prueba en emulador y el arranque offline pasaron, pero **no se ha realizado la prueba física en el Xiaomi `24116RACCG`**. La aceptación táctil/rendimiento en ese dispositivo sigue pendiente.
+- No se declara superioridad comparativa frente a Photoshop, Canva, Picsart, Procreate o ibis Paint X; esta iteración se concentra en identidad, la regresión del test Android y el paquete de versión.
+
+**Estado global de esta entrega: PARTIAL.** Marca integrada, Web CI, despliegue web, Android CI y artefacto verificables: PASS. Compatibilidad de actualización por firma y validación física en el Xiaomi: pendientes.
