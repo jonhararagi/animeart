@@ -1,4 +1,4 @@
-const CACHE_NAME = "animeart-web-shell-v52";
+const CACHE_NAME = "animeart-web-shell-v53";
 const APP_SHELL = [
   "./index.html",
   "./styles.css",
@@ -36,7 +36,8 @@ const APP_SHELL = [
   "./domain/selection.mjs",
   "./domain/viewport.mjs",
   "./domain/frame-scheduler.mjs",
-  "./domain/canvas-rendering.mjs"
+  "./domain/canvas-rendering.mjs",
+  "./domain/freehand-rendering.mjs"
 ];
 
 self.addEventListener("install", event => {
