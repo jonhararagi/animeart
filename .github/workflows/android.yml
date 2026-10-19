@@ -95,6 +95,9 @@ jobs:
           grep -q 'id="creative-studio-dialog"' "$WEB/index.html"
           grep -q 'id="guided-editing-dialog"' "$WEB/index.html"
           test -s "$WEB/domain/guided-editing.mjs"
+          test -s "$WEB/assets/kapiart-mascot.png"
+          grep -q 'value="cyberpunk-neon"' "$WEB/index.html"
+          grep -q 'value="photo-improve"' "$WEB/index.html"
           grep -q 'id="crop-preview"' "$WEB/index.html"
           grep -q 'id="add-text-layer"' "$WEB/index.html"
           grep -q 'id="layer-adjustment-controls"' "$WEB/index.html"
@@ -138,7 +141,7 @@ jobs:
         run: |
           set -euo pipefail
           SOURCE_APK="app/build/outputs/apk/debug/app-debug.apk"
-          VERSIONED_APK="KapiArt-Android-v0.3.4-${GITHUB_SHA}.apk"
+          VERSIONED_APK="KapiArt-Android-v0.3.5-${GITHUB_SHA}.apk"
           test -s "$SOURCE_APK"
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
           AAPT="$(find "$SDK_ROOT/build-tools" -type f -name aapt | sort -V | tail -n 1)"
@@ -147,7 +150,7 @@ jobs:
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose --print-certs "$SOURCE_APK" > "$RUNNER_TEMP/animeart-apk-signature.txt" 2>&1
           "$AAPT" dump badging "$SOURCE_APK" > "$RUNNER_TEMP/animeart-apk-badging.txt"
-          grep -F "package: name='com.jonhararagi.animeart' versionCode='7' versionName='0.3.4'" "$RUNNER_TEMP/animeart-apk-badging.txt"
+          grep -F "package: name='com.jonhararagi.animeart' versionCode='8' versionName='0.3.5'" "$RUNNER_TEMP/animeart-apk-badging.txt"
           CERT_SHA256="$(awk '
             {
               lower=tolower($0)
@@ -182,8 +185,8 @@ jobs:
           SIGNING_REPORT="${VERSIONED_APK%.apk}.signing.txt"
           {
             echo "application_id=com.jonhararagi.animeart"
-            echo "version_code=7"
-            echo "version_name=0.3.4"
+            echo "version_code=8"
+            echo "version_name=0.3.5"
             echo "source_sha=$GITHUB_SHA"
             echo "signing_mode=${ANIMEART_SIGNING_MODE:-ephemeral-debug}"
             echo "signer_certificate_sha256=$CERT_SHA256"
@@ -199,9 +202,9 @@ jobs:
       - name: Upload versioned Android APK
         uses: actions/upload-artifact@v7
         with:
-          name: kapiart-android-debug-v0.3.4-${{ github.sha }}
+          name: kapiart-android-debug-v0.3.5-${{ github.sha }}
           path: |
-            KapiArt-Android-v0.3.4-${{ github.sha }}.apk
-            KapiArt-Android-v0.3.4-${{ github.sha }}.apk.sha256
-            KapiArt-Android-v0.3.4-${{ github.sha }}.signing.txt
+            KapiArt-Android-v0.3.5-${{ github.sha }}.apk
+            KapiArt-Android-v0.3.5-${{ github.sha }}.apk.sha256
+            KapiArt-Android-v0.3.5-${{ github.sha }}.signing.txt
           if-no-files-found: error
