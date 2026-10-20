@@ -40,3 +40,12 @@ test("color replacement rejects malformed rasters and invalid color values", () 
   assert.throws(()=>replaceColorRange({width:2,height:2,data:new Uint8ClampedArray(3)}),/valid image pixels/i);
   assert.throws(()=>replaceColorRange(image([[0,0,0,255]]),{sourceColor:"blue"}),/six-digit/i);
 });
+
+test("color replacement leaves pixels outside the anime selection mask untouched", () => {
+  const source = image([[128,64,32,255],[128,64,32,255],[128,64,32,255]]);
+  const mask = new Uint8Array([1,0,1]);
+  const result = replaceColorRange(source,{sourceColor:"#804020",targetColor:"#00aaff",tolerance:0,softness:0,mask});
+  assert.deepEqual([...result.data.slice(0,3)],[0,170,255]);
+  assert.deepEqual([...result.data.slice(4,7)],[128,64,32]);
+  assert.deepEqual([...result.data.slice(8,11)],[0,170,255]);
+});
