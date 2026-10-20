@@ -254,3 +254,12 @@ test("three-step guide is reachable in desktop and mobile toolbox, with offline 
  assert.match(css,/#241A19/);assert.match(css,/#F2A2A0/);assert.match(css,/min-height:48px/);
  assert.match(worker,/animeart-web-shell-v55/);assert.match(worker,/\.\/domain\/guided-editing\.mjs/);
 });
+
+
+test("AA-GUIDED-STICKER-REAL-FLOW-001 protects the complete sticker guide browser journey", async () => {
+  const browserE2E = await readFile(new URL("../scripts/browser-e2e.mjs", import.meta.url), "utf8");
+  assert.ok(browserE2E.includes("AA-GUIDED-STICKER-REAL-FLOW-001"));
+  assert.ok(browserE2E.includes("guided sticker background removal persists transparent background pixels and opaque subject pixels in the actual edited image"));
+  assert.ok(browserE2E.includes("the sticker guide exports a PNG with actual transparent pixels"));
+  assert.ok(browserE2E.includes("the guide records all three confirmed steps after the real import, cutout, and PNG export"));
+});

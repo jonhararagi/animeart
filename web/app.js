@@ -19,6 +19,7 @@ import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-re
 import { GUIDED_EDITING_FLOWS, canCompleteGuidedStep, completeGuidedStep, createGuidedProgress, getGuidedFlow, getGuidedStep, goToPreviousGuidedStep, hasGuidedImage, isGuidedFlowComplete, persistGuidedEditingProgress, recordGuidedActionLaunched } from "./domain/guided-editing.mjs";
 
 import { BUILT_IN_BACKGROUND_PROFILES, deleteBackgroundProfile, listBackgroundProfiles, saveBackgroundProfile } from "./domain/background-removal-profiles.mjs";
+import { applyEraseStrokes, removeConnectedBackground } from "./domain/background-removal.mjs";
 import { fitImportedImageTransform } from "./domain/image-import.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
 import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot, MAX_IMPORT_FILE_BYTES } from "./domain/image-import.mjs";
