@@ -1245,7 +1245,9 @@ try {
   assert(await evaluate('document.querySelectorAll("#layers li").length === ' + pendingLayerCount), "rejected image import does not report success or commit a layer");
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "warning remains visible after rejected image import");
   await click("#save");
-  await waitFor('document.querySelector("#status").textContent === "Guardado localmente"');
+  // The service-worker diagnostic may update #status asynchronously after a successful
+  // save. Assert the durable recovery state transition here, not a transient status string.
+  await waitFor('document.querySelector("#storage-recovery-notice").hidden === true');
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "successful retry clears the recovery warning only after storage succeeds");
   const quotaRecoverySaved = await readDocument();
   assert(quotaRecoverySaved.version === 2 && quotaRecoverySaved.layers.length === pendingLayerCount, "successful retry stores the selected in-memory replacement document");
