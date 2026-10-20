@@ -1071,8 +1071,10 @@ try {
   await clickMoreGoal("undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Título · Neon idol")===false');
   await clickMoreGoal("undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").length===1');
+  await clickMoreGoal("undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Sticker · Flor de sakura")===false');
-  assert(JSON.stringify((await readDocument()).layers.map(layer=>layer.id))===JSON.stringify(creativeBaselineIds),"Undo removes style pack, word-art title and sticker as three independent history actions");
+  assert(JSON.stringify((await readDocument()).layers.map(layer=>layer.id))===JSON.stringify(creativeBaselineIds),"Undo removes the style pack, title, and both independently inserted stickers as separate history actions");
 
   await evaluate("window.confirm = () => true");
   await clickMoreGoal("creative-studio");
