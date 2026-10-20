@@ -3960,3 +3960,10 @@ Verificar Web CI, Android CI y el artefacto Android ligados al SHA más reciente
 - Se añadieron pruebas de módulo e integración. **CI Web, CI Android/APK y prueba física siguen pendientes** hasta comprobar el HEAD definitivo de la rama.
 - Registro ampliado: [docs/AUDITS/2026-10-20-KAPIART-ANIME-COLOR-STUDIO.md](./AUDITS/2026-10-20-KAPIART-ANIME-COLOR-STUDIO.md).
 - **TIMER estimado:** 4–8 horas; tiempo real no medido.
+
+## Actualización de alcance · selección y borrador de color · 2026-10-20
+
+- Se amplió la rama de trabajo para incluir selector rectangular por arrastre, tolerancia de la varita anime, combinación/limpieza de zonas, búsqueda de tonos en español y controles de temperatura, luminosidad/oscuridad y giro de tono.
+- El recoloreado puede crear una capa independiente `Efecto de color`; el original permanece debajo. La acción `Borrar efecto de color` activa el borrador alfa sobre esa capa para descubrir de nuevo el dibujo original.
+- La rama mantiene el trabajo separado de `main`. **No integrar hasta confirmar Web CI con E2E y Android CI en el SHA definitivo.** TIMER estimado: 4–8 horas para esta primera iteración, tiempo real no medido.
+- Limitación de ML documentada: esta versión usa heurísticas locales para rellenos anime/cel-shading y no ha sido entrenada con miles de imágenes. Una futura etapa de reconocimiento semántico requiere corpus de referencia con procedencia/licencia verificadas, además de evaluación específica en anime.
