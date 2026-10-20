@@ -26,7 +26,12 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.ok(worker.includes("./domain/quick-edit-recipes.mjs"));
   assert.ok(worker.includes("./domain/image-processing-client.mjs"));
   assert.ok(worker.includes("./workers/image-processing-worker.mjs"));
-  assert.match(app, /runImageProcessing\("replace-color-range"/);\n  assert.ok(worker.includes("./domain/anime-color-studio.mjs"));\n  assert.match(app, /selectAnimeRegion/);\n  assert.match(html, /id="recolor-wand-toggle"/);\n  assert.match(html, /id="anime-color-search"/);\n  assert.match(html, /id="recolor-split-layer"/);
+  assert.match(app, /runImageProcessing\("replace-color-range"/);
+  assert.ok(worker.includes("./domain/anime-color-studio.mjs"));
+  assert.match(app, /selectAnimeRegion/);
+  assert.match(html, /id="recolor-wand-toggle"/);
+  assert.match(html, /id="anime-color-search"/);
+  assert.match(html, /id="recolor-split-layer"/);
   assert.match(app, /runImageProcessing\("remove-connected-background"/);
   assert.match(app, /runImageProcessing\("apply-erase-strokes"/);
   assert.ok(worker.includes("./domain/touch-gestures.mjs"));
