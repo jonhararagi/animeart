@@ -3836,3 +3836,71 @@ Cada flujo contiene tres etapas. Las acciones apuntan a controles existentes del
 - **Certificado SHA-256:** `fe84ac7fcbda15d0a9050cc3ae1248bacc956c8020c00956fd2017daa2f99c1b`.
 - **Firma:** `ephemeral-debug`; el informe de CI marca `update_compatibility=NOT GUARANTEED`. No se garantiza instalación encima de una copia firmada con otra clave.
 - **Estado actualizado:** CI del código de aplicación en main = `PASS`; entrega APK y checksum = `PASS`; firma estable e instalación en Xiaomi físico = `PARTIAL` (sin validar). La navegación web comparativa externa no se amplió en esta sesión, por lo que no se declaran nuevas fuentes verificadas.
+
+---
+
+<!-- KAPIART_STUDIO_0_3_7_VALIDATION_2026-10-20 -->
+
+## KapiArt Studio 0.3.7: integración y verificación de entrega (2026-10-20)
+
+### Estado del código y cambios integrados
+
+- **Estado:** PASS para integración y CI; PARTIAL para distribución estable y validación física.
+- **Commit final de código de aplicación integrado en main:** `b97039f64ce9385a1b3652767f94007613d571ae`.
+- **PR #104** (curvas suaves y arrastre táctil) integrada en `b3829416b32c18be88aaab9178ee1bdcda0aef0d`: https://github.com/jonhararagi/animeart/pull/104
+- **PR #105** (estado de guardado y shell offline) integrada en `b97039f64ce9385a1b3652767f94007613d571ae`: https://github.com/jonhararagi/animeart/pull/105
+- PR #106 se cerró sin fusionar para evitar una rama duplicada de la misma reparación: https://github.com/jonhararagi/animeart/pull/106
+- El identificador del paquete se conserva como `com.jonhararagi.animeart`; `versionName=0.3.7`, `versionCode=10`.
+
+### Correcciones confirmadas
+
+1. El renderizado de trazos libres suaviza la ruta mediante segmentos cuadráticos en el cierre del trazo, manteniendo las muestras originales del puntero y el comportamiento del historial.
+2. El movimiento táctil de objetos usa tolerancias adecuadas para dedo/pantalla, evitando confundir taps de selección con arrastres y mejorando la manipulación de capas superpuestas.
+3. La regresión de Chromium cubre arrastre de stickers superpuestos y restauración del escenario de prueba conforme al comportamiento del historial.
+4. El diagnóstico del Service Worker ya no escribe en el campo visible `#status` del editor. La salud offline se guarda en atributos `document.documentElement.dataset` y en los logs `ANIMEART_OFFLINE_DIAGNOSTIC`. Esto evita sobrescribir mensajes de guardado, copia o recuperación con texto de diagnóstico.
+5. Se cambió el nombre de caché del shell offline de `animeart-web-shell-v54` a `animeart-web-shell-v55` en `web/service-worker.js` y `web/app.js`, para que una instalación PWA sustituya la caché anterior y reciba el JavaScript corregido.
+6. Las aserciones de versión se actualizaron en las pruebas de smoke, biblioteca de recursos, trazo suave, máscaras de póster, identidad de marca, catálogo creativo, edición guiada y PWA. Se comprobaron las referencias restantes a v54 en las suites relevantes.
+7. Los grupos de concurrencia de Web CI y Android CI usan el ref de Git para que la ejecución de otra rama no cancele validaciones independientes.
+
+### Evidencia de CI vinculada al SHA integrado
+
+**PR #104**, cabeza validada `7c107ed9e622534807d4c0311d3ebf49a25bc433`:
+- Web CI: PASS, run [39473697785](https://github.com/jonhararagi/animeart/actions/runs/39473697785).
+- Android CI: PASS, run [39473697425](https://github.com/jonhararagi/animeart/actions/runs/39473697425).
+- Integración en main: `b3829416b32c18be88aaab9178ee1bdcda0aef0d`.
+
+**PR #105**, cabeza validada `669da01b975455c762001c4f501340e827a526ae`:
+- Web CI: PASS, tests, benchmark, empaquetado web y Chromium E2E, run [39476006385](https://github.com/jonhararagi/animeart/actions/runs/39476006385).
+- Android CI: PASS, build, verificación de recursos, tests unitarios, lint, instrumentación y smoke de arranque, run [39476006481](https://github.com/jonhararagi/animeart/actions/runs/39476006481).
+
+**Validación posterior a la integración en main**, SHA `b97039f64ce9385a1b3652767f94007613d571ae`:
+- Web CI: PASS, run [39476603918](https://github.com/jonhararagi/animeart/actions/runs/39476603918).
+- Android CI: PASS, incluido arranque instrumentado en emulador, run [39476603985](https://github.com/jonhararagi/animeart/actions/runs/39476603985).
+- Despliegue web: PASS, run [39476603943](https://github.com/jonhararagi/animeart/actions/runs/39476603943).
+- La ejecución Web inicialmente fallida en `b3829416` ([39474277714](https://github.com/jonhararagi/animeart/actions/runs/39474277714)) ayudó a reproducir y localizar la carrera entre el diagnóstico offline y el estado de guardado. La corrección fue añadida y probada antes de integrar PR #105.
+
+### APK 0.3.7 verificada
+
+- Run de origen en main: [Android CI 39476603985](https://github.com/jonhararagi/animeart/actions/runs/39476603985).
+- Artefacto GitHub Actions ID: `12289393979`.
+- Artefacto: `kapiart-android-debug-v0.3.7-b97039f64ce9385a1b3652767f94007613d571ae`.
+- APK: `KapiArt-Android-v0.3.7-b97039f64ce9385a1b3652767f94007613d571ae.apk`.
+- Tamaño del APK: 11,129,082 bytes.
+- SHA-256: `ddd03f1a70355a791742a47a74b2eb8a70189fd2324b1c8ebb11f8b6494c48d7`. Se comparó con el `.sha256` del artefacto mediante `sha256sum --check`: OK.
+- Se inspeccionó el contenido del APK: `assets/web/service-worker.js` y `assets/web/app.js` contienen ambos `animeart-web-shell-v55`.
+- Metadatos del artefacto: `application_id=com.jonhararagi.animeart`, `version_code=10`, `version_name=0.3.7`.
+- Certificado SHA-256 informado por CI: `c78e94212719329e693f783f66086d1170b5d22ff1652886c3d05492afba84ec`.
+- **Firma:** `ephemeral-debug`; compatibilidad de actualización: **NOT GUARANTEED**. No se configuró una clave de firma estable en GitHub Actions. No prometer instalación encima de una versión previa. No desinstalar una instalación anterior sin respaldar los proyectos locales.
+- El checksum del APK y los recursos incluidos fueron comprobados en el artefacto descargado.
+
+### Pendientes y límites honestos
+
+- **PARTIAL:** no se hizo instalación/prueba física en el Xiaomi `24116RACCG`. El arranque y las pruebas instrumentadas en emulador sí pasaron.
+- **BLOCKED para actualizaciones estables:** configurar de forma segura los secretos de GitHub Actions `ANIMEART_KEYSTORE_BASE64`, `ANIMEART_KEYSTORE_PASSWORD`, `ANIMEART_KEY_ALIAS` y `ANIMEART_KEY_PASSWORD`. No almacenar esos secretos en el repositorio.
+- **PARTIAL:** la comparación nueva y fechada de Photoshop, Canva, Picsart, Procreate e ibis Paint X no se completó durante esta iteración. No registrar como investigación realizada ni atribuir problemas/versiones actuales a esos productos sin fuentes verificadas.
+- No marcar como completa ninguna validación física ni fuente externa que no se haya ejecutado.
+
+### Próximo paso recomendado
+
+Configurar una firma de distribución persistente sin exponer sus secretos, generar un APK firmado con esa clave, verificar el certificado y probar la actualización sobre una instalación existente con proyectos respaldados. Después, ejecutar una prueba física en el Xiaomi y completar la matriz de comparación con fuentes oficiales y fecha de consulta.
+
