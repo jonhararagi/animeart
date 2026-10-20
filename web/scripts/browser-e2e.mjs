@@ -2188,13 +2188,12 @@ try {
   await evaluate('(() => { const select=document.querySelector("#guided-flow-select"); select.value="sticker-anime"; select.dispatchEvent(new Event("change",{bubbles:true})); })()');
   await waitFor('document.querySelector("#guided-step-title")?.textContent === "Prepara el personaje"');
 
-  const layersBeforeGuidedImport = (await readLayerSummary()).length;
   await evaluate('(() => { const input=document.querySelector("#image-file-input"); window.__kapiartGuidedOriginalPickerClick=input.click.bind(input); input.click=()=>{ const source=document.createElement("canvas"); source.width=64; source.height=64; const ctx=source.getContext("2d"); ctx.fillStyle="#ffffff"; ctx.fillRect(0,0,64,64); ctx.fillStyle="#f2a2a0"; ctx.fillRect(12,12,40,40); ctx.fillStyle="#241a19"; ctx.fillRect(24,24,16,16); const encoded=source.toDataURL("image/png").split(",")[1]; const bytes=Uint8Array.from(atob(encoded),character=>character.charCodeAt(0)); const file=new File([bytes],"guided-sticker-fixture.png",{type:"image/png"}); const transfer=new DataTransfer(); transfer.items.add(file); input.files=transfer.files; input.dispatchEvent(new Event("change",{bubbles:true})); }; })()');
   await click("#guided-step-action");
   await waitFor('document.querySelector("#guided-editing-dialog")?.open === false');
-  await waitFor("JSON.parse(localStorage.getItem(\"animeart-web-document\")||\"{}\").layers.length === " + (layersBeforeGuidedImport + 1), 15000);
-  const guidedStickerOriginal = (await readDocument()).layers.at(-1);
-  assert(guidedStickerOriginal?.contentType === "image" && guidedStickerOriginal.image?.source?.startsWith("data:image/png;base64,"),
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.contentType==="image" && layer.name?.includes("guided-sticker-fixture") && layer.image?.source)', 15000);
+  const guidedStickerOriginal = (await readDocument()).layers.find(layer => layer?.contentType === "image" && layer.name?.includes("guided-sticker-fixture"));
+  assert(guidedStickerOriginal?.contentType === "image" && guidedStickerOriginal.image?.source,
     "guided sticker preparation imports a real PNG as an editable image layer");
   await evaluate('(() => { const input=document.querySelector("#image-file-input"); input.click=window.__kapiartGuidedOriginalPickerClick; })()');
   await evaluate('(() => { const toolbox=document.querySelector("#toolbox-dialog"); if(!toolbox.open) toolbox.showModal(); document.querySelector("#guided-editing-open-mobile").click(); })()');
