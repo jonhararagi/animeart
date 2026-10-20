@@ -5330,11 +5330,12 @@ function currentRecolorOptions() {
   tolerance: Number(document.querySelector("#recolor-tolerance").value),
   softness: Number(document.querySelector("#recolor-softness").value),
   preserveShading: document.querySelector("#recolor-preserve-shading").checked,
+  preserveLineArt: document.querySelector("#recolor-preserve-line-art").checked,
   mask: recolorSession?.selection?.mask || null
  };
 }
 function recolorOptionsKey(session, options) {
- return JSON.stringify([session?.layerId, session?.source, options.sourceColor, options.targetColor, options.tolerance, options.softness, options.preserveShading, recolorSelectionRevision]);
+ return JSON.stringify([session?.layerId, session?.source, options.sourceColor, options.targetColor, options.tolerance, options.softness, options.preserveShading, options.preserveLineArt, recolorSelectionRevision]);
 }
 function renderRecolorPreview() {
  recolorPreviewRevision += 1;
