@@ -3904,3 +3904,46 @@ Cada flujo contiene tres etapas. Las acciones apuntan a controles existentes del
 
 Configurar una firma de distribución persistente sin exponer sus secretos, generar un APK firmado con esa clave, verificar el certificado y probar la actualización sobre una instalación existente con proyectos respaldados. Después, ejecutar una prueba física en el Xiaomi y completar la matriz de comparación con fuentes oficiales y fecha de consulta.
 
+
+
+## 2026-10-20 · KapiArt Studio · PR #107 · guía real de sticker y reparación del borrado de fondo
+
+**Estado de esta iteración:** PASS en el SHA de la PR y merge confirmado; validaciones posteriores de `main` en curso al redactar esta nota.
+
+- **Main anterior:** `015a176ef80b613667dc3fd252ac30bad9c101f1`.
+- **Commit integrado:** `ba5a2f73899a7fa9fdcdb68ce079814c52a7d2df`.
+- **PR integrada:** https://github.com/jonhararagi/animeart/pull/107
+- **SHA de prueba previo al merge:** `f9e11eae979a4cd4445bbbe468b84a56612d677f`.
+- **Web CI en el SHA de la PR:** PASS · https://github.com/jonhararagi/animeart/actions/runs/39488106886
+- **Android CI en el SHA de la PR:** PASS, incluidas pruebas instrumentadas y preparación/verificación de APK · https://github.com/jonhararagi/animeart/actions/runs/39488106917
+
+### Causa confirmada y corrección
+
+La herramienta de quitar fondo abría la vista previa, pero el botón **Aplicar** fallaba con `removeConnectedBackground is not defined`. `web/app.js` utilizaba `removeConnectedBackground` y `applyEraseStrokes` sin importarlas desde el módulo local `web/domain/background-removal.mjs`. Se incorporó el import que faltaba; no se añadió un motor paralelo ni un servicio remoto.
+
+### Verificación de la guía de sticker
+
+Se añadió cobertura E2E real en Chromium para ejecutar la ruta de tres pasos, no solo comprobar la pantalla:
+
+- Importación de un PNG generado en memoria mediante la acción real de la guía.
+- Apertura del eliminador local de fondo y aplicación del resultado.
+- Comprobación de que la capa sigue editable y que el contenido de imagen cambió.
+- Alfa comprobado en el PNG interno optimizado: esquina de fondo `alpha=0`, centro del sujeto `alpha=255`.
+- Exportación de un PNG no vacío desde el paso final y comprobación de que conserva transparencia.
+- Confirmación persistida de los tres pasos de la guía.
+
+El E2E completo pasó en el SHA de la PR. La suite informó 341 aserciones E2E con resultado PASS en esa ejecución; además, pasó el contrato unitario que mantiene el escenario guiado en la cobertura.
+
+### APK, firma y validaciones que siguen pendientes
+
+La CI de Android de la PR generó un artefacto de 10.724.319 bytes. El artefacto de la PR no sustituye al artefacto que debe asociarse al SHA final de `main`; comprobar la última compilación de `main` antes de distribuirla.
+
+- Paquete Android conservado: `com.jonhararagi.animeart`.
+- La clave de firma de distribución persistente sigue sin estar configurada. Los artefactos actuales usan firma `ephemeral-debug`; compatibilidad de actualización: **NOT GUARANTEED**.
+- **PARTIAL:** las pruebas instrumentadas y de arranque en emulador pasaron; no se ha afirmado una instalación física en el Xiaomi `24116RACCG`.
+- **BLOCKED para actualización estable:** configurar en GitHub Actions los secretos `ANIMEART_KEYSTORE_BASE64`, `ANIMEART_KEYSTORE_PASSWORD`, `ANIMEART_KEY_ALIAS` y `ANIMEART_KEY_PASSWORD`. No escribirlos en archivos versionados ni pegarlos en conversaciones.
+- **PARTIAL:** falta una comparación actual, fechada y documentada con fuentes oficiales de Photoshop, Canva, Picsart, Procreate e ibis Paint X.
+
+### Próximo paso
+
+Verificar Web CI, Android CI y el artefacto Android ligados al SHA más reciente de `main`. Después, configurar firma persistente de distribución y verificar la actualización sobre una instalación existente con respaldo de los proyectos. Completar una prueba física en el Xiaomi y la matriz de referentes con fuentes y fechas reales.
