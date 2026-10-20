@@ -2208,8 +2208,10 @@ try {
   await click("#background-auto-detect");
   await click("#preview-background-removal");
   await waitFor('document.querySelector("#apply-background-removal")?.disabled === false', 15000);
-  await click("#apply-background-removal");
-  await waitFor('document.querySelector("#background-removal-dialog")?.open === false');
+  await evaluate('document.querySelector("#apply-background-removal").click()');
+  await waitFor('document.querySelector("#background-removal-dialog")?.open === false || /no se pudo|could not|exceeds/i.test(document.querySelector("#background-removal-status")?.textContent || "")', 15000);
+  assert(await evaluate('document.querySelector("#background-removal-dialog")?.open === false'),
+    "applying the inspected background-removal preview closes the tool after committing or reports an explicit processing error: " + await evaluate('document.querySelector("#background-removal-status")?.textContent || ""'));
   await waitFor("JSON.parse(localStorage.getItem(\"animeart-web-document\")||\"{}\").layers.some(layer=>layer.id===" + JSON.stringify(guidedStickerOriginal.id) + " && layer.image?.source!==" + JSON.stringify(guidedStickerOriginal.image.source) + ")", 15000);
   const guidedStickerProcessed = (await readDocument()).layers.find(layer => layer.id === guidedStickerOriginal.id);
   assert(guidedStickerProcessed?.contentType === "image" && guidedStickerProcessed.image?.source !== guidedStickerOriginal.image.source,
