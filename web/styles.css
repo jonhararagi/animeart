@@ -4254,3 +4254,9 @@ dialog {
 .guided-mascot-tip strong{display:block;margin-bottom:3px;color:#F2A2A0;font-size:.82rem}
 .guided-mascot-tip p{margin:0;color:#e1cfc5;font-size:.78rem;line-height:1.45}
 @media(max-width:620px){.guided-mascot-tip{grid-template-columns:44px minmax(0,1fr);gap:9px;padding:8px 10px}.guided-mascot-tip img{width:44px;height:44px}.guided-mascot-tip p{font-size:.74rem}}
+
+/* KapiArt anime palette and connected-region selection */
+#select-anime-region[aria-pressed="true"] { border-color:#f2a2a0; background:#392b29; box-shadow:0 0 0 2px #f2a2a044; }
+.anime-selection-hint { margin:0; color:#94a4b8; font-size:.75rem; line-height:1.45; }
+#anime-color-name { width:100%; min-width:0; padding:10px; border:1px solid #374258; border-radius:8px; background:#0f141c; color:inherit; }
+@media(max-width:620px){.recolor-workspace{grid-template-columns:minmax(0,1fr)}.recolor-preview-wrap{min-height:200px}#recolor-preview{max-height:40dvh}.recolor-shell{padding:12px}.recolor-controls button{min-height:42px}}
