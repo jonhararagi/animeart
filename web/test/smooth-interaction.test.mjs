@@ -35,6 +35,8 @@ test("canvas rendering is frame-coalesced and freehand consumes coalesced pointe
   assert.match(app, /finalStroke/);
   assert.match(app, /previous\.x/);
   assert.match(app, /<= 6/);
+  assert.match(app, /currentSelectedLayer/);
+  assert.match(app, /When objects overlap, keep the current selection as the drag target/);
 });
 
 test("release position is applied before committing layer transforms", async () => {
