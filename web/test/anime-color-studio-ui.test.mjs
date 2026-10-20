@@ -11,7 +11,7 @@ test("KapiArt anime color studio wires the offline palette, wand and non-destruc
   ]);
   for (const id of [
     "recolor-wand-toggle", "recolor-wand-tolerance", "recolor-wand-add",
-    "recolor-wand-clear", "recolor-split-layer", "recolor-rectangle-toggle", "anime-color-search",
+    "recolor-wand-clear", "recolor-split-layer", "recolor-rectangle-toggle", "recolor-effect-layer", "anime-color-search",
     "anime-color-results", "anime-color-more", "recolor-target-color", "recolor-temperature", "recolor-darkness", "recolor-hue-shift"
   ]) assert.match(html, new RegExp('id="' + id + '"'));
   assert.match(app, /generateAnimePalette\(\)/);
@@ -20,6 +20,9 @@ test("KapiArt anime color studio wires the offline palette, wand and non-destruc
   assert.match(app, /pointerdown/);
   assert.match(app, /combineAnimeSelections\(/);
   assert.match(app, /async function splitAnimeSelectionIntoLayer\(/);
+  assert.match(app, /Efecto de color · /);
+  assert.match(app, /recolorCanvasPointFromClient/);
+  assert.match(html, /id="erase-color-effect"/);
   assert.match(worker, /animeart-web-shell-v56/);
   assert.ok(worker.includes("./domain/anime-color-studio.mjs"));
   assert.match(engine, /Selects a contiguous flat-color region/);
