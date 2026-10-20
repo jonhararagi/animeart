@@ -777,12 +777,15 @@ try {
   const pixelWorkerDiagnostics = await evaluate("window.__ANIMEART_IMAGE_PROCESSING_DIAGNOSTICS__");
   assert(pixelWorkerDiagnostics?.workerCreated === true && pixelWorkerDiagnostics.workerOperations > 0 && pixelWorkerDiagnostics.fallbackOperations === 0 && pixelWorkerDiagnostics.lastOperation === "replace-color-range", "real browser sends selective recolor through the dedicated worker instead of the UI-thread fallback: " + JSON.stringify(pixelWorkerDiagnostics));
   await click("#apply-recolor");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source !== window.__animeArtOriginalRecolorSource', 15000);
-  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.width === 944'), "real browser applies selective recolor without changing image dimensions");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name.startsWith("Efecto de color · battleworn_knight"))', 15000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source === window.__animeArtOriginalRecolorSource'), "recolor creates a separate effect layer and keeps the original image source unchanged");
+  await click("#erase-color-effect");
+  assert(await evaluate('document.querySelector(\'[data-tool="eraser"]\').classList.contains("active")'), "dedicated effect eraser activates the existing alpha eraser on the effect layer");
   await click("#undo");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source === window.__animeArtOriginalRecolorSource', 10000);
+  await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name.startsWith("Efecto de color · battleworn_knight"))', 10000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source === window.__animeArtOriginalRecolorSource'), "undo removes the effect layer without changing the original");
   await click("#redo");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source !== window.__animeArtOriginalRecolorSource', 10000);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name.startsWith("Efecto de color · battleworn_knight"))', 10000);
   await saveScreenshot("animeart-studio-selective-recolor.png");
 
   const backgroundCandidate = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight"); return layer ? { id:layer.id, name:layer.name } : null; })()');
