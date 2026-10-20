@@ -2196,6 +2196,12 @@ try {
   assert(guidedStickerOriginal?.contentType === "image" && guidedStickerOriginal.image?.source,
     "guided sticker preparation imports a real PNG as an editable image layer");
   await evaluate('(() => { const input=document.querySelector("#image-file-input"); input.click=window.__kapiartGuidedOriginalPickerClick; })()');
+  await clickMoreGoal("layers");
+  await waitFor('document.body.classList.contains("mobile-layers-open")');
+  await click('[aria-label="Seleccionar capa guided-sticker-fixture"]');
+  await waitFor('document.querySelector("#selection-indicator").textContent.includes("Imagen seleccionada: guided-sticker-fixture")');
+  await evaluate('document.body.classList.remove("mobile-layers-open")');
+  await waitFor('!document.body.classList.contains("mobile-layers-open")');
   await evaluate('(() => { const toolbox=document.querySelector("#toolbox-dialog"); if(!toolbox.open) toolbox.showModal(); document.querySelector("#guided-editing-open-mobile").click(); })()');
   await waitFor('document.querySelector("#guided-editing-dialog")?.open === true');
   await click("#guided-step-complete");
@@ -2208,7 +2214,7 @@ try {
   await click("#background-auto-detect");
   await waitFor('document.querySelector("#background-removal-status")?.textContent.includes("Vista previa del borrado") && document.querySelector("#apply-background-removal")?.disabled === false', 15000);
   await evaluate('document.querySelector("#apply-background-removal").click()');
-  await waitFor('document.querySelector("#background-removal-dialog")?.open === false || /no se pudo|could not|exceeds/i.test(document.querySelector("#background-removal-status")?.textContent || "")', 15000);
+  await waitFor('document.querySelector("#background-removal-dialog")?.open === false || /no se pudo|could not|exceeds|selected layer changed|error/i.test(document.querySelector("#background-removal-status")?.textContent || "")', 15000);
   assert(await evaluate('document.querySelector("#background-removal-dialog")?.open === false'),
     "applying the inspected background-removal preview closes the tool after committing or reports an explicit processing error: " + await evaluate('document.querySelector("#background-removal-status")?.textContent || ""'));
   await waitFor("JSON.parse(localStorage.getItem(\"animeart-web-document\")||\"{}\").layers.some(layer=>layer.id===" + JSON.stringify(guidedStickerOriginal.id) + " && layer.image?.source!==" + JSON.stringify(guidedStickerOriginal.image.source) + ")", 15000);
