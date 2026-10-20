@@ -391,7 +391,7 @@ try {
   const canvas = await selectorCenter("#canvas");
   assert(canvas.width > 0 && canvas.height > 0, "canvas exists and has usable layout dimensions");
   assert(await evaluate(`getComputedStyle(document.querySelector("#canvas")).visibility !== "hidden" && getComputedStyle(document.querySelector("#canvas")).display !== "none"`), "canvas is visible");
-  assert((await evaluate('document.querySelector("#status").textContent'))?.includes("CANVAS READY"), "editor reports canvas/service-worker readiness");
+  assert(await evaluate('document.documentElement.dataset.serviceWorkerActive === "true" && document.documentElement.dataset.cacheReady === "true"'), "service worker is active and the offline shell cache is ready");
   assert(await evaluate('document.querySelector("#canvas-import-images").getBoundingClientRect().width > 0 && document.querySelector("#canvas-open-asset-library").getBoundingClientRect().width > 0'), "image import and reusable library remain visible next to the canvas without scrolling");
   assert(await evaluate('document.querySelector(".canvas-view-menu").open === false'), "transparency and canvas-background controls stay tucked inside the collapsed View menu");
 
