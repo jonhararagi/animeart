@@ -4254,3 +4254,72 @@ dialog {
 .guided-mascot-tip strong{display:block;margin-bottom:3px;color:#F2A2A0;font-size:.82rem}
 .guided-mascot-tip p{margin:0;color:#e1cfc5;font-size:.78rem;line-height:1.45}
 @media(max-width:620px){.guided-mascot-tip{grid-template-columns:44px minmax(0,1fr);gap:9px;padding:8px 10px}.guided-mascot-tip img{width:44px;height:44px}.guided-mascot-tip p{font-size:.74rem}}
+
+
+/* KAPIART-ANIME-COLOR-STUDIO-001: warm, touch-friendly color and wand controls. */
+#recolor-dialog { background:#241A19; border-color:#4C352F; color:#FFF4EB; }
+#recolor-dialog::backdrop { background:rgb(20 12 12 / 78%); }
+#recolor-dialog .recolor-header { border-color:#4C352F; }
+#recolor-dialog .recolor-header h2, #recolor-dialog .anime-color-heading h3,
+#recolor-dialog .anime-wand-panel h3 { color:#FFF4EB; }
+#recolor-dialog .recolor-header p:not(.eyebrow), #recolor-dialog .anime-color-heading p,
+#recolor-dialog .anime-wand-panel p, #recolor-dialog .anime-selection-status { color:#E3CFC6; }
+#recolor-dialog .recolor-controls { gap:12px; }
+#recolor-dialog .anime-wand-panel, #recolor-dialog .anime-color-studio {
+  display:grid; gap:9px; min-width:0; padding:12px; border:1px solid #4C352F;
+  border-radius:12px; background:#2B211F;
+}
+#recolor-dialog .anime-wand-panel h3, #recolor-dialog .anime-color-heading h3 {
+  margin:0; font-size:.95rem; font-weight:800;
+}
+#recolor-dialog .anime-wand-panel p, #recolor-dialog .anime-color-heading p {
+  margin:0; font-size:.75rem; line-height:1.45;
+}
+#recolor-dialog .anime-wand-panel button[aria-pressed="true"] {
+  background:#F2A2A0; border-color:#F2A2A0; color:#241A19; font-weight:800;
+}
+#recolor-dialog .anime-wand-panel input[type="range"] { accent-color:#E6817B; }
+#recolor-dialog .anime-selection-actions, #recolor-dialog .anime-color-pagination {
+  display:flex; align-items:center; justify-content:space-between; gap:7px;
+}
+#recolor-dialog .anime-selection-status { font-size:.75rem; margin:0; }
+#recolor-dialog .anime-color-results {
+  display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px;
+  max-height:230px; overflow:auto; overscroll-behavior:contain; padding:2px;
+}
+#recolor-dialog .anime-color-results[data-search="true"] { grid-template-columns:repeat(2,minmax(0,1fr)); }
+#recolor-dialog .anime-color-swatch {
+  display:flex; align-items:center; gap:7px; width:100%; min-width:0; min-height:43px;
+  padding:5px; border:1px solid #60433B; border-radius:9px; background:#392B29;
+  text-align:left; font-size:.67rem;
+}
+#recolor-dialog .anime-color-swatch:hover { border-color:#F2A2A0; background:#4C352F; }
+#recolor-dialog .anime-color-swatch-patch {
+  flex:0 0 26px; width:26px; height:26px; border:1px solid rgb(255 255 255 / 60%);
+  border-radius:7px; background:var(--anime-swatch,#B9855A);
+}
+#recolor-dialog .anime-color-swatch-label {
+  min-width:0; overflow:hidden; text-overflow:ellipsis; overflow-wrap:anywhere;
+  color:#FFF4EB; line-height:1.15;
+}
+#recolor-dialog .anime-color-swatch.is-generated { justify-content:center; flex-direction:column; gap:3px; text-align:center; }
+#recolor-dialog .anime-color-swatch.is-generated .anime-color-swatch-patch { width:100%; height:25px; flex-basis:25px; }
+#recolor-dialog .anime-color-swatch.is-generated .anime-color-swatch-label { font-size:.62rem; }
+#recolor-dialog .anime-color-pagination span { color:#E3CFC6; font-size:.7rem; text-align:center; }
+#recolor-dialog .anime-color-empty { grid-column:1/-1; color:#FFF4EB; font-size:.78rem; }
+#recolor-dialog .text-field input[type="search"] {
+  width:100%; min-width:0; min-height:44px; border:1px solid #60433B; border-radius:9px;
+  padding:9px 11px; background:#241A19; color:#FFF4EB;
+}
+#recolor-dialog .text-field input[type="search"]::placeholder { color:#CBB8AD; opacity:1; }
+#recolor-dialog .text-field input[type="color"] { border-color:#60433B; background:#241A19; }
+#recolor-dialog .dialog-actions button:last-child { background:#F2A2A0; color:#241A19; border-color:#F2A2A0; font-weight:850; }
+#recolor-dialog .dialog-actions button:last-child:hover { background:#E6817B; border-color:#E6817B; }
+@media (max-width:620px) {
+  #recolor-dialog .anime-color-results { grid-template-columns:repeat(5,minmax(0,1fr)); max-height:185px; }
+  #recolor-dialog .anime-color-results[data-search="true"] { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #recolor-dialog .anime-color-swatch { min-height:42px; padding:4px; }
+  #recolor-dialog .anime-color-swatch:not(.is-generated) { gap:4px; font-size:.62rem; }
+  #recolor-dialog .anime-color-swatch-patch { flex-basis:21px; width:21px; height:21px; }
+  #recolor-dialog .anime-wand-panel, #recolor-dialog .anime-color-studio { padding:10px; }
+}
