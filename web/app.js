@@ -10,6 +10,7 @@ import { createViewport, panBy } from "./domain/viewport.mjs";
 import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocumentPoint, screenViewportForDocument, zoomViewportAt } from "./domain/canvas-space.mjs";
 import { distanceBetweenTouches, midpointBetweenTouches, updatePinchPanViewport } from "./domain/touch-gestures.mjs";
 import { createFrameScheduler } from "./domain/frame-scheduler.mjs";
+import { appendInterpolatedStrokePoint } from "./domain/stroke-smoothing.mjs";
 import { clearCanvasBackingStore } from "./domain/canvas-rendering.mjs";
 import { addLayer, clearLayer, cropDocumentCanvas, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
@@ -873,6 +874,17 @@ function pointFromEvent(event) {
 function screenPointFromEvent(event) {
   const rect = canvas.getBoundingClientRect();
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+}
+
+// Densify fast pointer samples in document coordinates so quick finger/stylus
+// movement does not leave tiny gaps between brush stamps. Coalesced events retain
+// hardware samples; interpolation only fills the distance between those samples.
+function appendSmoothStrokeSamples(stroke, events) {
+  if (!stroke || !Array.isArray(stroke.points) || !Array.isArray(events)) return;
+  const spacing = Math.max(0.75, Math.min(3, (Number(stroke.size) || 5) * 0.3));
+  for (const event of events) {
+    appendInterpolatedStrokePoint(stroke.points, pointFromEvent(event), createStrokePoint, spacing);
+  }
 }
 
 function createLayerThumbnail(layer) {
@@ -2765,9 +2777,11 @@ function finishTransformInteraction(cancelled = false, finalEvent = null) {
   }
   // A stationary tap selects the object only. Changes in the canvas bounding box
   // must never manufacture a move or a history entry.
+  // Finger contact is noisy on mobile. Ignore tiny involuntary shifts on a tap,
+  // but keep deliberate drags responsive once they pass a comfortable threshold.
   if (finalEvent && interaction.type === "move" && interaction.startClient &&
       Math.hypot(Number(finalEvent.clientX) - interaction.startClient.x,
-        Number(finalEvent.clientY) - interaction.startClient.y) <= 3) {
+        Number(finalEvent.clientY) - interaction.startClient.y) <= 6) {
     if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
     redraw();
     return;
@@ -2943,6 +2957,15 @@ function beginSelectionInteraction(event) {
   if (selectedHit?.startsWith("scale-")) return beginTransformInteraction("scale", event, selectedHit, selectedGeometry?.resizeHandleOffset);
   if (selectedHit === "rotate") return beginTransformInteraction("rotate", event);
   const documentPoint = screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize());
+  // When objects overlap, keep the current selection as the drag target.
+  // Otherwise a sticker placed over a character can steal every touch intended
+  // to nudge the sticker underneath. The layer list remains the explicit way
+  // to switch to another overlapping object.
+  const currentSelectedLayer = selectedLayerExact();
+  if (!event.shiftKey && currentSelectedLayer?.visible && !currentSelectedLayer.locked &&
+      hitTestLayer(currentSelectedLayer, documentPoint, documentCenter(state.document))) {
+    return beginTransformInteraction("move", event);
+  }
   for (const layer of [...state.document.layers].reverse()) {
     if (!layer.visible) continue;
     if (hitTestLayer(layer, documentPoint, documentCenter(state.document))) {
@@ -3567,7 +3590,7 @@ canvas.addEventListener("pointermove", event => {
   const stroke = layer?.strokes[layer.strokes.length - 1];
   if (!stroke) return;
   const samples = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : [];
-  for (const sample of (samples.length ? samples : [event])) stroke.points.push(pointFromEvent(sample));
+  appendSmoothStrokeSamples(stroke, samples.length ? samples : [event]);
   redraw();
 });
 
@@ -3700,8 +3723,14 @@ canvas.addEventListener("pointerup", event => {
     return;
   }
   if (!state.drawing || event.pointerId !== state.drawingPointerId) return;
+  // Include the release coordinate too: Android can deliver pointerup at a
+  // position newer than the last pointermove, especially during fast strokes.
+  const finalLayer = selectedLayer();
+  const finalStroke = finalLayer?.strokes[finalLayer.strokes.length - 1];
+  if (finalStroke) appendSmoothStrokeSamples(finalStroke, [event]);
   state.drawing = false;
   state.drawingPointerId = null;
+  if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   const before = state.strokeBefore;
   state.strokeBefore = null;
   if (before) {
@@ -3762,6 +3791,7 @@ canvas.addEventListener("pointercancel", event => {
   if (event.pointerId !== state.drawingPointerId) return;
   state.drawing = false;
   state.drawingPointerId = null;
+  if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   const before = state.strokeBefore;
   state.strokeBefore = null;
   if (before) state.document = before;
@@ -6257,7 +6287,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v52";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v53";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -6290,7 +6320,8 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/selection.mjs",
   "./domain/viewport.mjs",
   "./domain/touch-gestures.mjs",
-  "./domain/frame-scheduler.mjs"
+  "./domain/frame-scheduler.mjs",
+  "./domain/stroke-smoothing.mjs"
 ];
 
 async function reportServiceWorkerReadiness() {
