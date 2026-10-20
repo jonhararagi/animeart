@@ -49,3 +49,22 @@ test("color replacement leaves pixels outside the anime selection mask untouched
   assert.deepEqual([...result.data.slice(4,7)],[128,64,32]);
   assert.deepEqual([...result.data.slice(8,11)],[0,170,255]);
 });
+
+
+test("line-art protection preserves black outlines against white while recoloring flat black fill", () => {
+  const source = { width: 3, height: 3, data: new Uint8ClampedArray([
+    255,255,255,255, 255,255,255,255, 255,255,255,255,
+    255,255,255,255, 10,10,10,255, 255,255,255,255,
+    255,255,255,255, 10,10,10,255, 255,255,255,255
+  ]) };
+  const protectedResult = replaceColorRange(source,{sourceColor:"#0a0a0a",targetColor:"#ff0000",tolerance:0,softness:0,preserveShading:false,preserveLineArt:true});
+  assert.deepEqual([...protectedResult.data.slice(16,19)],[10,10,10]);
+  const unprotectedResult = replaceColorRange(source,{sourceColor:"#0a0a0a",targetColor:"#ff0000",tolerance:0,softness:0,preserveShading:false,preserveLineArt:false});
+  assert.deepEqual([...unprotectedResult.data.slice(16,19)],[255,0,0]);
+});
+
+test("line-art protection preserves white highlights at a contrasting color boundary", () => {
+  const source = { width: 3, height: 1, data: new Uint8ClampedArray([30,30,30,255, 250,250,250,255, 30,30,30,255]) };
+  const result = replaceColorRange(source,{sourceColor:"#fafafa",targetColor:"#00ff00",tolerance:0,softness:0,preserveShading:false,preserveLineArt:true});
+  assert.deepEqual([...result.data.slice(4,7)],[250,250,250]);
+});
