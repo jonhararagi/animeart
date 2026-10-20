@@ -33,3 +33,13 @@ Para incorporar un corpus de referencia amplio de manera responsable, el siguien
 ## Siguiente criterio de integración
 
 No integrar en `main` hasta tener Web CI con E2E de navegador y Android CI en el SHA exacto de la rama. Confirmar también que el APK contiene `anime-color-studio.mjs` y que el app shell v56 carga offline.
+
+
+## Ampliación del incremento · área rectangular, tono y borrador de efecto
+
+- Añadida selección rectangular arrastrable sobre la previsualización, que forma una máscara de píxeles visibles y respeta transparencia.
+- Añadidos los controles «Temperatura fría ↔ cálida», «Aclarar ↔ oscurecer» y giro de tono, conectados al motor local y a la vista previa.
+- La aplicación puede crear una capa separada «Efecto de color» con los píxeles opacos modificados; la capa de la imagen original permanece debajo. La acción «Borrar efecto de color» activa el borrador de alfa sobre esa capa para revelar el original. El resultado evita colorear bordes de antialiasing parcialmente transparentes y conserva el line-art como prioridad.
+- Pruebas ampliadas para selección rectangular, ajustes de temperatura/oscuridad, interfaz y flujo E2E de capa reversible. No considerar esos flujos aceptados hasta que Web E2E y Android CI pasen en el mismo SHA final.
+- **Estado actual de aceptación:** `PARTIAL` hasta verificar los runs vinculados al HEAD definitivo y probar en el Xiaomi. No hay prueba física ni modelo entrenado con miles de ilustraciones.
+
