@@ -2213,10 +2213,16 @@ try {
     "the sticker guide opens the actual local background-removal preview");
   await click("#background-auto-detect");
   await waitFor('document.querySelector("#background-removal-status")?.textContent.includes("Vista previa del borrado") && document.querySelector("#apply-background-removal")?.disabled === false', 15000);
+  const previewStatusBeforeApply = await evaluate('document.querySelector("#background-removal-status")?.textContent || ""');
   await evaluate('document.querySelector("#apply-background-removal").click()');
-  await waitFor('document.querySelector("#background-removal-dialog")?.open === false || /no se pudo|could not|exceeds|selected layer changed|error/i.test(document.querySelector("#background-removal-status")?.textContent || "")', 15000);
+  try {
+    await waitFor('document.querySelector("#background-removal-dialog")?.open === false || document.querySelector("#background-removal-status")?.textContent !== ' + JSON.stringify(previewStatusBeforeApply), 15000);
+  } catch (error) {
+    const applyDiagnostics = await evaluate('(() => { const saved=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const dialog=document.querySelector("#background-removal-dialog"); const status=document.querySelector("#background-removal-status"); const button=document.querySelector("#apply-background-removal"); const selected=document.querySelector("#selection-indicator")?.textContent || ""; return {dialogOpen:dialog?.open,status:status?.textContent,buttonDisabled:button?.disabled,selected,fixtureLayer:saved.layers?.find(layer=>layer.name==="guided-sticker-fixture")?.id}; })()');
+    throw new Error(error.message + "; applyDiagnostics=" + JSON.stringify(applyDiagnostics));
+  }
   assert(await evaluate('document.querySelector("#background-removal-dialog")?.open === false'),
-    "applying the inspected background-removal preview closes the tool after committing or reports an explicit processing error: " + await evaluate('document.querySelector("#background-removal-status")?.textContent || ""'));
+    "applying the inspected background-removal preview closes the tool after committing; status=" + await evaluate('document.querySelector("#background-removal-status")?.textContent || ""'));
   await waitFor("JSON.parse(localStorage.getItem(\"animeart-web-document\")||\"{}\").layers.some(layer=>layer.id===" + JSON.stringify(guidedStickerOriginal.id) + " && layer.image?.source!==" + JSON.stringify(guidedStickerOriginal.image.source) + ")", 15000);
   const guidedStickerProcessed = (await readDocument()).layers.find(layer => layer.id === guidedStickerOriginal.id);
   assert(guidedStickerProcessed?.contentType === "image" && guidedStickerProcessed.image?.source !== guidedStickerOriginal.image.source,
