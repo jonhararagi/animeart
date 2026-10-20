@@ -875,6 +875,31 @@ function screenPointFromEvent(event) {
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 
+// Densify fast pointer samples in document coordinates so quick finger/stylus
+// movement does not leave tiny gaps between brush stamps. Coalesced events retain
+// hardware samples; interpolation only fills the distance between those samples.
+function appendSmoothStrokeSamples(stroke, events) {
+  if (!stroke || !Array.isArray(stroke.points) || !Array.isArray(events)) return;
+  const spacing = Math.max(0.75, Math.min(3, (Number(stroke.size) || 5) * 0.3));
+  for (const event of events) {
+    const next = pointFromEvent(event);
+    const previous = stroke.points[stroke.points.length - 1];
+    if (!previous) {
+      stroke.points.push(next);
+      continue;
+    }
+    const dx = next.x - previous.x;
+    const dy = next.y - previous.y;
+    const distance = Math.hypot(dx, dy);
+    if (!Number.isFinite(distance) || distance < 0.01) continue;
+    const steps = Math.max(1, Math.ceil(distance / spacing));
+    for (let step = 1; step <= steps; step++) {
+      const t = step / steps;
+      stroke.points.push(createStrokePoint(previous.x + dx * t, previous.y + dy * t));
+    }
+  }
+}
+
 function createLayerThumbnail(layer) {
   const thumbnail = document.createElement("span");
   thumbnail.className = "layer-thumbnail";
@@ -3567,7 +3592,7 @@ canvas.addEventListener("pointermove", event => {
   const stroke = layer?.strokes[layer.strokes.length - 1];
   if (!stroke) return;
   const samples = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : [];
-  for (const sample of (samples.length ? samples : [event])) stroke.points.push(pointFromEvent(sample));
+  appendSmoothStrokeSamples(stroke, samples.length ? samples : [event]);
   redraw();
 });
 
@@ -3700,8 +3725,14 @@ canvas.addEventListener("pointerup", event => {
     return;
   }
   if (!state.drawing || event.pointerId !== state.drawingPointerId) return;
+  // Include the release coordinate too: Android can deliver pointerup at a
+  // position newer than the last pointermove, especially during fast strokes.
+  const finalLayer = selectedLayer();
+  const finalStroke = finalLayer?.strokes[finalLayer.strokes.length - 1];
+  if (finalStroke) appendSmoothStrokeSamples(finalStroke, [event]);
   state.drawing = false;
   state.drawingPointerId = null;
+  if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   const before = state.strokeBefore;
   state.strokeBefore = null;
   if (before) {
