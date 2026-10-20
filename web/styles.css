@@ -4338,3 +4338,28 @@ dialog {
 @media (max-width: 760px) {
   #recolor-dialog #recolor-preview { max-height: 40dvh; }
 }
+
+
+/* KapiArt anime selection overlay and adjustment controls. */
+#recolor-dialog .anime-wand-panel button[aria-pressed="true"],
+#recolor-dialog #recolor-rectangle-toggle[aria-pressed="true"] {
+  background:#F2A2A0;
+  border-color:#F2A2A0;
+  color:#241A19;
+  font-weight:850;
+}
+#recolor-dialog .anime-rectangle-selection-host { position:relative; }
+#recolor-dialog #recolor-selection-rectangle {
+  position:absolute;
+  z-index:2;
+  box-sizing:border-box;
+  border:2px dashed #F2A2A0;
+  border-radius:2px;
+  background:rgb(242 162 160 / 12%);
+  box-shadow:0 0 0 1px rgb(36 26 25 / 65%);
+  pointer-events:none;
+}
+#recolor-dialog #recolor-selection-rectangle[hidden] { display:none; }
+#recolor-dialog #recolor-temperature,
+#recolor-dialog #recolor-darkness,
+#recolor-dialog #recolor-hue-shift { accent-color:#E6817B; }
