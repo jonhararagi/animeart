@@ -7,6 +7,7 @@ import {
   countAnimeSelection,
   generateAnimePalette,
   searchAnimeColors,
+  selectAnimeRectangle,
   selectAnimeRegion
 } from "../domain/anime-color-studio.mjs";
 
@@ -97,4 +98,33 @@ test("masked anime recolor rejects masks that do not match the pixel buffer", ()
   assert.throws(() => replaceColorRange(source, {
     sourceColor: "#000000", targetColor: "#FF0000", selectionMask: new Uint8Array([255])
   }), /mask must match/i);
+});
+
+test("rectangular selection clips to image bounds and leaves transparent pixels outside the mask", () => {
+  const source = image(3, 2, [
+    [120, 50, 30, 255], [130, 60, 40, 255], [140, 70, 50, 255],
+    [150, 80, 60, 255], [160, 90, 70, 0], [170, 100, 80, 255]
+  ]);
+  const result = selectAnimeRectangle(source, { x1: 1, y1: 0, x2: 2, y2: 1 });
+  assert.equal(result.pixelCount, 3);
+  assert.deepEqual(result.bounds, { x: 1, y: 0, width: 2, height: 2 });
+  assert.equal(result.mask[1], 255);
+  assert.equal(result.mask[4], 0, "transparent pixels are not selected");
+  const clipped = selectAnimeRectangle(source, { x1: -10, y1: -2, x2: 0, y2: 0 });
+  assert.equal(clipped.pixelCount, 1);
+  assert.deepEqual(clipped.bounds, { x: 0, y: 0, width: 1, height: 1 });
+});
+
+test("temperature, darkness and hue shift alter RGB values while preserving alpha", () => {
+  const makePixel = () => ({ width: 1, height: 1, data: new Uint8ClampedArray([128, 128, 128, 173]) });
+  const options = { sourceColor: "#808080", targetColor: "#808080", tolerance: 0, softness: 0, preserveShading: false };
+  const warm = replaceColorRange(makePixel(), { ...options, temperature: 100 });
+  const cool = replaceColorRange(makePixel(), { ...options, temperature: -100 });
+  const dark = replaceColorRange(makePixel(), { ...options, darkness: 100 });
+  assert.ok(warm.data[0] > warm.data[2], "warmth should raise red relative to blue");
+  assert.ok(cool.data[2] > cool.data[0], "cool temperature should raise blue relative to red");
+  assert.ok(dark.data[0] < 128, "positive darkness should lower lightness");
+  assert.equal(warm.data[3], 173);
+  assert.equal(cool.data[3], 173);
+  assert.equal(dark.data[3], 173);
 });
