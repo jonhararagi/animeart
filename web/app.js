@@ -11,6 +11,7 @@ import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocume
 import { distanceBetweenTouches, midpointBetweenTouches, updatePinchPanViewport } from "./domain/touch-gestures.mjs";
 import { createFrameScheduler } from "./domain/frame-scheduler.mjs";
 import { appendInterpolatedStrokePoint } from "./domain/stroke-smoothing.mjs";
+import { traceSmoothStrokePath } from "./domain/freehand-rendering.mjs";
 import { clearCanvasBackingStore } from "./domain/canvas-rendering.mjs";
 import { addLayer, clearLayer, cropDocumentCanvas, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
@@ -465,16 +466,13 @@ function drawImageLayer(layer, context = ctx) {
 
 function drawStrokeCollection(context, strokes, baseOpacity = 1) {
   for (const stroke of strokes || []) {
-    if (!Array.isArray(stroke.points) || stroke.points.length < (stroke.tool === "censor-light" ? 1 : 2)) continue;
+    if (!Array.isArray(stroke.points) || stroke.points.length === 0) continue;
     const erasing = stroke.tool === "eraser";
     const censorLight = stroke.tool === "censor-light";
     const effect = erasing ? "normal" : (stroke.effect || "normal");
     context.save();
     context.globalCompositeOperation = erasing ? "destination-out" : "source-over";
     context.globalAlpha = baseOpacity * (Number.isFinite(Number(stroke.opacity)) ? Math.max(0, Math.min(1, Number(stroke.opacity))) : 1);
-    context.beginPath();
-    context.moveTo(stroke.points[0].x, stroke.points[0].y);
-    for (const point of stroke.points.slice(1)) context.lineTo(point.x, point.y);
     context.lineWidth = stroke.size;
     context.lineCap = "round";
     context.lineJoin = "round";
@@ -491,7 +489,9 @@ function drawStrokeCollection(context, strokes, baseOpacity = 1) {
       context.arc(stroke.points[0].x, stroke.points[0].y, Math.max(0.5, stroke.size / 2), 0, Math.PI * 2);
       context.fillStyle = stroke.color;
       context.fill();
-    } else {
+    } else if (traceSmoothStrokePath(context, stroke.points)) {
+      // Midpoint-based quadratic segments smooth the path while retaining the
+      // exact first and last input points. A one-point stroke becomes a round dot.
       context.stroke();
     }
     if (effect === "neon" && !erasing) {
@@ -876,14 +876,18 @@ function screenPointFromEvent(event) {
   return { x: event.clientX - rect.left, y: event.clientY - rect.top };
 }
 
-// Densify fast pointer samples in document coordinates so quick finger/stylus
-// movement does not leave tiny gaps between brush stamps. Coalesced events retain
-// hardware samples; interpolation only fills the distance between those samples.
+// Densify fast pointer samples in document coordinates and discard movement
+// smaller than a fraction of a screen pixel. Coalesced samples preserve hardware
+// input; interpolation fills gaps and quadratic rendering smooths the visible path.
 function appendSmoothStrokeSamples(stroke, events) {
   if (!stroke || !Array.isArray(stroke.points) || !Array.isArray(events)) return;
   const spacing = Math.max(0.75, Math.min(3, (Number(stroke.size) || 5) * 0.3));
+  const screenScale = Math.max(Number.EPSILON, documentFitScale(state.document, canvasSize()) * state.viewport.zoom);
   for (const event of events) {
-    appendInterpolatedStrokePoint(stroke.points, pointFromEvent(event), createStrokePoint, spacing);
+    const point = pointFromEvent(event);
+    const previous = stroke.points[stroke.points.length - 1];
+    if (previous && Math.hypot(point.x - previous.x, point.y - previous.y) * screenScale < 0.15) continue;
+    appendInterpolatedStrokePoint(stroke.points, point, createStrokePoint, spacing);
   }
 }
 
@@ -2732,6 +2736,7 @@ function beginTransformInteraction(type, event, handle = null, handleOffset = nu
     handleOffset: handleOffset && Number.isFinite(handleOffset.x) && Number.isFinite(handleOffset.y)
       ? { x: handleOffset.x, y: handleOffset.y } : { x: 0, y: 0 },
     pointerId: event.pointerId,
+    dragThreshold: event.pointerType === "touch" ? (layer.contentType === "text" ? 8 : 4) : 2,
     layerId: layer.id,
     startScreen: { ...screenPoint },
     startClient: { x: event.clientX, y: event.clientY },
@@ -2781,7 +2786,7 @@ function finishTransformInteraction(cancelled = false, finalEvent = null) {
   // but keep deliberate drags responsive once they pass a comfortable threshold.
   if (finalEvent && interaction.type === "move" && interaction.startClient &&
       Math.hypot(Number(finalEvent.clientX) - interaction.startClient.x,
-        Number(finalEvent.clientY) - interaction.startClient.y) <= 6) {
+        Number(finalEvent.clientY) - interaction.startClient.y) <= (interaction.dragThreshold ?? 3)) {
     if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
     redraw();
     return;
@@ -2805,6 +2810,17 @@ function finishTransformInteraction(cancelled = false, finalEvent = null) {
 function updateTransformPreview(event) {
   const interaction = state.transformInteraction;
   if (!interaction || event.pointerId !== interaction.pointerId) return;
+  if (interaction.type === "move" && interaction.startClient) {
+    const travelled = Math.hypot(
+      Number(event.clientX) - interaction.startClient.x,
+      Number(event.clientY) - interaction.startClient.y
+    );
+    if (travelled < (interaction.dragThreshold ?? 3)) {
+      interaction.previewTransform = { ...interaction.beforeTransform };
+      redraw();
+      return;
+    }
+  }
   const currentScreen = screenPointFromEvent(event);
   const targetOffset = interaction.type === "scale" ? interaction.handleOffset : null;
   const targetScreen = targetOffset
@@ -3590,7 +3606,7 @@ canvas.addEventListener("pointermove", event => {
   const stroke = layer?.strokes[layer.strokes.length - 1];
   if (!stroke) return;
   const samples = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : [];
-  appendSmoothStrokeSamples(stroke, samples.length ? samples : [event]);
+  appendSmoothStrokeSamples(stroke, samples.length ? [...samples, event] : [event]);
   redraw();
 });
 
@@ -6287,7 +6303,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v53";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v54";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -6321,7 +6337,8 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/viewport.mjs",
   "./domain/touch-gestures.mjs",
   "./domain/frame-scheduler.mjs",
-  "./domain/stroke-smoothing.mjs"
+  "./domain/stroke-smoothing.mjs",
+  "./domain/freehand-rendering.mjs"
 ];
 
 async function reportServiceWorkerReadiness() {

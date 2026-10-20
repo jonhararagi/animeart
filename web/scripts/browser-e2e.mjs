@@ -600,15 +600,15 @@ try {
   await click(layerButtonSelector("e2e-overlap-bottom"));
   assert(await evaluate('document.querySelector("#selection-indicator").textContent.includes("e2e-overlap-bottom")'),
     "overlap E2E selects the intended lower image through the Layers list");
-  const overlapBefore = await readDocument();
-  const bottomTransformBefore = structuredClone(overlapBefore.layers.find(layer => layer.id === "e2e-overlap-bottom").transform);
-  const topTransformBefore = structuredClone(overlapBefore.layers.find(layer => layer.id === "e2e-overlap-top").transform);
+  const basicOverlapBefore = await readDocument();
+  const bottomTransformBefore = structuredClone(basicOverlapBefore.layers.find(layer => layer.id === "e2e-overlap-bottom").transform);
+  const topTransformBefore = structuredClone(basicOverlapBefore.layers.find(layer => layer.id === "e2e-overlap-top").transform);
   const overlapFrame = await readFrameMetrics();
   const overlapDragStart = documentPointToClientPoint(overlapFrame, 400, 300);
   await mouseDrag(overlapDragStart, { x: overlapDragStart.x + 54, y: overlapDragStart.y + 36 });
-  const overlapAfter = await readDocument();
-  const bottomTransformAfter = overlapAfter.layers.find(layer => layer.id === "e2e-overlap-bottom").transform;
-  const topTransformAfter = overlapAfter.layers.find(layer => layer.id === "e2e-overlap-top").transform;
+  const basicOverlapAfter = await readDocument();
+  const bottomTransformAfter = basicOverlapAfter.layers.find(layer => layer.id === "e2e-overlap-bottom").transform;
+  const topTransformAfter = basicOverlapAfter.layers.find(layer => layer.id === "e2e-overlap-top").transform;
   assert(bottomTransformAfter.x !== bottomTransformBefore.x || bottomTransformAfter.y !== bottomTransformBefore.y,
     "dragging within the overlap moves the currently selected lower image");
   assert(JSON.stringify(topTransformAfter) === JSON.stringify(topTransformBefore),
@@ -1017,6 +1017,41 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image")');
   const creativeSticker=(await readDocument()).layers.find(layer=>layer.name==="Sticker · Flor de sakura");
   assert(creativeSticker.image?.source?.startsWith("data:image/svg+xml;charset=utf-8,")&&creativeSticker.image.width===256,"sakura sticker is a local vector image layer that can be transformed independently");
+
+  // AA-OVERLAP-DRAG-001: keep the already selected lower sticker as the drag target.
+  await click('[data-creative-action="add-sticker"][data-item-id="sakura-bloom"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").length===2');
+  const overlappingStickers = (await readDocument()).layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image");
+  const lowerSticker = overlappingStickers[0];
+  const upperSticker = overlappingStickers[1];
+  assert(lowerSticker.id!==upperSticker.id, "duplicated sticker creates an independent editable layer");
+  await click("#creative-studio-close");
+  await waitFor('document.querySelector("#creative-studio-dialog").open===false');
+  await click(layerButtonSelector(lowerSticker.id));
+  const sakuraOverlapTransformsBefore = (await readDocument()).layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").map(layer=>({id:layer.id,transform:{...layer.transform}}));
+  const overlapCanvasCenter = await selectorCenter("#canvas");
+  await mouseDrag(overlapCanvasCenter, {x:overlapCanvasCenter.x+46,y:overlapCanvasCenter.y+28});
+  const sakuraOverlapTransformsAfter = (await readDocument()).layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").map(layer=>({id:layer.id,transform:{...layer.transform}}));
+  const sakuraLowerBefore = sakuraOverlapTransformsBefore.find(layer=>layer.id===lowerSticker.id);
+  const sakuraUpperBefore = sakuraOverlapTransformsBefore.find(layer=>layer.id===upperSticker.id);
+  const sakuraLowerAfter = sakuraOverlapTransformsAfter.find(layer=>layer.id===lowerSticker.id);
+  const sakuraUpperAfter = sakuraOverlapTransformsAfter.find(layer=>layer.id===upperSticker.id);
+  assert(sakuraLowerAfter.transform.x!==sakuraLowerBefore.transform.x||sakuraLowerAfter.transform.y!==sakuraLowerBefore.transform.y,
+    "dragging at an overlap moves the already selected sticker underneath instead of stealing the gesture");
+  assert(sakuraUpperAfter.transform.x===sakuraUpperBefore.transform.x&&sakuraUpperAfter.transform.y===sakuraUpperBefore.transform.y,
+    "the upper overlapping sticker stays in place when the lower selected layer is dragged");
+  await click(layerButtonSelector(upperSticker.id));
+  assert(await evaluate('document.querySelector("#selection-indicator").textContent.includes("Sticker · Flor de sakura")'),
+    "the layer list remains the explicit way to select a different overlapping sticker");
+  // Restore the test fixture after verifying the drag. Undo history can group
+  // the two rapid sticker insertions, so accept either zero or one remaining.
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").length===2');
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").length<=1');
+  // Layer controls require the studio to be closed, so reopen it before the next creative-studio step.
+  await clickMoreGoal("creative-studio");
+  await waitFor('document.querySelector("#creative-studio-dialog")?.open === true');
   await click('[data-creative-tab="words"]');
   await evaluate('document.querySelector("#creative-custom-word").value="SAKURA!!"');
   await click('[data-creative-action="add-word"][data-item-id="cyber-idol"]');
@@ -1034,9 +1069,16 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>layer.name.startsWith("Conjunto · Idol galáctica")).length===0');
   await clickMoreGoal("undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Título · Neon idol")===false');
-  await clickMoreGoal("undo");
+  // Remove any remaining test stickers without assuming the history records
+  // rapid insertions separately or together. Stop once the baseline is restored.
+  for (let undoIndex = 0; undoIndex < 2; undoIndex += 1) {
+    const remainingSakuraCount = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").length');
+    if (remainingSakuraCount === 0) break;
+    await clickMoreGoal("undo");
+    await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").length < ' + remainingSakuraCount);
+  }
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Sticker · Flor de sakura")===false');
-  assert(JSON.stringify((await readDocument()).layers.map(layer=>layer.id))===JSON.stringify(creativeBaselineIds),"Undo removes style pack, word-art title and sticker as three independent history actions");
+  assert(JSON.stringify((await readDocument()).layers.map(layer=>layer.id))===JSON.stringify(creativeBaselineIds),"Undo removes the style pack, title, and sticker test fixture while preserving baseline layers");
 
   await evaluate("window.confirm = () => true");
   await clickMoreGoal("creative-studio");

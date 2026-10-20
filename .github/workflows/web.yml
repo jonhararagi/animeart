@@ -1,7 +1,7 @@
 name: Web CI
 
 concurrency:
-  group: animeart-web-ci
+  group: animeart-web-ci-${{ github.ref }}
   cancel-in-progress: true
 
 on:

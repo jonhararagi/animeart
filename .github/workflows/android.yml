@@ -1,7 +1,7 @@
 name: Android CI
 
 concurrency:
-  group: animeart-android-ci
+  group: animeart-android-ci-${{ github.ref }}
   cancel-in-progress: true
 
 on:
@@ -91,6 +91,7 @@ jobs:
           test -s "$WEB/domain/creative-catalog.mjs"
           test -s "$WEB/domain/canvas-rendering.mjs"
           test -s "$WEB/domain/stroke-smoothing.mjs"
+          test -s "$WEB/domain/freehand-rendering.mjs"
           test -s "$WEB/domain/image-processing-client.mjs"
           test -s "$WEB/workers/image-processing-worker.mjs"
           grep -q 'id="creative-studio-dialog"' "$WEB/index.html"
