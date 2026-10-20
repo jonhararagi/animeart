@@ -1,0 +1,35 @@
+# KapiArt Studio · estudio de color anime y selección por zonas
+
+**Fecha:** 2026-10-20  
+**TIMER estimado:** 4–8 horas para la primera iteración. Tiempo real no medido.  
+**Estado:** `PARTIAL`. Cambios desarrollados en rama; CI y dispositivo aún pendientes.  
+**Base main verificada al inicio:** `33ab69e66e902b62e411d4cd764ef2dff180d125`.  
+**Rama:** `feature/kapiart-anime-color-studio-001`.
+
+## Alcance del primer incremento
+
+- Paleta local generada por HSL con 2.880 combinaciones programáticas, paginada para no introducir miles de elementos de interfaz a la vez.
+- Presets con nombres y alias en español para cabello anime, tonos de piel, reflejos y sombras; búsqueda por nombre, alias y fragmentos de HEX.
+- Varita por región conectada de cuatro vecinos, con tolerancia ajustable y protección heurística frente a líneas oscuras cuando el relleno muestreado es más claro.
+- Recoloración con máscara para modificar únicamente la selección, conservar canal alfa y trasladar la luminosidad hacia el nuevo color para que los negros puedan cambiar de tono sin perder toda la forma.
+- Añadir una segunda región a la selección, limpiar selección y separar la zona elegida en una nueva capa de imagen. La separación recorta los píxeles seleccionados de la capa original y se registra en el historial para permitir deshacer.
+- Interfaz en español, vista previa sin modificar el original antes de aplicar, controles de toque y estilos cálidos de KapiArt.
+- Nuevo módulo añadido al app shell offline v56.
+
+## Límite explícito del «conocimiento de miles de imágenes»
+
+Este incremento **no es un modelo entrenado con miles de imágenes** ni realiza reconocimiento semántico que garantice saber qué objeto es cabello. Implementa reglas locales específicas para ilustración anime/cel-shading: regiones de color conectadas, transparencia y líneas oscuras. Funciona mejor con dibujos limpios de colores planos. Gradientes, cabello negro unido a contornos negros, antialiasing fuerte o zonas del mismo color que se tocan pueden requerir ajuste manual.
+
+Para incorporar un corpus de referencia amplio de manera responsable, el siguiente paso debe ser un catálogo versionado de ejemplos sintéticos y/o de licencia abierta, con procedencia, licencia, dimensiones y hashes, separado de la APK. No se añadieron imágenes de terceros sin licencia ni se incluyó un modelo pesado o servicio remoto.
+
+## Pruebas y aceptación
+
+- Se añadieron pruebas unitarias para el catálogo generado, búsqueda de tonos, selección contigua, protección de líneas oscuras, píxeles transparentes, composición de máscaras, recoloración de cabello oscuro y preservación del alfa.
+- Se añadieron aserciones de integración de la interfaz y del app shell.
+- **CI Web:** pendiente de ejecutar sobre el HEAD definitivo de la rama.
+- **CI Android / APK:** pendiente de confirmar que el wrapper Android empaqueta el Web runtime actualizado.
+- **Prueba física Xiaomi 24116RACCG:** no realizada. No declarar aceptación completa hasta probar varita, añadir zona, recolorear, separar capa, deshacer/rehacer y exportar en el dispositivo.
+
+## Siguiente criterio de integración
+
+No integrar en `main` hasta tener Web CI con E2E de navegador y Android CI en el SHA exacto de la rama. Confirmar también que el APK contiene `anime-color-studio.mjs` y que el app shell v56 carga offline.
