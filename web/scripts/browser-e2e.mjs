@@ -391,7 +391,7 @@ try {
   const canvas = await selectorCenter("#canvas");
   assert(canvas.width > 0 && canvas.height > 0, "canvas exists and has usable layout dimensions");
   assert(await evaluate(`getComputedStyle(document.querySelector("#canvas")).visibility !== "hidden" && getComputedStyle(document.querySelector("#canvas")).display !== "none"`), "canvas is visible");
-  assert((await evaluate('document.querySelector("#status").textContent'))?.includes("CANVAS READY"), "editor reports canvas/service-worker readiness");
+  assert(await evaluate('document.documentElement.dataset.serviceWorkerActive === "true" && document.documentElement.dataset.cacheReady === "true"'), "service worker is active and the offline shell cache is ready");
   assert(await evaluate('document.querySelector("#canvas-import-images").getBoundingClientRect().width > 0 && document.querySelector("#canvas-open-asset-library").getBoundingClientRect().width > 0'), "image import and reusable library remain visible next to the canvas without scrolling");
   assert(await evaluate('document.querySelector(".canvas-view-menu").open === false'), "transparency and canvas-background controls stay tucked inside the collapsed View menu");
 
@@ -1245,7 +1245,9 @@ try {
   assert(await evaluate('document.querySelectorAll("#layers li").length === ' + pendingLayerCount), "rejected image import does not report success or commit a layer");
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === false'), "warning remains visible after rejected image import");
   await click("#save");
-  await waitFor('document.querySelector("#status").textContent === "Guardado localmente"');
+  // The service-worker diagnostic may update #status asynchronously after a successful
+  // save. Assert the durable recovery state transition here, not a transient status string.
+  await waitFor('document.querySelector("#storage-recovery-notice").hidden === true');
   assert(await evaluate('document.querySelector("#storage-recovery-notice").hidden === true'), "successful retry clears the recovery warning only after storage succeeds");
   const quotaRecoverySaved = await readDocument();
   assert(quotaRecoverySaved.version === 2 && quotaRecoverySaved.layers.length === pendingLayerCount, "successful retry stores the selected in-memory replacement document");
