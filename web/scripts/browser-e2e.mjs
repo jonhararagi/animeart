@@ -2229,7 +2229,7 @@ try {
     "guided sticker background removal changes the selected image source and preserves its layer");
   const processedAlpha = await evaluate('(() => new Promise((resolve,reject) => { const source=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(guidedStickerOriginal.id) + ').image.source; const image=new Image(); image.onload=()=>{ try { const canvas=document.createElement("canvas"); canvas.width=image.naturalWidth; canvas.height=image.naturalHeight; const context=canvas.getContext("2d",{willReadFrequently:true}); context.drawImage(image,0,0); const pixels=context.getImageData(0,0,canvas.width,canvas.height).data; resolve({width:canvas.width,height:canvas.height,cornerAlpha:pixels[3],centerAlpha:pixels[(Math.floor(canvas.height/2)*canvas.width+Math.floor(canvas.width/2))*4+3]}); } catch(error) { reject(error); } }; image.onerror=()=>reject(new Error("processed image failed to decode")); image.src=source; })())');
   assert(processedAlpha.width === 64 && processedAlpha.height === 64 && processedAlpha.cornerAlpha < 32 && processedAlpha.centerAlpha > 200,
-    "guided sticker background removal persists transparent background pixels and opaque subject pixels in the actual edited image");
+    "guided sticker background removal persists transparent background pixels and opaque subject pixels in the actual edited image: " + JSON.stringify(processedAlpha));
 
   await evaluate('(() => { const toolbox=document.querySelector("#toolbox-dialog"); if(!toolbox.open) toolbox.showModal(); document.querySelector("#guided-editing-open-mobile").click(); })()');
   await waitFor('document.querySelector("#guided-editing-dialog")?.open === true');
