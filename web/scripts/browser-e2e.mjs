@@ -2164,10 +2164,11 @@ try {
   await evaluate('window.confirm = () => true');
   await evaluate('(() => { const text=document.querySelector("#text-edit-dialog"); if(text?.open) text.close(); const guide=document.querySelector("#guided-editing-dialog"); if(guide?.open) guide.close(); const toolbox=document.querySelector("#toolbox-dialog"); if(toolbox?.open) toolbox.close(); document.querySelector("#new-document").click(); })()');
   await waitFor('document.querySelector("#project-dialog")?.open === true');
-  await evaluate('(() => { document.querySelector("#document-width").value="128"; document.querySelector("#document-height").value="128"; })()');
   await click('#project-form button[type="submit"]');
   await waitFor('document.querySelector("#project-dialog")?.open === false');
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").width===128 && JSON.parse(localStorage.getItem("animeart-web-document")||"{}").height===128');
+  await waitFor('document.querySelector("#status")?.textContent === "New document created"');
+  assert(await evaluate('Array.isArray(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers)'),
+    "guided sticker E2E starts from a fresh saved document");
 
   await evaluate('(() => { const toolbox=document.querySelector("#toolbox-dialog"); if(!toolbox.open) toolbox.showModal(); })()');
   await waitFor('document.querySelector("#toolbox-dialog")?.open === true');
