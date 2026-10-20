@@ -34,9 +34,11 @@ test("canvas rendering is frame-coalesced and freehand uses smooth coalesced sam
   assert.ok(app.includes('typeof event.getCoalescedEvents === "function"'));
   assert.ok(app.includes("appendInterpolatedStrokePoint"));
   assert.ok(app.includes("appendSmoothStrokeSamples"));
+  assert.ok(app.includes("traceSmoothStrokePath"));
   assert.ok(app.includes("finalStroke"));
   assert.ok(app.includes("currentSelectedLayer"));
-  assert.ok(app.includes("<= 6"));
+  assert.ok(app.includes('dragThreshold: event.pointerType === "touch" ? (layer.contentType === "text" ? 8 : 4) : 2'));
+  assert.ok(app.includes("travelled < (interaction.dragThreshold ?? 3)"));
 });
 
 test("release position is applied before committing layer transforms", async () => {
