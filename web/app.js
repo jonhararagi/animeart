@@ -2970,6 +2970,15 @@ function beginSelectionInteraction(event) {
   if (selectedHit?.startsWith("scale-")) return beginTransformInteraction("scale", event, selectedHit, selectedGeometry?.resizeHandleOffset);
   if (selectedHit === "rotate") return beginTransformInteraction("rotate", event);
   const documentPoint = screenToDocumentPoint(screenPoint, state.document, state.viewport, canvasSize());
+  // When objects overlap, keep the current selection as the drag target.
+  // Otherwise a sticker placed over a character can steal every touch intended
+  // to nudge the sticker underneath. The layer list remains the explicit way
+  // to switch to another overlapping object.
+  const currentSelectedLayer = selectedLayerExact();
+  if (!event.shiftKey && currentSelectedLayer?.visible && !currentSelectedLayer.locked &&
+      hitTestLayer(currentSelectedLayer, documentPoint, documentCenter(state.document))) {
+    return beginTransformInteraction("move", event);
+  }
   for (const layer of [...state.document.layers].reverse()) {
     if (!layer.visible) continue;
     if (hitTestLayer(layer, documentPoint, documentCenter(state.document))) {
