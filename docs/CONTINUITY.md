@@ -1,34 +1,41 @@
 # Continuidad de trabajo · KapiArt Studio · 2026-10-20
 
-**TIMER estimado:** 4–8 horas para una iteración importante de estabilidad, fluidez táctil, mejora guiada y preparación de entrega. Tiempo técnico real no medido.
+**TIMER estimado:** 4–8 horas para la primera iteración importante. Tiempo real de trabajo no medido.
 
-**Estado de trabajo:** primera mejora de interacción preparada en `fix/kapiart-touch-drawing-smooth-001`, PR [#101](https://github.com/jonhararagi/animeart/pull/101). La rama parte del `main` con SHA `b85cadb68ecad9dd1efc660450b9fe746fbeece9`. No se debe considerar aún una entrega integrada hasta que se fusione y se compruebe el build del commit de `main`.
+## Estado de integración
 
-## Iteración de fluidez táctil
+- Repositorio: [jonhararagi/animeart](https://github.com/jonhararagi/animeart).
+- La mejora de fluidez táctil se integró en `main` con el commit **`49d524dd03c500acd72e627a6228ad8f77cd8bdd`**: [ver commit](https://github.com/jonhararagi/animeart/commit/49d524dd03c500acd72e627a6228ad8f77cd8bdd).
+- PR #101 está cerrada: [Pulir dibujo táctil y continuidad de trazos](https://github.com/jonhararagi/animeart/pull/101).
+- El `main` comprobado contiene el módulo de trazos `web/domain/stroke-smoothing.mjs`, el uso en el editor y la caché offline v53.
+- La ejecución de CI probada corresponde al SHA de rama `118e3047476219ca7c14c624f780f1d96a5c64de`, cuyo contenido de aplicación se integró en el commit de squash indicado. **La ejecución específica del commit integrado de `main` y su artefacto APK aún deben quedar verificados por separado.**
 
-- Nuevo módulo `web/domain/stroke-smoothing.mjs`: interpola muestras de trazo en coordenadas de documento, valida puntos finitos y evita añadir muestras duplicadas.
-- `web/app.js`: utiliza el módulo en las muestras coalesced y en la posición final de `pointerup`; limpia la captura del puntero al terminar/cancelar trazos; ignora desplazamientos de hasta 6 px para distinguir un toque de un arrastre intencional.
-- Objetos superpuestos: el objeto ya seleccionado tiene prioridad al empezar a arrastrar sobre el lienzo; el panel Capas permite cambiar al otro objeto superpuesto.
-- `web/service-worker.js` y diagnóstico offline: caché actualizada a `animeart-web-shell-v53`, incluyendo el nuevo módulo.
-- Tests actualizados para comportamiento de interpolación, coordenadas, regresiones táctiles y expectativas de caché. Se corrigieron pruebas anteriores que seguían esperando la caché v52.
+## Mejora integrada: dibujo y movimiento táctil
 
-## Evidencia de la revisión más reciente
+- Nuevo módulo `web/domain/stroke-smoothing.mjs`: interpola puntos en coordenadas del documento, valida coordenadas finitas, omite muestras duplicadas y conserva la posición final.
+- `web/app.js): utiliza las muestras coalesced del dispositivo y la posición de `pointerup`; libera captura al finalizar o cancelar trazos.
+- Tacto en selección: el umbral de desplazamiento para distinguir un toque de un arrastre sube de 3 a 6 px para reducir pequeños movimientos involuntarios.
+- Capas solapadas: al iniciar el arrastre dentro de la capa actualmente seleccionada, ésta se mantiene como objetivo. Para elegir otra capa superpuesta, usar la lista de Capas.
+- `web/service-worker.js`: caché offline actualizada a `animeart-web-shell-v53), incorporando el nuevo módulo al app shell.
+- Las pruebas cubren interpolación, coordenadas, posición final, muestras inválidas, regresiones del gesto táctil y expectativas de caché.
 
-- SHA de rama comprobado por la ejecución: `118e3047476219ca7c14c624f780f1d96a5c64de`.
-- Web CI **PASS**, run [39414691414](https://github.com/jonhararagi/animeart/actions/runs/39414691414): build, tests, benchmark, verificación del resultado y Chromium E2E terminaron correctamente.
-- Android CI **PASS**, run [39414691477](https://github.com/jonhararagi/animeart/actions/runs/39414691477): build, verificación de recursos del editor empaquetado, unit tests, lint, instrumentación/startup smoke y checksum del APK terminaron correctamente.
-- Artefacto candidato de rama: [KapiArt Android CI artifact 12261600563](https://github.com/jonhararagi/animeart/actions/runs/39414691477/artifacts/12261600563), 10.723.160 bytes, variante debug v0.3.5. Es un artefacto de la rama de trabajo, **no** sustituye el artefacto final que se debe obtener y verificar después de integrar en `main`.
-- La firma estable de Android no se configuró en CI. La compatibilidad de actualización de esta APK no está garantizada si el certificado no coincide con la instalación existente.
+## Evidencia verificada
 
-## Pendientes de aceptación
+- Web CI **PASS**: [run #39414691414](https://github.com/jonhararagi/animeart/actions/runs/39414691414), en SHA `118e3047476219ca7c14c624f780f1d96a5c64de). Build, pruebas, benchmark, verificación de salida y Chromium E2E pasaron.
+- Android CI **PASS**: [run #39414691477](https://github.com/jonhararagi/animeart/actions/runs/39414691477), en el mismo SHA. Compilación, comprobaciones de recursos empaquetados, unit tests, lint, instrumentación/startup smoke y checksum pasaron.
+- Artefacto candidato de rama: [artifact #12261600563](https://github.com/jonhararagi/animeart/actions/runs/39414691477/artifacts/12261600563), 10.723.160 bytes, debug v0.3.5. **No es la APK final de entrega desde `main`.**
+- El commit integrado de `main` es `49d524dd03c500acd72e627a6228ad8f77cd8bdd). En esta revisión no se ha confirmado un resultado CI específico para ese SHA ni un artefacto construido desde él.
 
-1. Fusionar PR #101 únicamente tras verificar su HEAD y las dos CI; no integrar commits más recientes sin revalidación.
-2. Obtener la CI y el artefacto Android del SHA de merge/integración en `main`, verificar APK y checksum, y comprobar el identificador `com.jonhararagi.animeart`.
-3. Configurar firma estable con secretos privados de CI antes de prometer actualización sobre una instalación existente.
-4. Probar dedo/stylus, trazos rápidos, zoom/pan, capas superpuestas, escalado y deshacer/rehacer en el Xiaomi `24116RACCG`. No hay prueba física registrada.
-5. Continuar fases restantes de la directiva: revisión de los restantes errores P0/P1, texto y transformaciones, recorridos completos de edición guiada con imágenes reales, comprobación de exportación, matriz actualizada de cinco referentes y paleta/mascota. No afirmar que todo eso quedó validado con esta iteración.
+## Pendientes de aceptación y continuidad
 
-**Estado global de esta iteración:** `PASS` para Web CI y Android CI en el SHA citado; `PARTIAL` para entrega integral por integración, firma estable y prueba física aún pendientes.
+1. Comprobar Web CI y Android CI en el SHA integrado de `main` y obtener el artefacto Android de esa ejecución.
+2. Verificar APK, paquete `com.jonhararagi.animeart`, versión, certificado, tamaño y checksum. La firma estable no quedó configurada; no garantizar actualización sobre la instalación actual mientras no coincida el certificado.
+3. Probar dedo/stylus, trazos rápidos, zoom/pan, capas superpuestas, escala y deshacer/rehacer en el Xiaomi `24116RACCG`. No hay prueba física registrada.
+4. Seguir la directiva integral: auditar errores P0/P1 de imagen, texto, transformaciones, cancelación y persistencia; completar recorridos guiados con imágenes reales y exportación; verificar paleta/mascota; actualizar la matriz de los cinco referentes con fuentes actuales.
+5. No afirmar que toda la directiva esté completa con una única iteración de fluidez táctil.
+
+**Estado de esta iteración:** `PASS` para Web CI y Android CI en el SHA validado; `PARTIAL` para la entrega completa por falta de CI/artefacto específico del commit integrado, firma estable y prueba física.
+
 
 ---
 
