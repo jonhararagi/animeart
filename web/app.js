@@ -11,7 +11,7 @@ import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocume
 import { distanceBetweenTouches, midpointBetweenTouches, updatePinchPanViewport } from "./domain/touch-gestures.mjs";
 import { createFrameScheduler } from "./domain/frame-scheduler.mjs";
 import { appendInterpolatedStrokePoint } from "./domain/stroke-smoothing.mjs";
-import { ANIME_COLOR_PRESETS, combineAnimeSelections, countAnimeSelection, generateAnimePalette, searchAnimeColors, selectAnimeRegion } from "./domain/anime-color-studio.mjs";
+import { ANIME_COLOR_PRESETS, combineAnimeSelections, countAnimeSelection, generateAnimePalette, searchAnimeColors, selectAnimeRectangle, selectAnimeRegion } from "./domain/anime-color-studio.mjs";
 import { traceSmoothStrokePath } from "./domain/freehand-rendering.mjs";
 import { clearCanvasBackingStore } from "./domain/canvas-rendering.mjs";
 import { addLayer, clearLayer, cropDocumentCanvas, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
@@ -109,6 +109,9 @@ const recolorContext = recolorCanvas?.getContext("2d", { willReadFrequently: tru
 let recolorSession = null;
 let recolorSampleMode = false;
 let recolorWandMode = false;
+let recolorRectangleMode = false;
+let recolorRectangleStart = null;
+let animeSelectionOverlay = null;
 const backgroundRemovalDialog = document.querySelector("#background-removal-dialog");
 const backgroundRemovalCanvas = document.querySelector("#background-removal-preview");
 const backgroundRemovalContext = backgroundRemovalCanvas?.getContext("2d", { willReadFrequently: true });
@@ -5329,12 +5332,15 @@ function currentRecolorOptions() {
   tolerance: Number(document.querySelector("#recolor-tolerance").value),
   softness: Number(document.querySelector("#recolor-softness").value),
   preserveShading: document.querySelector("#recolor-preserve-shading").checked,
+  temperature: Number(document.querySelector("#recolor-temperature").value),
+  darkness: Number(document.querySelector("#recolor-darkness").value),
+  hueShift: Number(document.querySelector("#recolor-hue-shift").value),
   selectionMask: recolorSession?.selectionMask || null,
   animeRecolor: Boolean(recolorSession?.selectionMask)
  };
 }
 function recolorOptionsKey(session, options) {
- return JSON.stringify([session?.layerId, session?.source, session?.selectionVersion || 0, options.sourceColor, options.targetColor, options.tolerance, options.softness, options.preserveShading]);
+ return JSON.stringify([session?.layerId, session?.source, session?.selectionVersion || 0, options.sourceColor, options.targetColor, options.tolerance, options.softness, options.preserveShading, options.temperature, options.darkness, options.hueShift]);
 }
 function renderRecolorPreview() {
  recolorPreviewRevision += 1;
@@ -5364,6 +5370,9 @@ async function pumpRecolorPreview() {
     recolorPreviewKey = key;
     document.querySelector("#recolor-tolerance-value").textContent = document.querySelector("#recolor-tolerance").value;
     document.querySelector("#recolor-softness-value").textContent = document.querySelector("#recolor-softness").value;
+    document.querySelector("#recolor-temperature-value").textContent = document.querySelector("#recolor-temperature").value;
+    document.querySelector("#recolor-darkness-value").textContent = document.querySelector("#recolor-darkness").value;
+    document.querySelector("#recolor-hue-shift-value").textContent = document.querySelector("#recolor-hue-shift").value;
     document.querySelector("#recolor-status").textContent = session.sourceColor
       ? "Vista previa lista. El sombreado y la transparencia se conservan."
       : "Elige «Muestra de color» y toca un tono de la imagen.";
@@ -5390,13 +5399,13 @@ async function openRecolorTool() {
   const width=layer.image.width,height=layer.image.height;recolorCanvas.width=width;recolorCanvas.height=height;recolorContext.clearRect(0,0,width,height);recolorContext.drawImage(image,0,0,width,height);
   recolorSession={layerId:layer.id,source:layer.image.source,original:recolorContext.getImageData(0,0,width,height),sourceColor:null,selectionMask:null,selectionVersion:0};recolorSampleMode=false;recolorWandMode=false;
   document.querySelector("#recolor-source-color").value="#806050";document.querySelector("#recolor-target-color").value="#C62845";document.querySelector("#recolor-tolerance").value="36";document.querySelector("#recolor-softness").value="28";document.querySelector("#recolor-preserve-shading").checked=true;
-  document.querySelector("#recolor-wand-toggle").setAttribute("aria-pressed","false");document.querySelector("#recolor-wand-add").checked=false;document.querySelector("#recolor-wand-tolerance").value="28";document.querySelector("#recolor-wand-tolerance-value").textContent="28";document.querySelector("#recolor-selection-status").textContent="Sin zona seleccionada. Usa la varita y toca una zona plana del dibujo anime.";
+  document.querySelector("#recolor-wand-toggle").setAttribute("aria-pressed","false");document.querySelector("#recolor-rectangle-toggle").setAttribute("aria-pressed","false");recolorRectangleMode=false;recolorRectangleStart=null;recolorWandMode=false;document.querySelector("#recolor-wand-add").checked=false;document.querySelector("#recolor-wand-tolerance").value="28";document.querySelector("#recolor-wand-tolerance-value").textContent="28";document.querySelector("#recolor-temperature").value="0";document.querySelector("#recolor-darkness").value="0";document.querySelector("#recolor-hue-shift").value="0";document.querySelector("#recolor-selection-status").textContent="Sin zona seleccionada. Usa la varita y toca una zona plana del dibujo anime.";
   document.querySelector("#anime-color-search").value="";animePalettePage=0;renderAnimeColorResults();syncAnimeSelectionControls();
   recolorDialog.showModal();renderRecolorPreview();
  } catch(error){status.textContent=error.message||"No se pudo abrir la herramienta de color";}
 }
 if(recolorButton)recolorButton.addEventListener("click",openRecolorTool);
-function closeRecolorTool(){recolorPreviewRevision += 1; recolorDialog.close();recolorSession=null;recolorSampleMode=false;recolorWandMode=false;recolorPreviewResult=null;recolorPreviewKey=null;document.querySelector("#apply-recolor").disabled=true;document.querySelector("#recolor-wand-toggle").setAttribute("aria-pressed","false");document.querySelector("#recolor-preview").style.cursor="default";}
+function closeRecolorTool(){recolorPreviewRevision += 1; recolorDialog.close();recolorSession=null;recolorSampleMode=false;recolorWandMode=false;recolorRectangleMode=false;recolorRectangleStart=null;recolorPreviewResult=null;recolorPreviewKey=null;document.querySelector("#apply-recolor").disabled=true;document.querySelector("#recolor-wand-toggle").setAttribute("aria-pressed","false");document.querySelector("#recolor-rectangle-toggle").setAttribute("aria-pressed","false");document.querySelector("#recolor-preview").style.cursor="default";if(animeSelectionOverlay)animeSelectionOverlay.hidden=true;}
 document.querySelector("#cancel-recolor").addEventListener("click",closeRecolorTool);
 document.querySelector("#cancel-recolor-bottom").addEventListener("click",closeRecolorTool);
 document.querySelector("#sample-recolor-source").addEventListener("click",()=>{recolorSampleMode=true;recolorWandMode=false;document.querySelector("#recolor-wand-toggle").setAttribute("aria-pressed","false");document.querySelector("#recolor-status").textContent="Toca un color en la vista previa para tomarlo como muestra.";});
@@ -5449,7 +5458,61 @@ function syncAnimeSelectionControls(){
  const status=document.querySelector("#recolor-selection-status");
  if(status)status.textContent=count?count.toLocaleString("es-AR")+" píxeles de la imagen seleccionados. Puedes añadir otra zona o separarla en una capa.":"Sin zona seleccionada. La varita funciona mejor en rellenos planos con bordes oscuros.";
 }
-document.querySelector("#recolor-wand-clear").addEventListener("click",()=>{if(!recolorSession)return;recolorSession.selectionMask=null;recolorSession.selectionVersion+=1;syncAnimeSelectionControls();renderRecolorPreview();document.querySelector("#recolor-status").textContent="Selección de zona limpiada. La muestra de color sigue disponible.";});
+document.querySelector("#recolor-wand-clear").addEventListener("click",()=>{if(!recolorSession)return;recolorSession.selectionMask=null;recolorSession.selectionVersion+=1;if(animeSelectionOverlay)animeSelectionOverlay.hidden=true;syncAnimeSelectionControls();renderRecolorPreview();document.querySelector("#recolor-status").textContent="Selección de zona limpiada. La muestra de color sigue disponible.";});
+function getAnimeSelectionOverlay(){
+ if(animeSelectionOverlay)return animeSelectionOverlay;
+ const wrapper=recolorCanvas?.parentElement;if(!wrapper)return null;
+ wrapper.classList.add("anime-rectangle-selection-host");
+ animeSelectionOverlay=document.createElement("div");animeSelectionOverlay.id="recolor-selection-rectangle";animeSelectionOverlay.hidden=true;animeSelectionOverlay.setAttribute("aria-hidden","true");wrapper.append(animeSelectionOverlay);return animeSelectionOverlay;
+}
+function updateAnimeRectangleOverlay(start,end){
+ const overlay=getAnimeSelectionOverlay();if(!overlay||!start||!end)return;
+ const wrapper=recolorCanvas.parentElement,wrapperRect=wrapper.getBoundingClientRect(),wrapperStyle=getComputedStyle(wrapper);
+ const borderLeft=Number.parseFloat(wrapperStyle.borderLeftWidth)||0,borderTop=Number.parseFloat(wrapperStyle.borderTopWidth)||0;
+ const left=start.display.drawnLeft+Math.min(start.x,end.x)*start.display.scale;
+ const top=start.display.drawnTop+Math.min(start.y,end.y)*start.display.scale;
+ const width=(Math.abs(end.x-start.x)+1)*start.display.scale,height=(Math.abs(end.y-start.y)+1)*start.display.scale;
+ overlay.style.left=(left-wrapperRect.left-borderLeft)+"px";overlay.style.top=(top-wrapperRect.top-borderTop)+"px";
+ overlay.style.width=Math.max(1,width)+"px";overlay.style.height=Math.max(1,height)+"px";overlay.hidden=false;
+}
+function finishAnimeRectangleSelection(end){
+ const session=recolorSession,start=recolorRectangleStart;
+ if(!session||!start||!end)return;
+ const region=selectAnimeRectangle(session.original,{x1:start.x,y1:start.y,x2:end.x,y2:end.y});
+ if(!region.pixelCount){document.querySelector("#recolor-status").textContent="El rectángulo no contiene píxeles visibles. Prueba una zona que cubra el dibujo.";if(animeSelectionOverlay)animeSelectionOverlay.hidden=true;return;}
+ session.selectionMask=document.querySelector("#recolor-wand-add").checked&&session.selectionMask?combineAnimeSelections(session.selectionMask,region.mask,"add"):region.mask;
+ session.selectionVersion=(session.selectionVersion||0)+1;session.sourceColor=region.seedColor;document.querySelector("#recolor-source-color").value=region.seedColor;
+ syncAnimeSelectionControls();renderRecolorPreview();document.querySelector("#recolor-status").textContent="Área rectangular seleccionada: "+region.pixelCount.toLocaleString("es-AR")+" píxeles visibles. Ajusta color, temperatura u oscuridad.";
+}
+document.querySelector("#recolor-rectangle-toggle").addEventListener("click",()=>{
+ recolorRectangleMode=!recolorRectangleMode;recolorWandMode=false;recolorSampleMode=false;recolorRectangleStart=null;
+ document.querySelector("#recolor-wand-toggle").setAttribute("aria-pressed","false");document.querySelector("#recolor-rectangle-toggle").setAttribute("aria-pressed",String(recolorRectangleMode));
+ document.querySelector("#recolor-preview").style.cursor=recolorRectangleMode?"crosshair":"default";
+ document.querySelector("#recolor-status").textContent=recolorRectangleMode?"Arrastra sobre la imagen para delimitar el área del efecto.":"Selección rectangular pausada.";
+});
+recolorCanvas.addEventListener("pointerdown",event=>{
+ if(!recolorRectangleMode||!recolorSession)return;
+ const point=recolorCanvasPointFromClient(event);if(!point)return;
+ event.preventDefault();recolorRectangleStart={x:point.x,y:point.y,display:point};
+ try{recolorCanvas.setPointerCapture(event.pointerId);}catch{}
+ updateAnimeRectangleOverlay(recolorRectangleStart,recolorRectangleStart);
+});
+recolorCanvas.addEventListener("pointermove",event=>{
+ if(!recolorRectangleMode||!recolorRectangleStart)return;
+ const point=recolorCanvasPointFromClient(event);if(!point)return;
+ updateAnimeRectangleOverlay(recolorRectangleStart,{x:point.x,y:point.y,display:point});
+});
+function completeAnimeRectanglePointer(event){
+ if(!recolorRectangleMode||!recolorRectangleStart)return;
+ const start=recolorRectangleStart,point=recolorCanvasPointFromClient(event);
+ recolorRectangleStart=null;recolorRectangleMode=false;
+ document.querySelector("#recolor-rectangle-toggle").setAttribute("aria-pressed","false");document.querySelector("#recolor-preview").style.cursor="default";
+ try{if(point)finishAnimeRectangleSelection({x:point.x,y:point.y,display:point});}
+ catch(error){document.querySelector("#recolor-status").textContent=error.message||"No se pudo seleccionar el rectángulo.";}
+ finally{try{recolorCanvas.releasePointerCapture(event.pointerId);}catch{}}
+}
+recolorCanvas.addEventListener("pointerup",completeAnimeRectanglePointer);
+recolorCanvas.addEventListener("pointercancel",event=>{if(!recolorRectangleStart)return;recolorRectangleStart=null;recolorRectangleMode=false;document.querySelector("#recolor-rectangle-toggle").setAttribute("aria-pressed","false");document.querySelector("#recolor-preview").style.cursor="default";if(animeSelectionOverlay)animeSelectionOverlay.hidden=true;try{recolorCanvas.releasePointerCapture(event.pointerId);}catch{};document.querySelector("#recolor-status").textContent="Selección rectangular cancelada.";});
 document.querySelector("#recolor-wand-tolerance").addEventListener("input",event=>{document.querySelector("#recolor-wand-tolerance-value").textContent=event.currentTarget.value;});
 document.querySelector("#recolor-wand-tolerance").addEventListener("change",()=>{document.querySelector("#recolor-status").textContent="Tolerancia actualizada. Activa la varita y toca la zona para volver a seleccionarla.";});
 function recolorCanvasPointFromClient(event){
@@ -5473,7 +5536,8 @@ function recolorCanvasPointFromClient(event){
  if(event.clientX<drawnLeft||event.clientY<drawnTop||event.clientX>=drawnLeft+drawnWidth||event.clientY>=drawnTop+drawnHeight)return null;
  return {
   x:Math.max(0,Math.min(recolorCanvas.width-1,Math.floor((event.clientX-drawnLeft)/scale))),
-  y:Math.max(0,Math.min(recolorCanvas.height-1,Math.floor((event.clientY-drawnTop)/scale)))
+  y:Math.max(0,Math.min(recolorCanvas.height-1,Math.floor((event.clientY-drawnTop)/scale))),
+  scale, drawnLeft, drawnTop
  };
 }
 recolorCanvas.addEventListener("click",event=>{
@@ -5498,7 +5562,7 @@ recolorCanvas.addEventListener("click",event=>{
  if(s.original.data[o+3]===0){document.querySelector("#recolor-status").textContent="Ese píxel es transparente. Toca un color visible.";return;}
  s.sourceColor=pixelHex(s.original.data,o);document.querySelector("#recolor-source-color").value=s.sourceColor;recolorSampleMode=false;renderRecolorPreview();
 });
-for(const id of ["recolor-target-color","recolor-tolerance","recolor-softness","recolor-preserve-shading"]){document.querySelector("#"+id).addEventListener("input",renderRecolorPreview);document.querySelector("#"+id).addEventListener("change",renderRecolorPreview);}
+for(const id of ["recolor-target-color","recolor-tolerance","recolor-softness","recolor-preserve-shading","recolor-temperature","recolor-darkness","recolor-hue-shift"]){document.querySelector("#"+id).addEventListener("input",renderRecolorPreview);document.querySelector("#"+id).addEventListener("change",renderRecolorPreview);}
 async function splitAnimeSelectionIntoLayer(){
  const s=recolorSession,layer=s&&state.document.layers.find(item=>item.id===s.layerId),mask=s?.selectionMask;
  if(!s||!layer||layer.locked||layer.contentType!=="image"||layer.image?.source!==s.source||!mask){document.querySelector("#recolor-status").textContent="Selecciona una zona válida antes de separarla.";return;}
