@@ -5399,7 +5399,7 @@ async function openRecolorTool() {
   const width=layer.image.width,height=layer.image.height;recolorCanvas.width=width;recolorCanvas.height=height;recolorContext.clearRect(0,0,width,height);recolorContext.drawImage(image,0,0,width,height);
   recolorSession={layerId:layer.id,source:layer.image.source,original:recolorContext.getImageData(0,0,width,height),sourceColor:null,selectionMask:null,selectionVersion:0};recolorSampleMode=false;recolorWandMode=false;
   document.querySelector("#recolor-source-color").value="#806050";document.querySelector("#recolor-target-color").value="#C62845";document.querySelector("#recolor-tolerance").value="36";document.querySelector("#recolor-softness").value="28";document.querySelector("#recolor-preserve-shading").checked=true;
-  document.querySelector("#recolor-wand-toggle").setAttribute("aria-pressed","false");document.querySelector("#recolor-rectangle-toggle").setAttribute("aria-pressed","false");recolorRectangleMode=false;recolorRectangleStart=null;recolorWandMode=false;document.querySelector("#recolor-wand-add").checked=false;document.querySelector("#recolor-wand-tolerance").value="28";document.querySelector("#recolor-wand-tolerance-value").textContent="28";document.querySelector("#recolor-temperature").value="0";document.querySelector("#recolor-darkness").value="0";document.querySelector("#recolor-hue-shift").value="0";document.querySelector("#recolor-selection-status").textContent="Sin zona seleccionada. Usa la varita y toca una zona plana del dibujo anime.";
+  document.querySelector("#recolor-wand-toggle").setAttribute("aria-pressed","false");document.querySelector("#recolor-rectangle-toggle").setAttribute("aria-pressed","false");recolorRectangleMode=false;recolorRectangleStart=null;recolorWandMode=false;document.querySelector("#recolor-effect-layer").checked=true;document.querySelector("#recolor-wand-add").checked=false;document.querySelector("#recolor-wand-tolerance").value="28";document.querySelector("#recolor-wand-tolerance-value").textContent="28";document.querySelector("#recolor-temperature").value="0";document.querySelector("#recolor-darkness").value="0";document.querySelector("#recolor-hue-shift").value="0";document.querySelector("#recolor-selection-status").textContent="Sin zona seleccionada. Usa la varita y toca una zona plana del dibujo anime.";
   document.querySelector("#anime-color-search").value="";animePalettePage=0;renderAnimeColorResults();syncAnimeSelectionControls();
   recolorDialog.showModal();renderRecolorPreview();
  } catch(error){status.textContent=error.message||"No se pudo abrir la herramienta de color";}
@@ -5601,24 +5601,54 @@ document.querySelector("#recolor-split-layer").addEventListener("click",splitAni
 
 document.querySelector("#apply-recolor").addEventListener("click",async()=>{
  const s=recolorSession,layer=s&&state.document.layers.find(item=>item.id===s.layerId);
- if(!s||!layer||layer.locked||layer.contentType!=="image"||layer.image?.source!==s.source){document.querySelector("#recolor-status").textContent="Selected layer changed. Close and reopen the tool.";return;}
- if(!s.sourceColor){document.querySelector("#recolor-status").textContent="Sample a source color before applying.";return;}
+ if(!s||!layer||layer.locked||layer.contentType!=="image"||layer.image?.source!==s.source){document.querySelector("#recolor-status").textContent="La capa seleccionada cambió. Cierra y vuelve a abrir la herramienta.";return;}
+ if(!s.sourceColor){document.querySelector("#recolor-status").textContent="Toma una muestra o selecciona una zona antes de aplicar.";return;}
  const button=document.querySelector("#apply-recolor");button.disabled=true;
  try {
-  const options = currentRecolorOptions();
-  const key = recolorOptionsKey(s, options);
-  const result = recolorPreviewKey === key && recolorPreviewResult
-    ? recolorPreviewResult
-    : await runImageProcessing("replace-color-range", s.original, options);
-  if (s !== recolorSession || state.document.layers.find(item => item.id === s.layerId)?.image?.source !== s.source) {
-    throw new Error("Selected image changed while processing. Close and reopen the tool.");
+  const options=currentRecolorOptions(),key=recolorOptionsKey(s,options);
+  const result=recolorPreviewKey===key&&recolorPreviewResult?recolorPreviewResult:await runImageProcessing("replace-color-range",s.original,options);
+  if(s!==recolorSession||state.document.layers.find(item=>item.id===s.layerId)?.image?.source!==s.source)throw new Error("La imagen cambió durante el proceso. Cierra y vuelve a abrir la herramienta.");
+  const before=cloneDocument(state.document);
+  if(document.querySelector("#recolor-effect-layer").checked){
+   const effectPixels=new Uint8ClampedArray(result.data);let changedPixels=0;
+   for(let pixel=0,offset=0;pixel<options.selectionMask?.length||pixel<s.original.width*s.original.height;pixel+=1,offset+=4){
+    const originalAlpha=s.original.data[offset+3];
+    const changed=result.data[offset]!==s.original.data[offset]||result.data[offset+1]!==s.original.data[offset+1]||result.data[offset+2]!==s.original.data[offset+2];
+    const inSelection=options.selectionMask?options.selectionMask[pixel]>0:changed;
+    // Opaque selected pixels become the editable effect layer. Soft/transparent antialiasing and line art stay on the unchanged original.
+    if(inSelection&&changed&&originalAlpha>=250){effectPixels[offset+3]=255;changedPixels+=1;}
+    else{effectPixels[offset]=0;effectPixels[offset+1]=0;effectPixels[offset+2]=0;effectPixels[offset+3]=0;}
+   }
+   if(!changedPixels)throw new Error("No hay píxeles opacos que cambien con estos ajustes. Prueba otro color, una selección distinta o desactiva «capa independiente» para aplicar directamente.");
+   const effectCanvas=document.createElement("canvas");effectCanvas.width=result.width;effectCanvas.height=result.height;
+   const effectContext=effectCanvas.getContext("2d",{willReadFrequently:true});if(!effectContext)throw new Error("No se pudo crear la capa de efecto.");
+   effectContext.putImageData(new ImageData(effectPixels,result.width,result.height),0,0);
+   const optimized=await optimizeImageSource(effectCanvas.toDataURL("image/png"));effectCanvas.width=0;effectCanvas.height=0;
+   const effectLayer=createImageLayer("Efecto de color · "+String(layer.name||"imagen").slice(0,42),result.width,result.height,optimized.source);
+   effectLayer.transform={...layer.transform};
+   const next=addLayer(state.document,effectLayer);if(!next)throw new Error("No se pudo crear la capa borrable.");
+   state.document=next;state.history.record(before,next);state.dirty=true;state.textPreview=null;
+   setSelection([effectLayer.id],effectLayer.id);
+   refreshDocument("Efecto aplicado en una capa independiente. Selecciona esa capa y usa «Borrar efecto de color» para retirar zonas.");
+   persistDocument();closeRecolorTool();
+  }else{
+   recolorContext.putImageData(new ImageData(result.data,result.width,result.height),0,0);
+   const optimized=await optimizeImageSource(recolorCanvas.toDataURL("image/webp",0.88));
+   const next=replaceImageLayer(state.document,layer.id,{source:optimized.source,width:optimized.width,height:optimized.height},{preserveDisplaySize:true});
+   if(!next)throw new Error("La imagen recoloreada supera el límite del documento. Redimensiónala e inténtalo de nuevo.");
+   imageCache.delete(s.source);state.document=next;state.history.record(before,next);state.dirty=true;refreshDocument("Color aplicado directamente. Puedes deshacer para restaurar el original.");persistDocument();closeRecolorTool();
   }
-  recolorContext.putImageData(new ImageData(result.data,result.width,result.height),0,0);
-  const optimized=await optimizeImageSource(recolorCanvas.toDataURL("image/webp",0.88));
-  const before=cloneDocument(state.document),next=replaceImageLayer(state.document,layer.id,{source:optimized.source,width:optimized.width,height:optimized.height},{preserveDisplaySize:true});
-  if(!next)throw new Error("Recolored image exceeds the document limit. Resize it and try again.");
-  imageCache.delete(s.source);state.document=next;state.history.record(before,next);state.dirty=true;refreshDocument("Color range replaced · shading preserved");persistDocument();closeRecolorTool();
- } catch(error){document.querySelector("#recolor-status").textContent=error.message||"Could not apply recolor";} finally{button.disabled=!recolorSession?.sourceColor;}
+ }catch(error){document.querySelector("#recolor-status").textContent=error.message||"No se pudo aplicar el color.";}
+ finally{button.disabled=!recolorSession?.sourceColor;}
+});
+document.querySelector("#erase-color-effect").addEventListener("click",()=>{
+ const layer=selectedLayerExact();
+ if(!layer||layer.contentType!=="image"||!String(layer.name||"").startsWith("Efecto de color · ")){
+  status.textContent="Selecciona primero una capa «Efecto de color». La capa original está debajo para que el borrador pueda recuperarla.";return;
+ }
+ const eraser=document.querySelector('.tool[data-tool="eraser"]');
+ if(!eraser){status.textContent="No se encontró el borrador de pincel.";return;}
+ eraser.click();status.textContent="Borrador de efecto activo: arrastra sobre la capa para revelar el dibujo original. Deshacer restaura los píxeles borrados.";
 });
 
 async function importImageIntoEditor(file, message = "Imagen importada") {
