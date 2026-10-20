@@ -1,4 +1,4 @@
-const CACHE_NAME = "animeart-web-shell-v55";
+const CACHE_NAME = "animeart-web-shell-v56";
 const APP_SHELL = [
   "./index.html",
   "./styles.css",
@@ -20,6 +20,7 @@ const APP_SHELL = [
   "./domain/image-processing.mjs",
   "./domain/crop-shape.mjs",
   "./domain/color-replacement.mjs",
+  "./domain/anime-region-selection.mjs",
   "./domain/image-processing-client.mjs",
   "./workers/image-processing-worker.mjs",
   "./domain/canvas-space.mjs",
