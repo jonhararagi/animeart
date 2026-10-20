@@ -600,15 +600,15 @@ try {
   await click(layerButtonSelector("e2e-overlap-bottom"));
   assert(await evaluate('document.querySelector("#selection-indicator").textContent.includes("e2e-overlap-bottom")'),
     "overlap E2E selects the intended lower image through the Layers list");
-  const overlapBefore = await readDocument();
-  const bottomTransformBefore = structuredClone(overlapBefore.layers.find(layer => layer.id === "e2e-overlap-bottom").transform);
-  const topTransformBefore = structuredClone(overlapBefore.layers.find(layer => layer.id === "e2e-overlap-top").transform);
+  const sakuraOverlapTransformsBefore = await readDocument();
+  const bottomTransformBefore = structuredClone(sakuraOverlapTransformsBefore.layers.find(layer => layer.id === "e2e-overlap-bottom").transform);
+  const topTransformBefore = structuredClone(sakuraOverlapTransformsBefore.layers.find(layer => layer.id === "e2e-overlap-top").transform);
   const overlapFrame = await readFrameMetrics();
   const overlapDragStart = documentPointToClientPoint(overlapFrame, 400, 300);
   await mouseDrag(overlapDragStart, { x: overlapDragStart.x + 54, y: overlapDragStart.y + 36 });
-  const overlapAfter = await readDocument();
-  const bottomTransformAfter = overlapAfter.layers.find(layer => layer.id === "e2e-overlap-bottom").transform;
-  const topTransformAfter = overlapAfter.layers.find(layer => layer.id === "e2e-overlap-top").transform;
+  const sakuraOverlapTransformsAfter = await readDocument();
+  const bottomTransformAfter = sakuraOverlapTransformsAfter.layers.find(layer => layer.id === "e2e-overlap-bottom").transform;
+  const topTransformAfter = sakuraOverlapTransformsAfter.layers.find(layer => layer.id === "e2e-overlap-top").transform;
   assert(bottomTransformAfter.x !== bottomTransformBefore.x || bottomTransformAfter.y !== bottomTransformBefore.y,
     "dragging within the overlap moves the currently selected lower image");
   assert(JSON.stringify(topTransformAfter) === JSON.stringify(topTransformBefore),
@@ -1028,17 +1028,17 @@ try {
   await click("#creative-studio-close");
   await waitFor('document.querySelector("#creative-studio-dialog").open===false');
   await click(layerButtonSelector(lowerSticker.id));
-  const overlapBefore = (await readDocument()).layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").map(layer=>({id:layer.id,transform:{...layer.transform}}));
+  const sakuraOverlapTransformsBefore = (await readDocument()).layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").map(layer=>({id:layer.id,transform:{...layer.transform}}));
   const overlapCanvasCenter = await selectorCenter("#canvas");
   await mouseDrag(overlapCanvasCenter, {x:overlapCanvasCenter.x+46,y:overlapCanvasCenter.y+28});
-  const overlapAfter = (await readDocument()).layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").map(layer=>({id:layer.id,transform:{...layer.transform}}));
-  const lowerBefore = overlapBefore.find(layer=>layer.id===lowerSticker.id);
-  const upperBefore = overlapBefore.find(layer=>layer.id===upperSticker.id);
-  const lowerAfter = overlapAfter.find(layer=>layer.id===lowerSticker.id);
-  const upperAfter = overlapAfter.find(layer=>layer.id===upperSticker.id);
-  assert(lowerAfter.transform.x!==lowerBefore.transform.x||lowerAfter.transform.y!==lowerBefore.transform.y,
+  const sakuraOverlapTransformsAfter = (await readDocument()).layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").map(layer=>({id:layer.id,transform:{...layer.transform}}));
+  const sakuraLowerBefore = sakuraOverlapTransformsBefore.find(layer=>layer.id===lowerSticker.id);
+  const sakuraUpperBefore = sakuraOverlapTransformsBefore.find(layer=>layer.id===upperSticker.id);
+  const sakuraLowerAfter = sakuraOverlapTransformsAfter.find(layer=>layer.id===lowerSticker.id);
+  const sakuraUpperAfter = sakuraOverlapTransformsAfter.find(layer=>layer.id===upperSticker.id);
+  assert(sakuraLowerAfter.transform.x!==sakuraLowerBefore.transform.x||sakuraLowerAfter.transform.y!==sakuraLowerBefore.transform.y,
     "dragging at an overlap moves the already selected sticker underneath instead of stealing the gesture");
-  assert(upperAfter.transform.x===upperBefore.transform.x&&upperAfter.transform.y===upperBefore.transform.y,
+  assert(sakuraUpperAfter.transform.x===sakuraUpperBefore.transform.x&&sakuraUpperAfter.transform.y===sakuraUpperBefore.transform.y,
     "the upper overlapping sticker stays in place when the lower selected layer is dragged");
   await click(layerButtonSelector(upperSticker.id));
   assert(await evaluate('document.querySelector("#selection-indicator").textContent.includes("Sticker · Flor de sakura")'),
