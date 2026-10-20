@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { traceSmoothStrokePath } from "../domain/freehand-rendering.mjs";
 
 function createPathRecorder(overrides = {}) {
@@ -69,9 +70,9 @@ test("smooth curves require quadraticCurveTo only for paths with three or more p
 });
 
 test("smooth renderer is available in the offline shell and Android package", async () => {
-  const app = await (await import("node:fs/promises")).readFile(new URL("../app.js", import.meta.url), "utf8");
-  const worker = await (await import("node:fs/promises")).readFile(new URL("../service-worker.js", import.meta.url), "utf8");
-  const androidWorkflow = await (await import("node:fs/promises")).readFile(new URL("../../.github/workflows/android.yml", import.meta.url), "utf8");
+  const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
+  const worker = await readFile(new URL("../service-worker.js", import.meta.url), "utf8");
+  const androidWorkflow = await readFile(new URL("../../.github/workflows/android.yml", import.meta.url), "utf8");
 
   assert.ok(app.includes('const OFFLINE_CACHE_NAME = "animeart-web-shell-v54"'));
   assert.ok(app.includes('"./domain/freehand-rendering.mjs"'));
