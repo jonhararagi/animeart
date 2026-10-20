@@ -768,6 +768,7 @@
             <h3 id="anime-wand-title">🪄 Varita mágica</h3>
             <p>Toca el relleno del cabello, ropa u ojos. La varita sigue el color conectado y respeta, en lo posible, las líneas oscuras.</p>
             <button id="recolor-wand-toggle" type="button" aria-pressed="false">Activar varita y tocar zona</button>
+            <button id="recolor-rectangle-toggle" type="button" aria-pressed="false">▱ Dibujar área rectangular</button>
             <label class="text-field" for="recolor-wand-tolerance">Tolerancia de selección <output id="recolor-wand-tolerance-value">28</output>
               <input id="recolor-wand-tolerance" type="range" min="0" max="120" step="1" value="28">
             </label>
@@ -784,6 +785,9 @@
           <label class="text-field" for="recolor-source-color">Color de origen<input id="recolor-source-color" type="color" value="#806050" disabled></label>
           <button id="sample-recolor-source" type="button">Tomar muestra manual</button>
           <label class="text-field" for="recolor-target-color">Color nuevo<input id="recolor-target-color" type="color" value="#C62845"></label>
+          <label class="text-field" for="recolor-temperature">Temperatura fría ↔ cálida <output id="recolor-temperature-value">0</output><input id="recolor-temperature" type="range" min="-100" max="100" value="0"></label>
+          <label class="text-field" for="recolor-darkness">Aclarar ↔ oscurecer <output id="recolor-darkness-value">0</output><input id="recolor-darkness" type="range" min="-100" max="100" value="0"></label>
+          <label class="text-field" for="recolor-hue-shift">Giro de tono <output id="recolor-hue-shift-value">0</output>°<input id="recolor-hue-shift" type="range" min="-180" max="180" value="0"></label>
           <label class="text-field" for="recolor-tolerance">Rango de color <output id="recolor-tolerance-value">36</output><input id="recolor-tolerance" type="range" min="0" max="160" value="36"></label>
           <label class="text-field" for="recolor-softness">Suavidad del borde <output id="recolor-softness-value">28</output><input id="recolor-softness" type="range" min="0" max="120" value="28"></label>
           <label class="background-removal-toggle"><input id="recolor-preserve-shading" type="checkbox" checked> Conservar sombras, brillo y textura</label>
