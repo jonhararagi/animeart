@@ -600,15 +600,15 @@ try {
   await click(layerButtonSelector("e2e-overlap-bottom"));
   assert(await evaluate('document.querySelector("#selection-indicator").textContent.includes("e2e-overlap-bottom")'),
     "overlap E2E selects the intended lower image through the Layers list");
-  const sakuraOverlapTransformsBefore = await readDocument();
-  const bottomTransformBefore = structuredClone(sakuraOverlapTransformsBefore.layers.find(layer => layer.id === "e2e-overlap-bottom").transform);
-  const topTransformBefore = structuredClone(sakuraOverlapTransformsBefore.layers.find(layer => layer.id === "e2e-overlap-top").transform);
+  const basicOverlapBefore = await readDocument();
+  const bottomTransformBefore = structuredClone(basicOverlapBefore.layers.find(layer => layer.id === "e2e-overlap-bottom").transform);
+  const topTransformBefore = structuredClone(basicOverlapBefore.layers.find(layer => layer.id === "e2e-overlap-top").transform);
   const overlapFrame = await readFrameMetrics();
   const overlapDragStart = documentPointToClientPoint(overlapFrame, 400, 300);
   await mouseDrag(overlapDragStart, { x: overlapDragStart.x + 54, y: overlapDragStart.y + 36 });
-  const sakuraOverlapTransformsAfter = await readDocument();
-  const bottomTransformAfter = sakuraOverlapTransformsAfter.layers.find(layer => layer.id === "e2e-overlap-bottom").transform;
-  const topTransformAfter = sakuraOverlapTransformsAfter.layers.find(layer => layer.id === "e2e-overlap-top").transform;
+  const basicOverlapAfter = await readDocument();
+  const bottomTransformAfter = basicOverlapAfter.layers.find(layer => layer.id === "e2e-overlap-bottom").transform;
+  const topTransformAfter = basicOverlapAfter.layers.find(layer => layer.id === "e2e-overlap-top").transform;
   assert(bottomTransformAfter.x !== bottomTransformBefore.x || bottomTransformAfter.y !== bottomTransformBefore.y,
     "dragging within the overlap moves the currently selected lower image");
   assert(JSON.stringify(topTransformAfter) === JSON.stringify(topTransformBefore),
