@@ -22,3 +22,7 @@ No se debe afirmar que KapiArt fue entrenado con miles de imágenes si no existe
 - Cabello negro con brillos, castaño con sombras, rubio, ojos, ropa y fondo transparente.
 - Límites de line art, regiones desconectadas, tolerancia baja/alta, deshacer/rehacer y exportación.
 - Web CI y Android CI sobre el mismo SHA; prueba física pendiente hasta verificar en el Xiaomi.
+
+
+## Protección de line art blanco y negro
+La opción «Proteger bordes negros y brillos blancos» examina el contraste local de cada píxel. Los píxeles casi negros o casi blancos que forman un borde de alto contraste se dejan intactos durante el recoloreado. Las zonas negras interiores sin contraste local pueden seguir recoloreándose, algo importante para cabello negro. Es una heurística ajustable, no una segmentación semántica perfecta: trazos finos, antialiasing, fondos blancos y reflejos requieren pruebas con imágenes reales.
