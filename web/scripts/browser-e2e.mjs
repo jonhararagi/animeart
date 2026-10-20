@@ -565,8 +565,59 @@ try {
   await click("#selection-mini-front");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.findIndex(layer => layer.name === "e2e-fixture") === ' + imageOrderBefore, 10000);
 
-
-
+  // AA-TOUCH-OVERLAP-001: a selected lower sticker remains the drag target even
+  // when another same-sized image is directly above it. Layer switching remains
+  // explicit through the Layers list instead of relying on the topmost hit test.
+  const documentBeforeOverlapTest = await readDocument();
+  const sourceOverlapImage = documentBeforeOverlapTest.layers.find(layer => layer.name === "e2e-fixture" && layer.contentType === "image");
+  assert(Boolean(sourceOverlapImage?.image?.source), "overlap-drag fixture reuses a genuine imported image layer");
+  const overlapFixture = structuredClone(documentBeforeOverlapTest);
+  const makeOverlapLayer = (id, name) => ({
+    ...structuredClone(sourceOverlapImage),
+    id,
+    name,
+    visible: true,
+    locked: false,
+    opacity: 1,
+    isBackground: false,
+    isReference: false,
+    transform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    adjustments: { brightness: 100, contrast: 100, saturation: 100, hue: 0, temperature: 0, tint: 0, blur: 0 },
+    strokes: []
+  });
+  const overlapBottom = makeOverlapLayer("e2e-overlap-bottom", "e2e-overlap-bottom");
+  const overlapTop = makeOverlapLayer("e2e-overlap-top", "e2e-overlap-top");
+  overlapFixture.layers = [overlapBottom, overlapTop];
+  overlapFixture.width = 800;
+  overlapFixture.height = 600;
+  await evaluate("localStorage.setItem('animeart-web-document', " + JSON.stringify(JSON.stringify(overlapFixture)) + ")");
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers?.length === 2');
+  await waitForServiceWorkerReadiness();
+  await evaluate("window.__ANIMEART_E2E_DIAGNOSTICS__ = true; window.dispatchEvent(new Event('resize'))");
+  await waitFor("window.__ANIMEART_DOCUMENT_FRAME_DIAGNOSTICS__?.topLeft?.x !== undefined");
+  await click(layerButtonSelector("e2e-overlap-bottom"));
+  assert(await evaluate('document.querySelector("#selection-indicator").textContent.includes("e2e-overlap-bottom")'),
+    "overlap E2E selects the intended lower image through the Layers list");
+  const overlapBefore = await readDocument();
+  const bottomTransformBefore = structuredClone(overlapBefore.layers.find(layer => layer.id === "e2e-overlap-bottom").transform);
+  const topTransformBefore = structuredClone(overlapBefore.layers.find(layer => layer.id === "e2e-overlap-top").transform);
+  const overlapFrame = await readFrameMetrics();
+  const overlapDragStart = documentPointToClientPoint(overlapFrame, 400, 300);
+  await mouseDrag(overlapDragStart, { x: overlapDragStart.x + 54, y: overlapDragStart.y + 36 });
+  const overlapAfter = await readDocument();
+  const bottomTransformAfter = overlapAfter.layers.find(layer => layer.id === "e2e-overlap-bottom").transform;
+  const topTransformAfter = overlapAfter.layers.find(layer => layer.id === "e2e-overlap-top").transform;
+  assert(bottomTransformAfter.x !== bottomTransformBefore.x || bottomTransformAfter.y !== bottomTransformBefore.y,
+    "dragging within the overlap moves the currently selected lower image");
+  assert(JSON.stringify(topTransformAfter) === JSON.stringify(topTransformBefore),
+    "overlap drag leaves the top image in place instead of stealing the gesture");
+  await evaluate("localStorage.setItem('animeart-web-document', " + JSON.stringify(JSON.stringify(documentBeforeOverlapTest)) + ")");
+  await cdp("Page.reload", { ignoreCache: true });
+  await waitFor('document.readyState === "complete"');
+  await waitForServiceWorkerReadiness();
+  await evaluate("window.__ANIMEART_E2E_DIAGNOSTICS__ = true; window.dispatchEvent(new Event('resize'))");
 
   // AA-UX-DELETE-001: exercise the visible X against two distinct image-layer IDs.
   const importNamedFixture = async name => {
