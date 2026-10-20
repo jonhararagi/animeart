@@ -1,33 +1,46 @@
-# Preparación de release KapiArt Studio v0.3.6 · 2026-10-20
+# KapiArt Studio · estado verificado de entrega v0.3.6 · 2026-10-20
 
-**TIMER estimado:** 4–8 horas para completar diagnóstico táctil, edición guiada y entrega comprobada. Tiempo real de trabajo no medido.
+**TIMER estimado:** 4–8 horas para la primera iteración importante; tiempo real de trabajo no medido.
+**Estado de esta release:** `PASS` para integración y CI de main; `PARTIAL` para aceptación total por firma temporal y prueba física pendiente.
 
-## Iteración de fluidez táctil ya integrada
-- PR [#101](https://github.com/jonhararagi/animeart/pull/101) fusionada en main como [49d524dd03c500acd72e627a6228ad8f77cd8bdd](https://github.com/jonhararagi/animeart/commit/49d524dd03c500acd72e627a6228ad8f77cd8bdd).
-- Web CI PASS: [run 39414691414](https://github.com/jonhararagi/animeart/actions/runs/39414691414), incluidos tests, benchmark y Chromium E2E.
-- Android CI PASS: [run 39414691477](https://github.com/jonhararagi/animeart/actions/runs/39414691477), incluidos build, tests, instrumentación y checksum; la APK de esa run era de rama, no es el paquete final desde main.
+## Integración
 
-## Preparación de release
-- PR [#102](https://github.com/jonhararagi/animeart/pull/102), rama release/kapiart-0.3.6-touch-smooth, parte de la integración de PR #101 y prepara versionCode 9 / versionName 0.3.6.
-- Se añade una prueba de Chromium para dos imágenes superpuestas: seleccionar la capa inferior en Capas, arrastrarla y confirmar que la superior no se mueva.
-- El workflow Android ahora deriva el nombre y la validación de la APK desde app/build.gradle.kts, comprueba el paquete y exige que stroke-smoothing.mjs esté dentro del APK.
-- Web CI PASS: [run 39431876974](https://github.com/jonhararagi/animeart/actions/runs/39431876974), incluidos tests, benchmark, artefacto web y Chromium E2E.
-- Android CI PASS: [run 39431877320](https://github.com/jonhararagi/animeart/actions/runs/39431877320), incluidos build, verificación de recursos, unit tests, lint, instrumentación/startup smoke, validación de versión/firma/checksum y artefacto [12268257763](https://github.com/jonhararagi/animeart/actions/runs/39431877320/artifacts/12268257763). El artefacto fue generado desde la referencia sintética de la PR, no desde un build de main.
+- [PR #101 · Fluidez táctil y movimiento de objetos](https://github.com/jonhararagi/animeart/pull/101) integrada en main mediante [`49d524dd03c500acd72e627a6228ad8f77cd8bdd`](https://github.com/jonhararagi/animeart/commit/49d524dd03c500acd72e627a6228ad8f77cd8bdd).
+- [PR #102 · Preparar KapiArt Studio 0.3.6](https://github.com/jonhararagi/animeart/pull/102) integrada en main mediante [`b0158e73a85d530506a8b2c986e5a24b69a7e1ff`](https://github.com/jonhararagi/animeart/commit/b0158e73a85d530506a8b2c986e5a24b69a7e1ff).
+- Versión Android: `versionCode=9`, `versionName=0.3.6`, paquete `com.jonhararagi.animeart`.
 
-## Reconciliación de rama
-- main añadió el commit documental b7e4aba3549c2be6035479087b320fdf0fb4672d después de abrir PR #102.
-- Se conserva íntegro el historial actual de main, junto con los cuatro commits de release, mediante una reconciliación de dos padres y esta documentación combinada.
-- La reconciliación cambia la base real que ejecutará CI; los PASS anteriores no sustituyen nuevas ejecuciones en el HEAD reconciliado.
+## Mejoras táctiles incluidas
 
-## Pendientes obligatorios
-1. Confirmar Web CI y Android CI PASS en el HEAD reconciliado y que Chromium E2E pase en ese SHA.
-2. Integrar PR #102 tras comprobar el HEAD y la resolución de conflictos.
-3. Conseguir un build/artefacto de Android disparado desde el main ya integrado. Verificar procedencia SHA, paquete, versión, tamaño, firma y checksum.
-4. La firma estable no está configurada. La CI usa ephemeral-debug; no prometer actualización directa sobre una instalación existente si el certificado no coincide. No pedir desinstalar sin advertir el riesgo para datos/proyectos locales.
-5. La prueba física con dedo/stylus en el Xiaomi 24116RACCG sigue pendiente. CI y emulador no sustituyen la prueba real.
-6. La directiva integral sigue abierta en sus demás fases: revisión de errores P0/P1 restantes, rutas guiadas completas con imágenes reales y exportación, verificación de marca/paleta y matriz de Photoshop, Canva, Picsart, Procreate e ibis Paint X basada en fuentes verificables.
+- Nuevo módulo `web/domain/stroke-smoothing.mjs`: interpola las muestras del dedo/stylus en coordenadas del documento, rechaza coordenadas inválidas y evita repetir puntos casi idénticos.
+- `web/app.js` consume muestras coalesced y la posición final de `pointerup`; libera la captura del puntero al terminar o cancelar un trazo.
+- El umbral para diferenciar toque y arrastre aumenta a 6 px para evitar algunos desplazamientos involuntarios.
+- Al tocar una zona con capas superpuestas, la capa que ya estaba seleccionada tiene prioridad de arrastre. Para elegir otra se usa la lista Capas.
+- Caché offline en `animeart-web-shell-v53`, con el módulo nuevo en el service worker y en el diagnóstico de recursos requeridos.
+- Añadida regresión Chromium para arrastrar la capa inferior de dos imágenes superpuestas y comprobar que la superior no se mueve.
 
-**Estado general:** PARTIAL hasta validar la reconciliación, integrar, comprobar una APK desde main y resolver o declarar las limitaciones de firma y pruebas físicas.
+## Evidencia CI de main
+
+- Web CI **PASS**: [run #39469736216](https://github.com/jonhararagi/animeart/actions/runs/39469736216), SHA `b0158e73a85d530506a8b2c986e5a24b69a7e1ff`. Build, tests, benchmark, salida empaquetada y Chromium E2E pasaron.
+- Android CI **PASS**: [run #39469736288](https://github.com/jonhararagi/animeart/actions/runs/39469736288), el mismo SHA. Build, comprobación de recursos, unit tests, lint, instrumentación/arranque y empaquetado/verificación de APK pasaron.
+- Artefacto Android de main: [artifact #12287171180](https://github.com/jonhararagi/animeart/actions/runs/39469736288/artifacts/12287171180), ZIP de 10.723.164 bytes. Contiene APK, checksum SHA-256 e informe de firma.
+- Despliegue web workflow [#39469736423](https://github.com/jonhararagi/animeart/actions/runs/39469736423) completó correctamente; el paso de deploy se omitió porque esta release no modificó el runtime web.
+
+## APK verificada desde main
+
+- Archivo: `KapiArt-Android-v0.3.6-b0158e73a85d530506a8b2c986e5a24b69a7e1ff.apk`.
+- Tamaño de la APK: `11.127.944` bytes.
+- SHA-256 de la APK verificada: `762b505a6d89c7d8eae7a18cf3c53b6a11f485fafc69af7d5ba37cc87ab56c83`.
+- El checksum del artefacto original y el checksum del archivo entregable se comprobaron correctamente (`sha256sum --check`).
+- Origen verificado en el informe: `source_sha=b0158e73a85d530506a8b2c986e5a24b69a7e1ff`.
+- Modo de firma: `ephemeral-debug`; SHA-256 del certificado: `c86bc87d8469b9ce4f90cd4f78eb64307ad23e3a9b2a601b858fdab892b15fe2`.
+- **Compatibilidad de actualización no garantizada.** La clave de firma estable no está configurada y el certificado de una instalación existente puede ser distinto. No pedir desinstalar la APK anterior sin advertir el riesgo de perder proyectos/datos locales.
+
+## Pendientes de aceptación
+
+1. Probar en el Xiaomi `24116RACCG` con dedo y, si se dispone, stylus: trazos rápidos, zoom/pan, mover capas solapadas, transformar, undo/redo y exportar. No hay prueba física registrada.
+2. Continuar la auditoría de errores P0/P1 de texto, imagen, transformaciones, cancelaciones y persistencia.
+3. Verificar de principio a fin las rutas guiadas con imágenes reales y exportación. Los tests de catálogo/acciones no implican que las ocho guías se hayan recorrido manualmente de principio a fin.
+4. Actualizar la matriz de Photoshop, Canva, Picsart, Procreate e ibis Paint X con fuentes actuales y fechadas. Esa investigación externa no se completó en esta iteración.
 
 ---
 
