@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { replaceColorRange } from "../domain/color-replacement.mjs";
 import {
   ANIME_COLOR_PRESETS,
   combineAnimeSelections,
@@ -69,4 +70,31 @@ test("anime selection masks can add regions and clear pixels with a bounded type
   assert.deepEqual([...combineAnimeSelections(first, second, "add")], [255, 255, 255, 0]);
   assert.deepEqual([...combineAnimeSelections(first, second, "subtract")], [255, 0, 0, 0]);
   assert.equal(countAnimeSelection(combineAnimeSelections(first, second)), 3);
+});
+
+test("masked anime recolor changes only the selected region and lifts black hair into the chosen hue", () => {
+  const source = { width: 3, height: 1, data: new Uint8ClampedArray([
+    12, 10, 15, 255,
+    12, 10, 15, 255,
+    255, 255, 255, 128
+  ]) };
+  const before = [...source.data];
+  const result = replaceColorRange(source, {
+    sourceColor: "#0C0A0F", targetColor: "#C62845",
+    selectionMask: new Uint8Array([255, 0, 255]), animeRecolor: true,
+    preserveShading: true
+  });
+  assert.notDeepEqual([...result.data.slice(0, 3)], before.slice(0, 3));
+  assert.deepEqual([...result.data.slice(4, 8)], before.slice(4, 8));
+  assert.ok(result.data[0] > result.data[1], "the dark selected pixel should take on the red hue");
+  assert.equal(result.data[3], 255);
+  assert.equal(result.data[11], 128, "source alpha must remain unchanged");
+  assert.deepEqual([...source.data], before, "the default API must not mutate preview source pixels");
+});
+
+test("masked anime recolor rejects masks that do not match the pixel buffer", () => {
+  const source = { width: 2, height: 1, data: new Uint8ClampedArray([0,0,0,255,255,255,255,255]) };
+  assert.throws(() => replaceColorRange(source, {
+    sourceColor: "#000000", targetColor: "#FF0000", selectionMask: new Uint8Array([255])
+  }), /mask must match/i);
 });
