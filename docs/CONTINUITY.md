@@ -3947,3 +3947,16 @@ La CI de Android de la PR generó un artefacto de 10.724.319 bytes. El artefacto
 ### Próximo paso
 
 Verificar Web CI, Android CI y el artefacto Android ligados al SHA más reciente de `main`. Después, configurar firma persistente de distribución y verificar la actualización sobre una instalación existente con respaldo de los proyectos. Completar una prueba física en el Xiaomi y la matriz de referentes con fuentes y fechas reales.
+
+
+---
+
+## Trabajo en curso · KapiArt Anime Color Studio · 2026-10-20
+
+- **Estado:** `PARTIAL`. Rama dedicada: [feature/kapiart-anime-color-studio-001](https://github.com/jonhararagi/animeart/tree/feature/kapiart-anime-color-studio-001).
+- **Base main al iniciar:** `33ab69e66e902b62e411d4cd764ef2dff180d125`.
+- Añadidos un catálogo local de tonos anime, buscador en español, varita por región conectada, máscaras para recolorear con alfa preservado, selección aditiva y acción para separar una región en una capa.
+- La paleta se genera en código. No descarga imágenes ni entrena un modelo. La varita usa heurísticas para arte anime de relleno plano y no puede garantizar reconocimiento semántico de cabello.
+- Se añadieron pruebas de módulo e integración. **CI Web, CI Android/APK y prueba física siguen pendientes** hasta comprobar el HEAD definitivo de la rama.
+- Registro ampliado: [docs/AUDITS/2026-10-20-KAPIART-ANIME-COLOR-STUDIO.md](./AUDITS/2026-10-20-KAPIART-ANIME-COLOR-STUDIO.md).
+- **TIMER estimado:** 4–8 horas; tiempo real no medido.
