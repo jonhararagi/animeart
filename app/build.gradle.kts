@@ -56,8 +56,8 @@ android {
         applicationId = "com.jonhararagi.animeart"
         minSdk = 24
         targetSdk = 35
-        versionCode = 9
-        versionName = "0.3.6"
+        versionCode = 10
+        versionName = "0.3.7"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
