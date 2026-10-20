@@ -122,6 +122,7 @@
       <button id="fit-image-to-canvas" type="button" disabled title="Encajar la imagen seleccionada en el lienzo sin cambiar su resolución en píxeles">Encajar imagen</button>
       <button id="remove-background" type="button" disabled>Quitar fondo</button>
       <button id="recolor-image" type="button" disabled>Reemplazar rango de color</button>
+      <button id="erase-color-effect" type="button" title="Activa el borrador sobre una capa de efecto de color para quitarla por zonas">🧽 Borrar efecto de color</button>
       <button id="flip-image-horizontal" type="button" disabled title="Reflejar la imagen seleccionada de izquierda a derecha">Voltear H</button>
       <button id="flip-image-vertical" type="button" disabled title="Reflejar la imagen seleccionada de arriba abajo">Voltear V</button>
       <button id="add-sample-character" title="Importar el personaje de muestra CC0 1.0 como una capa de imagen editable">+ Personaje CC0</button>
@@ -791,6 +792,8 @@
           <label class="text-field" for="recolor-tolerance">Rango de color <output id="recolor-tolerance-value">36</output><input id="recolor-tolerance" type="range" min="0" max="160" value="36"></label>
           <label class="text-field" for="recolor-softness">Suavidad del borde <output id="recolor-softness-value">28</output><input id="recolor-softness" type="range" min="0" max="120" value="28"></label>
           <label class="background-removal-toggle"><input id="recolor-preserve-shading" type="checkbox" checked> Conservar sombras, brillo y textura</label>
+          <label class="background-removal-toggle"><input id="recolor-effect-layer" type="checkbox" checked> Aplicar como capa independiente y borrable</label>
+          <p class="anime-selection-status">Después de aplicar, elige la capa «Efecto de color» y pulsa «Borrar efecto de color» para retirar partes con el dedo. El dibujo original se conserva debajo.</p>
           <p id="recolor-status" role="status" aria-live="polite">Elige una muestra o activa la varita mágica para tocar una zona.</p>
           <div class="dialog-actions"><button id="cancel-recolor-bottom" type="button">Cancelar</button><button id="apply-recolor" type="button">Aplicar color</button></div>
         </div>
