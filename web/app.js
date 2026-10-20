@@ -5481,8 +5481,8 @@ function updateAnimeRectangleOverlay(start,end){
  overlay.style.left=(left-wrapperRect.left-borderLeft)+"px";overlay.style.top=(top-wrapperRect.top-borderTop)+"px";
  overlay.style.width=Math.max(1,width)+"px";overlay.style.height=Math.max(1,height)+"px";overlay.hidden=false;
 }
-function finishAnimeRectangleSelection(end){
- const session=recolorSession,start=recolorRectangleStart;
+function finishAnimeRectangleSelection(start,end){
+ const session=recolorSession;
  if(!session||!start||!end)return;
  const region=selectAnimeRectangle(session.original,{x1:start.x,y1:start.y,x2:end.x,y2:end.y});
  if(!region.pixelCount){document.querySelector("#recolor-status").textContent="El rectángulo no contiene píxeles visibles. Prueba una zona que cubra el dibujo.";if(animeSelectionOverlay)animeSelectionOverlay.hidden=true;return;}
@@ -5513,7 +5513,7 @@ function completeAnimeRectanglePointer(event){
  const start=recolorRectangleStart,point=recolorCanvasPointFromClient(event);
  recolorRectangleStart=null;recolorRectangleMode=false;
  document.querySelector("#recolor-rectangle-toggle").setAttribute("aria-pressed","false");document.querySelector("#recolor-preview").style.cursor="default";
- try{if(point)finishAnimeRectangleSelection({x:point.x,y:point.y,display:point});}
+ try{if(point)finishAnimeRectangleSelection(start,{x:point.x,y:point.y,display:point});}
  catch(error){document.querySelector("#recolor-status").textContent=error.message||"No se pudo seleccionar el rectángulo.";}
  finally{try{recolorCanvas.releasePointerCapture(event.pointerId);}catch{}}
 }
