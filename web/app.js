@@ -2790,9 +2790,11 @@ function finishTransformInteraction(cancelled = false, finalEvent = null) {
   }
   // A stationary tap selects the object only. Changes in the canvas bounding box
   // must never manufacture a move or a history entry.
+  // Finger contact is noisy on mobile. Ignore tiny involuntary shifts on a tap,
+  // but keep deliberate drags responsive once they pass a comfortable threshold.
   if (finalEvent && interaction.type === "move" && interaction.startClient &&
       Math.hypot(Number(finalEvent.clientX) - interaction.startClient.x,
-        Number(finalEvent.clientY) - interaction.startClient.y) <= 3) {
+        Number(finalEvent.clientY) - interaction.startClient.y) <= 6) {
     if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
     redraw();
     return;
@@ -3793,6 +3795,7 @@ canvas.addEventListener("pointercancel", event => {
   if (event.pointerId !== state.drawingPointerId) return;
   state.drawing = false;
   state.drawingPointerId = null;
+  if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   const before = state.strokeBefore;
   state.strokeBefore = null;
   if (before) state.document = before;
