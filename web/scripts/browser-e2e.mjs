@@ -769,7 +769,7 @@ try {
   await waitFor('document.querySelector("#recolor-dialog").open === true');
   await click("#sample-recolor-source");
   const sampleDiagnostics = await evaluate('(() => { const c=document.querySelector("#recolor-preview"),r=c.getBoundingClientRect(),d=c.getContext("2d").getImageData(0,0,c.width,c.height).data; let i=0; while(i<d.length&&d[i+3]===0)i+=4; if(i>=d.length)throw new Error("sample character contains no opaque pixels"); const p=i/4,x=p%c.width,y=Math.floor(p/c.width),expected="#" + [d[i],d[i+1],d[i+2]].map(v=>v.toString(16).padStart(2,"0")).join(""); c.dispatchEvent(new MouseEvent("click",{bubbles:true,clientX:r.left+(x+.5)*r.width/c.width,clientY:r.top+(y+.5)*r.height/c.height})); return {expected,actual:document.querySelector("#recolor-source-color").value,status:document.querySelector("#recolor-status")?.textContent,applyDisabled:document.querySelector("#apply-recolor").disabled}; })()');
-  assert.equal(sampleDiagnostics.actual.toLowerCase(), sampleDiagnostics.expected.toLowerCase(), "sample source tap must update the color input with the actual tapped pixel: " + JSON.stringify(sampleDiagnostics));
+  assert(sampleDiagnostics.actual.toLowerCase() === sampleDiagnostics.expected.toLowerCase(), "sample source tap must update the color input with the actual tapped pixel: " + JSON.stringify(sampleDiagnostics));
   const sampledSourceColor = sampleDiagnostics.actual;
   assert(/^#[0-9a-f]{6}$/i.test(sampledSourceColor), "real browser samples an actual opaque pixel for selective recolor");
   await waitFor('document.querySelector("#apply-recolor").disabled === false', 15000);
