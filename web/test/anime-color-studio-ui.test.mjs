@@ -15,11 +15,14 @@ test("KapiArt anime color studio wires the offline palette, wand and non-destruc
     "anime-color-results", "anime-color-more", "recolor-target-color", "recolor-temperature", "recolor-darkness", "recolor-hue-shift"
   ]) assert.match(html, new RegExp('id="' + id + '"'));
   assert.match(app, /generateAnimePalette\(\)/);
-  assert.match(app, /selectAnimeRegion\(/);\n  assert.match(app, /selectAnimeRectangle\(/);\n  assert.match(app, /pointerdown/);
+  assert.match(app, /selectAnimeRegion\(/);
+  assert.match(app, /selectAnimeRectangle\(/);
+  assert.match(app, /pointerdown/);
   assert.match(app, /combineAnimeSelections\(/);
   assert.match(app, /async function splitAnimeSelectionIntoLayer\(/);
   assert.match(worker, /animeart-web-shell-v56/);
   assert.ok(worker.includes("./domain/anime-color-studio.mjs"));
-  assert.match(engine, /Selects a contiguous flat-color region/);\n  assert.match(engine, /export function selectAnimeRectangle/);
+  assert.match(engine, /Selects a contiguous flat-color region/);
+  assert.match(engine, /export function selectAnimeRectangle/);
   assert.doesNotMatch(engine, /https?:\/\//i, "the core color engine must stay local-only");
 });
