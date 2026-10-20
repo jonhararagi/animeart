@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createViewport, documentToScreen, screenToDocument, zoomAt } from "../domain/viewport.mjs";
+import { appendInterpolatedStrokePoint } from "../domain/stroke-smoothing.mjs";
 
 test("screen/document coordinates remain reversible at 25%, 100% and 400% zoom", () => {
   const center = { x: 400, y: 300 };
@@ -32,8 +33,10 @@ test("canvas rendering is frame-coalesced and freehand consumes coalesced pointe
   assert.match(app, /function drawNow\(\)/);
   assert.match(app, /typeof event\.getCoalescedEvents === "function"/);
   assert.match(app, /appendSmoothStrokeSamples/);
+  assert.match(app, /appendInterpolatedStrokePoint/);
+  assert.match(app, /appendSmoothStrokeSamples\\(finalStroke/);
   assert.match(app, /finalStroke/);
-  assert.match(app, /previous\.x/);
+  assert.match(app, /appendInterpolatedStrokePoint/);
   assert.match(app, /<= 6/);
   assert.match(app, /currentSelectedLayer/);
   assert.match(app, /When objects overlap, keep the current selection as the drag target/);
@@ -74,3 +77,31 @@ test("freehand event coordinates are passed to createStrokePoint as separate doc
   assert.doesNotMatch(pointFromEvent, /createStrokePoint\(screenToDocumentPoint\(/);
 });
 
+
+
+test("freehand interpolation fills gaps and preserves the final pointer position", () => {
+  const points = [{ x: 0, y: 0 }];
+  const createPoint = (x, y) => ({ x, y });
+  const added = appendInterpolatedStrokePoint(points, { x: 10, y: 0 }, createPoint, 3);
+  assert.equal(added, 4);
+  assert.deepEqual(points.map(point => point.x), [0, 2.5, 5, 7.5, 10]);
+  assert.ok(points.every(point => point.y === 0));
+});
+
+test("freehand interpolation seeds empty strokes and ignores repeated samples", () => {
+  const points = [];
+  const createPoint = (x, y) => ({ x, y });
+  assert.equal(appendInterpolatedStrokePoint(points, { x: 2, y: 3 }, createPoint, 2), 1);
+  assert.deepEqual(points, [{ x: 2, y: 3 }]);
+  assert.equal(appendInterpolatedStrokePoint(points, { x: 2.001, y: 3 }, createPoint, 2), 0);
+  assert.equal(points.length, 1);
+});
+
+test("freehand interpolation safely rejects invalid coordinates and spacing", () => {
+  const points = [{ x: 1, y: 1 }];
+  const createPoint = (x, y) => ({ x, y });
+  assert.equal(appendInterpolatedStrokePoint(points, { x: Number.NaN, y: 2 }, createPoint, 2), 0);
+  assert.equal(appendInterpolatedStrokePoint(points, { x: 2, y: 2 }, null, 2), 0);
+  assert.throws(() => appendInterpolatedStrokePoint(points, { x: 2, y: 2 }, createPoint, 0), RangeError);
+  assert.equal(points.length, 1);
+});
