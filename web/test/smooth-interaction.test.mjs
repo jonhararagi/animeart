@@ -104,3 +104,11 @@ test("freehand interpolation safely rejects invalid coordinates and spacing", ()
   assert.throws(() => appendInterpolatedStrokePoint(points, { x: 2, y: 2 }, createPoint, 0), RangeError);
   assert.equal(points.length, 1);
 });
+
+
+test("real-browser E2E protects drag targeting for overlapping stickers", async () => {
+  const browserE2E = await readFile(new URL("../scripts/browser-e2e.mjs", import.meta.url), "utf8");
+  assert.ok(browserE2E.includes("AA-OVERLAP-DRAG-001"));
+  assert.ok(browserE2E.includes("dragging at an overlap moves the already selected sticker underneath"));
+  assert.ok(browserE2E.includes("the upper overlapping sticker stays in place"));
+});
