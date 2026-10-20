@@ -1043,6 +1043,13 @@ try {
   await click(layerButtonSelector(upperSticker.id));
   assert(await evaluate('document.querySelector("#selection-indicator").textContent.includes("Sticker · Flor de sakura")'),
     "the layer list remains the explicit way to select a different overlapping sticker");
+  // Return the test fixture to its original state: first undo the drag, then
+  // undo only the second sticker insertion. This keeps later creative-studio
+  // assertions deterministic and avoids polluting the shared history.
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").length===2');
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").length===1');
   // Layer controls require the studio to be closed, so reopen it before the next creative-studio step.
   await clickMoreGoal("creative-studio");
   await waitFor('document.querySelector("#creative-studio-dialog")?.open === true');
