@@ -1070,7 +1070,6 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>layer.name.startsWith("Conjunto · Idol galáctica")).length===0');
   await clickMoreGoal("undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Título · Neon idol")===false');
-  await clickMoreGoal("undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").length===1');
   await clickMoreGoal("undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Sticker · Flor de sakura")===false');
