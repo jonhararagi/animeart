@@ -2206,8 +2206,7 @@ try {
   assert(await evaluate('document.querySelector("#background-removal-preview")?.getBoundingClientRect().width > 0'),
     "the sticker guide opens the actual local background-removal preview");
   await click("#background-auto-detect");
-  await click("#preview-background-removal");
-  await waitFor('document.querySelector("#apply-background-removal")?.disabled === false', 15000);
+  await waitFor('document.querySelector("#background-removal-status")?.textContent.includes("Vista previa del borrado") && document.querySelector("#apply-background-removal")?.disabled === false', 15000);
   await evaluate('document.querySelector("#apply-background-removal").click()');
   await waitFor('document.querySelector("#background-removal-dialog")?.open === false || /no se pudo|could not|exceeds/i.test(document.querySelector("#background-removal-status")?.textContent || "")', 15000);
   assert(await evaluate('document.querySelector("#background-removal-dialog")?.open === false'),
