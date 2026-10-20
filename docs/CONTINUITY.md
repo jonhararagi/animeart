@@ -1,3 +1,36 @@
+# Preparación de release KapiArt Studio v0.3.6 · 2026-10-20
+
+**TIMER estimado:** 4–8 horas para completar diagnóstico táctil, edición guiada y entrega comprobada. Tiempo real de trabajo no medido.
+
+## Iteración de fluidez táctil ya integrada
+- PR [#101](https://github.com/jonhararagi/animeart/pull/101) fusionada en main como [49d524dd03c500acd72e627a6228ad8f77cd8bdd](https://github.com/jonhararagi/animeart/commit/49d524dd03c500acd72e627a6228ad8f77cd8bdd).
+- Web CI PASS: [run 39414691414](https://github.com/jonhararagi/animeart/actions/runs/39414691414), incluidos tests, benchmark y Chromium E2E.
+- Android CI PASS: [run 39414691477](https://github.com/jonhararagi/animeart/actions/runs/39414691477), incluidos build, tests, instrumentación y checksum; la APK de esa run era de rama, no es el paquete final desde main.
+
+## Preparación de release
+- PR [#102](https://github.com/jonhararagi/animeart/pull/102), rama release/kapiart-0.3.6-touch-smooth, parte de la integración de PR #101 y prepara versionCode 9 / versionName 0.3.6.
+- Se añade una prueba de Chromium para dos imágenes superpuestas: seleccionar la capa inferior en Capas, arrastrarla y confirmar que la superior no se mueva.
+- El workflow Android ahora deriva el nombre y la validación de la APK desde app/build.gradle.kts, comprueba el paquete y exige que stroke-smoothing.mjs esté dentro del APK.
+- Web CI PASS: [run 39431876974](https://github.com/jonhararagi/animeart/actions/runs/39431876974), incluidos tests, benchmark, artefacto web y Chromium E2E.
+- Android CI PASS: [run 39431877320](https://github.com/jonhararagi/animeart/actions/runs/39431877320), incluidos build, verificación de recursos, unit tests, lint, instrumentación/startup smoke, validación de versión/firma/checksum y artefacto [12268257763](https://github.com/jonhararagi/animeart/actions/runs/39431877320/artifacts/12268257763). El artefacto fue generado desde la referencia sintética de la PR, no desde un build de main.
+
+## Reconciliación de rama
+- main añadió el commit documental b7e4aba3549c2be6035479087b320fdf0fb4672d después de abrir PR #102.
+- Se conserva íntegro el historial actual de main, junto con los cuatro commits de release, mediante una reconciliación de dos padres y esta documentación combinada.
+- La reconciliación cambia la base real que ejecutará CI; los PASS anteriores no sustituyen nuevas ejecuciones en el HEAD reconciliado.
+
+## Pendientes obligatorios
+1. Confirmar Web CI y Android CI PASS en el HEAD reconciliado y que Chromium E2E pase en ese SHA.
+2. Integrar PR #102 tras comprobar el HEAD y la resolución de conflictos.
+3. Conseguir un build/artefacto de Android disparado desde el main ya integrado. Verificar procedencia SHA, paquete, versión, tamaño, firma y checksum.
+4. La firma estable no está configurada. La CI usa ephemeral-debug; no prometer actualización directa sobre una instalación existente si el certificado no coincide. No pedir desinstalar sin advertir el riesgo para datos/proyectos locales.
+5. La prueba física con dedo/stylus en el Xiaomi 24116RACCG sigue pendiente. CI y emulador no sustituyen la prueba real.
+6. La directiva integral sigue abierta en sus demás fases: revisión de errores P0/P1 restantes, rutas guiadas completas con imágenes reales y exportación, verificación de marca/paleta y matriz de Photoshop, Canva, Picsart, Procreate e ibis Paint X basada en fuentes verificables.
+
+**Estado general:** PARTIAL hasta validar la reconciliación, integrar, comprobar una APK desde main y resolver o declarar las limitaciones de firma y pruebas físicas.
+
+---
+
 # Continuidad de trabajo · KapiArt Studio · 2026-10-20
 
 **TIMER estimado:** 4–8 horas para la primera iteración importante. Tiempo real de trabajo no medido.
