@@ -20,6 +20,6 @@ test("KapiArt anime color studio wires the offline palette, wand and non-destruc
   assert.match(app, /async function splitAnimeSelectionIntoLayer\(/);
   assert.match(worker, /animeart-web-shell-v56/);
   assert.ok(worker.includes("./domain/anime-color-studio.mjs"));
-  assert.match(engine, /selects a contiguous flat-color region/);
+  assert.match(engine, /Selects a contiguous flat-color region/);
   assert.doesNotMatch(engine, /https?:\/\//i, "the core color engine must stay local-only");
 });
