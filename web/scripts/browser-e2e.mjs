@@ -966,6 +966,33 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image")');
   const creativeSticker=(await readDocument()).layers.find(layer=>layer.name==="Sticker · Flor de sakura");
   assert(creativeSticker.image?.source?.startsWith("data:image/svg+xml;charset=utf-8,")&&creativeSticker.image.width===256,"sakura sticker is a local vector image layer that can be transformed independently");
+
+  // AA-OVERLAP-DRAG-001: the selected lower sticker must remain the drag target
+  // when another sticker occupies the same canvas position above it.
+  await click('[data-creative-action="add-sticker"][data-item-id="sakura-bloom"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").length===2');
+  const overlappingStickers = (await readDocument()).layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image");
+  const lowerSticker = overlappingStickers[0];
+  const upperSticker = overlappingStickers[1];
+  assert(lowerSticker.id!==upperSticker.id, "duplicated sticker creates an independent editable layer");
+  await click("#creative-studio-close");
+  await waitFor('document.querySelector("#creative-studio-dialog").open===false');
+  await click(layerButtonSelector(lowerSticker.id));
+  const overlapBefore = await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return d.layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").map(layer=>({id:layer.id,transform:{...layer.transform}})); })()');
+  const overlapCanvasCenter = await selectorCenter("#canvas");
+  await mouseDrag(overlapCanvasCenter, {x:overlapCanvasCenter.x+46,y:overlapCanvasCenter.y+28});
+  const overlapAfter = await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return d.layers.filter(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image").map(layer=>({id:layer.id,transform:{...layer.transform}})); })()');
+  const lowerBefore = overlapBefore[0];
+  const upperBefore = overlapBefore[1];
+  const lowerAfter = overlapAfter.find(layer=>layer.id===lowerSticker.id);
+  const upperAfter = overlapAfter.find(layer=>layer.id===upperSticker.id);
+  assert(lowerAfter.transform.x!==lowerBefore.transform.x||lowerAfter.transform.y!==lowerBefore.transform.y,
+    "dragging at an overlap moves the already selected sticker underneath instead of stealing the gesture");
+  assert(upperAfter.transform.x===upperBefore.transform.x&&upperAfter.transform.y===upperBefore.transform.y,
+    "the upper overlapping sticker stays in place when the lower selected layer is dragged");
+  await click(layerButtonSelector(upperSticker.id));
+  assert(await evaluate('document.querySelector("#selection-indicator").textContent.includes("Sticker · Flor de sakura")'),
+    "the layer list remains the explicit way to select a different overlapping sticker");
   await click('[data-creative-tab="words"]');
   await evaluate('document.querySelector("#creative-custom-word").value="SAKURA!!"');
   await click('[data-creative-action="add-word"][data-item-id="cyber-idol"]');
