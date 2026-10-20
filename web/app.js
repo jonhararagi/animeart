@@ -5452,11 +5452,35 @@ function syncAnimeSelectionControls(){
 document.querySelector("#recolor-wand-clear").addEventListener("click",()=>{if(!recolorSession)return;recolorSession.selectionMask=null;recolorSession.selectionVersion+=1;syncAnimeSelectionControls();renderRecolorPreview();document.querySelector("#recolor-status").textContent="Selección de zona limpiada. La muestra de color sigue disponible.";});
 document.querySelector("#recolor-wand-tolerance").addEventListener("input",event=>{document.querySelector("#recolor-wand-tolerance-value").textContent=event.currentTarget.value;});
 document.querySelector("#recolor-wand-tolerance").addEventListener("change",()=>{document.querySelector("#recolor-status").textContent="Tolerancia actualizada. Activa la varita y toca la zona para volver a seleccionarla.";});
+function recolorCanvasPointFromClient(event){
+ const rect=recolorCanvas.getBoundingClientRect();
+ const style=getComputedStyle(recolorCanvas);
+ const number=value=>Number.parseFloat(value)||0;
+ const borderLeft=number(style.borderLeftWidth),borderRight=number(style.borderRightWidth);
+ const borderTop=number(style.borderTopWidth),borderBottom=number(style.borderBottomWidth);
+ const paddingLeft=number(style.paddingLeft),paddingRight=number(style.paddingRight);
+ const paddingTop=number(style.paddingTop),paddingBottom=number(style.paddingBottom);
+ const boxLeft=rect.left+borderLeft+paddingLeft;
+ const boxTop=rect.top+borderTop+paddingTop;
+ const boxWidth=rect.width-borderLeft-borderRight-paddingLeft-paddingRight;
+ const boxHeight=rect.height-borderTop-borderBottom-paddingTop-paddingBottom;
+ if(boxWidth<=0||boxHeight<=0||recolorCanvas.width<=0||recolorCanvas.height<=0)return null;
+ // Canvas CSS can be constrained to a box with a different aspect ratio. object-fit:contain
+ // draws the bitmap inside that box, so taps must exclude letterboxed space and CSS borders.
+ const scale=Math.min(boxWidth/recolorCanvas.width,boxHeight/recolorCanvas.height);
+ const drawnWidth=recolorCanvas.width*scale,drawnHeight=recolorCanvas.height*scale;
+ const drawnLeft=boxLeft+(boxWidth-drawnWidth)/2,drawnTop=boxTop+(boxHeight-drawnHeight)/2;
+ if(event.clientX<drawnLeft||event.clientY<drawnTop||event.clientX>=drawnLeft+drawnWidth||event.clientY>=drawnTop+drawnHeight)return null;
+ return {
+  x:Math.max(0,Math.min(recolorCanvas.width-1,Math.floor((event.clientX-drawnLeft)/scale))),
+  y:Math.max(0,Math.min(recolorCanvas.height-1,Math.floor((event.clientY-drawnTop)/scale)))
+ };
+}
 recolorCanvas.addEventListener("click",event=>{
  const s=recolorSession;if(!s)return;
- const r=recolorCanvas.getBoundingClientRect();
- const x=Math.max(0,Math.min(recolorCanvas.width-1,Math.floor((event.clientX-r.left)*recolorCanvas.width/r.width)));
- const y=Math.max(0,Math.min(recolorCanvas.height-1,Math.floor((event.clientY-r.top)*recolorCanvas.height/r.height)));
+ const point=recolorCanvasPointFromClient(event);
+ if(!point){document.querySelector("#recolor-status").textContent="Toca dentro de la imagen, no en el margen transparente.";return;}
+ const {x,y}=point;
  const o=(y*recolorCanvas.width+x)*4;
  if(recolorWandMode){
   try{
