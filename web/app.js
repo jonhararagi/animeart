@@ -340,8 +340,14 @@ function updateSelectionIndicator() {
 }
 
 function updateRemoveImageControl() {
-  if (!removeSelectedImageButton) return;
   const layer = selectedLayerExact();
+  const effectEraserButton = document.querySelector("#erase-color-effect");
+  const isColorEffect = Boolean(layer && layer.contentType === "image" && layer.image && String(layer.name || "").startsWith("Efecto de color · "));
+  if (effectEraserButton) {
+    effectEraserButton.disabled = !isColorEffect || Boolean(layer?.locked);
+    effectEraserButton.title = isColorEffect ? "Selecciona el borrador y arrastra sobre esta capa para revelar el dibujo original" : "Selecciona una capa «Efecto de color» para borrar solo ese efecto";
+  }
+  if (!removeSelectedImageButton) return;
   const validImage = Boolean(layer && layer.contentType === "image" && layer.image);
   removeSelectedImageButton.hidden = !validImage || document.querySelector("#view-transparency")?.getAttribute("aria-pressed") === "true";
   removeSelectedImageButton.disabled = !validImage || Boolean(layer?.locked);
