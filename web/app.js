@@ -6332,6 +6332,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/image-processing.mjs",
   "./domain/crop-shape.mjs",
   "./domain/color-replacement.mjs",
+  "./domain/anime-region-selection.mjs",
   "./domain/image-processing-client.mjs",
   "./workers/image-processing-worker.mjs",
   "./domain/canvas-space.mjs",
