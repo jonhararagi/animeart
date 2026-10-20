@@ -223,6 +223,46 @@ export function selectAnimeRegion(imageData, {
   };
 }
 
+/**
+ * Builds an editable rectangular mask for the visible pixels inside the box.
+ * Coordinates are clipped to the image; transparent pixels remain unselected.
+ */
+export function selectAnimeRectangle(imageData, { x1, y1, x2, y2, maxPixels = MAX_PIXELS } = {}) {
+  const width = Number(imageData?.width);
+  const height = Number(imageData?.height);
+  const data = imageData?.data;
+  const pixelCount = width * height;
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1
+      || pixelCount > Math.min(MAX_PIXELS, Number(maxPixels) || MAX_PIXELS)
+      || !data || data.length !== pixelCount * 4) {
+    throw new TypeError("Anime rectangle requires valid image pixels up to 16 megapixels");
+  }
+  const coordinates = [x1, y1, x2, y2].map(Number);
+  if (!coordinates.every(Number.isFinite)) throw new TypeError("Rectangle coordinates must be finite numbers");
+  const left = Math.max(0, Math.min(width - 1, Math.floor(Math.min(coordinates[0], coordinates[2]))));
+  const top = Math.max(0, Math.min(height - 1, Math.floor(Math.min(coordinates[1], coordinates[3]))));
+  const right = Math.max(0, Math.min(width - 1, Math.floor(Math.max(coordinates[0], coordinates[2]))));
+  const bottom = Math.max(0, Math.min(height - 1, Math.floor(Math.max(coordinates[1], coordinates[3]))));
+  const mask = new Uint8Array(pixelCount);
+  let selectedPixels = 0;
+  let firstIndex = -1;
+  for (let y = top; y <= bottom; y += 1) {
+    for (let x = left; x <= right; x += 1) {
+      const index = y * width + x;
+      if (data[index * 4 + 3] === 0) continue;
+      mask[index] = 255;
+      selectedPixels += 1;
+      if (firstIndex < 0) firstIndex = index;
+    }
+  }
+  return {
+    mask,
+    pixelCount: selectedPixels,
+    bounds: selectedPixels ? { x: left, y: top, width: right - left + 1, height: bottom - top + 1 } : null,
+    seedColor: firstIndex < 0 ? null : "#" + [data[firstIndex * 4], data[firstIndex * 4 + 1], data[firstIndex * 4 + 2]].map(v => v.toString(16).padStart(2, "0")).join("").toUpperCase()
+  };
+}
+
 export function combineAnimeSelections(currentMask, nextMask, mode = "add") {
   if (!(nextMask instanceof Uint8Array)) throw new TypeError("The next anime selection must be a Uint8Array mask");
   if (!currentMask) return new Uint8Array(nextMask);
