@@ -29,14 +29,14 @@ test("zoom anchor remains under the cursor while changing zoom", () => {
 
 test("canvas rendering is frame-coalesced and freehand uses smooth coalesced samples", async () => {
   const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
-  assert.match(app, /redrawScheduler\\.schedule\\(drawNow\\)/);
-  assert.match(app, /function drawNow\\(\\)/);
-  assert.match(app, /typeof event\\.getCoalescedEvents === "function"/);
-  assert.match(app, /appendInterpolatedStrokePoint/);
-  assert.match(app, /appendSmoothStrokeSamples/);
-  assert.match(app, /finalStroke/);
-  assert.match(app, /currentSelectedLayer/);
-  assert.match(app, /<= 6/);
+  assert.ok(app.includes("redrawScheduler.schedule(drawNow)"));
+  assert.ok(app.includes("function drawNow()"));
+  assert.ok(app.includes('typeof event.getCoalescedEvents === "function"'));
+  assert.ok(app.includes("appendInterpolatedStrokePoint"));
+  assert.ok(app.includes("appendSmoothStrokeSamples"));
+  assert.ok(app.includes("finalStroke"));
+  assert.ok(app.includes("currentSelectedLayer"));
+  assert.ok(app.includes("<= 6"));
 });
 
 test("release position is applied before committing layer transforms", async () => {
