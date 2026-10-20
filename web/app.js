@@ -10,6 +10,7 @@ import { createViewport, panBy } from "./domain/viewport.mjs";
 import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocumentPoint, screenViewportForDocument, zoomViewportAt } from "./domain/canvas-space.mjs";
 import { distanceBetweenTouches, midpointBetweenTouches, updatePinchPanViewport } from "./domain/touch-gestures.mjs";
 import { createFrameScheduler } from "./domain/frame-scheduler.mjs";
+import { appendInterpolatedStrokePoint } from "./domain/stroke-smoothing.mjs";
 import { clearCanvasBackingStore } from "./domain/canvas-rendering.mjs";
 import { addLayer, clearLayer, cropDocumentCanvas, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
@@ -882,21 +883,7 @@ function appendSmoothStrokeSamples(stroke, events) {
   if (!stroke || !Array.isArray(stroke.points) || !Array.isArray(events)) return;
   const spacing = Math.max(0.75, Math.min(3, (Number(stroke.size) || 5) * 0.3));
   for (const event of events) {
-    const next = pointFromEvent(event);
-    const previous = stroke.points[stroke.points.length - 1];
-    if (!previous) {
-      stroke.points.push(next);
-      continue;
-    }
-    const dx = next.x - previous.x;
-    const dy = next.y - previous.y;
-    const distance = Math.hypot(dx, dy);
-    if (!Number.isFinite(distance) || distance < 0.01) continue;
-    const steps = Math.max(1, Math.ceil(distance / spacing));
-    for (let step = 1; step <= steps; step++) {
-      const t = step / steps;
-      stroke.points.push(createStrokePoint(previous.x + dx * t, previous.y + dy * t));
-    }
+    appendInterpolatedStrokePoint(stroke.points, pointFromEvent(event), createStrokePoint, spacing);
   }
 }
 
@@ -6333,7 +6320,8 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/selection.mjs",
   "./domain/viewport.mjs",
   "./domain/touch-gestures.mjs",
-  "./domain/frame-scheduler.mjs"
+  "./domain/frame-scheduler.mjs",
+  "./domain/stroke-smoothing.mjs"
 ];
 
 async function reportServiceWorkerReadiness() {
