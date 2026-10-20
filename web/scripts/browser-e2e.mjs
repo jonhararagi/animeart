@@ -2159,8 +2159,17 @@ try {
   await saveScreenshot("animeart-mobile-typography.png");
 
 
-  // KapiArt's three-step learning flow launches the real importer and background-removal tool on mobile.
-  await evaluate('(() => { const text=document.querySelector("#text-edit-dialog"); if(text?.open) text.close(); const guide=document.querySelector("#guided-editing-dialog"); if(guide?.open) guide.close(); const toolbox=document.querySelector("#toolbox-dialog"); if(!toolbox.open) toolbox.showModal(); })()');
+  // AA-GUIDED-STICKER-REAL-FLOW-001: import a real in-memory PNG, remove
+  // its white background with the local processor, then export a transparent PNG.
+  await evaluate('window.confirm = () => true');
+  await evaluate('(() => { const text=document.querySelector("#text-edit-dialog"); if(text?.open) text.close(); const guide=document.querySelector("#guided-editing-dialog"); if(guide?.open) guide.close(); const toolbox=document.querySelector("#toolbox-dialog"); if(toolbox?.open) toolbox.close(); document.querySelector("#new-document").click(); })()');
+  await waitFor('document.querySelector("#project-dialog")?.open === true');
+  await evaluate('(() => { document.querySelector("#document-width").value="128"; document.querySelector("#document-height").value="128"; })()');
+  await click('#project-form button[type="submit"]');
+  await waitFor('document.querySelector("#project-dialog")?.open === false');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").width===128 && JSON.parse(localStorage.getItem("animeart-web-document")||"{}").height===128');
+
+  await evaluate('(() => { const toolbox=document.querySelector("#toolbox-dialog"); if(!toolbox.open) toolbox.showModal(); })()');
   await waitFor('document.querySelector("#toolbox-dialog")?.open === true');
   assert(await evaluate('(() => { const button=document.querySelector("#guided-editing-open-mobile"); const r=button.getBoundingClientRect(); const s=getComputedStyle(button); return Boolean(button&&s.display!=="none"&&r.width>=44&&r.height>=44&&r.bottom<=innerHeight); })()'),
     "three-step learning is reachable from the mobile toolbox with a touch-sized action");
@@ -2177,23 +2186,73 @@ try {
   await evaluate('(() => { const toggle=document.querySelector("#editing-help-enabled"); toggle.checked=true; toggle.dispatchEvent(new Event("change",{bubbles:true})); })()');
   await evaluate('(() => { const select=document.querySelector("#guided-flow-select"); select.value="sticker-anime"; select.dispatchEvent(new Event("change",{bubbles:true})); })()');
   await waitFor('document.querySelector("#guided-step-title")?.textContent === "Prepara el personaje"');
-  await evaluate('(() => { const input=document.querySelector("#image-file-input"); window.__animeArtPickerOpenCount=0; window.__animeArtOriginalPickerClick=input.click.bind(input); input.click=()=>{window.__animeArtPickerOpenCount+=1;}; })()');
+
+  const layersBeforeGuidedImport = (await readLayerSummary()).length;
+  await evaluate('(() => { const input=document.querySelector("#image-file-input"); window.__kapiartGuidedOriginalPickerClick=input.click.bind(input); input.click=()=>{ const source=document.createElement("canvas"); source.width=64; source.height=64; const ctx=source.getContext("2d"); ctx.fillStyle="#ffffff"; ctx.fillRect(0,0,64,64); ctx.fillStyle="#f2a2a0"; ctx.fillRect(12,12,40,40); ctx.fillStyle="#241a19"; ctx.fillRect(24,24,16,16); const encoded=source.toDataURL("image/png").split(",")[1]; const bytes=Uint8Array.from(atob(encoded),character=>character.charCodeAt(0)); const file=new File([bytes],"guided-sticker-fixture.png",{type:"image/png"}); const transfer=new DataTransfer(); transfer.items.add(file); input.files=transfer.files; input.dispatchEvent(new Event("change",{bubbles:true})); }; })()');
   await click("#guided-step-action");
-  await waitFor('window.__animeArtPickerOpenCount === 1');
-  assert(await evaluate('document.querySelector("#guided-editing-dialog")?.open === false'),
-    "the import action hands control to the real device picker instead of faking an image operation");
-  await evaluate('document.querySelector("#image-file-input").dispatchEvent(new Event("cancel",{bubbles:true}))');
-  await evaluate('(() => { const input=document.querySelector("#image-file-input"); input.click=window.__animeArtOriginalPickerClick; })()');
+  await waitFor('document.querySelector("#guided-editing-dialog")?.open === false');
+  await waitFor("JSON.parse(localStorage.getItem(\"animeart-web-document\")||\"{}\").layers.length === " + (layersBeforeGuidedImport + 1), 15000);
+  const guidedStickerOriginal = (await readDocument()).layers.at(-1);
+  assert(guidedStickerOriginal?.contentType === "image" && guidedStickerOriginal.image?.source?.startsWith("data:image/png;base64,"),
+    "guided sticker preparation imports a real PNG as an editable image layer");
+  await evaluate('(() => { const input=document.querySelector("#image-file-input"); input.click=window.__kapiartGuidedOriginalPickerClick; })()');
   await evaluate('(() => { const toolbox=document.querySelector("#toolbox-dialog"); if(!toolbox.open) toolbox.showModal(); document.querySelector("#guided-editing-open-mobile").click(); })()');
   await waitFor('document.querySelector("#guided-editing-dialog")?.open === true');
   await click("#guided-step-complete");
   await waitFor('document.querySelector("#guided-step-title")?.textContent === "Separa la silueta"');
+
   await click("#guided-step-action");
   await waitFor('document.querySelector("#background-removal-dialog")?.open === true');
   assert(await evaluate('document.querySelector("#background-removal-preview")?.getBoundingClientRect().width > 0'),
     "the sticker guide opens the actual local background-removal preview");
-  await click("#cancel-background-removal");
+  await click("#background-auto-detect");
+  await click("#preview-background-removal");
+  await waitFor('document.querySelector("#apply-background-removal")?.disabled === false', 15000);
+  await click("#apply-background-removal");
   await waitFor('document.querySelector("#background-removal-dialog")?.open === false');
+  await waitFor("JSON.parse(localStorage.getItem(\"animeart-web-document\")||\"{}\").layers.some(layer=>layer.id===" + JSON.stringify(guidedStickerOriginal.id) + " && layer.image?.source!==" + JSON.stringify(guidedStickerOriginal.image.source) + ")", 15000);
+  const guidedStickerProcessed = (await readDocument()).layers.find(layer => layer.id === guidedStickerOriginal.id);
+  assert(guidedStickerProcessed?.contentType === "image" && guidedStickerProcessed.image?.source !== guidedStickerOriginal.image.source,
+    "guided sticker background removal changes the selected image source and preserves its layer");
+  const processedPixels = inspectPngAlpha(Buffer.from(guidedStickerProcessed.image.source.split(",")[1], "base64"));
+  assert(processedPixels.foundTransparentPixel,
+    "guided sticker background removal persists transparent pixels in the actual processed PNG");
+
+  await evaluate('(() => { const toolbox=document.querySelector("#toolbox-dialog"); if(!toolbox.open) toolbox.showModal(); document.querySelector("#guided-editing-open-mobile").click(); })()');
+  await waitFor('document.querySelector("#guided-editing-dialog")?.open === true');
+  await click("#guided-step-complete");
+  await waitFor('document.querySelector("#guided-step-title")?.textContent === "Comprueba y exporta"');
+  const pngFilesBeforeGuidedExport = Object.fromEntries(readdirSync(downloadDir)
+    .filter(name => /^animeart(?: \(\d+\))?\.png$/.test(name))
+    .map(name => [name, statSync(join(downloadDir, name)).mtimeMs]));
+  await click("#guided-step-action");
+  await waitFor('document.querySelector("#status").textContent === "PNG exported"', 15000);
+  let guidedExportPath = null;
+  for (let attempt=0; attempt<100 && !guidedExportPath; attempt++) {
+    const newOrChangedPngs = readdirSync(downloadDir)
+      .filter(name => /^animeart(?: \(\d+\))?\.png$/.test(name))
+      .map(name => ({path:join(downloadDir,name),name,mtimeMs:statSync(join(downloadDir,name)).mtimeMs,size:statSync(join(downloadDir,name)).size}))
+      .filter(file => file.size > 0 && (!Object.hasOwn(pngFilesBeforeGuidedExport,file.name) || file.mtimeMs > pngFilesBeforeGuidedExport[file.name]));
+    if (newOrChangedPngs.length) {
+      newOrChangedPngs.sort((left,right) => right.mtimeMs-left.mtimeMs);
+      guidedExportPath = newOrChangedPngs[0].path;
+    } else {
+      await sleep(100);
+    }
+  }
+  assert(Boolean(guidedExportPath && existsSync(guidedExportPath)),
+    "the guided sticker finish action downloads a non-empty PNG file");
+  const guidedExportAlpha = inspectPngAlpha(await (await import("node:fs/promises")).readFile(guidedExportPath));
+  assert(guidedExportAlpha.foundTransparentPixel,
+    "the sticker guide exports a PNG with actual transparent pixels");
+  assert((await readDocument()).layers.some(layer => layer.id === guidedStickerOriginal.id && layer.contentType === "image"),
+    "exporting from the guide leaves the editable sticker layer in the project");
+  await evaluate('(() => { const toolbox=document.querySelector("#toolbox-dialog"); if(!toolbox.open) toolbox.showModal(); document.querySelector("#guided-editing-open-mobile").click(); })()');
+  await waitFor('document.querySelector("#guided-editing-dialog")?.open === true');
+  await click("#guided-step-complete");
+  const completedStickerGuide = await evaluate('JSON.parse(localStorage.getItem("kapiart-guided-editing-progress-v1")||"{}").progressByFlow?.["sticker-anime"]||null');
+  assert(completedStickerGuide?.completedStepIds?.length === 3,
+    "the guide records all three confirmed steps after the real import, cutout, and PNG export");
 
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {
