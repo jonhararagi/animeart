@@ -175,7 +175,12 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
       const favoriteLabel=document.createElement("label"); favoriteLabel.className="asset-favorite";
       const favorite=document.createElement("input"); favorite.type="checkbox"; favorite.checked=asset.favorite; favorite.setAttribute("aria-label","Marcar favorita: "+asset.name);
       favorite.addEventListener("change",()=>updateCard(asset,{favorite:favorite.checked})); favoriteLabel.append(favorite,document.createTextNode(" Favorite"));
-      meta.append(size,favoriteLabel);
+      const originChip=document.createElement("span");
+      originChip.className="asset-origin-chip asset-origin-"+asset.originType;
+      originChip.textContent=(ORIGIN_LABELS[asset.originType]||"Procedencia desconocida")+" · "+(VERIFICATION_LABELS[asset.verificationStatus]||"Estado desconocido");
+      originChip.title="Estado informativo registrado por la persona usuaria; no constituye una verificación legal automática.";
+      originChip.setAttribute("aria-label","Origen: "+(ORIGIN_LABELS[asset.originType]||"desconocido")+". "+(VERIFICATION_LABELS[asset.verificationStatus]||"estado desconocido"));
+      meta.append(originChip,size,favoriteLabel);
       const actions=document.createElement("div"); actions.className="asset-card-actions";
       const use=document.createElement("button"); use.type="button"; use.textContent="＋ Insertar al lienzo"; use.disabled=!(asset.imageBlob instanceof Blob);
       use.addEventListener("click",async()=>{try{const file=new File([asset.imageBlob],asset.name,{type:asset.imageBlob.type||asset.mimeType||"image/png"});const ok=await onImportImage(file,"Imagen insertada: "+asset.name);if(ok){dialog.close();onStatus("Imagen insertada como capa editable. Ya puedes moverla en el lienzo.");}}catch(error){report(error.message||"No se pudo insertar la imagen en el lienzo",true);}});

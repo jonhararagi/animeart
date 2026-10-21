@@ -98,6 +98,8 @@ test("asset library UI captures source and license data, hashes imports, and acc
   assert.match(html,/value="origin:derivative"/);
   assert.match(html,/value="verification:user-confirmed"/);
   assert.match(panel,/"Enlace de origen"/);
+  assert.match(panel,/asset-origin-chip/);
+  assert.match(panel,/VERIFICATION_LABELS/);
   assert.match(panel,/"Licencia"/);
   assert.match(panel,/"Atribución requerida"/);
   assert.match(panel,/sha256Hex/);
