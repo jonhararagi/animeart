@@ -766,10 +766,15 @@
         <div class="recolor-controls">
           <label class="text-field" for="recolor-source-color">Sampled source color<input id="recolor-source-color" type="color" value="#806050" disabled></label>
           <button id="sample-recolor-source" type="button">🎯 Elegir color de origen</button>
-          <button id="select-anime-region" type="button" aria-pressed="false">🪄 Varita anime: seleccionar zona</button>
+          <button id="select-anime-region" type="button" aria-pressed="false">🪄 Reemplazar selección</button>
+          <div class="anime-selection-actions" role="group" aria-label="Combinar regiones seleccionadas">
+            <button id="recolor-add-region" type="button" aria-pressed="false">➕ Sumar zona</button>
+            <button id="recolor-subtract-region" type="button" aria-pressed="false">➖ Restar zona</button>
+            <button id="clear-anime-region-selection" type="button">✕ Limpiar selección</button>
+          </div>
           <label class="text-field" for="anime-color-name">Buscar color por nombre<input id="anime-color-name" type="search" placeholder="Ej.: marrón claro, rubio miel"></label>
           <button id="apply-anime-color-name" type="button">Usar color encontrado</button>
-          <p class="anime-selection-hint">La varita selecciona una región de color conectada. Funciona mejor con line art y colores planos; ajustá la tolerancia si toma demasiado o muy poco.</p>
+          <p class="anime-selection-hint">La varita selecciona una región conectada. Usa “Sumar zona” para incluir ambos ojos o varios mechones, “Restar zona” para quitar píxeles seleccionados por error. Ajustá la tolerancia para ilustraciones planas y lineart.</p>
           <label class="text-field" for="recolor-target-color">Replacement color<input id="recolor-target-color" type="color" value="#c76cf2"></label>
           <label class="text-field" for="recolor-tolerance">Color range <output id="recolor-tolerance-value">36</output><input id="recolor-tolerance" type="range" min="0" max="160" value="36"></label>
           <label class="text-field" for="recolor-softness">Range softness <output id="recolor-softness-value">28</output><input id="recolor-softness" type="range" min="0" max="120" value="28"></label>

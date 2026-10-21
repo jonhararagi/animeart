@@ -4260,3 +4260,9 @@ dialog {
 .anime-selection-hint { margin:0; color:#94a4b8; font-size:.75rem; line-height:1.45; }
 #anime-color-name { width:100%; min-width:0; padding:10px; border:1px solid #374258; border-radius:8px; background:#0f141c; color:inherit; }
 @media(max-width:620px){.recolor-workspace{grid-template-columns:minmax(0,1fr)}.recolor-preview-wrap{min-height:200px}#recolor-preview{max-height:40dvh}.recolor-shell{padding:12px}.recolor-controls button{min-height:42px}}
+
+/* AA-ANIME-REGION-002: clear add/subtract modes for selecting both eyes or several hair strands. */
+.anime-selection-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.anime-selection-actions button { min-width:0; padding:8px 6px; font-size:.78rem; line-height:1.2; }
+.anime-selection-actions button[aria-pressed="true"] { border-color:#f2a2a0; background:#392b29; box-shadow:0 0 0 2px #f2a2a044; }
+#clear-anime-region-selection { grid-column:1 / -1; }

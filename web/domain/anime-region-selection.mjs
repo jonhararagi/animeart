@@ -52,6 +52,34 @@ export function selectAnimeRegion(imageData, x, y, { tolerance = 28, alphaThresh
   return { width, height, mask, selectedPixels: tail, sourceColor: "#" + sourceColor.map(value => value.toString(16).padStart(2, "0")).join("") };
 }
 
+export function combineAnimeRegionSelections(current, next, mode = "add") {
+  const validRegion = region => region && Number.isInteger(region.width) && Number.isInteger(region.height) &&
+    region.width > 0 && region.height > 0 && (region.mask instanceof Uint8Array || region.mask instanceof Uint8ClampedArray) &&
+    region.mask.length === region.width * region.height;
+  if (!validRegion(next)) throw new TypeError("Region selection requires a valid pixel mask");
+  if (!["replace", "add", "subtract"].includes(mode)) throw new TypeError("Selection mode must be replace, add or subtract");
+  if (current && !validRegion(current)) throw new TypeError("Current selection requires a valid pixel mask");
+  if (current && (current.width !== next.width || current.height !== next.height)) {
+    throw new RangeError("Region selections must use the same image dimensions");
+  }
+  const mask = new Uint8Array(next.width * next.height);
+  let selectedPixels = 0;
+  for (let i = 0; i < mask.length; i++) {
+    const before = mode !== "replace" && Boolean(current?.mask[i]);
+    const added = Boolean(next.mask[i]);
+    mask[i] = mode === "replace" ? (added ? 1 : 0) :
+      mode === "add" ? (before || added ? 1 : 0) : (before && !added ? 1 : 0);
+    selectedPixels += mask[i];
+  }
+  return {
+    width: next.width,
+    height: next.height,
+    mask,
+    selectedPixels,
+    sourceColor: mode !== "replace" && current?.sourceColor ? current.sourceColor : (next.sourceColor || null)
+  };
+}
+
 export function animeColorFromHsv(hue, saturation, value) {
   const rawHue = Number(hue), rawSaturation = Number(saturation), rawValue = Number(value);
   const h = ((Number.isFinite(rawHue) ? rawHue : 0) % 360 + 360) % 360;

@@ -26,3 +26,7 @@ No se debe afirmar que KapiArt fue entrenado con miles de imágenes si no existe
 
 ## Protección de line art blanco y negro
 La opción «Proteger bordes negros y brillos blancos» examina el contraste local de cada píxel. Los píxeles casi negros o casi blancos que forman un borde de alto contraste se dejan intactos durante el recoloreado. Las zonas negras interiores sin contraste local pueden seguir recoloreándose, algo importante para cabello negro. Es una heurística ajustable, no una segmentación semántica perfecta: trazos finos, antialiasing, fondos blancos y reflejos requieren pruebas con imágenes reales.
+
+## Selección de varias zonas para ojos, cabello y ropa
+
+La herramienta de selección permite reemplazar una región, sumar otra región del mismo diseño o restar una zona que se incluyó por error. Esto ayuda a recolorear ambos iris o varios mechones separados sin incluir el fondo. La operación sigue siendo una máscara por conectividad y similitud de color: no identifica semánticamente qué objeto es un ojo o un mechón. Las pruebas comprueban la combinación y sustracción de máscaras, sus dimensiones y el conteo de píxeles.

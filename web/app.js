@@ -2,7 +2,7 @@ import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, create
 import { initializeAssetLibrary } from "./asset-library.js";
 import { getEditingHelpPreference, initializeAppearanceSettings, setEditingHelpPreference } from "./appearance-settings.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
-import { selectAnimeRegion, findAnimeColorName } from "./domain/anime-region-selection.mjs";
+import { selectAnimeRegion, combineAnimeRegionSelections, findAnimeColorName } from "./domain/anime-region-selection.mjs";
 import { traceCropShape } from "./domain/crop-shape.mjs";
 import { runImageProcessing } from "./domain/image-processing-client.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
@@ -109,6 +109,7 @@ const recolorContext = recolorCanvas?.getContext("2d", { willReadFrequently: tru
 let recolorSession = null;
 let recolorSampleMode = false;
 let recolorRegionMode = false;
+let recolorRegionSelectionMode = "replace";
 let recolorSelectionRevision = 0;
 const backgroundRemovalDialog = document.querySelector("#background-removal-dialog");
 const backgroundRemovalCanvas = document.querySelector("#background-removal-preview");
@@ -5395,15 +5396,96 @@ async function openRecolorTool() {
  } catch(error){status.textContent=error.message||"Could not open color replacement";}
 }
 if(recolorButton)recolorButton.addEventListener("click",openRecolorTool);
-function closeRecolorTool(){recolorPreviewRevision += 1; recolorDialog.close();recolorSession=null;recolorSampleMode=false;recolorRegionMode=false;recolorPreviewResult=null;recolorPreviewKey=null;document.querySelector("#apply-recolor").disabled=true;}
+function closeRecolorTool(){recolorPreviewRevision += 1; recolorDialog.close();recolorSession=null;recolorSampleMode=false;recolorRegionMode=false;recolorRegionSelectionMode="replace";setRecolorRegionActionState("replace",false);recolorPreviewResult=null;recolorPreviewKey=null;document.querySelector("#apply-recolor").disabled=true;}
+function setRecolorRegionActionState(mode = "replace", armed = false) {
+  for (const [id, actionMode] of [["select-anime-region","replace"],["recolor-add-region","add"],["recolor-subtract-region","subtract"]]) {
+    document.querySelector("#" + id)?.setAttribute("aria-pressed", String(armed && mode === actionMode));
+  }
+}
+function armRecolorRegionSelection(mode = "replace") {
+  recolorRegionSelectionMode = mode;
+  recolorRegionMode = true;
+  recolorSampleMode = false;
+  setRecolorRegionActionState(mode, true);
+  const guidance = mode === "add"
+    ? "Tocá otra zona del mismo color para sumarla. Podés seleccionar ambos ojos o varios mechones."
+    : mode === "subtract"
+      ? "Tocá la zona que querés quitar de la selección actual."
+      : "Tocá una zona de color para seleccionarla.";
+  document.querySelector("#recolor-status").textContent = guidance;
+}
 document.querySelector("#cancel-recolor").addEventListener("click",closeRecolorTool);
 document.querySelector("#cancel-recolor-bottom").addEventListener("click",closeRecolorTool);
-document.querySelector("#sample-recolor-source").addEventListener("click",()=>{recolorSampleMode=true;recolorRegionMode=false;if(recolorSession){recolorSession.selection=null;recolorSelectionRevision+=1;}document.querySelector("#select-anime-region").setAttribute("aria-pressed","false");document.querySelector("#recolor-status").textContent="Tocá el color que querés reemplazar en toda la imagen.";});
+document.querySelector("#sample-recolor-source").addEventListener("click",()=>{
+  recolorSampleMode=true;recolorRegionMode=false;recolorRegionSelectionMode="replace";
+  if(recolorSession){recolorSession.selection=null;recolorSession.sourceColor=null;recolorSelectionRevision+=1;}
+  setRecolorRegionActionState("replace",false);
+  document.querySelector("#recolor-source-color").value="#806050";
+  document.querySelector("#recolor-status").textContent="Tocá el color que querés reemplazar en toda la imagen.";
+  renderRecolorPreview();
+});
+document.querySelector("#select-anime-region").addEventListener("click",()=>armRecolorRegionSelection("replace"));
+document.querySelector("#recolor-add-region").addEventListener("click",()=>armRecolorRegionSelection("add"));
+document.querySelector("#recolor-subtract-region").addEventListener("click",()=>armRecolorRegionSelection("subtract"));
+document.querySelector("#clear-anime-region-selection").addEventListener("click",()=>{
+  if(!recolorSession)return;
+  recolorSession.selection=null;recolorSession.sourceColor=null;recolorSelectionRevision+=1;
+  recolorRegionMode=false;recolorSampleMode=false;recolorRegionSelectionMode="replace";
+  setRecolorRegionActionState("replace",false);
+  document.querySelector("#recolor-source-color").value="#806050";
+  document.querySelector("#recolor-status").textContent="Selección limpiada. Elegí una zona o un color de origen antes de aplicar.";
+  renderRecolorPreview();
+});
 document.querySelector("#select-anime-region").addEventListener("click",()=>{recolorRegionMode=true;recolorSampleMode=false;document.querySelector("#select-anime-region").setAttribute("aria-pressed","true");document.querySelector("#recolor-status").textContent="Tocá una zona de color del cabello, ropa u ojos.";});
 document.querySelector("#apply-anime-color-name").addEventListener("click",()=>{const color=findAnimeColorName(document.querySelector("#anime-color-name").value);if(!color){document.querySelector("#recolor-status").textContent="No encontré ese nombre. Probá «marrón claro», «rubio miel», «cobre» o pegá un HEX como #b9855a.";return;}document.querySelector("#recolor-target-color").value=color;renderRecolorPreview();document.querySelector("#recolor-status").textContent="Color elegido: "+color+". Revisá la vista previa antes de aplicar.";});
-recolorCanvas.addEventListener("click",event=>{const s=recolorSession;if(!s||(!recolorSampleMode&&!recolorRegionMode))return;const r=recolorCanvas.getBoundingClientRect(),x=Math.max(0,Math.min(recolorCanvas.width-1,Math.floor((event.clientX-r.left)*recolorCanvas.width/r.width))),y=Math.max(0,Math.min(recolorCanvas.height-1,Math.floor((event.clientY-r.top)*recolorCanvas.height/r.height))),o=(y*recolorCanvas.width+x)*4;
- if(recolorRegionMode){try{const selected=selectAnimeRegion(s.original,x,y,{tolerance:Number(document.querySelector("#recolor-tolerance").value)});if(!selected.selectedPixels){document.querySelector("#recolor-status").textContent="La zona es transparente o no se pudo seleccionar.";return;}s.selection=selected;s.sourceColor=selected.sourceColor;recolorSelectionRevision+=1;document.querySelector("#recolor-source-color").value=s.sourceColor;document.querySelector("#select-anime-region").setAttribute("aria-pressed","false");recolorRegionMode=false;recolorSampleMode=false;document.querySelector("#recolor-status").textContent="Zona seleccionada: "+selected.selectedPixels.toLocaleString("es-AR")+" píxeles. El cambio solo afectará esta región.";renderRecolorPreview();}catch(error){document.querySelector("#recolor-status").textContent=error.message||"No se pudo seleccionar esa región.";}return;}
- s.selection=null;recolorSelectionRevision+=1;s.sourceColor=pixelHex(s.original.data,o);document.querySelector("#recolor-source-color").value=s.sourceColor;recolorSampleMode=false;renderRecolorPreview();});
+recolorCanvas.addEventListener("click",event=>{
+ const s=recolorSession;
+ if(!s||(!recolorSampleMode&&!recolorRegionMode))return;
+ const r=recolorCanvas.getBoundingClientRect();
+ const x=Math.max(0,Math.min(recolorCanvas.width-1,Math.floor((event.clientX-r.left)*recolorCanvas.width/r.width)));
+ const y=Math.max(0,Math.min(recolorCanvas.height-1,Math.floor((event.clientY-r.top)*recolorCanvas.height/r.height)));
+ const offset=(y*recolorCanvas.width+x)*4;
+ if(recolorRegionMode){
+  try{
+   const selected=selectAnimeRegion(s.original,x,y,{tolerance:Number(document.querySelector("#recolor-tolerance").value)});
+   if(!selected.selectedPixels){
+    document.querySelector("#recolor-status").textContent="La zona es transparente o no se pudo seleccionar.";
+    return;
+   }
+   const mode=recolorRegionSelectionMode;
+   const combined=mode==="replace"?selected:combineAnimeRegionSelections(s.selection,selected,mode);
+   recolorRegionMode=false;
+   setRecolorRegionActionState(mode,false);
+   if(!combined.selectedPixels){
+    s.selection=null;s.sourceColor=null;
+    document.querySelector("#recolor-source-color").value="#806050";
+    recolorSelectionRevision+=1;
+    renderRecolorPreview();
+    document.querySelector("#recolor-status").textContent="La selección quedó vacía. Elegí otra zona para continuar.";
+    return;
+   }
+   const previous=s.selection;
+   s.sourceColor=mode!=="replace"&&previous?.selectedPixels
+    ? (previous.sourceColor||s.sourceColor||selected.sourceColor)
+    : selected.sourceColor;
+   s.selection={...combined,sourceColor:s.sourceColor};
+   recolorSelectionRevision+=1;
+   document.querySelector("#recolor-source-color").value=s.sourceColor;
+   const label=mode==="add"?"Selección ampliada":mode==="subtract"?"Zona restada":"Zona seleccionada";
+   document.querySelector("#recolor-status").textContent=label+": "+s.selection.selectedPixels.toLocaleString("es-AR")+" píxeles.";
+   renderRecolorPreview();
+  }catch(error){
+   document.querySelector("#recolor-status").textContent=error.message||"No se pudo actualizar la selección.";
+  }
+  return;
+ }
+ s.selection=null;
+ recolorSelectionRevision+=1;
+ s.sourceColor=pixelHex(s.original.data,offset);
+ document.querySelector("#recolor-source-color").value=s.sourceColor;
+ recolorSampleMode=false;
+ renderRecolorPreview();
+});
 for(const id of ["recolor-target-color","recolor-tolerance","recolor-softness","recolor-preserve-shading","recolor-preserve-line-art"]){document.querySelector("#"+id).addEventListener("input",renderRecolorPreview);document.querySelector("#"+id).addEventListener("change",renderRecolorPreview);}
 document.querySelector("#apply-recolor").addEventListener("click",async()=>{
  const s=recolorSession,layer=s&&state.document.layers.find(item=>item.id===s.layerId);
@@ -6313,7 +6395,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v57";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v58";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
