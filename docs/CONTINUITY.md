@@ -3947,3 +3947,17 @@ La CI de Android de la PR generó un artefacto de 10.724.319 bytes. El artefacto
 ### Próximo paso
 
 Verificar Web CI, Android CI y el artefacto Android ligados al SHA más reciente de `main`. Después, configurar firma persistente de distribución y verificar la actualización sobre una instalación existente con respaldo de los proyectos. Completar una prueba física en el Xiaomi y la matriz de referentes con fuentes y fechas reales.
+
+
+## 2026-10-21 · PR #110 · carga progresiva de la biblioteca visual
+
+- **Estado del lote:** Web CI PASS y Android CI PASS en HEAD `c7fdb3434a6b9b20ef36894db8e9bdeab1aa3c8a`. La PR #110 está abierta y en borrador: https://github.com/jonhararagi/animeart/pull/110.
+- **Main no modificado por esta iteración:** SHA `1b256a6324bdd8544e49bf8a735c4cd93349f8bb`.
+- **Rama de trabajo:** `feature/animeart-library-progressive-loading-001`.
+- **Cambios:** máximo 36 tarjetas por render inicial; botón accesible «Cargar más»; búsqueda y filtros reinician la vista al primer bloque; miniaturas con `loading="lazy"` y `decoding="async"`; helper `web/domain/asset-library-pagination.mjs`; caché PWA `animeart-web-shell-v62`.
+- **Pruebas nuevas:** pruebas de dominio para listas de 500 recursos, último bloque parcial, entradas inválidas y límites; el E2E de Chromium siembra 40 registros temporales en IndexedDB, comprueba 36 iniciales, muestra 40 tras «Cargar más», filtra a un resultado, reinicia a 36 al limpiar búsqueda y restaura los registros anteriores.
+- **Evidencia CI:** Web PASS https://github.com/jonhararagi/animeart/actions/runs/39648162906; Android PASS https://github.com/jonhararagi/animeart/actions/runs/39648162976.
+- **APK del HEAD de la PR:** artefacto temporal de GitHub Actions #12367838419, nombre `kapiart-android-debug-v0.3.7-a14fe189f0da5ed7ce8a99a445d8b4941afa4e38`. Es una compilación de la rama de la PR, no de `main`. Firma configurada como `ephemeral-debug`; la compatibilidad de actualización no está garantizada. No hay prueba física registrada en el Xiaomi.
+- **Limitación conocida:** este lote limita la creación de tarjetas, URLs de previsualización y decodificación inicial, pero `allAssets()` todavía usa `IndexedDB.getAll()` y recupera los blobs junto con los metadatos. Un futuro lote puede separar metadatos y binarios en almacenes IndexedDB distintos, con migración y pruebas de recuperación antes de cambiar el formato local.
+- **TIMER estimado:** 2–4 horas para la implementación y validación; tiempo real no medido.
+- **Siguiente criterio de decisión:** no fusionar PR #110 sin autorización explícita. Antes de prometer que la biblioteca evita cargar todos los datos binarios, completar la separación de almacenamiento y probar migración desde DB_VERSION=1.
