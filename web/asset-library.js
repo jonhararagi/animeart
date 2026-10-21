@@ -1,4 +1,5 @@
 import { backfillAssetHashesForMatchingSizes, normalizeComputedAssetHash } from "./domain/asset-deduplication.mjs";
+import { ASSET_LIBRARY_PAGE_SIZE, getAssetLibraryPage } from "./domain/asset-library-pagination.mjs";
 import {
   ASSET_CATEGORIES,
   ASSET_LIBRARY_SCHEMA_VERSION,
@@ -116,6 +117,18 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
   const importButton=$("#asset-library-import"), packageInput=$("#asset-library-package");
   if ([dialog,open,close,fileInput,add,search,filter,grid,empty,status,exportButton,importButton,packageInput].some(x=>!x)) return;
   let assets=[];
+  let visibleCount = ASSET_LIBRARY_PAGE_SIZE;
+  const loadMoreButton = document.createElement("button");
+  loadMoreButton.type = "button";
+  loadMoreButton.className = "asset-library-load-more";
+  loadMoreButton.textContent = "Cargar más imágenes";
+  loadMoreButton.hidden = true;
+  loadMoreButton.setAttribute("aria-label", "Cargar más recursos de la biblioteca");
+  loadMoreButton.addEventListener("click", () => {
+    visibleCount += ASSET_LIBRARY_PAGE_SIZE;
+    render();
+  });
+  grid.after(loadMoreButton);
   function report(message, error=false) { status.textContent=message; status.dataset.error=String(error); }
   function releaseUrls() { for (const url of previewUrls) URL.revokeObjectURL(url); previewUrls.clear(); }
   function updateCard(asset, patch) {
@@ -129,14 +142,22 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
   function render() {
     releaseUrls();
     grid.replaceChildren();
-    const visible=filterAssets(assets,search.value,filter.value);
-    empty.hidden=visible.length>0;
+    const matching = filterAssets(assets,search.value,filter.value);
+    const page = getAssetLibraryPage(matching, visibleCount);
+    empty.hidden=matching.length>0;
     empty.textContent=assets.length ? "No hay imágenes que coincidan con esa búsqueda." : "Tu biblioteca está vacía. Importa imágenes para crear tu colección reutilizable.";
     exportButton.disabled=assets.length===0;
-    for(const asset of visible) {
+    loadMoreButton.hidden = !page.hasMore;
+    loadMoreButton.textContent = page.hasMore
+      ? "Cargar más (" + (page.total - page.visibleCount) + " restantes)"
+      : "Todas las imágenes están visibles";
+    loadMoreButton.setAttribute("aria-label", page.hasMore
+      ? "Cargar más imágenes; quedan " + (page.total - page.visibleCount)
+      : "Todas las imágenes de la búsqueda están visibles");
+    for(const asset of page.items) {
       const card=document.createElement("article"); card.className="asset-card";
       const preview=document.createElement("div"); preview.className="asset-card-preview";
-      const image=document.createElement("img"); image.alt=asset.name;
+      const image=document.createElement("img"); image.alt=asset.name; image.loading="lazy"; image.decoding="async";
       if(asset.imageBlob instanceof Blob) { const url=URL.createObjectURL(asset.imageBlob); previewUrls.add(url); image.src=url; }
       preview.append(image);
       const fields=document.createElement("div"); fields.className="asset-card-fields";
@@ -205,6 +226,7 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
   }
   async function reload() {
     assets=(await allAssets()).map(asset=>({...normalizeAssetMetadata(asset),imageBlob:asset.imageBlob}));
+    visibleCount = ASSET_LIBRARY_PAGE_SIZE;
     render(); report(assets.length+" imagen(es) guardada(s)");
   }
   async function addFiles(files) {
@@ -285,8 +307,8 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
   close.addEventListener("click",()=>dialog.close());
   add.addEventListener("click",()=>fileInput.click());
   fileInput.addEventListener("change",()=>addFiles(fileInput.files));
-  search.addEventListener("input",render);
-  filter.addEventListener("change",render);
+  search.addEventListener("input",()=>{visibleCount=ASSET_LIBRARY_PAGE_SIZE;render();});
+  filter.addEventListener("change",()=>{visibleCount=ASSET_LIBRARY_PAGE_SIZE;render();});
   exportButton.addEventListener("click",exportLibrary);
   importButton.addEventListener("click",()=>packageInput.click());
   packageInput.addEventListener("change",()=>importLibrary(packageInput.files?.[0]||null));
