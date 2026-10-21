@@ -5404,7 +5404,7 @@ document.querySelector("#apply-anime-color-name").addEventListener("click",()=>{
 recolorCanvas.addEventListener("click",event=>{const s=recolorSession;if(!s||(!recolorSampleMode&&!recolorRegionMode))return;const r=recolorCanvas.getBoundingClientRect(),x=Math.max(0,Math.min(recolorCanvas.width-1,Math.floor((event.clientX-r.left)*recolorCanvas.width/r.width))),y=Math.max(0,Math.min(recolorCanvas.height-1,Math.floor((event.clientY-r.top)*recolorCanvas.height/r.height))),o=(y*recolorCanvas.width+x)*4;
  if(recolorRegionMode){try{const selected=selectAnimeRegion(s.original,x,y,{tolerance:Number(document.querySelector("#recolor-tolerance").value)});if(!selected.selectedPixels){document.querySelector("#recolor-status").textContent="La zona es transparente o no se pudo seleccionar.";return;}s.selection=selected;s.sourceColor=selected.sourceColor;recolorSelectionRevision+=1;document.querySelector("#recolor-source-color").value=s.sourceColor;document.querySelector("#select-anime-region").setAttribute("aria-pressed","false");recolorRegionMode=false;recolorSampleMode=false;document.querySelector("#recolor-status").textContent="Zona seleccionada: "+selected.selectedPixels.toLocaleString("es-AR")+" píxeles. El cambio solo afectará esta región.";renderRecolorPreview();}catch(error){document.querySelector("#recolor-status").textContent=error.message||"No se pudo seleccionar esa región.";}return;}
  s.selection=null;recolorSelectionRevision+=1;s.sourceColor=pixelHex(s.original.data,o);document.querySelector("#recolor-source-color").value=s.sourceColor;recolorSampleMode=false;renderRecolorPreview();});
-for(const id of ["recolor-target-color","recolor-tolerance","recolor-softness","recolor-preserve-shading"]){document.querySelector("#"+id).addEventListener("input",renderRecolorPreview);document.querySelector("#"+id).addEventListener("change",renderRecolorPreview);}
+for(const id of ["recolor-target-color","recolor-tolerance","recolor-softness","recolor-preserve-shading","recolor-preserve-line-art"]){document.querySelector("#"+id).addEventListener("input",renderRecolorPreview);document.querySelector("#"+id).addEventListener("change",renderRecolorPreview);}
 document.querySelector("#apply-recolor").addEventListener("click",async()=>{
  const s=recolorSession,layer=s&&state.document.layers.find(item=>item.id===s.layerId);
  if(!s||!layer||layer.locked||layer.contentType!=="image"||layer.image?.source!==s.source){document.querySelector("#recolor-status").textContent="Selected layer changed. Close and reopen the tool.";return;}
@@ -6313,7 +6313,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v56";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v57";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",

@@ -68,3 +68,22 @@ test("line-art protection preserves white highlights at a contrasting color boun
   const result = replaceColorRange(source,{sourceColor:"#fafafa",targetColor:"#00ff00",tolerance:0,softness:0,preserveShading:false,preserveLineArt:true});
   assert.deepEqual([...result.data.slice(4,7)],[250,250,250]);
 });
+
+test("shading preservation can recolor black hair while keeping darker and lighter tones ordered", () => {
+  const source = image([[0,0,0,255],[8,8,8,255],[28,28,28,255],[0,0,0,0]]);
+  const result = replaceColorRange(source,{sourceColor:"#000000",targetColor:"#ff0000",tolerance:40,softness:0,preserveShading:true,preserveLineArt:false});
+  assert.ok(result.data[0] > 200 && result.data[1] < 10 && result.data[2] < 10);
+  assert.ok(result.data[4] > 200 && result.data[5] >= result.data[1]);
+  assert.ok(result.data[8] > 200 && result.data[9] >= result.data[5]);
+  assert.equal(result.data[15],0);
+});
+
+test("anime dark fills can recolor without sacrificing contrasting contour pixels", () => {
+  const width = 5, height = 5, data = new Uint8ClampedArray(width * height * 4);
+  for (let i = 0; i < width * height; i++) data.set([255,255,255,255], i * 4);
+  for (let y = 1; y <= 3; y++) for (let x = 1; x <= 3; x++) data.set([10,10,10,255], (y * width + x) * 4);
+  const result = replaceColorRange({width,height,data},{sourceColor:"#0a0a0a",targetColor:"#ff0000",tolerance:0,softness:0,preserveShading:false,preserveLineArt:true});
+  const edge = (2 * width + 1) * 4, interior = (2 * width + 2) * 4;
+  assert.deepEqual([...result.data.slice(edge,edge+3)],[10,10,10]);
+  assert.deepEqual([...result.data.slice(interior,interior+3)],[255,0,0]);
+});

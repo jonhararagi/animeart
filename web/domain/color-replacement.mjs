@@ -60,6 +60,7 @@ export function replaceColorRange(imageData, { sourceColor = "#806050", targetCo
   const threshold = Math.max(0, Math.min(255, Number(tolerance) || 0));
   const feather = Math.max(0, Math.min(160, Number(softness) || 0));
   const targetHsl = rgbToHsl(to[0], to[1], to[2], [0, 0, 0]);
+  const sourceHsl = rgbToHsl(from[0], from[1], from[2], [0, 0, 0]);
   const data = mutate ? source : new Uint8ClampedArray(source);
   const pixelHsl = [0, 0, 0], replacement = [0, 0, 0];
   for (let i = 0; i < data.length; i += 4) {
@@ -72,7 +73,8 @@ export function replaceColorRange(imageData, { sourceColor = "#806050", targetCo
     else continue;
     if (preserveLineArt && isProtectedLineArt(source, width, height, i)) continue;
     rgbToHsl(red, green, blue, pixelHsl);
-    const rgb = preserveShading ? hslToRgb(targetHsl[0], targetHsl[1], pixelHsl[2], replacement) : to;
+    const mappedLightness = Math.max(0, Math.min(1, targetHsl[2] + pixelHsl[2] - sourceHsl[2]));
+    const rgb = preserveShading ? hslToRgb(targetHsl[0], targetHsl[1], mappedLightness, replacement) : to;
     data[i] = Math.round(red * (1 - weight) + rgb[0] * weight);
     data[i + 1] = Math.round(green * (1 - weight) + rgb[1] * weight);
     data[i + 2] = Math.round(blue * (1 - weight) + rgb[2] * weight);

@@ -1,4 +1,4 @@
-const CACHE_NAME = "animeart-web-shell-v56";
+const CACHE_NAME = "animeart-web-shell-v57";
 const APP_SHELL = [
   "./index.html",
   "./styles.css",

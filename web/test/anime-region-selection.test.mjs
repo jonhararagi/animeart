@@ -34,3 +34,18 @@ test("HSV creates a large continuous palette and named colors resolve", () => {
   assert.equal(findAnimeColorName("#123abc"), "#123abc");
   assert.equal(findAnimeColorName("color inexistente"), null);
 });
+
+test("Spanish color names are accent-insensitive and include useful anime hair and eye tones", () => {
+  assert.equal(findAnimeColorName("  MARRÓN CLARO  "), "#b9855a");
+  assert.equal(findAnimeColorName("azul petróleo"), "#0f5b66");
+  assert.equal(findAnimeColorName("rubio miel"), "#d7a64b");
+  assert.equal(findAnimeColorName("piel oscura"), "#71452d");
+  assert.equal(findAnimeColorName("123ABC"), "#123abc");
+});
+
+test("HSV color generation clamps values and handles invalid inputs", () => {
+  assert.equal(animeColorFromHsv(360, 100, 100), "#ff0000");
+  assert.equal(animeColorFromHsv(-120, 100, 100), "#0000ff");
+  assert.equal(animeColorFromHsv(0, 150, 100), "#ff0000");
+  assert.equal(animeColorFromHsv(Number.NaN, Number.NaN, Number.NaN), "#000000");
+});

@@ -53,9 +53,10 @@ export function selectAnimeRegion(imageData, x, y, { tolerance = 28, alphaThresh
 }
 
 export function animeColorFromHsv(hue, saturation, value) {
-  const h = ((Number(hue) % 360) + 360) % 360;
-  const s = Math.max(0, Math.min(100, Number(saturation))) / 100;
-  const v = Math.max(0, Math.min(100, Number(value))) / 100;
+  const rawHue = Number(hue), rawSaturation = Number(saturation), rawValue = Number(value);
+  const h = ((Number.isFinite(rawHue) ? rawHue : 0) % 360 + 360) % 360;
+  const s = (Number.isFinite(rawSaturation) ? Math.max(0, Math.min(100, rawSaturation)) : 0) / 100;
+  const v = (Number.isFinite(rawValue) ? Math.max(0, Math.min(100, rawValue)) : 0) / 100;
   const c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
   const parts = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] :
     h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
@@ -63,16 +64,39 @@ export function animeColorFromHsv(hue, saturation, value) {
 }
 
 const COLOR_NAMES = Object.freeze({
-  "marron claro": "#b9855a", "marrón claro": "#b9855a", "castaño": "#75452f",
-  "marron chocolate": "#4a2b22", "marrón chocolate": "#4a2b22", "rubio miel": "#d7a64b",
-  "rubio platino": "#e9dfc0", "rubio ceniza": "#b9b19c", "rojo cereza": "#c62845",
-  "rojo vino": "#7b1734", "cobre": "#b96842", "rosa pastel": "#f2a2c0",
-  "azul pastel": "#9ac8f5", "azul eléctrico": "#2878d7", "violeta": "#8956c9",
-  "negro azulado": "#202333", "gris plateado": "#bfc5d0", "blanco": "#ffffff",
-  "negro": "#17151a", "verde menta": "#8bd8bb", "naranja": "#f28b38"
+  "marron claro": "#b9855a", "castano": "#75452f", "marron chocolate": "#4a2b22",
+  "rubio miel": "#d7a64b", "rubio platino": "#e9dfc0", "rubio ceniza": "#b9b19c",
+  "rubio dorado": "#e8bd58", "rubio arena": "#d8c08a",
+  "rojo cereza": "#c62845", "rojo vino": "#7b1734", "rojo escarlata": "#e32636",
+  "rojo coral": "#f05b64", "rojo carmesi": "#b91f3b", "cobre": "#b96842",
+  "caramelo": "#c68642", "avellana": "#a87950", "caoba": "#7c2d26", "miel": "#d8a24a",
+  "rosa pastel": "#f2a2c0", "rosa chicle": "#f44891", "rosa viejo": "#c08081",
+  "fucsia": "#e0008a", "magenta": "#ff00ff", "coral": "#ff7f70", "salmon": "#fa8072",
+  "durazno": "#ffcba4", "beige": "#d8c3a5", "arena": "#cbb994", "crema": "#fff1d0",
+  "marfil": "#fffff0", "lavanda": "#c4b5fd", "lila": "#b48ead", "violeta": "#8956c9",
+  "violeta pastel": "#c9a0dc", "morado": "#7b2cbf", "purpura": "#6f2da8", "ciruela": "#673147",
+  "azul pastel": "#9ac8f5", "azul electrico": "#2878d7", "azul marino": "#14213d",
+  "azul noche": "#191970", "azul cielo": "#87ceeb", "celeste": "#87cefa", "cian": "#00ffff",
+  "turquesa": "#40e0d0", "azul petroleo": "#0f5b66",
+  "verde menta": "#8bd8bb", "verde pastel": "#a8d5a2", "verde lima": "#a4de02",
+  "verde oliva": "#808000", "verde bosque": "#228b22", "verde esmeralda": "#50c878",
+  "verde agua": "#7fffd4", "verde oscuro": "#006400",
+  "amarillo pastel": "#fdfd96", "amarillo limon": "#fff44f", "oro": "#ffd700",
+  "dorado": "#d4af37", "naranja": "#f28b38", "naranja pastel": "#ffb347",
+  "blanco": "#ffffff", "blanco puro": "#ffffff", "negro": "#17151a",
+  "negro puro": "#000000", "negro azulado": "#202333", "carbon": "#343434",
+  "gris claro": "#d3d3d3", "gris plateado": "#bfc5d0", "gris oscuro": "#555555",
+  "pizarra": "#708090", "piel clara": "#f3c8a7", "piel media": "#d99a72",
+  "piel tostada": "#b8764c", "piel oscura": "#71452d"
 });
+
+function normalizeColorName(value) {
+  return String(value ?? "").trim().toLocaleLowerCase("es")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+}
+
 export function findAnimeColorName(query) {
-  const normalized = String(query ?? "").trim().toLocaleLowerCase("es");
+  const normalized = normalizeColorName(query);
   if (/^#?[0-9a-f]{6}$/i.test(normalized)) return normalized.startsWith("#") ? normalized : "#" + normalized;
   return COLOR_NAMES[normalized] || null;
 }
