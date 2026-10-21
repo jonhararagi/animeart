@@ -1,6 +1,9 @@
 import {
   ASSET_CATEGORIES,
   ASSET_LIBRARY_SCHEMA_VERSION,
+  LEGACY_ASSET_LIBRARY_SCHEMA_VERSIONS,
+  ASSET_ORIGIN_TYPES,
+  ASSET_VERIFICATION_STATUSES,
   MAX_ASSET_BYTES,
   MAX_LIBRARY_ASSETS,
   createAssetLibraryPackage,
@@ -15,6 +18,8 @@ const ALLOWED_TYPES = new Set(["image/png","image/jpeg","image/webp","image/gif"
 let dbPromise;
 const previewUrls = new Set();
 const CATEGORY_LABELS = Object.freeze({character:"Personajes",sticker:"Stickers",background:"Fondos",texture:"Texturas",reference:"Referencias"});
+const ORIGIN_LABELS = Object.freeze({original:"Original",derivative:"Variación / derivado",unknown:"Procedencia desconocida",generated:"Generado por AnimeArt",experimental:"Experimental · sin verificar"});
+const VERIFICATION_LABELS = Object.freeze({"user-confirmed":"Confirmado por mí",unverified:"Sin verificar",unknown:"Estado desconocido"});
 
 function database() {
   if (!globalThis.indexedDB) return Promise.reject(new Error("Local image storage is not available in this browser"));
@@ -75,6 +80,11 @@ function dataUrlToBlob(value) {
   for (let i=0; i<binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return new Blob([bytes], {type:match[1].toLowerCase()});
 }
+async function sha256Hex(blob) {
+  if (!(blob instanceof Blob) || !globalThis.crypto?.subtle?.digest) return "";
+  const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+}
 function downloadJson(filename, value) {
   const blob = new Blob([JSON.stringify(value)], {type:"application/json"});
   const url = URL.createObjectURL(blob);
@@ -128,6 +138,38 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
       const tags=document.createElement("input"); tags.value=(asset.tags||[]).join(", "); tags.maxLength=800; tags.placeholder="anime, cabello, cielo"; tags.setAttribute("aria-label","Etiquetas de "+asset.name);
       tags.addEventListener("change",()=>updateCard(asset,{tags:tags.value.split(",").map(v=>v.trim()).filter(Boolean)})); tagsLabel.append(tags);
       fields.append(nameLabel,categoryLabel,tagsLabel);
+      const provenance=document.createElement("details"); provenance.className="asset-provenance";
+      const provenanceSummary=document.createElement("summary");
+      provenanceSummary.textContent="Procedencia, licencia y características";
+      provenance.append(provenanceSummary);
+      const provenanceFields=document.createElement("div"); provenanceFields.className="asset-provenance-fields";
+      function addTextField(labelText,key,{type="text",maxLength=160,placeholder=""}={}) {
+        const label=document.createElement("label"); label.textContent=labelText;
+        const input=document.createElement("input"); input.type=type; input.value=asset[key]||""; input.maxLength=maxLength;
+        if(placeholder)input.placeholder=placeholder;
+        input.setAttribute("aria-label",labelText+" · "+asset.name);
+        input.addEventListener("change",()=>updateCard(asset,{[key]:input.value}));
+        label.append(input); provenanceFields.append(label);
+      }
+      function addSelectField(labelText,key,values,labels) {
+        const label=document.createElement("label"); label.textContent=labelText;
+        const select=document.createElement("select"); select.setAttribute("aria-label",labelText+" · "+asset.name);
+        for(const value of values){const option=document.createElement("option");option.value=value;option.textContent=labels[value]||value;select.append(option);}
+        select.value=asset[key]||values[0];
+        select.addEventListener("change",()=>updateCard(asset,{[key]:select.value}));
+        label.append(select); provenanceFields.append(label);
+      }
+      addSelectField("Tipo de recurso","originType",ASSET_ORIGIN_TYPES,ORIGIN_LABELS);
+      addSelectField("Estado de procedencia","verificationStatus",ASSET_VERIFICATION_STATUSES,VERIFICATION_LABELS);
+      addTextField("Autor / creador","creator",{placeholder:"Persona, estudio o usuario"});
+      addTextField("Enlace de origen","sourceUrl",{type:"url",maxLength:500,placeholder:"https://…"});
+      addTextField("Licencia","license",{maxLength:120,placeholder:"CC0, CC BY 4.0, permiso propio…"});
+      addTextField("Atribución requerida","attribution",{maxLength:500,placeholder:"Crédito que debe conservarse"});
+      addTextField("Características visuales","visualTraits",{maxLength:800,placeholder:"ojos grandes, lineart fino, cabello ondulado"});
+      addTextField("Notas de procedencia","provenanceNotes",{maxLength:1200,placeholder:"Cómo se obtuvo o verificó el recurso"});
+      const hash=document.createElement("p"); hash.className="asset-hash";
+      hash.textContent=asset.contentHash?"SHA-256: "+asset.contentHash:"SHA-256 no disponible para este recurso";
+      provenanceFields.append(hash); provenance.append(provenanceFields); fields.append(provenance);
       const meta=document.createElement("div"); meta.className="asset-card-meta";
       const size=document.createElement("span"); size.textContent=(asset.imageBlob?.size/1024/1024||0).toFixed(2)+" MiB";
       const favoriteLabel=document.createElement("label"); favoriteLabel.className="asset-favorite";
@@ -142,22 +184,33 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
       actions.append(use,remove); card.append(preview,fields,meta,actions); grid.append(card);
     }
   }
-  async function reload() { assets=await allAssets(); render(); report(assets.length+" imagen(es) guardada(s)"); }
+  async function reload() {
+    assets=(await allAssets()).map(asset=>({...normalizeAssetMetadata(asset),imageBlob:asset.imageBlob}));
+    render(); report(assets.length+" imagen(es) guardada(s)");
+  }
   async function addFiles(files) {
     const chosen=Array.from(files||[]);
     if(!chosen.length)return;
     try {
       const current=await allAssets();
-      if(current.length+chosen.length>MAX_LIBRARY_ASSETS)throw new RangeError("La biblioteca admite hasta 500 imágenes");
+      const knownHashes=new Set(current.map(asset=>asset.contentHash).filter(Boolean));
+      const staged=[];
+      let duplicateCount=0;
       for(const file of chosen) {
         if(!ALLOWED_TYPES.has(file.type))throw new TypeError(file.name+": formato de imagen no compatible");
         if(file.size>MAX_ASSET_BYTES)throw new RangeError(file.name+": supera el límite de 25 MiB");
         if(!file.size)continue;
+        const hash=await sha256Hex(file);
+        if(hash&&knownHashes.has(hash)){duplicateCount++;continue;}
+        if(hash)knownHashes.add(hash);
         const now=new Date().toISOString();
-        const metadata=normalizeAssetMetadata({id:makeId(),name:file.name.replace(/\.[^.]+$/,"").slice(0,160)||"Untitled image",category:"sticker",tags:[],favorite:false,mimeType:file.type,size:file.size,createdAt:now},now);
-        await saveAsset({...metadata,imageBlob:file});
+        const metadata=normalizeAssetMetadata({id:makeId(),name:file.name.replace(/\.[^.]+$/,"").slice(0,160)||"Imagen sin título",category:"sticker",tags:[],visualTraits:[],originType:"unknown",verificationStatus:"unknown",contentHash:hash,favorite:false,mimeType:file.type,size:file.size,createdAt:now},now);
+        staged.push({...metadata,imageBlob:file});
       }
-      await reload(); report("Se importaron "+chosen.length+" imagen(es) a la biblioteca local");
+      if(current.length+staged.length>MAX_LIBRARY_ASSETS)throw new RangeError("La biblioteca admite hasta 500 imágenes");
+      for(const record of staged)await saveAsset(record);
+      await reload();
+      report("Importadas: "+staged.length+". Duplicados exactos omitidos: "+duplicateCount+". La procedencia nueva queda marcada como desconocida.");
     } catch(error) { report(error.message||"No se pudieron importar las imágenes",true); }
     finally { fileInput.value=""; }
   }
@@ -165,7 +218,10 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
     try {
       const current=await allAssets();
       const pkg=createAssetLibraryPackage(current);
-      pkg.assets=await Promise.all(current.map(async asset=>({...normalizeAssetMetadata(asset),imageDataUrl:asset.imageBlob instanceof Blob?await blobToDataUrl(asset.imageBlob):null})));
+      pkg.assets=await Promise.all(current.map(async asset=>{
+        const contentHash=asset.contentHash||(asset.imageBlob instanceof Blob?await sha256Hex(asset.imageBlob):"");
+        return {...normalizeAssetMetadata({...asset,contentHash}),imageDataUrl:asset.imageBlob instanceof Blob?await blobToDataUrl(asset.imageBlob):null};
+      }));
       downloadJson("animeart-asset-library.json",pkg);
       report("Biblioteca exportada con "+current.length+" imagen(es), etiquetas y categorías");
     } catch(error) { report(error.message||"No se pudo exportar la biblioteca",true); }
@@ -175,18 +231,24 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
     if(file.size>150*1024*1024){report("El paquete de biblioteca supera 150 MiB",true);return;}
     try {
       const pkg=JSON.parse(await file.text());
-      if(pkg.schemaVersion!==ASSET_LIBRARY_SCHEMA_VERSION||!Array.isArray(pkg.assets))throw new TypeError("Paquete de biblioteca no compatible");
+      if(![...LEGACY_ASSET_LIBRARY_SCHEMA_VERSIONS,ASSET_LIBRARY_SCHEMA_VERSION].includes(pkg.schemaVersion)||!Array.isArray(pkg.assets))throw new TypeError("Paquete de biblioteca no compatible");
       if(pkg.assets.length>MAX_LIBRARY_ASSETS)throw new RangeError("El paquete contiene demasiadas imágenes");
       const existing=await allAssets();
-      if(existing.length+pkg.assets.length>MAX_LIBRARY_ASSETS)throw new RangeError("La importación superaría el límite de 500 imágenes");
+      const knownHashes=new Set(existing.map(asset=>asset.contentHash).filter(Boolean));
+      const staged=[];
+      let duplicateCount=0;
       for(const raw of pkg.assets) {
-        const metadata=normalizeAssetMetadata(raw);
         const imageBlob=raw.imageDataUrl?dataUrlToBlob(raw.imageDataUrl):null;
-        if(!imageBlob)throw new TypeError("Faltan los datos de imagen para "+metadata.name);
-        const record={...metadata,mimeType:imageBlob.type,size:imageBlob.size,imageBlob};
-        await saveAsset(record);
+        if(!imageBlob)throw new TypeError("Faltan los datos de imagen para "+String(raw.name||"este recurso"));
+        const contentHash=await sha256Hex(imageBlob)||String(raw.contentHash||"");
+        if(contentHash&&knownHashes.has(contentHash)){duplicateCount++;continue;}
+        if(contentHash)knownHashes.add(contentHash);
+        const metadata=normalizeAssetMetadata({...raw,contentHash});
+        staged.push({...metadata,mimeType:imageBlob.type,size:imageBlob.size,imageBlob});
       }
-      await reload(); report("Se importaron "+pkg.assets.length+" imagen(es)");
+      if(existing.length+staged.length>MAX_LIBRARY_ASSETS)throw new RangeError("La importación superaría el límite de 500 imágenes");
+      for(const record of staged)await saveAsset(record);
+      await reload(); report("Importadas: "+staged.length+". Duplicados exactos omitidos: "+duplicateCount+".");
     } catch(error) { report(error.message||"No se pudo importar la biblioteca",true); }
     finally { packageInput.value=""; }
   }

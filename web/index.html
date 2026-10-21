@@ -853,12 +853,17 @@
   <dialog id="asset-library-dialog" aria-labelledby="asset-library-title">
     <section class="asset-library-shell">
       <header class="asset-library-header">
-        <div><p class="eyebrow">ARCHIVO LOCAL · SIN SUBIDAS</p><h2 id="asset-library-title">Biblioteca visual</h2><p>Guarda personajes, fondos, referencias y stickers. Inserta cada imagen como una capa independiente para moverla, escalarla o girarla en el lienzo.</p></div>
+        <div><p class="eyebrow">ARCHIVO LOCAL · SIN SUBIDAS</p><h2 id="asset-library-title">Biblioteca visual</h2><p>Guarda personajes, fondos, referencias y stickers como capas reutilizables. Registra autor, enlace de origen, licencia, atribución, rasgos visuales y estado de procedencia. Los recursos nuevos se clasifican inicialmente como desconocidos hasta que los revises.</p></div>
         <button id="close-asset-library" class="asset-library-close" type="button">Cerrar</button>
       </header>
       <div class="asset-library-toolbar">
         <label class="asset-library-search">Buscar<input id="asset-library-search" type="search" placeholder="Nombre, etiqueta o categoría"></label>
-        <label class="asset-library-filter">Colección<select id="asset-library-filter"><option value="all">Todas las imágenes</option><option value="favorites">Favoritas</option><option value="character">Personajes</option><option value="sticker">Stickers</option><option value="background">Fondos</option><option value="texture">Texturas</option><option value="reference">Referencias</option></select></label>
+        <label class="asset-library-filter">Colección o procedencia<select id="asset-library-filter">
+          <option value="all">Todas las imágenes</option><option value="favorites">Favoritas</option>
+          <optgroup label="Categoría"><option value="category:character">Personajes</option><option value="category:sticker">Stickers</option><option value="category:background">Fondos</option><option value="category:texture">Texturas</option><option value="category:reference">Referencias</option></optgroup>
+          <optgroup label="Origen"><option value="origin:original">Originales</option><option value="origin:derivative">Variaciones / derivados</option><option value="origin:unknown">Procedencia desconocida</option><option value="origin:generated">Generados por AnimeArt</option><option value="origin:experimental">Experimentales</option></optgroup>
+          <optgroup label="Verificación"><option value="verification:user-confirmed">Confirmados por mí</option><option value="verification:unverified">Sin verificar</option><option value="verification:unknown">Estado desconocido</option></optgroup>
+        </select></label>
         <button id="asset-library-add" class="asset-library-primary" type="button">＋ Importar imágenes</button>
         <input id="asset-library-files" type="file" accept="image/*" multiple hidden>
         <button id="asset-library-export" type="button">Exportar biblioteca</button>
