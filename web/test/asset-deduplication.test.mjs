@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { backfillAssetHashesForMatchingSizes } from "../domain/asset-deduplication.mjs";
+import { backfillAssetHashesForMatchingSizes, normalizeComputedAssetHash } from "../domain/asset-deduplication.mjs";
 
 test("legacy hash backfill inspects only same-sized image blobs and persists SHA-256 metadata", async () => {
   const legacyMatch = { id: "legacy-match", contentHash: "", imageBlob: new Blob(["same"]) };
@@ -45,4 +45,12 @@ test("legacy hash backfill is a safe no-op without same-sized imports or a valid
   });
   assert.deepEqual(invalidDigest, { checked: 1, backfilled: 0 });
   assert.equal(legacy.contentHash, "");
+});
+
+test("computed hash normalization accepts only a real SHA-256-shaped result", () => {
+  assert.equal(normalizeComputedAssetHash("A".repeat(64)), "a".repeat(64));
+  assert.equal(normalizeComputedAssetHash(""), "");
+  assert.equal(normalizeComputedAssetHash("z".repeat(64)), "");
+  assert.equal(normalizeComputedAssetHash("a".repeat(63)), "");
+  assert.equal(normalizeComputedAssetHash(null), "");
 });

@@ -51,7 +51,7 @@ test("Asset Library UI is wired to local storage, reusable canvas layers and pac
   assert.match(panel,/createAssetLibraryPackage/);
   assert.match(panel,/imageDataUrl/);
   assert.match(app,/initializeAssetLibrary\(\{ onImportImage: importImageIntoEditor/);
-  assert.match(worker,/animeart-web-shell-v60/);
+  assert.match(worker,/animeart-web-shell-v61/);
   assert.match(worker,/\.\/asset-library\.js/);
 });
 
@@ -105,7 +105,7 @@ test("asset library UI captures source and license data, hashes imports, and acc
   assert.match(panel,/sha256Hex/);
   assert.match(panel,/LEGACY_ASSET_LIBRARY_SCHEMA_VERSIONS/);
   assert.match(panel,/Duplicados exactos omitidos/);
-  assert.match(worker,/animeart-web-shell-v60/);
+  assert.match(worker,/animeart-web-shell-v61/);
 });
 
 
@@ -119,5 +119,12 @@ test("legacy asset hash backfill runs only for matching import sizes before exac
   assert.match(panel, /await backfillLegacyHashes\(existing,prepared\.map\(record=>record\.imageBlob\)\)/);
   assert.match(panel, /knownHashes=new Set\(current\.map\(asset=>asset\.contentHash\)\.filter\(Boolean\)\)/);
   assert.match(worker, /\.\/domain\/asset-deduplication\.mjs/);
-  assert.match(worker, /animeart-web-shell-v60/);
+  assert.match(worker, /animeart-web-shell-v61/);
+});
+
+test("package import never trusts a declared SHA-256 if the local browser cannot recompute it", async () => {
+  const panel = await readFile("asset-library.js", "utf8");
+  assert.match(panel, /normalizeComputedAssetHash\(await sha256Hex\(imageBlob\)\)/);
+  assert.doesNotMatch(panel, /sha256Hex\(imageBlob\)\|\|String\(raw\.contentHash\|\|""\)/);
+  assert.match(panel, /normalizeComputedAssetHash\(await sha256Hex\(file\)\)/);
 });

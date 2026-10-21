@@ -6395,7 +6395,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v60";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v61";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",

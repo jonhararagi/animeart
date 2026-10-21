@@ -49,3 +49,12 @@ export async function backfillAssetHashesForMatchingSizes({
 
   return { checked, backfilled };
 }
+
+/**
+ * Accepts only a syntactically valid digest produced by the local hashing
+ * operation. Imported package metadata must never be used as a digest fallback.
+ */
+export function normalizeComputedAssetHash(value) {
+  const digest = String(value ?? "").trim().toLowerCase();
+  return /^[a-f0-9]{64}$/.test(digest) ? digest : "";
+}

@@ -1,4 +1,4 @@
-import { backfillAssetHashesForMatchingSizes } from "./domain/asset-deduplication.mjs";
+import { backfillAssetHashesForMatchingSizes, normalizeComputedAssetHash } from "./domain/asset-deduplication.mjs";
 import {
   ASSET_CATEGORIES,
   ASSET_LIBRARY_SCHEMA_VERSION,
@@ -223,7 +223,7 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
       const staged=[];
       let duplicateCount=0;
       for(const file of eligible) {
-        const hash=await sha256Hex(file);
+        const hash=normalizeComputedAssetHash(await sha256Hex(file));
         if(hash&&knownHashes.has(hash)){duplicateCount++;continue;}
         if(hash)knownHashes.add(hash);
         const now=new Date().toISOString();
@@ -268,7 +268,7 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
       const staged=[];
       let duplicateCount=0;
       for(const {raw,imageBlob} of prepared) {
-        const contentHash=await sha256Hex(imageBlob)||String(raw.contentHash||"");
+        const contentHash=normalizeComputedAssetHash(await sha256Hex(imageBlob));
         if(contentHash&&knownHashes.has(contentHash)){duplicateCount++;continue;}
         if(contentHash)knownHashes.add(contentHash);
         const metadata=normalizeAssetMetadata({...raw,contentHash});
