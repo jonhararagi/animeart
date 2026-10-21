@@ -1574,8 +1574,95 @@ try {
   await evaluate('(() => { const input = document.querySelector("#image-file-input"); input.click = window.__animeArtOriginalPickerClick; })()');
   await click('.mobile-touch-dock [data-touch-action="more"]');
   await waitFor('document.body.classList.contains("mobile-tools-open")');
+  const libraryFixture = await evaluate(`(async () => {
+    const dbName = "animeart-local-asset-library";
+    const storeName = "assets";
+    const request = indexedDB.open(dbName, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(storeName)) {
+        request.result.createObjectStore(storeName, { keyPath: "id" });
+      }
+    };
+    const db = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("Could not prepare asset library fixture"));
+    });
+    const readRequest = db.transaction(storeName, "readonly").objectStore(storeName).getAll();
+    const original = await new Promise((resolve, reject) => {
+      readRequest.onsuccess = () => resolve(readRequest.result || []);
+      readRequest.onerror = () => reject(readRequest.error || new Error("Could not back up asset library fixture"));
+    });
+    window.__ANIMEART_E2E_ASSET_LIBRARY_BACKUP = original;
+    const canvas = document.createElement("canvas");
+    canvas.width = 8; canvas.height = 8;
+    const context = canvas.getContext("2d");
+    context.fillStyle = "#c084fc"; context.fillRect(0, 0, 8, 8);
+    const imageBlob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+    if (!imageBlob) throw new Error("Could not generate an asset library thumbnail fixture");
+    const timestamp = "2026-10-21T00:00:00.000Z";
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    store.clear();
+    for (let i = 0; i < 40; i++) {
+      store.put({
+        id: "e2e_asset_" + String(i).padStart(4, "0"),
+        name: "Fixture " + String(i).padStart(2, "0"),
+        category: "sticker", tags: [], visualTraits: [],
+        originType: "unknown", verificationStatus: "unknown",
+        creator: "", sourceUrl: "", license: "", attribution: "", provenanceNotes: "",
+        contentHash: "", favorite: false, mimeType: imageBlob.type, size: imageBlob.size,
+        createdAt: timestamp, updatedAt: timestamp, imageBlob
+      });
+    }
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error || new Error("Could not seed asset library fixture"));
+      tx.onabort = () => reject(tx.error || new Error("Asset library fixture transaction aborted"));
+    });
+    db.close();
+    return { count: 40, backupCount: original.length };
+  })()`);
+  assert(libraryFixture?.count === 40, "real IndexedDB fixture seeds 40 visual library resources");
   await click("#quick-open-asset-library");
   await waitFor('document.querySelector("#asset-library-dialog")?.open === true');
+  await waitFor('document.querySelectorAll("#asset-library-grid .asset-card").length === 36');
+  assert(await evaluate('document.querySelector(".asset-library-load-more")?.hidden === false && document.querySelector(".asset-library-load-more")?.textContent.includes("4 restantes")'),
+    "visual library initially renders 36 cards and exposes four remaining resources");
+  await click(".asset-library-load-more");
+  await waitFor('document.querySelectorAll("#asset-library-grid .asset-card").length === 40');
+  assert(await evaluate('document.querySelector(".asset-library-load-more")?.hidden === true'),
+    "Load more reveals all 40 cards and hides its action at the end");
+  await evaluate('(() => { const input=document.querySelector("#asset-library-search"); input.value="Fixture 39"; input.dispatchEvent(new Event("input",{bubbles:true})); return input.value; })()');
+  await waitFor('document.querySelectorAll("#asset-library-grid .asset-card").length === 1');
+  assert(await evaluate('document.querySelector(".asset-library-load-more")?.hidden === true'),
+    "search filters the visible library and hides Load more when one result remains");
+  await evaluate('(() => { const input=document.querySelector("#asset-library-search"); input.value=""; input.dispatchEvent(new Event("input",{bubbles:true})); return input.value; })()');
+  await waitFor('document.querySelectorAll("#asset-library-grid .asset-card").length === 36');
+  assert(await evaluate('document.querySelector(".asset-library-load-more")?.hidden === false'),
+    "clearing search resets to the first page instead of preserving a large render count");
+  const restoredLibraryCount = await evaluate(`(async () => {
+    const dbName = "animeart-local-asset-library";
+    const storeName = "assets";
+    const request = indexedDB.open(dbName, 1);
+    const db = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("Could not restore asset library fixture"));
+    });
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    store.clear();
+    const original = window.__ANIMEART_E2E_ASSET_LIBRARY_BACKUP || [];
+    for (const asset of original) store.put(asset);
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error || new Error("Could not restore asset library state"));
+      tx.onabort = () => reject(tx.error || new Error("Asset library restore transaction aborted"));
+    });
+    db.close();
+    delete window.__ANIMEART_E2E_ASSET_LIBRARY_BACKUP;
+    return original.length;
+  })()`);
+  assert(restoredLibraryCount === libraryFixture.backupCount, "E2E restores the library's original local records after pagination testing");
   await click("#close-asset-library");
   await waitFor('document.querySelector("#asset-library-dialog")?.open === false');
   await click('.mobile-touch-dock [data-touch-action="more"]');
