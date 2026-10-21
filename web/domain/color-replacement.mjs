@@ -66,11 +66,17 @@ export function replaceColorRange(imageData, { sourceColor = "#806050", targetCo
   for (let i = 0; i < data.length; i += 4) {
     if (source[i + 3] === 0 || (mask && mask[i / 4] !== 1)) continue;
     const red = source[i], green = source[i + 1], blue = source[i + 2];
-    const distance = Math.sqrt(((red - from[0]) ** 2 + (green - from[1]) ** 2 + (blue - from[2]) ** 2) / 3);
     let weight;
-    if (distance <= threshold) weight = 1;
-    else if (feather > 0 && distance < threshold + feather) weight = 1 - smooth((distance - threshold) / feather);
-    else continue;
+    if (mask) {
+      // A user-painted/connected selection is authoritative. Do not reject
+      // selected pixels because another selected region uses a different tone.
+      weight = 1;
+    } else {
+      const distance = Math.sqrt(((red - from[0]) ** 2 + (green - from[1]) ** 2 + (blue - from[2]) ** 2) / 3);
+      if (distance <= threshold) weight = 1;
+      else if (feather > 0 && distance < threshold + feather) weight = 1 - smooth((distance - threshold) / feather);
+      else continue;
+    }
     if (preserveLineArt && isProtectedLineArt(source, width, height, i)) continue;
     rgbToHsl(red, green, blue, pixelHsl);
     const mappedLightness = Math.max(0, Math.min(1, targetHsl[2] + pixelHsl[2] - sourceHsl[2]));

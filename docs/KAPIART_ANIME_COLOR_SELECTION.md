@@ -30,3 +30,7 @@ La opción «Proteger bordes negros y brillos blancos» examina el contraste loc
 ## Selección de varias zonas para ojos, cabello y ropa
 
 La herramienta de selección permite reemplazar una región, sumar otra región del mismo diseño o restar una zona que se incluyó por error. Esto ayuda a recolorear ambos iris o varios mechones separados sin incluir el fondo. La operación sigue siendo una máscara por conectividad y similitud de color: no identifica semánticamente qué objeto es un ojo o un mechón. Las pruebas comprueban la combinación y sustracción de máscaras, sus dimensiones y el conteo de píxeles.
+
+### Regla de máscara explícita
+
+Cuando el usuario sumó o delimitó una región, la máscara manda: el motor recolorea los píxeles seleccionados aunque otra zona tenga un color de origen distinto. Los píxeles no seleccionados y su canal alfa permanecen intactos. Sin máscara, se conserva el flujo tradicional de búsqueda por rango de color y tolerancia.

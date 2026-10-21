@@ -87,3 +87,16 @@ test("anime dark fills can recolor without sacrificing contrasting contour pixel
   assert.deepEqual([...result.data.slice(edge,edge+3)],[10,10,10]);
   assert.deepEqual([...result.data.slice(interior,interior+3)],[255,0,0]);
 });
+
+test("explicit multi-region mask overrides source color distance but preserves unselected pixels and alpha", () => {
+  const source = image([[0,0,255,255],[0,255,0,128],[255,255,0,255],[0,0,0,0]]);
+  const mask = new Uint8Array([1,1,0,1]);
+  const result = replaceColorRange(source,{
+    sourceColor:"#0000ff",targetColor:"#ff0000",tolerance:0,softness:0,
+    preserveShading:false,preserveLineArt:false,mask
+  });
+  assert.deepEqual([...result.data.slice(0,4)],[255,0,0,255]);
+  assert.deepEqual([...result.data.slice(4,8)],[255,0,0,128]);
+  assert.deepEqual([...result.data.slice(8,12)],[255,255,0,255]);
+  assert.deepEqual([...result.data.slice(12,16)],[0,0,0,0]);
+});

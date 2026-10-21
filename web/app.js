@@ -5436,7 +5436,7 @@ document.querySelector("#clear-anime-region-selection").addEventListener("click"
   document.querySelector("#recolor-status").textContent="Selección limpiada. Elegí una zona o un color de origen antes de aplicar.";
   renderRecolorPreview();
 });
-document.querySelector("#select-anime-region").addEventListener("click",()=>{recolorRegionMode=true;recolorSampleMode=false;document.querySelector("#select-anime-region").setAttribute("aria-pressed","true");document.querySelector("#recolor-status").textContent="Tocá una zona de color del cabello, ropa u ojos.";});
+
 document.querySelector("#apply-anime-color-name").addEventListener("click",()=>{const color=findAnimeColorName(document.querySelector("#anime-color-name").value);if(!color){document.querySelector("#recolor-status").textContent="No encontré ese nombre. Probá «marrón claro», «rubio miel», «cobre» o pegá un HEX como #b9855a.";return;}document.querySelector("#recolor-target-color").value=color;renderRecolorPreview();document.querySelector("#recolor-status").textContent="Color elegido: "+color+". Revisá la vista previa antes de aplicar.";});
 recolorCanvas.addEventListener("click",event=>{
  const s=recolorSession;
