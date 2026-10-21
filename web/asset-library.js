@@ -1,3 +1,4 @@
+import { backfillAssetHashesForMatchingSizes } from "./domain/asset-deduplication.mjs";
 import {
   ASSET_CATEGORIES,
   ASSET_LIBRARY_SCHEMA_VERSION,
@@ -85,6 +86,19 @@ async function sha256Hex(blob) {
   const digest = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
 }
+async function backfillLegacyHashes(current, incomingBlobs) {
+  await backfillAssetHashesForMatchingSizes({
+    existingAssets: current,
+    incomingBlobs,
+    hashBlob: sha256Hex,
+    persistAsset: async asset => {
+      const normalized = normalizeAssetMetadata(asset, asset.updatedAt);
+      const updated = { ...normalized, imageBlob: asset.imageBlob };
+      await saveAsset(updated);
+    }
+  });
+}
+
 function downloadJson(filename, value) {
   const blob = new Blob([JSON.stringify(value)], {type:"application/json"});
   const url = URL.createObjectURL(blob);
@@ -198,13 +212,17 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
     if(!chosen.length)return;
     try {
       const current=await allAssets();
-      const knownHashes=new Set(current.map(asset=>asset.contentHash).filter(Boolean));
-      const staged=[];
-      let duplicateCount=0;
+      const eligible=[];
       for(const file of chosen) {
         if(!ALLOWED_TYPES.has(file.type))throw new TypeError(file.name+": formato de imagen no compatible");
         if(file.size>MAX_ASSET_BYTES)throw new RangeError(file.name+": supera el límite de 25 MiB");
-        if(!file.size)continue;
+        if(file.size)eligible.push(file);
+      }
+      await backfillLegacyHashes(current, eligible);
+      const knownHashes=new Set(current.map(asset=>asset.contentHash).filter(Boolean));
+      const staged=[];
+      let duplicateCount=0;
+      for(const file of eligible) {
         const hash=await sha256Hex(file);
         if(hash&&knownHashes.has(hash)){duplicateCount++;continue;}
         if(hash)knownHashes.add(hash);
@@ -219,6 +237,7 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
     } catch(error) { report(error.message||"No se pudieron importar las imágenes",true); }
     finally { fileInput.value=""; }
   }
+
   async function exportLibrary() {
     try {
       const current=await allAssets();
@@ -239,12 +258,16 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
       if(![...LEGACY_ASSET_LIBRARY_SCHEMA_VERSIONS,ASSET_LIBRARY_SCHEMA_VERSION].includes(pkg.schemaVersion)||!Array.isArray(pkg.assets))throw new TypeError("Paquete de biblioteca no compatible");
       if(pkg.assets.length>MAX_LIBRARY_ASSETS)throw new RangeError("El paquete contiene demasiadas imágenes");
       const existing=await allAssets();
+      const prepared=pkg.assets.map(raw=>{
+        const imageBlob=raw.imageDataUrl?dataUrlToBlob(raw.imageDataUrl):null;
+        if(!imageBlob)throw new TypeError("Faltan los datos de imagen para "+String(raw.name||"este recurso"));
+        return {raw,imageBlob};
+      });
+      await backfillLegacyHashes(existing,prepared.map(record=>record.imageBlob));
       const knownHashes=new Set(existing.map(asset=>asset.contentHash).filter(Boolean));
       const staged=[];
       let duplicateCount=0;
-      for(const raw of pkg.assets) {
-        const imageBlob=raw.imageDataUrl?dataUrlToBlob(raw.imageDataUrl):null;
-        if(!imageBlob)throw new TypeError("Faltan los datos de imagen para "+String(raw.name||"este recurso"));
+      for(const {raw,imageBlob} of prepared) {
         const contentHash=await sha256Hex(imageBlob)||String(raw.contentHash||"");
         if(contentHash&&knownHashes.has(contentHash)){duplicateCount++;continue;}
         if(contentHash)knownHashes.add(contentHash);
@@ -257,6 +280,7 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
     } catch(error) { report(error.message||"No se pudo importar la biblioteca",true); }
     finally { packageInput.value=""; }
   }
+
   open.addEventListener("click",async()=>{if(!dialog.open)dialog.showModal();try{await reload();}catch(error){report(error.message||"El almacenamiento local no está disponible",true);}});
   close.addEventListener("click",()=>dialog.close());
   add.addEventListener("click",()=>fileInput.click());

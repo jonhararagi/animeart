@@ -51,7 +51,7 @@ test("Asset Library UI is wired to local storage, reusable canvas layers and pac
   assert.match(panel,/createAssetLibraryPackage/);
   assert.match(panel,/imageDataUrl/);
   assert.match(app,/initializeAssetLibrary\(\{ onImportImage: importImageIntoEditor/);
-  assert.match(worker,/animeart-web-shell-v59/);
+  assert.match(worker,/animeart-web-shell-v60/);
   assert.match(worker,/\.\/asset-library\.js/);
 });
 
@@ -105,5 +105,19 @@ test("asset library UI captures source and license data, hashes imports, and acc
   assert.match(panel,/sha256Hex/);
   assert.match(panel,/LEGACY_ASSET_LIBRARY_SCHEMA_VERSIONS/);
   assert.match(panel,/Duplicados exactos omitidos/);
-  assert.match(worker,/animeart-web-shell-v59/);
+  assert.match(worker,/animeart-web-shell-v60/);
+});
+
+
+test("legacy asset hash backfill runs only for matching import sizes before exact duplicate checks", async () => {
+  const [panel, worker] = await Promise.all([
+    readFile("asset-library.js", "utf8"),
+    readFile("service-worker.js", "utf8")
+  ]);
+  assert.match(panel, /backfillAssetHashesForMatchingSizes/);
+  assert.match(panel, /await backfillLegacyHashes\(current, eligible\)/);
+  assert.match(panel, /await backfillLegacyHashes\(existing,prepared\.map\(record=>record\.imageBlob\)\)/);
+  assert.match(panel, /knownHashes=new Set\(current\.map\(asset=>asset\.contentHash\)\.filter\(Boolean\)\)/);
+  assert.match(worker, /\.\/domain\/asset-deduplication\.mjs/);
+  assert.match(worker, /animeart-web-shell-v60/);
 });
