@@ -4254,3 +4254,33 @@ dialog {
 .guided-mascot-tip strong{display:block;margin-bottom:3px;color:#F2A2A0;font-size:.82rem}
 .guided-mascot-tip p{margin:0;color:#e1cfc5;font-size:.78rem;line-height:1.45}
 @media(max-width:620px){.guided-mascot-tip{grid-template-columns:44px minmax(0,1fr);gap:9px;padding:8px 10px}.guided-mascot-tip img{width:44px;height:44px}.guided-mascot-tip p{font-size:.74rem}}
+
+/* KapiArt anime palette and connected-region selection */
+#select-anime-region[aria-pressed="true"] { border-color:#f2a2a0; background:#392b29; box-shadow:0 0 0 2px #f2a2a044; }
+.anime-selection-hint { margin:0; color:#94a4b8; font-size:.75rem; line-height:1.45; }
+#anime-color-name { width:100%; min-width:0; padding:10px; border:1px solid #374258; border-radius:8px; background:#0f141c; color:inherit; }
+@media(max-width:620px){.recolor-workspace{grid-template-columns:minmax(0,1fr)}.recolor-preview-wrap{min-height:200px}#recolor-preview{max-height:40dvh}.recolor-shell{padding:12px}.recolor-controls button{min-height:42px}}
+
+/* AA-ANIME-REGION-002: clear add/subtract modes for selecting both eyes or several hair strands. */
+.anime-selection-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.anime-selection-actions button { min-width:0; padding:8px 6px; font-size:.78rem; line-height:1.2; }
+.anime-selection-actions button[aria-pressed="true"] { border-color:#f2a2a0; background:#392b29; box-shadow:0 0 0 2px #f2a2a044; }
+#clear-anime-region-selection { grid-column:1 / -1; }
+
+/* AA-ASSET-PROVENANCE-001: readable source metadata without crowding the canvas. */
+.asset-provenance { margin-top:8px; border:1px solid var(--panel-border,#344155); border-radius:8px; padding:8px; }
+.asset-provenance summary { cursor:pointer; font-size:.8rem; font-weight:600; padding:4px 0; }
+.asset-provenance-fields { display:grid; grid-template-columns:minmax(0,1fr); gap:8px; padding-top:10px; }
+.asset-provenance-fields label { display:grid; gap:4px; font-size:.76rem; color:var(--muted,#9bb1c8); min-width:0; }
+.asset-provenance-fields input, .asset-provenance-fields select { width:100%; min-width:0; box-sizing:border-box; }
+.asset-provenance-fields input { padding:8px; }
+.asset-hash { margin:0; overflow-wrap:anywhere; color:var(--muted,#9bb1c8); font-size:.68rem; line-height:1.4; }
+@media(min-width:900px){.asset-provenance-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.asset-provenance-fields label:nth-last-child(2),.asset-provenance-fields label:last-of-type{grid-column:1/-1}}
+
+/* AA-ASSET-PROVENANCE-002: expose origin and review status on every visual card. */
+.asset-origin-chip { display:inline-flex; align-items:center; max-width:100%; width:fit-content; padding:4px 7px; border:1px solid #586579; border-radius:999px; color:var(--text-color,#e4ebf5); font-size:.67rem; line-height:1.35; overflow-wrap:anywhere; }
+.asset-origin-original { border-color:#3d9970; }
+.asset-origin-derivative { border-color:#99763d; }
+.asset-origin-unknown { border-color:#8b637e; }
+.asset-origin-generated { border-color:#447fa4; }
+.asset-origin-experimental { border-color:#9a5555; }

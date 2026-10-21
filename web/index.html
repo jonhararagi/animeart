@@ -765,11 +765,22 @@
       <div class="recolor-workspace"><div class="recolor-preview-wrap"><canvas id="recolor-preview" aria-label="Color replacement preview"></canvas></div>
         <div class="recolor-controls">
           <label class="text-field" for="recolor-source-color">Sampled source color<input id="recolor-source-color" type="color" value="#806050" disabled></label>
-          <button id="sample-recolor-source" type="button">Sample source color</button>
+          <button id="sample-recolor-source" type="button">🎯 Elegir color de origen</button>
+          <button id="select-anime-region" type="button" aria-pressed="false">🪄 Reemplazar selección</button>
+          <div class="anime-selection-actions" role="group" aria-label="Combinar regiones seleccionadas">
+            <button id="recolor-add-region" type="button" aria-pressed="false">➕ Sumar zona</button>
+            <button id="recolor-subtract-region" type="button" aria-pressed="false">➖ Restar zona</button>
+            <button id="clear-anime-region-selection" type="button">✕ Limpiar selección</button>
+          </div>
+          <label class="text-field" for="anime-color-name">Buscar color por nombre<input id="anime-color-name" type="search" placeholder="Ej.: marrón claro, rubio miel"></label>
+          <button id="apply-anime-color-name" type="button">Usar color encontrado</button>
+          <p class="anime-selection-hint">La varita selecciona una región conectada. Usa “Sumar zona” para incluir ambos ojos o varios mechones, “Restar zona” para quitar píxeles seleccionados por error. Ajustá la tolerancia para ilustraciones planas y lineart.</p>
           <label class="text-field" for="recolor-target-color">Replacement color<input id="recolor-target-color" type="color" value="#c76cf2"></label>
           <label class="text-field" for="recolor-tolerance">Color range <output id="recolor-tolerance-value">36</output><input id="recolor-tolerance" type="range" min="0" max="160" value="36"></label>
           <label class="text-field" for="recolor-softness">Range softness <output id="recolor-softness-value">28</output><input id="recolor-softness" type="range" min="0" max="120" value="28"></label>
           <label class="background-removal-toggle"><input id="recolor-preserve-shading" type="checkbox" checked> Preserve shading and texture</label>
+          <label class="background-removal-toggle"><input id="recolor-preserve-line-art" type="checkbox" checked> 🖋️ Proteger bordes negros y brillos blancos</label>
+          <p class="anime-selection-hint">Detecta líneas oscuras y brillos claros por su contraste local para conservar el contorno del dibujo al cambiar el color.</p>
           <p id="recolor-status" role="status" aria-live="polite">Select a source color from the image preview.</p>
           <div class="dialog-actions"><button id="cancel-recolor-bottom" type="button">Cancel</button><button id="apply-recolor" type="button">Apply color</button></div>
         </div>
@@ -842,12 +853,17 @@
   <dialog id="asset-library-dialog" aria-labelledby="asset-library-title">
     <section class="asset-library-shell">
       <header class="asset-library-header">
-        <div><p class="eyebrow">ARCHIVO LOCAL · SIN SUBIDAS</p><h2 id="asset-library-title">Biblioteca visual</h2><p>Guarda personajes, fondos, referencias y stickers. Inserta cada imagen como una capa independiente para moverla, escalarla o girarla en el lienzo.</p></div>
+        <div><p class="eyebrow">ARCHIVO LOCAL · SIN SUBIDAS</p><h2 id="asset-library-title">Biblioteca visual</h2><p>Guarda personajes, fondos, referencias y stickers como capas reutilizables. Registra autor, enlace de origen, licencia, atribución, rasgos visuales y estado de procedencia. Los recursos nuevos se clasifican inicialmente como desconocidos hasta que los revises.</p></div>
         <button id="close-asset-library" class="asset-library-close" type="button">Cerrar</button>
       </header>
       <div class="asset-library-toolbar">
         <label class="asset-library-search">Buscar<input id="asset-library-search" type="search" placeholder="Nombre, etiqueta o categoría"></label>
-        <label class="asset-library-filter">Colección<select id="asset-library-filter"><option value="all">Todas las imágenes</option><option value="favorites">Favoritas</option><option value="character">Personajes</option><option value="sticker">Stickers</option><option value="background">Fondos</option><option value="texture">Texturas</option><option value="reference">Referencias</option></select></label>
+        <label class="asset-library-filter">Colección o procedencia<select id="asset-library-filter">
+          <option value="all">Todas las imágenes</option><option value="favorites">Favoritas</option>
+          <optgroup label="Categoría"><option value="category:character">Personajes</option><option value="category:sticker">Stickers</option><option value="category:background">Fondos</option><option value="category:texture">Texturas</option><option value="category:reference">Referencias</option></optgroup>
+          <optgroup label="Origen"><option value="origin:original">Originales</option><option value="origin:derivative">Variaciones / derivados</option><option value="origin:unknown">Procedencia desconocida</option><option value="origin:generated">Generados por AnimeArt</option><option value="origin:experimental">Experimentales</option></optgroup>
+          <optgroup label="Verificación"><option value="verification:user-confirmed">Confirmados por mí</option><option value="verification:unverified">Sin verificar</option><option value="verification:unknown">Estado desconocido</option></optgroup>
+        </select></label>
         <button id="asset-library-add" class="asset-library-primary" type="button">＋ Importar imágenes</button>
         <input id="asset-library-files" type="file" accept="image/*" multiple hidden>
         <button id="asset-library-export" type="button">Exportar biblioteca</button>
