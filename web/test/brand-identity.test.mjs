@@ -27,7 +27,7 @@ test("KapiArt's identity, mascot and quick actions are discoverable and availabl
   assert.match(catalog, /id:"neon-vanguard"/);
   assert.match(catalog, /id:"neon-valkyrie"/);
   assert.match(app, /function initializeBrandLaunchpad\(/);
-  assert.match(worker, /animeart-web-shell-v61/);
+  assert.match(worker, /animeart-web-shell-v62/);
   assert.match(worker, /\.\/icons\/animeart-mark\.svg/);
   assert.match(worker, /\.\/assets\/kapiart-mascot\.png/);
 });
