@@ -2,6 +2,7 @@ import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, create
 import { initializeAssetLibrary } from "./asset-library.js";
 import { getEditingHelpPreference, initializeAppearanceSettings, setEditingHelpPreference } from "./appearance-settings.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
+import { combineAnimeRegionSelections } from "./domain/anime-region-selection.mjs";
 import { traceCropShape } from "./domain/crop-shape.mjs";
 import { runImageProcessing } from "./domain/image-processing-client.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
@@ -109,6 +110,7 @@ const recolorContext = recolorCanvas?.getContext("2d", { willReadFrequently: tru
 let recolorSession = null;
 let recolorSampleMode = false;
 let recolorWandMode = false;
+let recolorRegionSelectionMode = "replace";
 let recolorRectangleMode = false;
 let recolorRectangleStart = null;
 let animeSelectionOverlay = null;
@@ -5500,7 +5502,58 @@ function renderAnimeColorResults(){
 document.querySelector("#anime-color-search").addEventListener("input",renderAnimeColorResults);
 document.querySelector("#anime-color-more").addEventListener("click",()=>{animePalettePage=Math.min(Math.ceil(animeGeneratedPalette.length/ANIME_PALETTE_PAGE_SIZE)-1,animePalettePage+1);renderAnimeColorResults();});
 document.querySelector("#anime-color-previous").addEventListener("click",()=>{animePalettePage=Math.max(0,animePalettePage-1);renderAnimeColorResults();});
-document.querySelector("#recolor-wand-toggle").addEventListener("click",()=>{recolorWandMode=!recolorWandMode;recolorSampleMode=false;document.querySelector("#recolor-wand-toggle").setAttribute("aria-pressed",String(recolorWandMode));document.querySelector("#recolor-status").textContent=recolorWandMode?"Varita activa: toca dentro del cabello, ropa u otra zona de color plano.":"Varita pausada.";document.querySelector("#recolor-preview").style.cursor=recolorWandMode?"crosshair":"default";});
+function syncAnimeRegionModeButtons(){
+ const modes=[["select-anime-region","replace"],["recolor-add-region","add"],["recolor-subtract-region","subtract"]];
+ for(const [id,mode] of modes){const button=document.querySelector("#"+id);if(button)button.setAttribute("aria-pressed",String(recolorRegionSelectionMode===mode));}
+}
+function armRecolorRegionSelection(mode="replace"){
+ if(!["replace","add","subtract"].includes(mode))mode="replace";
+ recolorRegionSelectionMode=mode;recolorWandMode=true;recolorSampleMode=false;recolorRectangleMode=false;recolorRectangleStart=null;
+ document.querySelector("#recolor-wand-add").checked=mode==="add";
+ document.querySelector("#recolor-wand-toggle").setAttribute("aria-pressed","true");
+ document.querySelector("#recolor-rectangle-toggle").setAttribute("aria-pressed","false");
+ document.querySelector("#recolor-preview").style.cursor="crosshair";
+ syncAnimeRegionModeButtons();
+ const status={
+  replace:"Varita activa: toca una zona para reemplazar la selección actual.",
+  add:"Sumar zona activo: toca más regiones para agregarlas a la selección.",
+  subtract:"Restar zona activo: toca una región para quitarla de la selección actual."
+ };
+ document.querySelector("#recolor-status").textContent=status[mode];
+}
+document.querySelector("#recolor-wand-toggle").addEventListener("click",()=>{
+ if(recolorWandMode){recolorWandMode=false;document.querySelector("#recolor-wand-toggle").setAttribute("aria-pressed","false");document.querySelector("#recolor-preview").style.cursor="default";document.querySelector("#recolor-status").textContent="Varita pausada.";return;}
+ armRecolorRegionSelection(recolorRegionSelectionMode);
+});
+for(const [id,mode] of [["select-anime-region","replace"],["recolor-add-region","add"],["recolor-subtract-region","subtract"]]){
+ document.querySelector("#"+id).addEventListener("click",()=>armRecolorRegionSelection(mode));
+}
+
+function applyAnimeRegionSelection(nextMask,sourceColor,pixelCount){
+ const session=recolorSession;if(!session||!(nextMask instanceof Uint8Array))return null;
+ if(recolorRegionSelectionMode==="subtract"&&!session.selectionMask){
+  document.querySelector("#recolor-status").textContent="Primero selecciona una zona; después podrás restar regiones.";
+  return null;
+ }
+ const nextRegion={width:session.original.width,height:session.original.height,mask:nextMask,sourceColor:sourceColor||null};
+ let result;
+ if(recolorRegionSelectionMode==="replace"||!session.selectionMask){
+  result={mask:new Uint8Array(nextMask),selectedPixels:countAnimeSelection(nextMask)};
+ }else{
+  const currentRegion={width:session.original.width,height:session.original.height,mask:session.selectionMask,sourceColor:session.sourceColor||null};
+  const combined=combineAnimeRegionSelections(currentRegion,nextRegion,recolorRegionSelectionMode);
+  result={mask:combined.mask,selectedPixels:combined.selectedPixels};
+  if(recolorRegionSelectionMode==="subtract"&&result.selectedPixels===0){
+   document.querySelector("#recolor-status").textContent="La resta eliminaría toda la selección. Conservé la zona anterior.";
+   return null;
+  }
+ }
+ session.selectionMask=result.mask;
+ session.selectionVersion=(session.selectionVersion||0)+1;
+ if(recolorRegionSelectionMode!=="subtract"||!session.sourceColor)session.sourceColor=sourceColor||session.sourceColor;
+ syncAnimeRegionModeButtons();
+ return result;
+}
 function syncAnimeSelectionControls(){
  const count=countAnimeSelection(recolorSession?.selectionMask);
  const split=document.querySelector("#recolor-split-layer"),clear=document.querySelector("#recolor-wand-clear");
@@ -5509,7 +5562,16 @@ function syncAnimeSelectionControls(){
  const status=document.querySelector("#recolor-selection-status");
  if(status)status.textContent=count?count.toLocaleString("es-AR")+" píxeles de la imagen seleccionados. Puedes añadir otra zona o separarla en una capa.":"Sin zona seleccionada. La varita funciona mejor en rellenos planos con bordes oscuros.";
 }
-document.querySelector("#recolor-wand-clear").addEventListener("click",()=>{if(!recolorSession)return;recolorSession.selectionMask=null;recolorSession.selectionVersion+=1;if(animeSelectionOverlay)animeSelectionOverlay.hidden=true;syncAnimeSelectionControls();renderRecolorPreview();document.querySelector("#recolor-status").textContent="Selección de zona limpiada. La muestra de color sigue disponible.";});
+function clearAnimeRegionSelection(){
+ if(!recolorSession)return;
+ recolorSession.selectionMask=null;recolorSession.selectionVersion=(recolorSession.selectionVersion||0)+1;
+ recolorRegionSelectionMode="replace";document.querySelector("#recolor-wand-add").checked=false;syncAnimeRegionModeButtons();
+ if(animeSelectionOverlay)animeSelectionOverlay.hidden=true;
+ syncAnimeSelectionControls();renderRecolorPreview();
+ document.querySelector("#recolor-status").textContent="Selección de zona limpiada. La muestra de color sigue disponible.";
+}
+document.querySelector("#recolor-wand-clear").addEventListener("click",clearAnimeRegionSelection);
+document.querySelector("#clear-anime-region-selection").addEventListener("click",clearAnimeRegionSelection);
 function getAnimeSelectionOverlay(){
  if(animeSelectionOverlay)return animeSelectionOverlay;
  const wrapper=recolorCanvas?.parentElement;if(!wrapper)return null;
@@ -5531,9 +5593,10 @@ function finishAnimeRectangleSelection(start,end){
  if(!session||!start||!end)return;
  const region=selectAnimeRectangle(session.original,{x1:start.x,y1:start.y,x2:end.x,y2:end.y});
  if(!region.pixelCount){document.querySelector("#recolor-status").textContent="El rectángulo no contiene píxeles visibles. Prueba una zona que cubra el dibujo.";if(animeSelectionOverlay)animeSelectionOverlay.hidden=true;return;}
- session.selectionMask=document.querySelector("#recolor-wand-add").checked&&session.selectionMask?combineAnimeSelections(session.selectionMask,region.mask,"add"):region.mask;
- session.selectionVersion=(session.selectionVersion||0)+1;session.sourceColor=region.seedColor;document.querySelector("#recolor-source-color").value=region.seedColor;
- syncAnimeSelectionControls();renderRecolorPreview();document.querySelector("#recolor-status").textContent="Área rectangular seleccionada: "+region.pixelCount.toLocaleString("es-AR")+" píxeles visibles. Ajusta color, temperatura u oscuridad.";
+ const combined=applyAnimeRegionSelection(region.mask,region.seedColor,region.pixelCount);
+ if(!combined)return;
+ document.querySelector("#recolor-source-color").value=session.sourceColor||region.seedColor;
+ syncAnimeSelectionControls();renderRecolorPreview();document.querySelector("#recolor-status").textContent="Área rectangular procesada: "+combined.selectedPixels.toLocaleString("es-AR")+" píxeles seleccionados. Ajusta color, temperatura u oscuridad.";
 }
 document.querySelector("#recolor-rectangle-toggle").addEventListener("click",()=>{
  recolorRectangleMode=!recolorRectangleMode;recolorWandMode=false;recolorSampleMode=false;recolorRectangleStart=null;
@@ -5601,11 +5664,12 @@ recolorCanvas.addEventListener("click",event=>{
   try{
    const region=selectAnimeRegion(s.original,{x,y,tolerance:Number(document.querySelector("#recolor-wand-tolerance").value),protectLineArt:true});
    if(!region.pixelCount){document.querySelector("#recolor-status").textContent="Esa zona es transparente. Toca un píxel visible del dibujo.";return;}
-   s.selectionMask=document.querySelector("#recolor-wand-add").checked&&s.selectionMask?combineAnimeSelections(s.selectionMask,region.mask,"add"):region.mask;
-   s.selectionVersion=(s.selectionVersion||0)+1;s.sourceColor=pixelHex(s.original.data,o);document.querySelector("#recolor-source-color").value=s.sourceColor;
+   const combined=applyAnimeRegionSelection(region.mask,region.seedColor||pixelHex(s.original.data,o),region.pixelCount);
+   if(!combined)return;
+   s.sourceColor=region.seedColor||pixelHex(s.original.data,o);document.querySelector("#recolor-source-color").value=s.sourceColor;
    recolorWandMode=false;document.querySelector("#recolor-wand-toggle").setAttribute("aria-pressed","false");document.querySelector("#recolor-preview").style.cursor="default";
    syncAnimeSelectionControls();renderRecolorPreview();
-   document.querySelector("#recolor-status").textContent="Zona anime seleccionada: "+region.pixelCount.toLocaleString("es-AR")+" píxeles antes de combinar zonas. Elige un color para previsualizar.";
+   document.querySelector("#recolor-status").textContent="Zona anime seleccionada: "+combined.selectedPixels.toLocaleString("es-AR")+" píxeles después de combinar. Elige un color para previsualizar.";
   }catch(error){document.querySelector("#recolor-status").textContent=error.message||"No se pudo seleccionar esta zona.";}
   return;
  }
