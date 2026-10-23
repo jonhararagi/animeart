@@ -1883,7 +1883,14 @@ try {
   await sleep(140);
   const brushPreviewPixels = await evaluate('(() => { const canvas=document.querySelector("#canvas"),r=canvas.getBoundingClientRect(),p=' + JSON.stringify(erasePreviewSetup.sample) + ',px=Math.max(0,Math.min(canvas.width-1,Math.round((p.x-r.left)*canvas.width/r.width))),py=Math.max(0,Math.min(canvas.height-1,Math.round((p.y-r.top)*canvas.height/r.height))); return {pixel:Array.from(canvas.getContext("2d",{willReadFrequently:true}).getImageData(px,py,1,1).data),diagnostics:window.__ANIMEART_PIXEL_EDIT_PREVIEW_DIAGNOSTICS__}; })()');
   assert(brushPreviewPixels.diagnostics?.mode === "erase" && brushPreviewPixels.diagnostics.pointCount >= 2,
-    "main-canvas erasing exposes a live path preview while the pointer is down");
+    "main-canvas erasing exposes a live path preview while the pointer is down: " + JSON.stringify({
+      brushPreviewPixels, erasePreviewSetup,
+      activeTool: await evaluate('document.querySelector(".toolbar .tool.active")?.dataset.tool || null'),
+      selectedLayer: await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const id=document.querySelector("#layers li[data-selected=true]")?.dataset.layerId; const l=d.layers?.find(x=>x.id===id); return l?{id:l.id,name:l.name,type:l.contentType,locked:l.locked,visible:l.visible,transform:l.transform}:null; })()'),
+      selection: await evaluate('window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__ || null'),
+      pixelPreview: await evaluate('window.__ANIMEART_PIXEL_EDIT_PREVIEW_DIAGNOSTICS__ || null'),
+      pointerEvents: await evaluate('({activeElement:document.activeElement?.id||document.activeElement?.tagName,canvasRect:(()=>{const r=document.querySelector("#canvas").getBoundingClientRect();return {left:r.left,top:r.top,width:r.width,height:r.height}})(),pointerCapture:Array.from(document.querySelector("#canvas").getAttributeNames()).filter(n=>n.includes("pointer"))})')
+    }));
   assert(brushPreviewPixels.pixel[0] > erasePreviewSetup.before[0] + 70 && brushPreviewPixels.pixel[1] < erasePreviewSetup.before[1] - 30,
     "the eraser preview paints a visible high-contrast overlay before changing source pixels: " + JSON.stringify({before:erasePreviewSetup.before,after:brushPreviewPixels.pixel}));
   await cdp("Input.dispatchMouseEvent",{type:"mouseReleased",x:erasePreviewSetup.end.x,y:erasePreviewSetup.end.y,button:"left",buttons:0,clickCount:1});
