@@ -1601,10 +1601,18 @@ try {
     };
   };
   const renderedCenters = [leftCenter,rightCenter].map(point => renderPointForLayer(point));
-  const pixelTargets = renderedCenters.map(point => documentPointToClientPoint(symmetryFrame,point.x,point.y));
+  // Creating the selection handles can resize the mobile workspace after the initial frame read.
+  // Force a real canvas resize/redraw and then sample against the exact frame that painted the pixels.
+  await evaluate('window.dispatchEvent(new Event("resize"))');
+  await sleep(100);
+  const renderedSymmetryFrame = await readFrameMetrics();
+  assert(Boolean(renderedSymmetryFrame) &&
+    renderedSymmetryFrame.canvasWidth > 0 && renderedSymmetryFrame.canvasHeight > 0,
+    "canvas frame diagnostics are refreshed after the mirrored strokes are rendered");
+  const pixelTargets = renderedCenters.map(point => documentPointToClientPoint(renderedSymmetryFrame,point.x,point.y));
   const symmetryPixelEvidence = await evaluate('(() => { const c=document.querySelector("#canvas"),r=c.getBoundingClientRect(),p=' + JSON.stringify(pixelTargets) + ',ctx=c.getContext("2d",{willReadFrequently:true}),radius=Math.max(2,Math.ceil(8*c.height/r.height)); return p.map(v=>{const x=Math.max(0,Math.min(c.width-1,Math.round((v.x-r.left)*c.width/r.width))),y=Math.max(0,Math.min(c.height-1,Math.round((v.y-r.top)*c.height/r.height))),left=Math.max(0,x-radius),top=Math.max(0,y-radius),right=Math.min(c.width,x+radius+1),bottom=Math.min(c.height,y+radius+1),data=ctx.getImageData(left,top,right-left,bottom-top).data;let maxAlpha=0;for(let i=3;i<data.length;i+=4)maxAlpha=Math.max(maxAlpha,data[i]);return {maxAlpha,radius};}); })()');
   assert(symmetryPixelEvidence.every(evidence => evidence.maxAlpha > 0),
-    "the real canvas renders visible pixels along both stored mirrored stroke paths after the selected layer transform: " + JSON.stringify({symmetryPixelEvidence,pixelTargets,renderedCenters,layerTransform,leftCenter,rightCenter,leftDoc,rightDoc,symmetryFrame}));
+    "the real canvas renders visible pixels along both stored mirrored stroke paths after the selected layer transform: " + JSON.stringify({symmetryPixelEvidence,pixelTargets,renderedCenters,layerTransform,leftCenter,rightCenter,leftDoc,rightDoc,symmetryFrame,renderedSymmetryFrame}));
   await click('.mobile-touch-dock [data-touch-action="tool"][data-tool="select"]');
   await click('.mobile-top-actions [data-mobile-top-action="undo"]');
   await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.id===' + JSON.stringify(symmetryLayerBefore.id) + '&&layer.strokes?.length)', 10000);
