@@ -4328,3 +4328,81 @@ dialog {
   font-size: .68rem;
   line-height: 1.35;
 }
+
+
+/* AA-BRUSH-SYMMETRY-002: expose nested brush controls in the mobile draw sheet. */
+@media (max-width: 920px) {
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > :not(.brush-control):not(.brush-palette):not(#mobile-context-heading):not(details.more-tools) {
+    display: none !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > details.more-tools {
+    display: block !important;
+    grid-column: 1 / -1 !important;
+    min-width: 0 !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > details.more-tools > summary {
+    display: none !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > details.more-tools > .more-tools-content {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    padding-top: 0 !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > details.more-tools > .more-tools-content > :not(.brush-control):not(.brush-palette):not(.brush-control-note):not(.tool-group-label) {
+    display: none !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > details.more-tools > .more-tools-content > .tool-group-label,
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > details.more-tools > .more-tools-content > .brush-control.magic-tolerance-control {
+    display: none !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > details.more-tools > .more-tools-content > .brush-control:not(.magic-tolerance-control) {
+    display: grid !important;
+    grid-column: auto !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    gap: 5px 8px !important;
+    margin: 0 !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > details.more-tools > .more-tools-content > .brush-control input[type="color"],
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > details.more-tools > .more-tools-content > .brush-control select {
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > details.more-tools > .more-tools-content > .brush-control input[type="range"] {
+    grid-column: 1 / 2 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > details.more-tools > .more-tools-content > .brush-symmetry-control {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > details.more-tools > .more-tools-content > .brush-symmetry-control input[type="checkbox"] {
+    display: block !important;
+    grid-column: 2 !important;
+    justify-self: end !important;
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    min-height: 20px !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > details.more-tools > .more-tools-content > .brush-control-note {
+    display: block !important;
+    grid-column: 1 / -1 !important;
+    margin: -3px 0 2px !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > details.more-tools > .more-tools-content > .brush-palette {
+    display: grid !important;
+    grid-column: 1 / -1 !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > details.more-tools > .more-tools-content > .brush-palette button {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 36px !important;
+  }
+}
