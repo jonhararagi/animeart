@@ -1557,6 +1557,83 @@ try {
   await click('.mobile-top-actions [data-mobile-top-action="undo"]');
   await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.contentType==="drawing"&&layer.strokes?.length)', 10000);
 
+  // AA-BRUSH-SYMMETRY-001: the canvas stores two editable paths mirrored around the document centre.
+  await click('.mobile-touch-dock [data-touch-action="paint"]');
+  await waitFor('document.querySelector("#brush-symmetry-mobile")?.getClientRects().length > 0 && getComputedStyle(document.querySelector("#brush-symmetry-mobile")).display !== "none"');
+  await click(".brush-symmetry-mobile-control");
+  await waitFor('document.querySelector("#brush-symmetry-mobile").checked === true && document.querySelector("#brush-symmetry").checked === true');
+  await click("#mobile-context-close");
+  await waitFor('document.querySelector("#mobile-context-heading").hidden === true');
+  const symmetryBefore = await readDocument();
+  const symmetryLayerBefore = symmetryBefore.layers.find(layer => layer.contentType === "drawing");
+  if (!symmetryLayerBefore) throw new Error("Symmetry E2E requires a drawing layer");
+  const symmetryStartDoc = { x: symmetryBefore.width / 2 - 90, y: symmetryBefore.height / 2 + 40 };
+  const symmetryEndDoc = { x: symmetryBefore.width / 2 - 45, y: symmetryBefore.height / 2 + 75 };
+  // Refresh the editor's render diagnostics after mobile layout changes. Hiding a fixed sheet
+  // does not guarantee a resize callback, so the last frame can otherwise describe the old layout.
+  await evaluate('window.dispatchEvent(new Event("resize"))');
+  await sleep(80);
+  const symmetryFrame = await readFrameMetrics();
+  const symmetryStartClient = documentPointToClientPoint(symmetryFrame, symmetryStartDoc.x, symmetryStartDoc.y);
+  const symmetryEndClient = documentPointToClientPoint(symmetryFrame, symmetryEndDoc.x, symmetryEndDoc.y);
+  await mouseDrag(symmetryStartClient, symmetryEndClient);
+  await waitFor('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const l=d.layers.find(layer=>layer.id===' + JSON.stringify(symmetryLayerBefore.id) + '); return l?.strokes?.length >= ' + (symmetryLayerBefore.strokes.length + 2) + '; })()', 10000);
+  const symmetryAfter = await readDocument();
+  const symmetryLayerAfter = symmetryAfter.layers.find(layer => layer.id === symmetryLayerBefore.id);
+  const mirroredPair = symmetryLayerAfter.strokes.slice(-2);
+  assert(mirroredPair.length === 2 && mirroredPair[0].points.length >= 2 &&
+    mirroredPair[0].points.length === mirroredPair[1].points.length &&
+    mirroredPair[0].points.every((point,index) =>
+      Math.abs(point.x + mirroredPair[1].points[index].x - symmetryAfter.width) < 0.001 &&
+      Math.abs(point.y - mirroredPair[1].points[index].y) < 0.001),
+    "symmetry drawing stores paired editable strokes whose coordinates mirror across the document centre");
+  const leftDoc = {x:symmetryBefore.width/2-67.5,y:symmetryBefore.height/2+57.5};
+  const rightDoc = {x:symmetryBefore.width-leftDoc.x,y:leftDoc.y};
+  const strokeCenter = stroke => stroke.points.reduce((center,point) => ({
+    x:center.x+Number(point.x)/stroke.points.length,
+    y:center.y+Number(point.y)/stroke.points.length
+  }),{x:0,y:0});
+  const centers = mirroredPair.map(strokeCenter);
+  const leftCenter = centers.find(point => point.x < symmetryAfter.width/2);
+  const rightCenter = centers.find(point => point.x > symmetryAfter.width/2);
+  assert(Boolean(leftCenter&&rightCenter) &&
+    Math.hypot(leftCenter.x-leftDoc.x,leftCenter.y-leftDoc.y)<12 &&
+    Math.hypot(rightCenter.x-rightDoc.x,rightCenter.y-rightDoc.y)<12,
+    "pointer coordinates place both editable stroke paths in their intended document regions: " + JSON.stringify({leftCenter,rightCenter,leftDoc,rightDoc,centers,symmetryFrame}));
+  const layerTransform = symmetryLayerAfter.transform || {};
+  const layerCenter = {x:symmetryAfter.width/2,y:symmetryAfter.height/2};
+  const layerScale = Number(layerTransform.scale)>0 ? Number(layerTransform.scale) : 1;
+  const layerRotation = (Number(layerTransform.rotation)||0)*Math.PI/180;
+  const renderPointForLayer = point => {
+    const dx=(point.x-layerCenter.x)*layerScale,dy=(point.y-layerCenter.y)*layerScale;
+    return {
+      x:layerCenter.x+dx*Math.cos(layerRotation)-dy*Math.sin(layerRotation)+(Number(layerTransform.x)||0),
+      y:layerCenter.y+dx*Math.sin(layerRotation)+dy*Math.cos(layerRotation)+(Number(layerTransform.y)||0)
+    };
+  };
+  const renderedCenters = [leftCenter,rightCenter].map(point => renderPointForLayer(point));
+  // Creating the selection handles can resize the mobile workspace after the initial frame read.
+  // Force a real canvas resize/redraw and then sample against the exact frame that painted the pixels.
+  await evaluate('window.dispatchEvent(new Event("resize"))');
+  await sleep(100);
+  const renderedSymmetryFrame = await readFrameMetrics();
+  assert(Boolean(renderedSymmetryFrame) &&
+    renderedSymmetryFrame.canvasWidth > 0 && renderedSymmetryFrame.canvasHeight > 0,
+    "canvas frame diagnostics are refreshed after the mirrored strokes are rendered");
+  const pixelTargets = renderedCenters.map(point => documentPointToClientPoint(renderedSymmetryFrame,point.x,point.y));
+  const symmetryPixelEvidence = await evaluate('(() => { const c=document.querySelector("#canvas"),r=c.getBoundingClientRect(),p=' + JSON.stringify(pixelTargets) + ',ctx=c.getContext("2d",{willReadFrequently:true}),radius=Math.max(2,Math.ceil(8*c.height/r.height)); return p.map(v=>{const x=Math.max(0,Math.min(c.width-1,Math.round((v.x-r.left)*c.width/r.width))),y=Math.max(0,Math.min(c.height-1,Math.round((v.y-r.top)*c.height/r.height))),left=Math.max(0,x-radius),top=Math.max(0,y-radius),right=Math.min(c.width,x+radius+1),bottom=Math.min(c.height,y+radius+1),data=ctx.getImageData(left,top,right-left,bottom-top).data;let maxAlpha=0;for(let i=3;i<data.length;i+=4)maxAlpha=Math.max(maxAlpha,data[i]);return {maxAlpha,radius};}); })()');
+  assert(symmetryPixelEvidence.every(evidence => evidence.maxAlpha > 0),
+    "the real canvas renders visible pixels along both stored mirrored stroke paths after the selected layer transform: " + JSON.stringify({symmetryPixelEvidence,pixelTargets,renderedCenters,layerTransform,leftCenter,rightCenter,leftDoc,rightDoc,symmetryFrame,renderedSymmetryFrame}));
+  await click('.mobile-touch-dock [data-touch-action="tool"][data-tool="select"]');
+  await click('.mobile-top-actions [data-mobile-top-action="undo"]');
+  await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.id===' + JSON.stringify(symmetryLayerBefore.id) + '&&layer.strokes?.length)', 10000);
+  await click('.mobile-touch-dock [data-touch-action="paint"]');
+  await waitFor('document.querySelector("#brush-symmetry-mobile")?.getClientRects().length > 0');
+  await click(".brush-symmetry-mobile-control");
+  await waitFor('document.querySelector("#brush-symmetry-mobile").checked === false && document.querySelector("#brush-symmetry").checked === false');
+  await click("#mobile-context-close");
+  await waitFor('document.querySelector("#mobile-context-heading").hidden === true');
+
   // Return to the original viewport so later mobile assertions start from a stable baseline.
   await panCanvasByTouch(-20, -14);
   await wheelCanvasZoom("out", 2);
@@ -1585,8 +1662,126 @@ try {
   await evaluate('(() => { const input = document.querySelector("#image-file-input"); input.click = window.__animeArtOriginalPickerClick; })()');
   await click('.mobile-touch-dock [data-touch-action="more"]');
   await waitFor('document.body.classList.contains("mobile-tools-open")');
+  const libraryFixture = await evaluate(`(async () => {
+    const dbName = "animeart-local-asset-library";
+    const storeName = "assets";
+    const request = indexedDB.open(dbName, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(storeName)) {
+        request.result.createObjectStore(storeName, { keyPath: "id" });
+      }
+    };
+    const db = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("Could not prepare asset library fixture"));
+    });
+    const readRequest = db.transaction(storeName, "readonly").objectStore(storeName).getAll();
+    const original = await new Promise((resolve, reject) => {
+      readRequest.onsuccess = () => resolve(readRequest.result || []);
+      readRequest.onerror = () => reject(readRequest.error || new Error("Could not back up asset library fixture"));
+    });
+    window.__ANIMEART_E2E_ASSET_LIBRARY_BACKUP = original;
+    const canvas = document.createElement("canvas");
+    canvas.width = 640; canvas.height = 640;
+    const context = canvas.getContext("2d");
+    const gradient = context.createLinearGradient(0, 0, 640, 640);
+    gradient.addColorStop(0, "#c084fc"); gradient.addColorStop(1, "#0ea5e9");
+    context.fillStyle = gradient; context.fillRect(0, 0, 640, 640);
+    for (let y=0; y<640; y+=16) { context.fillStyle = y % 32 ? "rgba(255,255,255,.2)" : "rgba(0,0,0,.12)"; context.fillRect(0,y,640,8); }
+    const imageBlob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+    if (!imageBlob) throw new Error("Could not generate an asset library thumbnail fixture");
+    const timestamp = "2026-10-21T00:00:00.000Z";
+    const tx = db.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    store.clear();
+    for (let i = 0; i < 40; i++) {
+      store.put({
+        id: "e2e_asset_" + String(i).padStart(4, "0"),
+        name: "Fixture " + String(i).padStart(2, "0"),
+        category: "sticker", tags: [], visualTraits: [],
+        originType: "unknown", verificationStatus: "unknown",
+        creator: "", sourceUrl: "", license: "", attribution: "", provenanceNotes: "",
+        contentHash: "", favorite: false, mimeType: imageBlob.type, size: imageBlob.size,
+        createdAt: timestamp, updatedAt: timestamp, imageBlob
+      });
+    }
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error || new Error("Could not seed asset library fixture"));
+      tx.onabort = () => reject(tx.error || new Error("Asset library fixture transaction aborted"));
+    });
+    db.close();
+    return { count: 40, backupCount: original.length };
+  })()`);
+  assert(libraryFixture?.count === 40, "real IndexedDB fixture seeds 40 visual library resources");
   await click("#quick-open-asset-library");
   await waitFor('document.querySelector("#asset-library-dialog")?.open === true');
+  await waitFor('document.querySelectorAll("#asset-library-grid .asset-card").length === 36');
+  const binaryStoreState = await evaluate(`(async () => {
+    const request = indexedDB.open("animeart-local-asset-library");
+    const db = await new Promise((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const tx = db.transaction(["assets", "asset-blobs"], "readonly");
+    const metadataRequest = tx.objectStore("assets").getAll();
+    const blobsRequest = tx.objectStore("asset-blobs").getAll();
+    const [metadata, blobs] = await Promise.all([
+      new Promise((resolve, reject) => { metadataRequest.onsuccess = () => resolve(metadataRequest.result || []); metadataRequest.onerror = () => reject(metadataRequest.error); }),
+      new Promise((resolve, reject) => { blobsRequest.onsuccess = () => resolve(blobsRequest.result || []); blobsRequest.onerror = () => reject(blobsRequest.error); })
+    ]);
+    const result = { version: db.version, metadataCount: metadata.length, blobCount: blobs.length, inlineBlobs: metadata.filter(asset => asset.imageBlob instanceof Blob).length };
+    db.close();
+    return result;
+  })()`);
+  assert(binaryStoreState?.version === 2 && binaryStoreState.metadataCount === 40 && binaryStoreState.blobCount === 40 && binaryStoreState.inlineBlobs === 0, "schema migration moves image binaries into a separate IndexedDB store without losing any of the 40 images");
+  await waitFor('Array.from(document.querySelectorAll("#asset-library-grid img")).some(image => image.src.startsWith("blob:") && image.naturalWidth > 0)');
+  assert(true, "asset library loads an actual image preview on demand from the binary store");
+  await waitFor('(async () => { const req=indexedDB.open("animeart-local-asset-library"); const db=await new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);}); const tx=db.transaction("asset-blobs","readonly"); const read=tx.objectStore("asset-blobs").getAll(); const records=await new Promise((resolve,reject)=>{read.onsuccess=()=>resolve(read.result||[]);read.onerror=()=>reject(read.error);}); const found=records.some(record=>record.thumbnailBlob instanceof Blob); db.close(); return found; })()');
+  const thumbnailDimensions = await evaluate('(async () => { const req=indexedDB.open("animeart-local-asset-library"); const db=await new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);}); const tx=db.transaction("asset-blobs","readonly"); const read=tx.objectStore("asset-blobs").getAll(); const records=await new Promise((resolve,reject)=>{read.onsuccess=()=>resolve(read.result||[]);read.onerror=()=>reject(read.error);}); const record=records.find(item=>item.thumbnailBlob instanceof Blob); if(!record){db.close();return null;} const bitmap=await createImageBitmap(record.thumbnailBlob); const result={width:bitmap.width,height:bitmap.height,originalSize:record.imageBlob.size,previewSize:record.thumbnailBlob.size}; bitmap.close(); db.close(); return result; })()');
+  assert(thumbnailDimensions && Math.max(thumbnailDimensions.width, thumbnailDimensions.height) <= 512 && Math.max(thumbnailDimensions.width, thumbnailDimensions.height) < 640, "large source images get a persistent, downscaled thumbnail of at most 512 pixels while the original blob remains available");
+  assert(await evaluate('document.querySelector(".asset-library-load-more")?.hidden === false && document.querySelector(".asset-library-load-more")?.textContent.includes("4 restantes")'),
+    "visual library initially renders 36 cards and exposes four remaining resources");
+  await click(".asset-library-load-more");
+  await waitFor('document.querySelectorAll("#asset-library-grid .asset-card").length === 40');
+  assert(await evaluate('document.querySelector(".asset-library-load-more")?.hidden === true'),
+    "Load more reveals all 40 cards and hides its action at the end");
+  await evaluate('(() => { const input=document.querySelector("#asset-library-search"); input.value="Fixture 39"; input.dispatchEvent(new Event("input",{bubbles:true})); return input.value; })()');
+  await waitFor('document.querySelectorAll("#asset-library-grid .asset-card").length === 1');
+  assert(await evaluate('document.querySelector(".asset-library-load-more")?.hidden === true'),
+    "search filters the visible library and hides Load more when one result remains");
+  await evaluate('(() => { const input=document.querySelector("#asset-library-search"); input.value=""; input.dispatchEvent(new Event("input",{bubbles:true})); return input.value; })()');
+  await waitFor('document.querySelectorAll("#asset-library-grid .asset-card").length === 36');
+  assert(await evaluate('document.querySelector(".asset-library-load-more")?.hidden === false'),
+    "clearing search resets to the first page instead of preserving a large render count");
+  const restoredLibraryCount = await evaluate(`(async () => {
+    const dbName = "animeart-local-asset-library";
+    const storeName = "assets";
+    const request = indexedDB.open(dbName);
+    const db = await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error || new Error("Could not restore asset library fixture"));
+    });
+    const tx = db.transaction([storeName, "asset-blobs"], "readwrite");
+    const store = tx.objectStore(storeName);
+    const blobs = tx.objectStore("asset-blobs");
+    store.clear();
+    blobs.clear();
+    const original = window.__ANIMEART_E2E_ASSET_LIBRARY_BACKUP || [];
+    for (const asset of original) {
+      const metadata = { ...asset };
+      const imageBlob = metadata.imageBlob;
+      delete metadata.imageBlob;
+      store.put(metadata);
+      if (imageBlob instanceof Blob) blobs.put({ id: metadata.id, imageBlob });
+    }
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error || new Error("Could not restore asset library state"));
+      tx.onabort = () => reject(tx.error || new Error("Asset library restore transaction aborted"));
+    });
+    db.close();
+    delete window.__ANIMEART_E2E_ASSET_LIBRARY_BACKUP;
+    return original.length;
+  })()`);
+  assert(restoredLibraryCount === libraryFixture.backupCount, "E2E restores the library's original local records after pagination testing");
   await click("#close-asset-library");
   await waitFor('document.querySelector("#asset-library-dialog")?.open === false');
   await click('.mobile-touch-dock [data-touch-action="more"]');
@@ -1686,8 +1881,22 @@ try {
   // The main-canvas pixel eraser exposes a live route before changing image pixels.
   const sourceBeforeBrushErase = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.image?.source');
   await evaluate('(() => { const input=document.querySelector("#brush-size"); input.value="48"; input.dispatchEvent(new Event("input",{bubbles:true})); })()');
+  // Earlier mobile tests leave a transparent drawing layer selected. Open the real More > Capas
+  // workflow, select the imported raster, then reopen the eraser tool.
+  const eraseImageLayerId = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import"&&layer.contentType==="image")?.id');
+  assert(Boolean(eraseImageLayerId), "pixel-eraser fixture retains its imported image layer");
+  await clickMoreGoal("layers");
+  await waitFor('document.body.classList.contains("mobile-layers-open")');
+  await click(layerButtonSelector(eraseImageLayerId));
+  await waitFor('document.querySelector("#layers li[data-selected=true]")?.dataset.layerId === ' + JSON.stringify(eraseImageLayerId));
+  // Returning to the eraser sheet closes the layer drawer through the same mobile action router.
   await clickMoreGoal("eraser");
+  await waitFor('!document.body.classList.contains("mobile-layers-open")');
   await waitFor('document.querySelector(".toolbar .tool[data-tool=eraser]")?.classList.contains("active") && document.querySelector("#mobile-context-heading")?.hidden === false');
+  // Refresh selection geometry after returning from the drawer to the canvas tool sheet.
+  await evaluate('window.dispatchEvent(new Event("resize"))');
+  await sleep(100);
+  await waitFor('Boolean(window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.center)');
   const erasePreviewSetup = await evaluate('(() => { const canvas=document.querySelector("#canvas"),r=canvas.getBoundingClientRect(),d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; if(!d?.center)throw new Error("selected image screen coordinates are unavailable"); const center={x:r.left+d.center.x,y:r.top+d.center.y}; const sample={x:center.x-7,y:center.y+3}; const px=Math.max(0,Math.min(canvas.width-1,Math.round((sample.x-r.left)*canvas.width/r.width))),py=Math.max(0,Math.min(canvas.height-1,Math.round((sample.y-r.top)*canvas.height/r.height))); return {center,start:{x:center.x-56,y:center.y},end:{x:center.x+42,y:center.y},sample,before:Array.from(canvas.getContext("2d",{willReadFrequently:true}).getImageData(px,py,1,1).data)}; })()');
   await cdp("Input.dispatchMouseEvent",{type:"mouseMoved",x:erasePreviewSetup.start.x,y:erasePreviewSetup.start.y});
   await cdp("Input.dispatchMouseEvent",{type:"mousePressed",x:erasePreviewSetup.start.x,y:erasePreviewSetup.start.y,button:"left",buttons:1,clickCount:1});
@@ -1695,7 +1904,14 @@ try {
   await sleep(140);
   const brushPreviewPixels = await evaluate('(() => { const canvas=document.querySelector("#canvas"),r=canvas.getBoundingClientRect(),p=' + JSON.stringify(erasePreviewSetup.sample) + ',px=Math.max(0,Math.min(canvas.width-1,Math.round((p.x-r.left)*canvas.width/r.width))),py=Math.max(0,Math.min(canvas.height-1,Math.round((p.y-r.top)*canvas.height/r.height))); return {pixel:Array.from(canvas.getContext("2d",{willReadFrequently:true}).getImageData(px,py,1,1).data),diagnostics:window.__ANIMEART_PIXEL_EDIT_PREVIEW_DIAGNOSTICS__}; })()');
   assert(brushPreviewPixels.diagnostics?.mode === "erase" && brushPreviewPixels.diagnostics.pointCount >= 2,
-    "main-canvas erasing exposes a live path preview while the pointer is down");
+    "main-canvas erasing exposes a live path preview while the pointer is down: " + JSON.stringify({
+      brushPreviewPixels, erasePreviewSetup,
+      activeTool: await evaluate('document.querySelector(".toolbar .tool.active")?.dataset.tool || null'),
+      selectedLayer: await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const id=document.querySelector("#layers li[data-selected=true]")?.dataset.layerId; const l=d.layers?.find(x=>x.id===id); return l?{id:l.id,name:l.name,type:l.contentType,locked:l.locked,visible:l.visible,transform:l.transform}:null; })()'),
+      selection: await evaluate('window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__ || null'),
+      pixelPreview: await evaluate('window.__ANIMEART_PIXEL_EDIT_PREVIEW_DIAGNOSTICS__ || null'),
+      pointerEvents: await evaluate('({activeElement:document.activeElement?.id||document.activeElement?.tagName,canvasRect:(()=>{const r=document.querySelector("#canvas").getBoundingClientRect();return {left:r.left,top:r.top,width:r.width,height:r.height}})(),pointerCapture:Array.from(document.querySelector("#canvas").getAttributeNames()).filter(n=>n.includes("pointer"))})')
+    }));
   assert(brushPreviewPixels.pixel[0] > erasePreviewSetup.before[0] + 70 && brushPreviewPixels.pixel[1] < erasePreviewSetup.before[1] - 30,
     "the eraser preview paints a visible high-contrast overlay before changing source pixels: " + JSON.stringify({before:erasePreviewSetup.before,after:brushPreviewPixels.pixel}));
   await cdp("Input.dispatchMouseEvent",{type:"mouseReleased",x:erasePreviewSetup.end.x,y:erasePreviewSetup.end.y,button:"left",buttons:0,clickCount:1});
@@ -1711,10 +1927,19 @@ try {
   await panCanvasByTouch(-18, -12);
   await wheelCanvasZoom("out", 2);
   const eraseViewportRestored = await readFrameMetrics();
-  assert(Math.abs(eraseViewportRestored.left - eraseViewportBaseline.left) < 4 &&
-    Math.abs(eraseViewportRestored.top - eraseViewportBaseline.top) < 4 &&
-    Math.abs((eraseViewportRestored.right - eraseViewportRestored.left) - (eraseViewportBaseline.right - eraseViewportBaseline.left)) < 4,
-    "pixel eraser undo and viewport restoration keep later mobile edge tests deterministic");
+  const normalizedView = frame => ({
+    scaleX: (frame.right - frame.left) / frame.documentWidth,
+    scaleY: (frame.bottom - frame.top) / frame.documentHeight,
+    panX: (frame.left + frame.right) / 2 - frame.canvasWidth / 2,
+    panY: (frame.top + frame.bottom) / 2 - frame.canvasHeight / 2
+  });
+  const eraseViewBefore = normalizedView(eraseViewportBaseline);
+  const eraseViewAfter = normalizedView(eraseViewportRestored);
+  assert(Math.abs(eraseViewAfter.scaleX - eraseViewBefore.scaleX) < 0.01 &&
+    Math.abs(eraseViewAfter.scaleY - eraseViewBefore.scaleY) < 0.01 &&
+    Math.abs(eraseViewAfter.panX - eraseViewBefore.panX) < 4 &&
+    Math.abs(eraseViewAfter.panY - eraseViewBefore.panY) < 4,
+    "pixel eraser undo restores zoom and pan independently of responsive canvas height: " + JSON.stringify({eraseViewBefore,eraseViewAfter,eraseViewportBaseline,eraseViewportRestored}));
 
   await evaluate('document.querySelector(".mobile-touch-dock").scrollLeft = 0');
   await saveScreenshot("animeart-studio-mobile-imported-image.png");

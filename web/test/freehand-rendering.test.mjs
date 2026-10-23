@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { traceSmoothStrokePath } from "../domain/freehand-rendering.mjs";
+import { mirrorFreehandPoints, traceSmoothStrokePath } from "../domain/freehand-rendering.mjs";
 
 function createPathRecorder(overrides = {}) {
   const calls = [];
@@ -74,9 +74,42 @@ test("smooth renderer is available in the offline shell and Android package", as
   const worker = await readFile(new URL("../service-worker.js", import.meta.url), "utf8");
   const androidWorkflow = await readFile(new URL("../../.github/workflows/android.yml", import.meta.url), "utf8");
 
-  assert.ok(app.includes('const OFFLINE_CACHE_NAME = "animeart-web-shell-v56"'));
+  assert.ok(app.includes('const OFFLINE_CACHE_NAME = "animeart-web-shell-v68"'));
   assert.ok(app.includes('"./domain/freehand-rendering.mjs"'));
-  assert.ok(worker.includes('const CACHE_NAME = "animeart-web-shell-v56"'));
+  assert.ok(worker.includes('const CACHE_NAME = "animeart-web-shell-v68"'));
+  assert.ok(worker.includes('"./domain/freehand-rendering.mjs"'));
+  assert.ok(androidWorkflow.includes('test -s "$WEB/domain/freehand-rendering.mjs"'));
+});
+
+test("vertical symmetry mirrors stroke x-coordinates around the document centre without mutating source points", () => {
+  const source = [{ x: 20, y: 14 }, { x: 50, y: 30 }, { x: 80, y: 44 }];
+  const before = source.map(point => ({ ...point }));
+  assert.deepEqual(mirrorFreehandPoints(source, 100), [
+    { x: 80, y: 14 }, { x: 50, y: 30 }, { x: 20, y: 44 }
+  ]);
+  assert.deepEqual(source, before);
+});
+
+test("vertical symmetry rejects empty, invalid and zero-width documents safely", () => {
+  assert.equal(mirrorFreehandPoints([], 100), null);
+  assert.equal(mirrorFreehandPoints([{ x: 1, y: Infinity }], 100), null);
+  assert.equal(mirrorFreehandPoints([{ x: 1, y: 1 }], 0), null);
+  assert.equal(mirrorFreehandPoints([{ x: 1, y: 1 }], NaN), null);
+});
+
+test("symmetry toggle and mirror renderer remain in the PWA offline shell and Android package", async () => {
+  const [app, html, worker, androidWorkflow] = await Promise.all([
+    readFile(new URL("../app.js", import.meta.url), "utf8"),
+    readFile(new URL("../index.html", import.meta.url), "utf8"),
+    readFile(new URL("../service-worker.js", import.meta.url), "utf8"),
+    readFile(new URL("../../.github/workflows/android.yml", import.meta.url), "utf8")
+  ]);
+  assert.ok(app.includes('const OFFLINE_CACHE_NAME = "animeart-web-shell-v68"'));
+  assert.ok(app.includes("mirrorFreehandPoints"));
+  assert.ok(app.includes("syncActiveMirrorStroke(stroke)"));
+  assert.ok(app.includes("state.activeMirrorStroke = null"));
+  assert.ok(html.includes('id="brush-symmetry"'));
+  assert.ok(worker.includes('const CACHE_NAME = "animeart-web-shell-v68"'));
   assert.ok(worker.includes('"./domain/freehand-rendering.mjs"'));
   assert.ok(androidWorkflow.includes('test -s "$WEB/domain/freehand-rendering.mjs"'));
 });

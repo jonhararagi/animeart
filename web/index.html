@@ -71,6 +71,7 @@
         <div><strong id="mobile-context-title">Dibujar</strong><p id="mobile-context-description">Elegí color, tamaño y efecto.</p></div>
         <button id="mobile-context-close" type="button" aria-label="Cerrar panel de dibujo" title="Cerrar panel">⌄</button>
       </div>
+      <label class="brush-control brush-symmetry-control brush-symmetry-mobile-control" for="brush-symmetry-mobile"><span><strong>Simetría vertical</strong><small>Refleja el pincel y el borrador de capa respecto al centro del lienzo.</small></span><input id="brush-symmetry-mobile" type="checkbox" aria-label="Simetría vertical para trazos de capa"></label>
       <details class="more-tools">
         <summary>Más herramientas</summary>
         <div class="more-tools-content">
@@ -102,6 +103,8 @@
       <label class="brush-control" for="brush-opacity">Opacity<input id="brush-opacity" type="range" min="0" max="100" step="1" value="100" aria-label="Brush opacity"><output id="brush-opacity-value">100%</output></label>
       <label class="brush-control" for="brush-hardness">Hardness<input id="brush-hardness" type="range" min="0" max="100" step="1" value="100" aria-label="Brush hardness"><output id="brush-hardness-value">100%</output></label>
       <label class="brush-control" for="brush-effect">Effect<select id="brush-effect" aria-label="Brush effect"><option value="normal">Normal</option><option value="soft">Soft airbrush</option><option value="glow">Glow</option><option value="neon">Neon</option></select></label>
+      <label class="brush-control brush-symmetry-control" for="brush-symmetry"><span>Simetría vertical</span><input id="brush-symmetry" type="checkbox" aria-label="Simetría vertical para trazos de capa"></label>
+      <small class="brush-control-note">Refleja el pincel y el borrador de capa respecto al centro del lienzo.</small>
       <div class="brush-palette" role="group" aria-label="Mystic brush color palette">
         <button type="button" data-brush-color="#7c3aed" aria-label="Mystic violet" title="Mystic violet" style="--swatch:#7c3aed"></button>
         <button type="button" data-brush-color="#00e5ff" aria-label="Arcane cyan" title="Arcane cyan" style="--swatch:#00e5ff"></button>
@@ -866,12 +869,17 @@
   <dialog id="asset-library-dialog" aria-labelledby="asset-library-title">
     <section class="asset-library-shell">
       <header class="asset-library-header">
-        <div><p class="eyebrow">ARCHIVO LOCAL · SIN SUBIDAS</p><h2 id="asset-library-title">Biblioteca visual</h2><p>Guarda personajes, fondos, referencias y stickers. Inserta cada imagen como una capa independiente para moverla, escalarla o girarla en el lienzo.</p></div>
+        <div><p class="eyebrow">ARCHIVO LOCAL · SIN SUBIDAS</p><h2 id="asset-library-title">Biblioteca visual</h2><p>Guarda personajes, fondos, referencias y stickers como capas reutilizables. Registra autor, enlace de origen, licencia, atribución, rasgos visuales y estado de procedencia. Los recursos nuevos se clasifican inicialmente como desconocidos hasta que los revises.</p></div>
         <button id="close-asset-library" class="asset-library-close" type="button">Cerrar</button>
       </header>
       <div class="asset-library-toolbar">
         <label class="asset-library-search">Buscar<input id="asset-library-search" type="search" placeholder="Nombre, etiqueta o categoría"></label>
-        <label class="asset-library-filter">Colección<select id="asset-library-filter"><option value="all">Todas las imágenes</option><option value="favorites">Favoritas</option><option value="character">Personajes</option><option value="sticker">Stickers</option><option value="background">Fondos</option><option value="texture">Texturas</option><option value="reference">Referencias</option></select></label>
+        <label class="asset-library-filter">Colección o procedencia<select id="asset-library-filter">
+          <option value="all">Todas las imágenes</option><option value="favorites">Favoritas</option>
+          <optgroup label="Categoría"><option value="category:character">Personajes</option><option value="category:sticker">Stickers</option><option value="category:background">Fondos</option><option value="category:texture">Texturas</option><option value="category:reference">Referencias</option></optgroup>
+          <optgroup label="Origen"><option value="origin:original">Originales</option><option value="origin:derivative">Variaciones / derivados</option><option value="origin:unknown">Procedencia desconocida</option><option value="origin:generated">Generados por AnimeArt</option><option value="origin:experimental">Experimentales</option></optgroup>
+          <optgroup label="Verificación"><option value="verification:user-confirmed">Confirmados por mí</option><option value="verification:unverified">Sin verificar</option><option value="verification:unknown">Estado desconocido</option></optgroup>
+        </select></label>
         <button id="asset-library-add" class="asset-library-primary" type="button">＋ Importar imágenes</button>
         <input id="asset-library-files" type="file" accept="image/*" multiple hidden>
         <button id="asset-library-export" type="button">Exportar biblioteca</button>

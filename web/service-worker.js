@@ -1,4 +1,4 @@
-const CACHE_NAME = "animeart-web-shell-v56";
+const CACHE_NAME = "animeart-web-shell-v68";
 const APP_SHELL = [
   "./index.html",
   "./styles.css",
@@ -6,6 +6,8 @@ const APP_SHELL = [
   "./asset-library.js",
   "./appearance-settings.js",
   "./domain/asset-library.mjs",
+  "./domain/asset-deduplication.mjs",
+  "./domain/asset-library-pagination.mjs",
   "./domain/creative-catalog.mjs",
   "./manifest.webmanifest",
   "./icons/animeart-mark.svg",
@@ -20,6 +22,7 @@ const APP_SHELL = [
   "./domain/image-processing.mjs",
   "./domain/crop-shape.mjs",
   "./domain/color-replacement.mjs",
+  "./domain/anime-region-selection.mjs",
   "./domain/anime-color-studio.mjs",
   "./domain/image-processing-client.mjs",
   "./workers/image-processing-worker.mjs",

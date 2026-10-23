@@ -23,7 +23,7 @@ test("KapiArt anime color studio wires the offline palette, wand and non-destruc
   assert.match(app, /Efecto de color · /);
   assert.match(app, /recolorCanvasPointFromClient/);
   assert.match(html, /id="erase-color-effect"/);
-  assert.match(worker, /animeart-web-shell-v56/);
+  assert.match(worker, /animeart-web-shell-v68/);
   assert.ok(worker.includes("./domain/anime-color-studio.mjs"));
   assert.match(engine, /Selects a contiguous flat-color region/);
   assert.match(engine, /export function selectAnimeRectangle/);

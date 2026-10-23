@@ -3949,6 +3949,55 @@ La CI de Android de la PR generó un artefacto de 10.724.319 bytes. El artefacto
 Verificar Web CI, Android CI y el artefacto Android ligados al SHA más reciente de `main`. Después, configurar firma persistente de distribución y verificar la actualización sobre una instalación existente con respaldo de los proyectos. Completar una prueba física en el Xiaomi y la matriz de referentes con fuentes y fechas reales.
 
 
+## 2026-10-21 · PR #110 · carga progresiva de la biblioteca visual
+
+- **Estado del lote:** Web CI PASS y Android CI PASS en HEAD `c7fdb3434a6b9b20ef36894db8e9bdeab1aa3c8a`. La PR #110 está abierta y en borrador: https://github.com/jonhararagi/animeart/pull/110.
+- **Main no modificado por esta iteración:** SHA `1b256a6324bdd8544e49bf8a735c4cd93349f8bb`.
+- **Rama de trabajo:** `feature/animeart-library-progressive-loading-001`.
+- **Cambios:** máximo 36 tarjetas por render inicial; botón accesible «Cargar más»; búsqueda y filtros reinician la vista al primer bloque; miniaturas con `loading="lazy"` y `decoding="async"`; helper `web/domain/asset-library-pagination.mjs`; caché PWA `animeart-web-shell-v62`.
+- **Pruebas nuevas:** pruebas de dominio para listas de 500 recursos, último bloque parcial, entradas inválidas y límites; el E2E de Chromium siembra 40 registros temporales en IndexedDB, comprueba 36 iniciales, muestra 40 tras «Cargar más», filtra a un resultado, reinicia a 36 al limpiar búsqueda y restaura los registros anteriores.
+- **Evidencia CI:** Web PASS https://github.com/jonhararagi/animeart/actions/runs/39648162906; Android PASS https://github.com/jonhararagi/animeart/actions/runs/39648162976.
+- **APK del HEAD de la PR:** artefacto temporal de GitHub Actions #12367838419, nombre `kapiart-android-debug-v0.3.7-a14fe189f0da5ed7ce8a99a445d8b4941afa4e38`. Es una compilación de la rama de la PR, no de `main`. Firma configurada como `ephemeral-debug`; la compatibilidad de actualización no está garantizada. No hay prueba física registrada en el Xiaomi.
+- **Limitación conocida:** este lote limita la creación de tarjetas, URLs de previsualización y decodificación inicial, pero `allAssets()` todavía usa `IndexedDB.getAll()` y recupera los blobs junto con los metadatos. Un futuro lote puede separar metadatos y binarios en almacenes IndexedDB distintos, con migración y pruebas de recuperación antes de cambiar el formato local.
+- **TIMER estimado:** 2–4 horas para la implementación y validación; tiempo real no medido.
+- **Siguiente criterio de decisión:** no fusionar PR #110 sin autorización explícita. Antes de prometer que la biblioteca evita cargar todos los datos binarios, completar la separación de almacenamiento y probar migración desde DB_VERSION=1.
+
+
+## 2026-10-22 · Biblioteca visual, almacenamiento v2 en rama de trabajo
+
+- **Repositorio:** `jonhararagi/animeart`
+- **Rama:** `feature/animeart-library-binary-store-002`
+- **Base de trabajo:** `main` en `71cf75d0692fc5122463e3500fef9104062ba5e7` después de integrar la carga progresiva de biblioteca (PR #110).
+- **TIMER estimado:** 3–5 horas de ingeniería para la migración y verificación; tiempo real no medido.
+- **Objetivo de este lote:** IndexedDB v2 mantiene las fichas sin el `Blob` inline en `assets` y almacena los binarios en `asset-blobs`; la subida v1→v2 recorre los recursos existentes y los migra en la transacción de actualización.
+- **Cambios de código en progreso:** carga solo metadatos al abrir la biblioteca; miniaturas cargan el binario cuando la tarjeta entra en el área visible; inserción/exportación obtienen binarios de forma explícita; borrado elimina ficha y binario juntos; comprobación E2E cubre la migración de 40 registros.
+- **Pruebas actualizadas:** contratos estáticos de versión de caché a `animeart-web-shell-v63`; E2E ampliado con inspección real de IndexedDB.
+- **Estado honesto:** pendiente de completar CI en la rama y revisar los resultados reales antes de recomendar la integración. No se modifica `main` para este lote sin las verificaciones del PR.
+- **Riesgo a revisar:** la migración depende de que el upgrade de IndexedDB concluya correctamente; revisar logs de Web E2E, instrumentación Android y manejo de errores de transacción. La carga de binarios para duplicados y exportación es intencionada y ocurre solo en esos flujos.
+
+- **Protección de actualización añadida:** si IndexedDB avisa que otra pestaña bloquea la actualización, el diálogo informa que debe cerrarse la pestaña antigua; la solicitud permanece activa para completar la migración cuando se libere, sin rechazarla prematuramente.
+
+
+## 2026-10-23 · Previsualizaciones ligeras de la biblioteca visual
+
+- **Rama:** `feature/animeart-asset-thumbnails-003`, partiendo de main `f6fcba7310a8df64b69df913a5b9394d20ac9fb2`.
+- **TIMER estimado:** 2–4 horas de ingeniería y validación; tiempo real no medido.
+- **Objetivo:** persistir miniaturas derivadas de hasta 512 px para vistas previas, conservar el original para inserción y exportación, y no decodificar repetidamente originales grandes al recorrer la biblioteca.
+- **Implementación en curso:** genera miniaturas cuando se consulta una tarjeta visible, las guarda junto al binario original en la tienda IndexedDB existente, reutiliza las miniaturas la siguiente vez y libera los bitmaps de memoria tras la conversión.
+- **Verificación planificada:** E2E con imagen de 640×640, dimensiones de miniatura limitadas a 512 px, preservación del original y pruebas existentes; la caché PWA sube a `v64`.
+- **Estado honesto:** pendiente de Web CI, E2E y Android CI antes de proponer integración.
+
+
+## 2026-10-23 · Simetría vertical del pincel y borrador de capa
+
+- **Rama:** `feature/animeart-brush-symmetry-004`, desde `main` `5851396bc63f0ac4efb44bfe125c5f9c29184c5a`.
+- **TIMER estimado:** 2–4 horas de ingeniería y validación; tiempo real no medido.
+- **Implementación:** control de simetría vertical en el grupo de pincel; duplica y refleja los puntos del pincel o borrador de trazos respecto al centro del documento en tiempo real. Los dos trazos permanecen editables en la misma capa y se confirman/deshacen como una sola operación.
+- **Límite explícito:** el control afecta trazos de capa, no operaciones rasterizadas de borrado de píxeles ni la herramienta de censura.
+- **Pruebas incorporadas:** unidad de geometría/reflejo e inputs inválidos, contratos de UI y caché, además de Chromium E2E que activa el control, dibuja en el lienzo, comprueba puntos espejados y píxeles visibles a ambos lados y ejecuta Deshacer.
+- **Estado antes de CI:** implementación en rama; validar Web E2E y Android CI sobre el HEAD final antes de integrar.
+
+
 ---
 
 ## Trabajo en curso · KapiArt Anime Color Studio · 2026-10-20

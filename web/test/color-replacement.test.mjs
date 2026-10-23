@@ -40,3 +40,63 @@ test("color replacement rejects malformed rasters and invalid color values", () 
   assert.throws(()=>replaceColorRange({width:2,height:2,data:new Uint8ClampedArray(3)}),/valid image pixels/i);
   assert.throws(()=>replaceColorRange(image([[0,0,0,255]]),{sourceColor:"blue"}),/six-digit/i);
 });
+
+test("color replacement leaves pixels outside the anime selection mask untouched", () => {
+  const source = image([[128,64,32,255],[128,64,32,255],[128,64,32,255]]);
+  const mask = new Uint8Array([1,0,1]);
+  const result = replaceColorRange(source,{sourceColor:"#804020",targetColor:"#00aaff",tolerance:0,softness:0,preserveShading:false,mask});
+  assert.deepEqual([...result.data.slice(0,3)],[0,170,255]);
+  assert.deepEqual([...result.data.slice(4,7)],[128,64,32]);
+  assert.deepEqual([...result.data.slice(8,11)],[0,170,255]);
+});
+
+
+test("line-art protection preserves black outlines against white while recoloring flat black fill", () => {
+  const source = { width: 3, height: 3, data: new Uint8ClampedArray([
+    255,255,255,255, 255,255,255,255, 255,255,255,255,
+    255,255,255,255, 10,10,10,255, 255,255,255,255,
+    255,255,255,255, 10,10,10,255, 255,255,255,255
+  ]) };
+  const protectedResult = replaceColorRange(source,{sourceColor:"#0a0a0a",targetColor:"#ff0000",tolerance:0,softness:0,preserveShading:false,preserveLineArt:true});
+  assert.deepEqual([...protectedResult.data.slice(16,19)],[10,10,10]);
+  const unprotectedResult = replaceColorRange(source,{sourceColor:"#0a0a0a",targetColor:"#ff0000",tolerance:0,softness:0,preserveShading:false,preserveLineArt:false});
+  assert.deepEqual([...unprotectedResult.data.slice(16,19)],[255,0,0]);
+});
+
+test("line-art protection preserves white highlights at a contrasting color boundary", () => {
+  const source = { width: 3, height: 1, data: new Uint8ClampedArray([30,30,30,255, 250,250,250,255, 30,30,30,255]) };
+  const result = replaceColorRange(source,{sourceColor:"#fafafa",targetColor:"#00ff00",tolerance:0,softness:0,preserveShading:false,preserveLineArt:true});
+  assert.deepEqual([...result.data.slice(4,7)],[250,250,250]);
+});
+
+test("shading preservation can recolor black hair while keeping darker and lighter tones ordered", () => {
+  const source = image([[0,0,0,255],[8,8,8,255],[28,28,28,255],[0,0,0,0]]);
+  const result = replaceColorRange(source,{sourceColor:"#000000",targetColor:"#ff0000",tolerance:40,softness:0,preserveShading:true,preserveLineArt:false});
+  assert.ok(result.data[0] > 200 && result.data[1] < 10 && result.data[2] < 10);
+  assert.ok(result.data[4] > 200 && result.data[5] >= result.data[1]);
+  assert.ok(result.data[8] > 200 && result.data[9] >= result.data[5]);
+  assert.equal(result.data[15],0);
+});
+
+test("anime dark fills can recolor without sacrificing contrasting contour pixels", () => {
+  const width = 5, height = 5, data = new Uint8ClampedArray(width * height * 4);
+  for (let i = 0; i < width * height; i++) data.set([255,255,255,255], i * 4);
+  for (let y = 1; y <= 3; y++) for (let x = 1; x <= 3; x++) data.set([10,10,10,255], (y * width + x) * 4);
+  const result = replaceColorRange({width,height,data},{sourceColor:"#0a0a0a",targetColor:"#ff0000",tolerance:0,softness:0,preserveShading:false,preserveLineArt:true});
+  const edge = (2 * width + 1) * 4, interior = (2 * width + 2) * 4;
+  assert.deepEqual([...result.data.slice(edge,edge+3)],[10,10,10]);
+  assert.deepEqual([...result.data.slice(interior,interior+3)],[255,0,0]);
+});
+
+test("explicit multi-region mask overrides source color distance but preserves unselected pixels and alpha", () => {
+  const source = image([[0,0,255,255],[0,255,0,128],[255,255,0,255],[0,0,0,0]]);
+  const mask = new Uint8Array([1,1,0,1]);
+  const result = replaceColorRange(source,{
+    sourceColor:"#0000ff",targetColor:"#ff0000",tolerance:0,softness:0,
+    preserveShading:false,preserveLineArt:false,mask
+  });
+  assert.deepEqual([...result.data.slice(0,4)],[255,0,0,255]);
+  assert.deepEqual([...result.data.slice(4,8)],[255,0,0,128]);
+  assert.deepEqual([...result.data.slice(8,12)],[255,255,0,255]);
+  assert.deepEqual([...result.data.slice(12,16)],[0,0,0,0]);
+});
