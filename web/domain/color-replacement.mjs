@@ -134,12 +134,12 @@ export function replaceColorRange(imageData, {
     }
 
     rgbToHsl(source[offset], source[offset + 1], source[offset + 2], pixelHsl);
-    let mappedLightness;
-    if (preserveShading && animeRecolor && activeMask != null) {
-      mappedLightness = targetHsl[2] + (pixelHsl[2] - sourceHsl[2]) * 0.72 - lightnessShift;
-    } else {
-      mappedLightness = (preserveShading ? pixelHsl[2] : targetHsl[2]) - lightnessShift;
-    }
+    // Map relative to the sampled source tone instead of retaining its absolute
+    // lightness. This keeps black/near-black anime hair recolorable while preserving
+    // lighter and darker highlights around the new target hue.
+    let mappedLightness = preserveShading
+      ? targetHsl[2] + (pixelHsl[2] - sourceHsl[2]) * 0.72 - lightnessShift
+      : targetHsl[2] - lightnessShift;
     mappedLightness = Math.max(0.02, Math.min(0.98, mappedLightness));
     const rgb = hslToRgb(targetHsl[0], targetHsl[1], mappedLightness, replacement);
     const tempered = [
