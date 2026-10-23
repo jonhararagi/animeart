@@ -5375,12 +5375,15 @@ let recolorPreviewRunning = false;
 let recolorPreviewResult = null;
 let recolorPreviewKey = null;
 function currentRecolorOptions() {
+ // Global recolor protects high-contrast line art by default. An explicit anime selection mask
+ // remains authoritative, allowing dark hair/clothing fills to be recolored without selecting outlines.
  return {
   sourceColor: recolorSession?.sourceColor || "#806050",
   targetColor: document.querySelector("#recolor-target-color").value,
   tolerance: Number(document.querySelector("#recolor-tolerance").value),
   softness: Number(document.querySelector("#recolor-softness").value),
   preserveShading: document.querySelector("#recolor-preserve-shading").checked,
+  preserveLineArt: true,
   temperature: Number(document.querySelector("#recolor-temperature").value),
   darkness: Number(document.querySelector("#recolor-darkness").value),
   hueShift: Number(document.querySelector("#recolor-hue-shift").value),
