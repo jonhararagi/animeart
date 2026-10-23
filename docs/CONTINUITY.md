@@ -3986,3 +3986,13 @@ Verificar Web CI, Android CI y el artefacto Android ligados al SHA más reciente
 - **Implementación en curso:** genera miniaturas cuando se consulta una tarjeta visible, las guarda junto al binario original en la tienda IndexedDB existente, reutiliza las miniaturas la siguiente vez y libera los bitmaps de memoria tras la conversión.
 - **Verificación planificada:** E2E con imagen de 640×640, dimensiones de miniatura limitadas a 512 px, preservación del original y pruebas existentes; la caché PWA sube a `v64`.
 - **Estado honesto:** pendiente de Web CI, E2E y Android CI antes de proponer integración.
+
+
+## 2026-10-23 · Simetría vertical del pincel y borrador de capa
+
+- **Rama:** `feature/animeart-brush-symmetry-004`, desde `main` `5851396bc63f0ac4efb44bfe125c5f9c29184c5a`.
+- **TIMER estimado:** 2–4 horas de ingeniería y validación; tiempo real no medido.
+- **Implementación:** control de simetría vertical en el grupo de pincel; duplica y refleja los puntos del pincel o borrador de trazos respecto al centro del documento en tiempo real. Los dos trazos permanecen editables en la misma capa y se confirman/deshacen como una sola operación.
+- **Límite explícito:** el control afecta trazos de capa, no operaciones rasterizadas de borrado de píxeles ni la herramienta de censura.
+- **Pruebas incorporadas:** unidad de geometría/reflejo e inputs inválidos, contratos de UI y caché, además de Chromium E2E que activa el control, dibuja en el lienzo, comprueba puntos espejados y píxeles visibles a ambos lados y ejecuta Deshacer.
+- **Estado antes de CI:** implementación en rama; validar Web E2E y Android CI sobre el HEAD final antes de integrar.

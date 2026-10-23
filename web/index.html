@@ -71,6 +71,7 @@
         <div><strong id="mobile-context-title">Dibujar</strong><p id="mobile-context-description">Elegí color, tamaño y efecto.</p></div>
         <button id="mobile-context-close" type="button" aria-label="Cerrar panel de dibujo" title="Cerrar panel">⌄</button>
       </div>
+      <label class="brush-control brush-symmetry-control brush-symmetry-mobile-control" for="brush-symmetry-mobile"><span><strong>Simetría vertical</strong><small>Refleja el pincel y el borrador de capa respecto al centro del lienzo.</small></span><input id="brush-symmetry-mobile" type="checkbox" aria-label="Simetría vertical para trazos de capa"></label>
       <details class="more-tools">
         <summary>Más herramientas</summary>
         <div class="more-tools-content">
@@ -102,6 +103,8 @@
       <label class="brush-control" for="brush-opacity">Opacity<input id="brush-opacity" type="range" min="0" max="100" step="1" value="100" aria-label="Brush opacity"><output id="brush-opacity-value">100%</output></label>
       <label class="brush-control" for="brush-hardness">Hardness<input id="brush-hardness" type="range" min="0" max="100" step="1" value="100" aria-label="Brush hardness"><output id="brush-hardness-value">100%</output></label>
       <label class="brush-control" for="brush-effect">Effect<select id="brush-effect" aria-label="Brush effect"><option value="normal">Normal</option><option value="soft">Soft airbrush</option><option value="glow">Glow</option><option value="neon">Neon</option></select></label>
+      <label class="brush-control brush-symmetry-control" for="brush-symmetry"><span>Simetría vertical</span><input id="brush-symmetry" type="checkbox" aria-label="Simetría vertical para trazos de capa"></label>
+      <small class="brush-control-note">Refleja el pincel y el borrador de capa respecto al centro del lienzo.</small>
       <div class="brush-palette" role="group" aria-label="Mystic brush color palette">
         <button type="button" data-brush-color="#7c3aed" aria-label="Mystic violet" title="Mystic violet" style="--swatch:#7c3aed"></button>
         <button type="button" data-brush-color="#00e5ff" aria-label="Arcane cyan" title="Arcane cyan" style="--swatch:#00e5ff"></button>
