@@ -772,6 +772,12 @@
             <h3 id="anime-wand-title">🪄 Varita mágica</h3>
             <p>Toca el relleno del cabello, ropa u ojos. La varita sigue el color conectado y respeta, en lo posible, las líneas oscuras.</p>
             <button id="recolor-wand-toggle" type="button" aria-pressed="false">Activar varita y tocar zona</button>
+          <div class="anime-selection-actions anime-region-mode-actions" role="group" aria-label="Modo de selección de regiones">
+            <button id="select-anime-region" type="button" aria-pressed="true">Reemplazar selección</button>
+            <button id="recolor-add-region" type="button" aria-pressed="false">＋ Sumar zona</button>
+            <button id="recolor-subtract-region" type="button" aria-pressed="false">− Restar zona</button>
+            <button id="clear-anime-region-selection" type="button">Limpiar selección</button>
+          </div>
             <button id="recolor-rectangle-toggle" type="button" aria-pressed="false">▱ Dibujar área rectangular</button>
             <label class="text-field" for="recolor-wand-tolerance">Tolerancia de selección <output id="recolor-wand-tolerance-value">28</output>
               <input id="recolor-wand-tolerance" type="range" min="0" max="120" step="1" value="28">
