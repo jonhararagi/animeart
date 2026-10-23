@@ -125,6 +125,7 @@
       <button id="fit-image-to-canvas" type="button" disabled title="Encajar la imagen seleccionada en el lienzo sin cambiar su resolución en píxeles">Encajar imagen</button>
       <button id="remove-background" type="button" disabled>Quitar fondo</button>
       <button id="recolor-image" type="button" disabled>Reemplazar rango de color</button>
+      <button id="erase-color-effect" type="button" title="Activa el borrador sobre una capa de efecto de color para quitarla por zonas">🧽 Borrar efecto de color</button>
       <button id="flip-image-horizontal" type="button" disabled title="Reflejar la imagen seleccionada de izquierda a derecha">Voltear H</button>
       <button id="flip-image-vertical" type="button" disabled title="Reflejar la imagen seleccionada de arriba abajo">Voltear V</button>
       <button id="add-sample-character" title="Importar el personaje de muestra CC0 1.0 como una capa de imagen editable">+ Personaje CC0</button>
@@ -764,28 +765,46 @@
   </dialog>
   <dialog id="recolor-dialog" aria-labelledby="recolor-title">
     <section class="recolor-shell">
-      <header class="recolor-header"><div><p class="eyebrow">PIXEL EDITING · LOCAL ONLY</p><h2 id="recolor-title">Selective Color Replacement</h2><p>Sample a color and replace it while preserving shadows, highlights and transparency.</p></div><button id="cancel-recolor" type="button">Cancel</button></header>
-      <div class="recolor-workspace"><div class="recolor-preview-wrap"><canvas id="recolor-preview" aria-label="Color replacement preview"></canvas></div>
+      <header class="recolor-header"><div><p class="eyebrow">KAPIART · ESTUDIO DE COLOR ANIME</p><h2 id="recolor-title">Recolorear por zona</h2><p>El original no cambia hasta que pulses Aplicar. Pensado para rellenos, sombras y bordes de ilustración anime.</p></div><button id="cancel-recolor" type="button" aria-label="Cerrar estudio de color">✕ Cerrar</button></header>
+      <div class="recolor-workspace"><div class="recolor-preview-wrap"><canvas id="recolor-preview" aria-label="Previsualización del cambio de color"></canvas></div>
         <div class="recolor-controls">
-          <label class="text-field" for="recolor-source-color">Sampled source color<input id="recolor-source-color" type="color" value="#806050" disabled></label>
-          <button id="sample-recolor-source" type="button">🎯 Elegir color de origen</button>
-          <button id="select-anime-region" type="button" aria-pressed="false">🪄 Reemplazar selección</button>
-          <div class="anime-selection-actions" role="group" aria-label="Combinar regiones seleccionadas">
-            <button id="recolor-add-region" type="button" aria-pressed="false">➕ Sumar zona</button>
-            <button id="recolor-subtract-region" type="button" aria-pressed="false">➖ Restar zona</button>
-            <button id="clear-anime-region-selection" type="button">✕ Limpiar selección</button>
+          <section class="anime-wand-panel" aria-labelledby="anime-wand-title">
+            <h3 id="anime-wand-title">🪄 Varita mágica</h3>
+            <p>Toca el relleno del cabello, ropa u ojos. La varita sigue el color conectado y respeta, en lo posible, las líneas oscuras.</p>
+            <button id="recolor-wand-toggle" type="button" aria-pressed="false">Activar varita y tocar zona</button>
+          <div class="anime-selection-actions anime-region-mode-actions" role="group" aria-label="Modo de selección de regiones">
+            <button id="select-anime-region" type="button" aria-pressed="true">Reemplazar selección</button>
+            <button id="recolor-add-region" type="button" aria-pressed="false">＋ Sumar zona</button>
+            <button id="recolor-subtract-region" type="button" aria-pressed="false">− Restar zona</button>
+            <button id="clear-anime-region-selection" type="button">Limpiar selección</button>
           </div>
-          <label class="text-field" for="anime-color-name">Buscar color por nombre<input id="anime-color-name" type="search" placeholder="Ej.: marrón claro, rubio miel"></label>
-          <button id="apply-anime-color-name" type="button">Usar color encontrado</button>
-          <p class="anime-selection-hint">La varita selecciona una región conectada. Usa “Sumar zona” para incluir ambos ojos o varios mechones, “Restar zona” para quitar píxeles seleccionados por error. Ajustá la tolerancia para ilustraciones planas y lineart.</p>
-          <label class="text-field" for="recolor-target-color">Replacement color<input id="recolor-target-color" type="color" value="#c76cf2"></label>
-          <label class="text-field" for="recolor-tolerance">Color range <output id="recolor-tolerance-value">36</output><input id="recolor-tolerance" type="range" min="0" max="160" value="36"></label>
-          <label class="text-field" for="recolor-softness">Range softness <output id="recolor-softness-value">28</output><input id="recolor-softness" type="range" min="0" max="120" value="28"></label>
-          <label class="background-removal-toggle"><input id="recolor-preserve-shading" type="checkbox" checked> Preserve shading and texture</label>
-          <label class="background-removal-toggle"><input id="recolor-preserve-line-art" type="checkbox" checked> 🖋️ Proteger bordes negros y brillos blancos</label>
-          <p class="anime-selection-hint">Detecta líneas oscuras y brillos claros por su contraste local para conservar el contorno del dibujo al cambiar el color.</p>
-          <p id="recolor-status" role="status" aria-live="polite">Select a source color from the image preview.</p>
-          <div class="dialog-actions"><button id="cancel-recolor-bottom" type="button">Cancel</button><button id="apply-recolor" type="button">Apply color</button></div>
+            <button id="recolor-rectangle-toggle" type="button" aria-pressed="false">▱ Dibujar área rectangular</button>
+            <label class="text-field" for="recolor-wand-tolerance">Tolerancia de selección <output id="recolor-wand-tolerance-value">28</output>
+              <input id="recolor-wand-tolerance" type="range" min="0" max="120" step="1" value="28">
+            </label>
+            <label class="background-removal-toggle"><input id="recolor-wand-add" type="checkbox"> Añadir la siguiente zona a la selección</label>
+            <div class="anime-selection-actions"><button id="recolor-wand-clear" type="button" disabled>Limpiar zona</button><button id="recolor-split-layer" type="button" disabled>Separar en capa</button></div>
+            <p id="recolor-selection-status" class="anime-selection-status" role="status" aria-live="polite">Sin zona seleccionada. La varita funciona mejor en rellenos planos con bordes oscuros.</p>
+          </section>
+          <section class="anime-color-studio" aria-labelledby="anime-color-studio-title">
+            <div class="anime-color-heading"><h3 id="anime-color-studio-title">🌈 Colores para anime</h3><p>Busca por nombre o elige entre 2.880 tonos generados sin conexión. El selector permite cualquier color RGB.</p></div>
+            <label class="text-field" for="anime-color-search">Buscar color<input id="anime-color-search" type="search" placeholder="Marrón claro, rubio miel o #B9855A" autocomplete="off"></label>
+            <div id="anime-color-results" class="anime-color-results" aria-label="Colores disponibles"></div>
+            <div class="anime-color-pagination"><button id="anime-color-previous" type="button" hidden>← Anteriores</button><span id="anime-color-page">Tonos 1 de 60</span><button id="anime-color-more" type="button">Más tonos →</button></div>
+          </section>
+          <label class="text-field" for="recolor-source-color">Color de origen<input id="recolor-source-color" type="color" value="#806050" disabled></label>
+          <button id="sample-recolor-source" type="button">Tomar muestra manual</button>
+          <label class="text-field" for="recolor-target-color">Color nuevo<input id="recolor-target-color" type="color" value="#C62845"></label>
+          <label class="text-field" for="recolor-temperature">Temperatura fría ↔ cálida <output id="recolor-temperature-value">0</output><input id="recolor-temperature" type="range" min="-100" max="100" value="0"></label>
+          <label class="text-field" for="recolor-darkness">Aclarar ↔ oscurecer <output id="recolor-darkness-value">0</output><input id="recolor-darkness" type="range" min="-100" max="100" value="0"></label>
+          <label class="text-field" for="recolor-hue-shift">Giro de tono <output id="recolor-hue-shift-value">0</output>°<input id="recolor-hue-shift" type="range" min="-180" max="180" value="0"></label>
+          <label class="text-field" for="recolor-tolerance">Rango de color <output id="recolor-tolerance-value">36</output><input id="recolor-tolerance" type="range" min="0" max="160" value="36"></label>
+          <label class="text-field" for="recolor-softness">Suavidad del borde <output id="recolor-softness-value">28</output><input id="recolor-softness" type="range" min="0" max="120" value="28"></label>
+          <label class="background-removal-toggle"><input id="recolor-preserve-shading" type="checkbox" checked> Conservar sombras, brillo y textura</label>
+          <label class="background-removal-toggle"><input id="recolor-effect-layer" type="checkbox" checked> Aplicar como capa independiente y borrable</label>
+          <p class="anime-selection-status">Después de aplicar, elige la capa «Efecto de color» y pulsa «Borrar efecto de color» para retirar partes con el dedo. El dibujo original se conserva debajo.</p>
+          <p id="recolor-status" role="status" aria-live="polite">Elige una muestra o activa la varita mágica para tocar una zona.</p>
+          <div class="dialog-actions"><button id="cancel-recolor-bottom" type="button">Cancelar</button><button id="apply-recolor" type="button">Aplicar color</button></div>
         </div>
       </div>
     </section>

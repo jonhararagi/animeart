@@ -767,20 +767,31 @@ try {
   assert(sourceBeforeRecolorLength > 100, "source image is embedded in the current local project");
   await click("#recolor-image");
   await waitFor('document.querySelector("#recolor-dialog").open === true');
+  await click("#recolor-rectangle-toggle");
+  const rectangleDiagnostics = await evaluate('(() => { const c=document.querySelector("#recolor-preview"),r=c.getBoundingClientRect(),cs=getComputedStyle(c),d=c.getContext("2d").getImageData(0,0,c.width,c.height).data,n=v=>parseFloat(v)||0,bl=n(cs.borderLeftWidth),br=n(cs.borderRightWidth),bt=n(cs.borderTopWidth),bb=n(cs.borderBottomWidth),pl=n(cs.paddingLeft),pr=n(cs.paddingRight),pt=n(cs.paddingTop),pb=n(cs.paddingBottom),left=r.left+bl+pl,top=r.top+bt+pt,bw=r.width-bl-br-pl-pr,bh=r.height-bt-bb-pt-pb,scale=Math.min(bw/c.width,bh/c.height),dw=c.width*scale,dh=c.height*scale,dl=left+(bw-dw)/2,dt=top+(bh-dh)/2,mx=Math.max(2,Math.ceil(c.width*.05)),my=Math.max(2,Math.ceil(c.height*.05)); let x1=-1,y1=-1; find: for(let yy=my;yy<c.height-my;yy++){for(let xx=mx;xx<c.width-mx;xx++){if(d[(yy*c.width+xx)*4+3]>0){x1=xx;y1=yy;break find;}}} if(x1<0)throw new Error("no interior opaque pixel for rectangle E2E"); const x2=Math.min(c.width-mx-1,x1+18),y2=Math.min(c.height-my-1,y1+18),client=(x,y)=>({clientX:dl+(x+.5)*scale,clientY:dt+(y+.5)*scale}),send=(type,p)=>c.dispatchEvent(new PointerEvent(type,{bubbles:true,pointerId:43,pointerType:"mouse",isPrimary:true,...client(p.x,p.y)})); send("pointerdown",{x:x1,y:y1});send("pointermove",{x:x2,y:y2});send("pointerup",{x:x2,y:y2}); const status=document.querySelector("#recolor-selection-status")?.textContent||""; return {status,count:parseInt(status.replace(/[^0-9]/g,""),10)||0,x1,y1,x2,y2}; })()');
+  assert(rectangleDiagnostics.count > 0, "dragging a rectangle selects visible anime pixels: " + JSON.stringify(rectangleDiagnostics));
+  await click("#recolor-wand-clear");
   await click("#sample-recolor-source");
-  const sampledSourceColor = await evaluate('(() => { const c=document.querySelector("#recolor-preview"),r=c.getBoundingClientRect(),d=c.getContext("2d").getImageData(0,0,c.width,c.height).data; let i=0; while(i<d.length&&d[i+3]===0)i+=4; if(i>=d.length)throw new Error("sample character contains no opaque pixels"); const p=i/4,x=p%c.width,y=Math.floor(p/c.width); c.dispatchEvent(new MouseEvent("click",{bubbles:true,clientX:r.left+(x+.5)*r.width/c.width,clientY:r.top+(y+.5)*r.height/c.height})); return document.querySelector("#recolor-source-color").value; })()');
+  const sampleDiagnostics = await evaluate('(async () => { const c=document.querySelector("#recolor-preview"),image=new Image(); image.src=window.__animeArtOriginalRecolorSource; await image.decode(); await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))); const r=c.getBoundingClientRect(),cs=getComputedStyle(c),n=v=>parseFloat(v)||0,bl=n(cs.borderLeftWidth),br=n(cs.borderRightWidth),bt=n(cs.borderTopWidth),bb=n(cs.borderBottomWidth),pl=n(cs.paddingLeft),pr=n(cs.paddingRight),pt=n(cs.paddingTop),pb=n(cs.paddingBottom),left=r.left+bl+pl,top=r.top+bt+pt,bw=r.width-bl-br-pl-pr,bh=r.height-bt-bb-pt-pb,scale=Math.min(bw/c.width,bh/c.height),dw=c.width*scale,dh=c.height*scale,dl=left+(bw-dw)/2,dt=top+(bh-dh)/2; const sourceCanvas=document.createElement("canvas");sourceCanvas.width=c.width;sourceCanvas.height=c.height;const sourceContext=sourceCanvas.getContext("2d",{willReadFrequently:true});sourceContext.drawImage(image,0,0,c.width,c.height);const source=sourceContext.getImageData(0,0,c.width,c.height).data;let i=-1,x=0,y=0;const mx=Math.max(2,Math.ceil(c.width*.05)),my=Math.max(2,Math.ceil(c.height*.05));for(let yy=my;yy<c.height-my&&i<0;yy++){for(let xx=mx;xx<c.width-mx;xx++){const q=(yy*c.width+xx)*4;if(source[q+3]===255){i=q;x=xx;y=yy;break;}}}if(i<0)throw new Error("original character has no fully opaque interior pixel away from the bitmap edge");const expected="#" + [source[i],source[i+1],source[i+2]].map(v=>v.toString(16).padStart(2,"0")).join("");window.__ANIMEART_RECOLOR_SAMPLE_DIAGNOSTICS__=null;c.dispatchEvent(new MouseEvent("click",{bubbles:true,clientX:dl+(x+.5)*scale,clientY:dt+(y+.5)*scale}));const sample=window.__ANIMEART_RECOLOR_SAMPLE_DIAGNOSTICS__||null,mappedOffset=sample?((sample.y*c.width+sample.x)*4):-1,mappedExpected=mappedOffset>=0?"#"+[source[mappedOffset],source[mappedOffset+1],source[mappedOffset+2]].map(v=>v.toString(16).padStart(2,"0")).join(""):null;return {expected, mappedExpected,actual:document.querySelector("#recolor-source-color").value,status:document.querySelector("#recolor-status")?.textContent,applyDisabled:document.querySelector("#apply-recolor").disabled,x,y,scale,bw,bh,sample}; })()');
+  assert(sampleDiagnostics.sample && Math.abs(sampleDiagnostics.sample.x-sampleDiagnostics.x)<=1 && Math.abs(sampleDiagnostics.sample.y-sampleDiagnostics.y)<=1 && sampleDiagnostics.actual.toLowerCase() === sampleDiagnostics.mappedExpected.toLowerCase(), "sample source tap maps within one source pixel and returns that exact source color: " + JSON.stringify(sampleDiagnostics));
+  const sampledSourceColor = sampleDiagnostics.actual;
   assert(/^#[0-9a-f]{6}$/i.test(sampledSourceColor), "real browser samples an actual opaque pixel for selective recolor");
+  await evaluate('(() => { const input=document.querySelector("#recolor-temperature"); input.value="25"; input.dispatchEvent(new Event("input",{bubbles:true})); return input.value; })()');
+  await waitFor('document.querySelector("#recolor-temperature-value").textContent === "25"', 3000);
   await waitFor('document.querySelector("#apply-recolor").disabled === false', 15000);
   await waitFor('document.querySelector("#recolor-status").textContent.includes("Vista previa lista")', 15000);
   const pixelWorkerDiagnostics = await evaluate("window.__ANIMEART_IMAGE_PROCESSING_DIAGNOSTICS__");
   assert(pixelWorkerDiagnostics?.workerCreated === true && pixelWorkerDiagnostics.workerOperations > 0 && pixelWorkerDiagnostics.fallbackOperations === 0 && pixelWorkerDiagnostics.lastOperation === "replace-color-range", "real browser sends selective recolor through the dedicated worker instead of the UI-thread fallback: " + JSON.stringify(pixelWorkerDiagnostics));
   await click("#apply-recolor");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source !== window.__animeArtOriginalRecolorSource', 15000);
-  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.width === 944'), "real browser applies selective recolor without changing image dimensions");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name.startsWith("Efecto de color · battleworn_knight"))', 15000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source === window.__animeArtOriginalRecolorSource'), "recolor creates a separate effect layer and keeps the original image source unchanged");
+  await click("#erase-color-effect");
+  assert(await evaluate('document.querySelector(\'[data-tool="eraser"]\').classList.contains("active")'), "dedicated effect eraser activates the existing alpha eraser on the effect layer");
   await click("#undo");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source === window.__animeArtOriginalRecolorSource', 10000);
+  await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name.startsWith("Efecto de color · battleworn_knight"))', 10000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source === window.__animeArtOriginalRecolorSource'), "undo removes the effect layer without changing the original");
   await click("#redo");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight").image.source !== window.__animeArtOriginalRecolorSource', 10000);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.name.startsWith("Efecto de color · battleworn_knight"))', 10000);
   await saveScreenshot("animeart-studio-selective-recolor.png");
 
   const backgroundCandidate = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.find(layer => layer.name === "battleworn_knight"); return layer ? { id:layer.id, name:layer.name } : null; })()');
@@ -1857,6 +1868,9 @@ try {
     "canvas layout shifts during a stationary touch without changing the image transform");
 
   // AA-EXTERNAL-BUGFIX-RESEARCH-002: the pixel eraser must target the same document point after zoom + pan.
+  // A previous mobile selection row can change canvas height without updating the test's frame snapshot.
+  await evaluate('window.dispatchEvent(new Event("resize"))');
+  await sleep(100);
   const eraseViewportBaseline = await readFrameMetrics();
   await wheelCanvasZoom("in", 2);
   const eraseViewportZoomed = await readFrameMetrics();
@@ -1915,6 +1929,8 @@ try {
   await waitFor('document.querySelector(".toolbar .tool[data-tool=select]")?.classList.contains("active")');
   await panCanvasByTouch(-18, -12);
   await wheelCanvasZoom("out", 2);
+  await evaluate('window.dispatchEvent(new Event("resize"))');
+  await sleep(100);
   const eraseViewportRestored = await readFrameMetrics();
   const normalizedView = frame => ({
     scaleX: (frame.right - frame.left) / frame.documentWidth,
