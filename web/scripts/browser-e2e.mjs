@@ -1558,7 +1558,10 @@ try {
   if (!symmetryLayerBefore) throw new Error("Symmetry E2E requires a drawing layer");
   const symmetryStartDoc = { x: symmetryBefore.width / 2 - 90, y: symmetryBefore.height / 2 + 40 };
   const symmetryEndDoc = { x: symmetryBefore.width / 2 - 45, y: symmetryBefore.height / 2 + 75 };
-  // Opening and closing the mobile draw sheet can change the canvas viewport geometry.
+  // Refresh the editor's render diagnostics after mobile layout changes. Hiding a fixed sheet
+  // does not guarantee a resize callback, so the last frame can otherwise describe the old layout.
+  await evaluate('window.dispatchEvent(new Event("resize"))');
+  await sleep(80);
   const symmetryFrame = await readFrameMetrics();
   const symmetryStartClient = documentPointToClientPoint(symmetryFrame, symmetryStartDoc.x, symmetryStartDoc.y);
   const symmetryEndClient = documentPointToClientPoint(symmetryFrame, symmetryEndDoc.x, symmetryEndDoc.y);
