@@ -1594,9 +1594,12 @@ try {
     });
     window.__ANIMEART_E2E_ASSET_LIBRARY_BACKUP = original;
     const canvas = document.createElement("canvas");
-    canvas.width = 8; canvas.height = 8;
+    canvas.width = 640; canvas.height = 640;
     const context = canvas.getContext("2d");
-    context.fillStyle = "#c084fc"; context.fillRect(0, 0, 8, 8);
+    const gradient = context.createLinearGradient(0, 0, 640, 640);
+    gradient.addColorStop(0, "#c084fc"); gradient.addColorStop(1, "#0ea5e9");
+    context.fillStyle = gradient; context.fillRect(0, 0, 640, 640);
+    for (let y=0; y<640; y+=16) { context.fillStyle = y % 32 ? "rgba(255,255,255,.2)" : "rgba(0,0,0,.12)"; context.fillRect(0,y,640,8); }
     const imageBlob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
     if (!imageBlob) throw new Error("Could not generate an asset library thumbnail fixture");
     const timestamp = "2026-10-21T00:00:00.000Z";
@@ -1643,6 +1646,9 @@ try {
   assert(binaryStoreState?.version === 2 && binaryStoreState.metadataCount === 40 && binaryStoreState.blobCount === 40 && binaryStoreState.inlineBlobs === 0, "schema migration moves image binaries into a separate IndexedDB store without losing any of the 40 images");
   await waitFor('Array.from(document.querySelectorAll("#asset-library-grid img")).some(image => image.src.startsWith("blob:") && image.naturalWidth > 0)');
   assert(true, "asset library loads an actual image preview on demand from the binary store");
+  await waitFor('(async () => { const req=indexedDB.open("animeart-local-asset-library"); const db=await new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);}); const tx=db.transaction("asset-blobs","readonly"); const read=tx.objectStore("asset-blobs").getAll(); const records=await new Promise((resolve,reject)=>{read.onsuccess=()=>resolve(read.result||[]);read.onerror=()=>reject(read.error);}); const found=records.some(record=>record.thumbnailBlob instanceof Blob); db.close(); return found; })()');
+  const thumbnailDimensions = await evaluate('(async () => { const req=indexedDB.open("animeart-local-asset-library"); const db=await new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);}); const tx=db.transaction("asset-blobs","readonly"); const read=tx.objectStore("asset-blobs").getAll(); const records=await new Promise((resolve,reject)=>{read.onsuccess=()=>resolve(read.result||[]);read.onerror=()=>reject(read.error);}); const record=records.find(item=>item.thumbnailBlob instanceof Blob); if(!record){db.close();return null;} const bitmap=await createImageBitmap(record.thumbnailBlob); const result={width:bitmap.width,height:bitmap.height,originalSize:record.imageBlob.size,previewSize:record.thumbnailBlob.size}; bitmap.close(); db.close(); return result; })()');
+  assert(thumbnailDimensions && Math.max(thumbnailDimensions.width, thumbnailDimensions.height) <= 512 && Math.max(thumbnailDimensions.width, thumbnailDimensions.height) < 640, "large source images get a persistent, downscaled thumbnail of at most 512 pixels while the original blob remains available");
   assert(await evaluate('document.querySelector(".asset-library-load-more")?.hidden === false && document.querySelector(".asset-library-load-more")?.textContent.includes("4 restantes")'),
     "visual library initially renders 36 cards and exposes four remaining resources");
   await click(".asset-library-load-more");
