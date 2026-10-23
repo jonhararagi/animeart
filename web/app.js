@@ -2,7 +2,6 @@ import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, create
 import { initializeAssetLibrary } from "./asset-library.js";
 import { getEditingHelpPreference, initializeAppearanceSettings, setEditingHelpPreference } from "./appearance-settings.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
-import { selectAnimeRegion, combineAnimeRegionSelections, findAnimeColorName } from "./domain/anime-region-selection.mjs";
 import { traceCropShape } from "./domain/crop-shape.mjs";
 import { runImageProcessing } from "./domain/image-processing-client.mjs";
 import { parseProjectFile, serializeProjectFile } from "./domain/project-file.mjs";
