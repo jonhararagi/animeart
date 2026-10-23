@@ -18,7 +18,7 @@ test("KapiArt anime color studio wires the offline palette, wand and non-destruc
   assert.match(app, /selectAnimeRegion\(/);
   assert.match(app, /selectAnimeRectangle\(/);
   assert.match(app, /pointerdown/);
-  assert.match(app, /combineAnimeSelections\(/);
+  assert.match(app, /combineAnimeRegionSelections\(/);
   assert.match(app, /async function splitAnimeSelectionIntoLayer\(/);
   assert.match(app, /Efecto de color · /);
   assert.match(app, /recolorCanvasPointFromClient/);
