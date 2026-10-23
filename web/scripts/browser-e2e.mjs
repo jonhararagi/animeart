@@ -1916,10 +1916,19 @@ try {
   await panCanvasByTouch(-18, -12);
   await wheelCanvasZoom("out", 2);
   const eraseViewportRestored = await readFrameMetrics();
-  assert(Math.abs(eraseViewportRestored.left - eraseViewportBaseline.left) < 4 &&
-    Math.abs(eraseViewportRestored.top - eraseViewportBaseline.top) < 4 &&
-    Math.abs((eraseViewportRestored.right - eraseViewportRestored.left) - (eraseViewportBaseline.right - eraseViewportBaseline.left)) < 4,
-    "pixel eraser undo and viewport restoration keep later mobile edge tests deterministic");
+  const normalizedView = frame => ({
+    scaleX: (frame.right - frame.left) / frame.documentWidth,
+    scaleY: (frame.bottom - frame.top) / frame.documentHeight,
+    panX: (frame.left + frame.right) / 2 - frame.canvasWidth / 2,
+    panY: (frame.top + frame.bottom) / 2 - frame.canvasHeight / 2
+  });
+  const eraseViewBefore = normalizedView(eraseViewportBaseline);
+  const eraseViewAfter = normalizedView(eraseViewportRestored);
+  assert(Math.abs(eraseViewAfter.scaleX - eraseViewBefore.scaleX) < 0.01 &&
+    Math.abs(eraseViewAfter.scaleY - eraseViewBefore.scaleY) < 0.01 &&
+    Math.abs(eraseViewAfter.panX - eraseViewBefore.panX) < 4 &&
+    Math.abs(eraseViewAfter.panY - eraseViewBefore.panY) < 4,
+    "pixel eraser undo restores zoom and pan independently of responsive canvas height: " + JSON.stringify({eraseViewBefore,eraseViewAfter,eraseViewportBaseline,eraseViewportRestored}));
 
   await evaluate('document.querySelector(".mobile-touch-dock").scrollLeft = 0');
   await saveScreenshot("animeart-studio-mobile-imported-image.png");
