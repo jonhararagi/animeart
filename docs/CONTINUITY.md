@@ -3996,3 +3996,23 @@ Verificar Web CI, Android CI y el artefacto Android ligados al SHA más reciente
 - **Límite explícito:** el control afecta trazos de capa, no operaciones rasterizadas de borrado de píxeles ni la herramienta de censura.
 - **Pruebas incorporadas:** unidad de geometría/reflejo e inputs inválidos, contratos de UI y caché, además de Chromium E2E que activa el control, dibuja en el lienzo, comprueba puntos espejados y píxeles visibles a ambos lados y ejecuta Deshacer.
 - **Estado antes de CI:** implementación en rama; validar Web E2E y Android CI sobre el HEAD final antes de integrar.
+
+
+---
+
+## Trabajo en curso · KapiArt Anime Color Studio · 2026-10-20
+
+- **Estado:** `PARTIAL`. Rama dedicada: [feature/kapiart-anime-color-studio-001](https://github.com/jonhararagi/animeart/tree/feature/kapiart-anime-color-studio-001).
+- **Base main al iniciar:** `33ab69e66e902b62e411d4cd764ef2dff180d125`.
+- Añadidos un catálogo local de tonos anime, buscador en español, varita por región conectada, máscaras para recolorear con alfa preservado, selección aditiva y acción para separar una región en una capa.
+- La paleta se genera en código. No descarga imágenes ni entrena un modelo. La varita usa heurísticas para arte anime de relleno plano y no puede garantizar reconocimiento semántico de cabello.
+- Se añadieron pruebas de módulo e integración. **CI Web, CI Android/APK y prueba física siguen pendientes** hasta comprobar el HEAD definitivo de la rama.
+- Registro ampliado: [docs/AUDITS/2026-10-20-KAPIART-ANIME-COLOR-STUDIO.md](./AUDITS/2026-10-20-KAPIART-ANIME-COLOR-STUDIO.md).
+- **TIMER estimado:** 4–8 horas; tiempo real no medido.
+
+## Actualización de alcance · selección y borrador de color · 2026-10-20
+
+- Se amplió la rama de trabajo para incluir selector rectangular por arrastre, tolerancia de la varita anime, combinación/limpieza de zonas, búsqueda de tonos en español y controles de temperatura, luminosidad/oscuridad y giro de tono.
+- El recoloreado puede crear una capa independiente `Efecto de color`; el original permanece debajo. La acción `Borrar efecto de color` activa el borrador alfa sobre esa capa para descubrir de nuevo el dibujo original.
+- La rama mantiene el trabajo separado de `main`. **No integrar hasta confirmar Web CI con E2E y Android CI en el SHA definitivo.** TIMER estimado: 4–8 horas para esta primera iteración, tiempo real no medido.
+- Limitación de ML documentada: esta versión usa heurísticas locales para rellenos anime/cel-shading y no ha sido entrenada con miles de imágenes. Una futura etapa de reconocimiento semántico requiere corpus de referencia con procedencia/licencia verificadas, además de evaluación específica en anime.
