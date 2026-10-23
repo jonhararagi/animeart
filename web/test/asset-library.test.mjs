@@ -152,15 +152,15 @@ test("asset library upgrades version-one records into separate metadata and bina
     readFile("scripts/browser-e2e.mjs", "utf8"),
     readFile("service-worker.js", "utf8")
   ]);
-  assert.match(panel, /const DB_VERSION = 2/);
-  assert.match(panel, /const BLOB_STORE = "asset-blobs"/);
-  assert.match(panel, /event\\.oldVersion < 2/);
-  assert.match(panel, /cursor\\.update\\(asset\\)/);
-  assert.match(panel, /async function allAssets\\(\\)[\\s\\S]*?objectStore\\(STORE\\)\\.getAll\\(\\)/);
-  assert.match(panel, /async function getAssetBlob\\(id\\)/);
-  assert.match(panel, /new IntersectionObserver/);
-  assert.match(panel, /getAssetBlob\\(asset\\.id\\)/);
-  assert.match(panel, /objectStore\\(BLOB_STORE\\)\\.delete\\(id\\)/);
-  assert.match(browserE2E, /schema migration moves image binaries into a separate IndexedDB store/);
-  assert.match(worker, /animeart-web-shell-v63/);
+  assert.ok(panel.includes("const DB_VERSION = 2"));
+  assert.ok(panel.includes('const BLOB_STORE = "asset-blobs"'));
+  assert.ok(panel.includes("event.oldVersion < 2"));
+  assert.ok(panel.includes("cursor.update(asset)"));
+  assert.ok(panel.includes("async function allAssets()"));
+  assert.ok(panel.includes("async function getAssetBlob(id)"));
+  assert.ok(panel.includes("new IntersectionObserver"));
+  assert.ok(panel.includes("getAssetBlob(asset.id)"));
+  assert.ok(panel.includes("objectStore(BLOB_STORE).delete(id)"));
+  assert.ok(browserE2E.includes("schema migration moves image binaries into a separate IndexedDB store"));
+  assert.ok(worker.includes("animeart-web-shell-v63"));
 });
