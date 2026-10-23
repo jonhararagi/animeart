@@ -49,3 +49,18 @@ export function traceSmoothStrokePath(context, points) {
   context.lineTo(Number(last.x), Number(last.y));
   return true;
 }
+
+/**
+ * Reflect stroke samples around the vertical document centre line.
+ * Returns fresh points and leaves the source stroke untouched.
+ */
+export function mirrorFreehandPoints(points, documentWidth) {
+  const width = Number(documentWidth);
+  if (!Array.isArray(points) || points.length === 0 ||
+      !Number.isFinite(width) || width <= 0 ||
+      points.some(point => !point ||
+        !Number.isFinite(Number(point.x)) || !Number.isFinite(Number(point.y)))) {
+    return null;
+  }
+  return points.map(point => ({ ...point, x: width - Number(point.x), y: Number(point.y) }));
+}

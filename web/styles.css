@@ -4310,3 +4310,21 @@ dialog {
 @media (max-width: 640px) {
   .asset-library-load-more { width: 100%; min-height: 46px; margin-top: 12px; }
 }
+
+/* AA-BRUSH-SYMMETRY-001: compact and touch-friendly symmetry toggle. */
+.brush-symmetry-control { min-height: 40px; }
+.brush-symmetry-control input[type="checkbox"] {
+  justify-self: end;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  accent-color: var(--accent-strong);
+}
+.brush-control-note {
+  grid-column: 1 / -1;
+  margin: -4px 0 4px;
+  color: #a9b5c7;
+  font-size: .68rem;
+  line-height: 1.35;
+}

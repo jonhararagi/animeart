@@ -12,7 +12,7 @@ import { documentCenter, documentFitScale, documentToScreenPoint, screenToDocume
 import { distanceBetweenTouches, midpointBetweenTouches, updatePinchPanViewport } from "./domain/touch-gestures.mjs";
 import { createFrameScheduler } from "./domain/frame-scheduler.mjs";
 import { appendInterpolatedStrokePoint } from "./domain/stroke-smoothing.mjs";
-import { traceSmoothStrokePath } from "./domain/freehand-rendering.mjs";
+import { mirrorFreehandPoints, traceSmoothStrokePath } from "./domain/freehand-rendering.mjs";
 import { clearCanvasBackingStore } from "./domain/canvas-rendering.mjs";
 import { addLayer, clearLayer, cropDocumentCanvas, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
@@ -183,7 +183,7 @@ const HANDLE_RADIUS = 22;
 const imageCache = new Map();
 const drawingLayerRasterCache = new WeakMap();
 
-const BRUSH_DEFAULTS = Object.freeze({ color: "#111318", size: 5, opacity: 1, hardness: 100, effect: "normal" });
+const BRUSH_DEFAULTS = Object.freeze({ color: "#111318", size: 5, opacity: 1, hardness: 100, effect: "normal", symmetry: false });
 const MIN_BRUSH_SIZE = 1;
 const MAX_BRUSH_SIZE = 100;
 
@@ -216,6 +216,7 @@ const state = {
   transformPointerId: null,
   lastPanPoint: null,
   strokeBefore: null,
+  activeMirrorStroke: null,
   imageEraseInteraction: null,
   imageRestoreInteraction: null,
   pixelEditProcessingPreview: null,
@@ -894,6 +895,14 @@ function appendSmoothStrokeSamples(stroke, events) {
     if (previous && Math.hypot(point.x - previous.x, point.y - previous.y) * screenScale < 0.15) continue;
     appendInterpolatedStrokePoint(stroke.points, point, createStrokePoint, spacing);
   }
+}
+
+function syncActiveMirrorStroke(sourceStroke) {
+  if (!sourceStroke || !state.activeMirrorStroke) return false;
+  const mirroredPoints = mirrorFreehandPoints(sourceStroke.points, state.document.width);
+  if (!mirroredPoints) return false;
+  state.activeMirrorStroke.points = mirroredPoints;
+  return true;
 }
 
 function createLayerThumbnail(layer) {
@@ -3016,6 +3025,7 @@ function beginTouchGesture() {
   state.drawing = false;
   state.drawingPointerId = null;
   state.strokeBefore = null;
+  state.activeMirrorStroke = null;
   state.panning = false;
   state.panPointerId = null;
   state.lastPanPoint = null;
@@ -3530,11 +3540,23 @@ canvas.addEventListener("pointerdown", event => {
   state.strokeBefore = cloneDocument(state.document);
   canvas.setPointerCapture(event.pointerId);
   const censor = state.tool === "censor-light";
-  layer.strokes.push(createStroke(state.tool, censor ? Number(censorInputs.size.value) : state.brush.size, [pointFromEvent(event)], censor ? censorInputs.color.value : state.brush.color, censor ? Number(censorInputs.opacity.value) / 100 : state.brush.opacity, {
+  const sourceStroke = createStroke(state.tool, censor ? Number(censorInputs.size.value) : state.brush.size, [pointFromEvent(event)], censor ? censorInputs.color.value : state.brush.color, censor ? Number(censorInputs.opacity.value) / 100 : state.brush.opacity, {
     hardness: censor ? 100 - Number(censorInputs.softness.value) : state.brush.hardness,
     effect: censor ? "normal" : state.brush.effect,
     glow: censor ? Number(censorInputs.glow.value) : 0
-  }));
+  });
+  state.activeMirrorStroke = null;
+  if (state.brush.symmetry && layer.contentType === "drawing" && ["brush", "eraser"].includes(state.tool)) {
+    const mirroredPoints = mirrorFreehandPoints(sourceStroke.points, state.document.width);
+    if (mirroredPoints) {
+      state.activeMirrorStroke = createStroke(sourceStroke.tool, sourceStroke.size, mirroredPoints,
+        sourceStroke.color, sourceStroke.opacity, {
+          hardness: sourceStroke.hardness, effect: sourceStroke.effect, glow: sourceStroke.glow
+        });
+      layer.strokes.push(state.activeMirrorStroke);
+    }
+  }
+  layer.strokes.push(sourceStroke);
 });
 
 canvas.addEventListener("pointermove", event => {
@@ -3612,6 +3634,7 @@ canvas.addEventListener("pointermove", event => {
   if (!stroke) return;
   const samples = typeof event.getCoalescedEvents === "function" ? event.getCoalescedEvents() : [];
   appendSmoothStrokeSamples(stroke, samples.length ? [...samples, event] : [event]);
+  syncActiveMirrorStroke(stroke);
   redraw();
 });
 
@@ -3749,6 +3772,8 @@ canvas.addEventListener("pointerup", event => {
   const finalLayer = selectedLayer();
   const finalStroke = finalLayer?.strokes[finalLayer.strokes.length - 1];
   if (finalStroke) appendSmoothStrokeSamples(finalStroke, [event]);
+  syncActiveMirrorStroke(finalStroke);
+  state.activeMirrorStroke = null;
   state.drawing = false;
   state.drawingPointerId = null;
   if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
@@ -3815,6 +3840,7 @@ canvas.addEventListener("pointercancel", event => {
   if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
   const before = state.strokeBefore;
   state.strokeBefore = null;
+  state.activeMirrorStroke = null;
   if (before) state.document = before;
   refreshDocument("Drawing cancelled");
 });
@@ -3870,6 +3896,7 @@ const brushOpacityValue = document.querySelector("#brush-opacity-value");
 const brushHardnessInput = document.querySelector("#brush-hardness");
 const brushHardnessValue = document.querySelector("#brush-hardness-value");
 const brushEffectInput = document.querySelector("#brush-effect");
+const brushSymmetryInput = document.querySelector("#brush-symmetry");
 
 brushColorInput.addEventListener("input", event => {
   if (setBrushColor(event.currentTarget.value)) redraw();
@@ -3893,6 +3920,13 @@ brushHardnessInput.addEventListener("input", event => {
 brushEffectInput.addEventListener("change", event => {
   if (!setBrushEffect(event.currentTarget.value)) return;
   status.textContent = "Brush effect: " + brushEffectInput.selectedOptions[0].textContent;
+});
+
+brushSymmetryInput.addEventListener("change", event => {
+  state.brush.symmetry = event.currentTarget.checked === true;
+  status.textContent = state.brush.symmetry
+    ? "Simetría vertical activada para pincel y borrador de capa."
+    : "Simetría vertical desactivada.";
 });
 
 const censorInputs = {
@@ -6395,7 +6429,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v64";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v65";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
