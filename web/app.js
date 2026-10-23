@@ -4238,6 +4238,9 @@ function closeMobileContextPanel() {
 function openMobileContextPanel(panel = "draw") {
   document.body.classList.remove("mobile-layers-open", "mobile-tools-collapsed");
   document.body.classList.add("mobile-tools-open", "mobile-draw-panel-open");
+  // Brush controls live in the More tools disclosure; expand it when the drawing sheet opens.
+  const brushControlsDisclosure = document.querySelector(".workspace > .toolbar > details.more-tools");
+  if (brushControlsDisclosure) brushControlsDisclosure.open = true;
   if (mobileContextHeading) mobileContextHeading.hidden = false;
   const title = document.querySelector("#mobile-context-title");
   const description = document.querySelector("#mobile-context-description");
