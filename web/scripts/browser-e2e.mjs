@@ -1546,6 +1546,50 @@ try {
   await click('.mobile-top-actions [data-mobile-top-action="undo"]');
   await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.contentType==="drawing"&&layer.strokes?.length)', 10000);
 
+  // AA-BRUSH-SYMMETRY-001: the canvas stores two editable paths mirrored around the document centre.
+  await click('.mobile-touch-dock [data-touch-action="paint"]');
+  await waitFor('document.querySelector("#brush-symmetry") !== null');
+  await click("#brush-symmetry");
+  await waitFor('document.querySelector("#brush-symmetry").checked === true');
+  await click("#mobile-context-close");
+  await waitFor('document.querySelector("#mobile-context-heading").hidden === true');
+  const symmetryBefore = await readDocument();
+  const symmetryLayerBefore = symmetryBefore.layers.find(layer => layer.contentType === "drawing");
+  if (!symmetryLayerBefore) throw new Error("Symmetry E2E requires a drawing layer");
+  const symmetryStartDoc = { x: symmetryBefore.width / 2 - 90, y: symmetryBefore.height / 2 + 40 };
+  const symmetryEndDoc = { x: symmetryBefore.width / 2 - 45, y: symmetryBefore.height / 2 + 75 };
+  const symmetryStartClient = documentPointToClientPoint(drawViewportPanned, symmetryStartDoc.x, symmetryStartDoc.y);
+  const symmetryEndClient = documentPointToClientPoint(drawViewportPanned, symmetryEndDoc.x, symmetryEndDoc.y);
+  await mouseDrag(symmetryStartClient, symmetryEndClient);
+  await waitFor('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const l=d.layers.find(layer=>layer.id===' + JSON.stringify(symmetryLayerBefore.id) + '); return l?.strokes?.length >= ' + (symmetryLayerBefore.strokes.length + 2) + '; })()', 10000);
+  const symmetryAfter = await readDocument();
+  const symmetryLayerAfter = symmetryAfter.layers.find(layer => layer.id === symmetryLayerBefore.id);
+  const mirroredPair = symmetryLayerAfter.strokes.slice(-2);
+  assert(mirroredPair.length === 2 && mirroredPair[0].points.length >= 2 &&
+    mirroredPair[0].points.length === mirroredPair[1].points.length &&
+    mirroredPair[0].points.every((point,index) =>
+      Math.abs(point.x + mirroredPair[1].points[index].x - symmetryAfter.width) < 0.001 &&
+      Math.abs(point.y - mirroredPair[1].points[index].y) < 0.001),
+    "symmetry drawing stores paired editable strokes whose coordinates mirror across the document centre");
+  const leftDoc = {x:symmetryBefore.width/2-67.5,y:symmetryBefore.height/2+57.5};
+  const rightDoc = {x:symmetryBefore.width-leftDoc.x,y:leftDoc.y};
+  const pixelTargets = [
+    documentPointToClientPoint(drawViewportPanned,leftDoc.x,leftDoc.y),
+    documentPointToClientPoint(drawViewportPanned,rightDoc.x,rightDoc.y)
+  ];
+  const symmetryPixelEvidence = await evaluate('(() => { const c=document.querySelector("#canvas"),r=c.getBoundingClientRect(),p=' + JSON.stringify(pixelTargets) + '; return p.map(v=>{const x=Math.max(0,Math.min(c.width-1,Math.round((v.x-r.left)*c.width/r.width))),y=Math.max(0,Math.min(c.height-1,Math.round((v.y-r.top)*c.height/r.height))); return Array.from(c.getContext("2d",{willReadFrequently:true}).getImageData(x,y,1,1).data)[3];}); })()');
+  assert(symmetryPixelEvidence.every(alpha => alpha > 0),
+    "the real canvas renders visible pixels on both sides of the symmetry axis");
+  await click('.mobile-touch-dock [data-touch-action="tool"][data-tool="select"]');
+  await click('.mobile-top-actions [data-mobile-top-action="undo"]');
+  await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.id===' + JSON.stringify(symmetryLayerBefore.id) + '&&layer.strokes?.length)', 10000);
+  await click('.mobile-touch-dock [data-touch-action="paint"]');
+  await waitFor('document.querySelector("#brush-symmetry") !== null');
+  await click("#brush-symmetry");
+  await waitFor('document.querySelector("#brush-symmetry").checked === false');
+  await click("#mobile-context-close");
+  await waitFor('document.querySelector("#mobile-context-heading").hidden === true');
+
   // Return to the original viewport so later mobile assertions start from a stable baseline.
   await panCanvasByTouch(-20, -14);
   await wheelCanvasZoom("out", 2);

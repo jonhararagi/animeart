@@ -1072,3 +1072,18 @@ test("anime connected-region UI supports adding and subtracting selection areas"
   assert.match(app, /combineAnimeRegionSelections/);
   assert.match(app, /armRecolorRegionSelection/);
 });
+
+
+test("AA-BRUSH-SYMMETRY-001 wires the vertical symmetry toggle into editable stroke history", async () => {
+  const [html, js] = await Promise.all([
+    readFile("index.html", "utf8"),
+    readFile("app.js", "utf8")
+  ]);
+  assert.ok(html.includes('id="brush-symmetry" type="checkbox"'));
+  assert.ok(js.includes('brushSymmetryInput.addEventListener("change"'));
+  assert.ok(js.includes("state.activeMirrorStroke = createStroke"));
+  assert.ok(js.includes("syncActiveMirrorStroke(stroke)"));
+  const pointerUp = js.match(/canvas\.addEventListener\("pointerup",[\s\S]*?canvas\.addEventListener\("pointercancel"/)?.[0] || "";
+  assert.ok(pointerUp.includes("syncActiveMirrorStroke(finalStroke)"));
+  assert.ok(pointerUp.includes("state.history.record(before, state.document)"));
+});
