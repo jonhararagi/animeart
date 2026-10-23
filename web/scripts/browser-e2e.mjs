@@ -1626,6 +1626,23 @@ try {
   await click("#quick-open-asset-library");
   await waitFor('document.querySelector("#asset-library-dialog")?.open === true');
   await waitFor('document.querySelectorAll("#asset-library-grid .asset-card").length === 36');
+  const binaryStoreState = await evaluate(`(async () => {
+    const request = indexedDB.open("animeart-local-asset-library");
+    const db = await new Promise((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const tx = db.transaction(["assets", "asset-blobs"], "readonly");
+    const metadataRequest = tx.objectStore("assets").getAll();
+    const blobsRequest = tx.objectStore("asset-blobs").getAll();
+    const [metadata, blobs] = await Promise.all([
+      new Promise((resolve, reject) => { metadataRequest.onsuccess = () => resolve(metadataRequest.result || []); metadataRequest.onerror = () => reject(metadataRequest.error); }),
+      new Promise((resolve, reject) => { blobsRequest.onsuccess = () => resolve(blobsRequest.result || []); blobsRequest.onerror = () => reject(blobsRequest.error); })
+    ]);
+    const result = { version: db.version, metadataCount: metadata.length, blobCount: blobs.length, inlineBlobs: metadata.filter(asset => asset.imageBlob instanceof Blob).length };
+    db.close();
+    return result;
+  })()`);
+  assert(binaryStoreState?.version === 2 && binaryStoreState.metadataCount === 40 && binaryStoreState.blobCount === 40 && binaryStoreState.inlineBlobs === 0, "schema migration moves image binaries into a separate IndexedDB store without losing any of the 40 images");
+  await waitFor('Array.from(document.querySelectorAll("#asset-library-grid img")).some(image => image.src.startsWith("blob:") && image.naturalWidth > 0)');
+  assert(true, "asset library loads an actual image preview on demand from the binary store");
   assert(await evaluate('document.querySelector(".asset-library-load-more")?.hidden === false && document.querySelector(".asset-library-load-more")?.textContent.includes("4 restantes")'),
     "visual library initially renders 36 cards and exposes four remaining resources");
   await click(".asset-library-load-more");
@@ -1643,16 +1660,24 @@ try {
   const restoredLibraryCount = await evaluate(`(async () => {
     const dbName = "animeart-local-asset-library";
     const storeName = "assets";
-    const request = indexedDB.open(dbName, 1);
+    const request = indexedDB.open(dbName);
     const db = await new Promise((resolve, reject) => {
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error || new Error("Could not restore asset library fixture"));
     });
-    const tx = db.transaction(storeName, "readwrite");
+    const tx = db.transaction([storeName, "asset-blobs"], "readwrite");
     const store = tx.objectStore(storeName);
+    const blobs = tx.objectStore("asset-blobs");
     store.clear();
+    blobs.clear();
     const original = window.__ANIMEART_E2E_ASSET_LIBRARY_BACKUP || [];
-    for (const asset of original) store.put(asset);
+    for (const asset of original) {
+      const metadata = { ...asset };
+      const imageBlob = metadata.imageBlob;
+      delete metadata.imageBlob;
+      store.put(metadata);
+      if (imageBlob instanceof Blob) blobs.put({ id: metadata.id, imageBlob });
+    }
     await new Promise((resolve, reject) => {
       tx.oncomplete = resolve;
       tx.onerror = () => reject(tx.error || new Error("Could not restore asset library state"));

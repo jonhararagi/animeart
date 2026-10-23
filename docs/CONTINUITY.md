@@ -3961,3 +3961,18 @@ Verificar Web CI, Android CI y el artefacto Android ligados al SHA más reciente
 - **Limitación conocida:** este lote limita la creación de tarjetas, URLs de previsualización y decodificación inicial, pero `allAssets()` todavía usa `IndexedDB.getAll()` y recupera los blobs junto con los metadatos. Un futuro lote puede separar metadatos y binarios en almacenes IndexedDB distintos, con migración y pruebas de recuperación antes de cambiar el formato local.
 - **TIMER estimado:** 2–4 horas para la implementación y validación; tiempo real no medido.
 - **Siguiente criterio de decisión:** no fusionar PR #110 sin autorización explícita. Antes de prometer que la biblioteca evita cargar todos los datos binarios, completar la separación de almacenamiento y probar migración desde DB_VERSION=1.
+
+
+## 2026-10-22 · Biblioteca visual, almacenamiento v2 en rama de trabajo
+
+- **Repositorio:** `jonhararagi/animeart`
+- **Rama:** `feature/animeart-library-binary-store-002`
+- **Base de trabajo:** `main` en `71cf75d0692fc5122463e3500fef9104062ba5e7` después de integrar la carga progresiva de biblioteca (PR #110).
+- **TIMER estimado:** 3–5 horas de ingeniería para la migración y verificación; tiempo real no medido.
+- **Objetivo de este lote:** IndexedDB v2 mantiene las fichas sin el `Blob` inline en `assets` y almacena los binarios en `asset-blobs`; la subida v1→v2 recorre los recursos existentes y los migra en la transacción de actualización.
+- **Cambios de código en progreso:** carga solo metadatos al abrir la biblioteca; miniaturas cargan el binario cuando la tarjeta entra en el área visible; inserción/exportación obtienen binarios de forma explícita; borrado elimina ficha y binario juntos; comprobación E2E cubre la migración de 40 registros.
+- **Pruebas actualizadas:** contratos estáticos de versión de caché a `animeart-web-shell-v63`; E2E ampliado con inspección real de IndexedDB.
+- **Estado honesto:** pendiente de completar CI en la rama y revisar los resultados reales antes de recomendar la integración. No se modifica `main` para este lote sin las verificaciones del PR.
+- **Riesgo a revisar:** la migración depende de que el upgrade de IndexedDB concluya correctamente; revisar logs de Web E2E, instrumentación Android y manejo de errores de transacción. La carga de binarios para duplicados y exportación es intencionada y ocurre solo en esos flujos.
+
+- **Protección de actualización añadida:** si IndexedDB avisa que otra pestaña bloquea la actualización, el diálogo informa que debe cerrarse la pestaña antigua; la solicitud permanece activa para completar la migración cuando se libere, sin rechazarla prematuramente.

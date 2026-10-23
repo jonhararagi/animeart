@@ -51,7 +51,7 @@ test("Asset Library UI is wired to local storage, reusable canvas layers and pac
   assert.match(panel,/createAssetLibraryPackage/);
   assert.match(panel,/imageDataUrl/);
   assert.match(app,/initializeAssetLibrary\(\{ onImportImage: importImageIntoEditor/);
-  assert.match(worker,/animeart-web-shell-v62/);
+  assert.match(worker,/animeart-web-shell-v63/);
   assert.match(worker,/\.\/asset-library\.js/);
 });
 
@@ -105,7 +105,7 @@ test("asset library UI captures source and license data, hashes imports, and acc
   assert.match(panel,/sha256Hex/);
   assert.match(panel,/LEGACY_ASSET_LIBRARY_SCHEMA_VERSIONS/);
   assert.match(panel,/Duplicados exactos omitidos/);
-  assert.match(worker,/animeart-web-shell-v62/);
+  assert.match(worker,/animeart-web-shell-v63/);
 });
 
 
@@ -119,7 +119,7 @@ test("legacy asset hash backfill runs only for matching import sizes before exac
   assert.match(panel, /await backfillLegacyHashes\(existing,prepared\.map\(record=>record\.imageBlob\)\)/);
   assert.match(panel, /knownHashes=new Set\(current\.map\(asset=>asset\.contentHash\)\.filter\(Boolean\)\)/);
   assert.match(worker, /\.\/domain\/asset-deduplication\.mjs/);
-  assert.match(worker, /animeart-web-shell-v62/);
+  assert.match(worker, /animeart-web-shell-v63/);
 });
 
 test("package import never trusts a declared SHA-256 if the local browser cannot recompute it", async () => {
@@ -142,6 +142,27 @@ test("asset library renders thumbnails progressively, resets pagination on searc
   assert.match(panel, /image\.decoding="async"/);
   assert.match(panel, /asset-library-load-more/);
   assert.match(worker, /\.\/domain\/asset-library-pagination\.mjs/);
-  assert.match(worker, /animeart-web-shell-v62/);
+  assert.match(worker, /animeart-web-shell-v63/);
   assert.match(styles, /\.asset-library-load-more/);
+});
+
+test("asset library upgrades version-one records into separate metadata and binary stores without discarding images", async () => {
+  const [panel, browserE2E, worker] = await Promise.all([
+    readFile("asset-library.js", "utf8"),
+    readFile("scripts/browser-e2e.mjs", "utf8"),
+    readFile("service-worker.js", "utf8")
+  ]);
+  assert.ok(panel.includes("const DB_VERSION = 2"));
+  assert.ok(panel.includes('const BLOB_STORE = "asset-blobs"'));
+  assert.ok(panel.includes("request.onblocked = () =>"));
+  assert.ok(panel.includes("Cierra las pestañas antiguas para continuar sin perder tu biblioteca"));
+  assert.ok(panel.includes("event.oldVersion < 2"));
+  assert.ok(panel.includes("cursor.update(asset)"));
+  assert.ok(panel.includes("async function allAssets()"));
+  assert.ok(panel.includes("async function getAssetBlob(id)"));
+  assert.ok(panel.includes("new IntersectionObserver"));
+  assert.ok(panel.includes("getAssetBlob(asset.id)"));
+  assert.ok(panel.includes("objectStore(BLOB_STORE).delete(id)"));
+  assert.ok(browserE2E.includes("schema migration moves image binaries into a separate IndexedDB store"));
+  assert.ok(worker.includes("animeart-web-shell-v63"));
 });
