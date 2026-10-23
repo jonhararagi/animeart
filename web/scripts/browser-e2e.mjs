@@ -1870,15 +1870,15 @@ try {
   // The main-canvas pixel eraser exposes a live route before changing image pixels.
   const sourceBeforeBrushErase = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.image?.source');
   await evaluate('(() => { const input=document.querySelector("#brush-size"); input.value="48"; input.dispatchEvent(new Event("input",{bubbles:true})); })()');
-  // Earlier mobile tests leave a transparent drawing layer selected. Select the imported raster
-  // through the visible mobile layer drawer, then return to the eraser tool.
+  // Earlier mobile tests leave a transparent drawing layer selected. Open the real More > Capas
+  // workflow, select the imported raster, then reopen the eraser tool.
   const eraseImageLayerId = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import"&&layer.contentType==="image")?.id');
   assert(Boolean(eraseImageLayerId), "pixel-eraser fixture retains its imported image layer");
-  await click('.mobile-touch-dock [data-touch-action="layers"]');
+  await clickMoreGoal("layers");
   await waitFor('document.body.classList.contains("mobile-layers-open")');
   await click(layerButtonSelector(eraseImageLayerId));
   await waitFor('document.querySelector("#layers li[data-selected=true]")?.dataset.layerId === ' + JSON.stringify(eraseImageLayerId));
-  await click('.mobile-touch-dock [data-touch-action="layers"]');
+  await clickMoreGoal("layers");
   await waitFor('!document.body.classList.contains("mobile-layers-open")');
   await clickMoreGoal("eraser");
   await waitFor('document.querySelector(".toolbar .tool[data-tool=eraser]")?.classList.contains("active") && document.querySelector("#mobile-context-heading")?.hidden === false');
