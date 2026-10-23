@@ -1589,18 +1589,22 @@ try {
     Math.hypot(leftCenter.x-leftDoc.x,leftCenter.y-leftDoc.y)<12 &&
     Math.hypot(rightCenter.x-rightDoc.x,rightCenter.y-rightDoc.y)<12,
     "pointer coordinates place both editable stroke paths in their intended document regions: " + JSON.stringify({leftCenter,rightCenter,leftDoc,rightDoc,centers,symmetryFrame}));
-  const pixelTargets = [
-    documentPointToClientPoint(symmetryFrame,leftCenter.x,leftCenter.y),
-    documentPointToClientPoint(symmetryFrame,rightCenter.x,rightCenter.y)
-  ];
-  await saveScreenshot("animeart-studio-brush-symmetry-debug.png");
-  console.log("SYMMETRY_STROKE_DEBUG: " + JSON.stringify(mirroredPair.map(stroke => ({
-    tool:stroke.tool,color:stroke.color,size:stroke.size,opacity:stroke.opacity,effect:stroke.effect,
-    pointCount:stroke.points.length,first:stroke.points[0],last:stroke.points.at(-1),center:strokeCenter(stroke)
-  }))));
+  const layerTransform = symmetryLayerAfter.transform || {};
+  const layerCenter = {x:symmetryAfter.width/2,y:symmetryAfter.height/2};
+  const layerScale = Number(layerTransform.scale)>0 ? Number(layerTransform.scale) : 1;
+  const layerRotation = (Number(layerTransform.rotation)||0)*Math.PI/180;
+  const renderPointForLayer = point => {
+    const dx=(point.x-layerCenter.x)*layerScale,dy=(point.y-layerCenter.y)*layerScale;
+    return {
+      x:layerCenter.x+dx*Math.cos(layerRotation)-dy*Math.sin(layerRotation)+(Number(layerTransform.x)||0),
+      y:layerCenter.y+dx*Math.sin(layerRotation)+dy*Math.cos(layerRotation)+(Number(layerTransform.y)||0)
+    };
+  };
+  const renderedCenters = [leftCenter,rightCenter].map(point => renderPointForLayer(point));
+  const pixelTargets = renderedCenters.map(point => documentPointToClientPoint(symmetryFrame,point.x,point.y));
   const symmetryPixelEvidence = await evaluate('(() => { const c=document.querySelector("#canvas"),r=c.getBoundingClientRect(),p=' + JSON.stringify(pixelTargets) + ',ctx=c.getContext("2d",{willReadFrequently:true}),radius=Math.max(2,Math.ceil(8*c.height/r.height)); return p.map(v=>{const x=Math.max(0,Math.min(c.width-1,Math.round((v.x-r.left)*c.width/r.width))),y=Math.max(0,Math.min(c.height-1,Math.round((v.y-r.top)*c.height/r.height))),left=Math.max(0,x-radius),top=Math.max(0,y-radius),right=Math.min(c.width,x+radius+1),bottom=Math.min(c.height,y+radius+1),data=ctx.getImageData(left,top,right-left,bottom-top).data;let maxAlpha=0;for(let i=3;i<data.length;i+=4)maxAlpha=Math.max(maxAlpha,data[i]);return {maxAlpha,radius};}); })()');
   assert(symmetryPixelEvidence.every(evidence => evidence.maxAlpha > 0),
-    "the real canvas renders visible pixels along both stored mirrored stroke paths: " + JSON.stringify({symmetryPixelEvidence,pixelTargets,leftCenter,rightCenter,leftDoc,rightDoc,symmetryFrame}));
+    "the real canvas renders visible pixels along both stored mirrored stroke paths after the selected layer transform: " + JSON.stringify({symmetryPixelEvidence,pixelTargets,renderedCenters,layerTransform,leftCenter,rightCenter,leftDoc,rightDoc,symmetryFrame}));
   await click('.mobile-touch-dock [data-touch-action="tool"][data-tool="select"]');
   await click('.mobile-top-actions [data-mobile-top-action="undo"]');
   await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.id===' + JSON.stringify(symmetryLayerBefore.id) + '&&layer.strokes?.length)', 10000);
