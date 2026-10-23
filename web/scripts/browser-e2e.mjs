@@ -1872,6 +1872,10 @@ try {
   await evaluate('(() => { const input=document.querySelector("#brush-size"); input.value="48"; input.dispatchEvent(new Event("input",{bubbles:true})); })()');
   await clickMoreGoal("eraser");
   await waitFor('document.querySelector(".toolbar .tool[data-tool=eraser]")?.classList.contains("active") && document.querySelector("#mobile-context-heading")?.hidden === false');
+  // Rebuild selection diagnostics after the mobile tool sheet has changed the workspace layout.
+  await evaluate('window.dispatchEvent(new Event("resize"))');
+  await sleep(100);
+  await waitFor('Boolean(window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.center)');
   const erasePreviewSetup = await evaluate('(() => { const canvas=document.querySelector("#canvas"),r=canvas.getBoundingClientRect(),d=window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__; if(!d?.center)throw new Error("selected image screen coordinates are unavailable"); const center={x:r.left+d.center.x,y:r.top+d.center.y}; const sample={x:center.x-7,y:center.y+3}; const px=Math.max(0,Math.min(canvas.width-1,Math.round((sample.x-r.left)*canvas.width/r.width))),py=Math.max(0,Math.min(canvas.height-1,Math.round((sample.y-r.top)*canvas.height/r.height))); return {center,start:{x:center.x-56,y:center.y},end:{x:center.x+42,y:center.y},sample,before:Array.from(canvas.getContext("2d",{willReadFrequently:true}).getImageData(px,py,1,1).data)}; })()');
   await cdp("Input.dispatchMouseEvent",{type:"mouseMoved",x:erasePreviewSetup.start.x,y:erasePreviewSetup.start.y});
   await cdp("Input.dispatchMouseEvent",{type:"mousePressed",x:erasePreviewSetup.start.x,y:erasePreviewSetup.start.y,button:"left",buttons:1,clickCount:1});
