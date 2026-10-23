@@ -1870,15 +1870,19 @@ try {
   // The main-canvas pixel eraser exposes a live route before changing image pixels.
   const sourceBeforeBrushErase = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import")?.image?.source');
   await evaluate('(() => { const input=document.querySelector("#brush-size"); input.value="48"; input.dispatchEvent(new Event("input",{bubbles:true})); })()');
-  await clickMoreGoal("eraser");
-  await waitFor('document.querySelector(".toolbar .tool[data-tool=eraser]")?.classList.contains("active") && document.querySelector("#mobile-context-heading")?.hidden === false');
-  // Earlier mobile tests leave a transparent drawing layer selected. Pixel erasing must explicitly
-  // target the imported raster image, otherwise the brush correctly paints/erases the active drawing layer.
+  // Earlier mobile tests leave a transparent drawing layer selected. Select the imported raster
+  // through the visible mobile layer drawer, then return to the eraser tool.
   const eraseImageLayerId = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import"&&layer.contentType==="image")?.id');
   assert(Boolean(eraseImageLayerId), "pixel-eraser fixture retains its imported image layer");
+  await click('.mobile-touch-dock [data-touch-action="layers"]');
+  await waitFor('document.body.classList.contains("mobile-layers-open")');
   await click(layerButtonSelector(eraseImageLayerId));
   await waitFor('document.querySelector("#layers li[data-selected=true]")?.dataset.layerId === ' + JSON.stringify(eraseImageLayerId));
-  // Rebuild selection diagnostics after the mobile tool sheet has changed the workspace layout.
+  await click('.mobile-touch-dock [data-touch-action="layers"]');
+  await waitFor('!document.body.classList.contains("mobile-layers-open")');
+  await clickMoreGoal("eraser");
+  await waitFor('document.querySelector(".toolbar .tool[data-tool=eraser]")?.classList.contains("active") && document.querySelector("#mobile-context-heading")?.hidden === false');
+  // Refresh selection geometry after returning from the drawer to the canvas tool sheet.
   await evaluate('window.dispatchEvent(new Event("resize"))');
   await sleep(100);
   await waitFor('Boolean(window.__ANIMEART_SELECTION_HANDLE_DIAGNOSTICS__?.center)');
