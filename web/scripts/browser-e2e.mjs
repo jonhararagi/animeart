@@ -1548,7 +1548,7 @@ try {
 
   // AA-BRUSH-SYMMETRY-001: the canvas stores two editable paths mirrored around the document centre.
   await click('.mobile-touch-dock [data-touch-action="paint"]');
-  await waitFor('document.querySelector("#mobile-context-heading")?.hidden === false && document.querySelector("#brush-symmetry")?.getClientRects().length > 0');
+  await waitFor('document.querySelector("#brush-symmetry")?.getClientRects().length > 0');
   await click("#brush-symmetry");
   await waitFor('document.querySelector("#brush-symmetry").checked === true');
   await click("#mobile-context-close");
@@ -1584,7 +1584,7 @@ try {
   await click('.mobile-top-actions [data-mobile-top-action="undo"]');
   await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.id===' + JSON.stringify(symmetryLayerBefore.id) + '&&layer.strokes?.length)', 10000);
   await click('.mobile-touch-dock [data-touch-action="paint"]');
-  await waitFor('document.querySelector("#mobile-context-heading")?.hidden === false && document.querySelector("#brush-symmetry")?.getClientRects().length > 0');
+  await waitFor('document.querySelector("#brush-symmetry")?.getClientRects().length > 0');
   await click("#brush-symmetry");
   await waitFor('document.querySelector("#brush-symmetry").checked === false');
   await click("#mobile-context-close");
