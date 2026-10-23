@@ -3976,3 +3976,13 @@ Verificar Web CI, Android CI y el artefacto Android ligados al SHA más reciente
 - **Riesgo a revisar:** la migración depende de que el upgrade de IndexedDB concluya correctamente; revisar logs de Web E2E, instrumentación Android y manejo de errores de transacción. La carga de binarios para duplicados y exportación es intencionada y ocurre solo en esos flujos.
 
 - **Protección de actualización añadida:** si IndexedDB avisa que otra pestaña bloquea la actualización, el diálogo informa que debe cerrarse la pestaña antigua; la solicitud permanece activa para completar la migración cuando se libere, sin rechazarla prematuramente.
+
+
+## 2026-10-23 · Previsualizaciones ligeras de la biblioteca visual
+
+- **Rama:** `feature/animeart-asset-thumbnails-003`, partiendo de main `f6fcba7310a8df64b69df913a5b9394d20ac9fb2`.
+- **TIMER estimado:** 2–4 horas de ingeniería y validación; tiempo real no medido.
+- **Objetivo:** persistir miniaturas derivadas de hasta 512 px para vistas previas, conservar el original para inserción y exportación, y no decodificar repetidamente originales grandes al recorrer la biblioteca.
+- **Implementación en curso:** genera miniaturas cuando se consulta una tarjeta visible, las guarda junto al binario original en la tienda IndexedDB existente, reutiliza las miniaturas la siguiente vez y libera los bitmaps de memoria tras la conversión.
+- **Verificación planificada:** E2E con imagen de 640×640, dimensiones de miniatura limitadas a 512 px, preservación del original y pruebas existentes; la caché PWA sube a `v64`.
+- **Estado honesto:** pendiente de Web CI, E2E y Android CI antes de proponer integración.

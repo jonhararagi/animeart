@@ -86,12 +86,74 @@ async function allAssets() {
     request.onerror = () => reject(request.error || new Error("Could not read image library metadata"));
   });
 }
-async function getAssetBlob(id) {
+async function getAssetBlobRecord(id) {
   const db = await database();
   return new Promise((resolve, reject) => {
     const request = db.transaction(BLOB_STORE, "readonly").objectStore(BLOB_STORE).get(id);
-    request.onsuccess = () => resolve(request.result?.imageBlob instanceof Blob ? request.result.imageBlob : null);
+    request.onsuccess = () => resolve(request.result || null);
     request.onerror = () => reject(request.error || new Error("Could not read image binary"));
+  });
+}
+async function getAssetBlob(id) {
+  const record = await getAssetBlobRecord(id);
+  return record?.imageBlob instanceof Blob ? record.imageBlob : null;
+}
+async function createAssetThumbnail(imageBlob) {
+  if (!(imageBlob instanceof Blob) || typeof createImageBitmap !== "function") return null;
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(imageBlob);
+  } catch {
+    return null;
+  }
+  try {
+    const longestEdge = Math.max(bitmap.width, bitmap.height);
+    const maximumEdge = 512;
+    if (!longestEdge || longestEdge <= maximumEdge) return null;
+    const scale = maximumEdge / longestEdge;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) return null;
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const encode = (type, quality) => new Promise(resolve => canvas.toBlob(resolve, type, quality));
+    let thumbnail = await encode("image/webp", 0.82);
+    if (!(thumbnail instanceof Blob) || thumbnail.type !== "image/webp") {
+      thumbnail = await encode("image/png");
+    }
+    return thumbnail instanceof Blob ? thumbnail : null;
+  } finally {
+    bitmap.close?.();
+  }
+}
+async function getAssetPreviewBlob(id) {
+  const db = await database();
+  const record = await getAssetBlobRecord(id);
+  if (!(record?.imageBlob instanceof Blob)) return null;
+  if (record.thumbnailBlob instanceof Blob) return record.thumbnailBlob;
+  const thumbnailBlob = await createAssetThumbnail(record.imageBlob);
+  if (!(thumbnailBlob instanceof Blob)) return record.imageBlob;
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(BLOB_STORE, "readwrite");
+    const store = tx.objectStore(BLOB_STORE);
+    let result = thumbnailBlob;
+    const request = store.get(id);
+    request.onsuccess = () => {
+      const current = request.result;
+      if (!(current?.imageBlob instanceof Blob)) {
+        result = null;
+        return;
+      }
+      if (current.thumbnailBlob instanceof Blob) {
+        result = current.thumbnailBlob;
+        return;
+      }
+      store.put({ ...current, thumbnailBlob });
+    };
+    tx.oncomplete = () => resolve(result);
+    tx.onerror = () => reject(tx.error || new Error("Could not cache image thumbnail"));
+    tx.onabort = () => reject(tx.error || new Error("Image thumbnail caching was cancelled"));
   });
 }
 async function saveAsset(asset) {
@@ -212,7 +274,7 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
   }
   function schedulePreview(image, asset) {
     const load = () => {
-      getAssetBlob(asset.id).then(imageBlob => {
+      getAssetPreviewBlob(asset.id).then(imageBlob => {
         if (!(imageBlob instanceof Blob) || !image.isConnected) return;
         const url = URL.createObjectURL(imageBlob);
         if (!image.isConnected) { URL.revokeObjectURL(url); return; }
