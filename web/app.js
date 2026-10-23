@@ -5660,6 +5660,7 @@ recolorCanvas.addEventListener("click",event=>{
  if(!point){document.querySelector("#recolor-status").textContent="Toca dentro de la imagen, no en el margen transparente.";return;}
  const {x,y}=point;
  const o=(y*recolorCanvas.width+x)*4;
+ if(window.__ANIMEART_E2E_DIAGNOSTICS__)window.__ANIMEART_RECOLOR_SAMPLE_DIAGNOSTICS__={x,y,alpha:s.original.data[o+3],pixel:pixelHex(s.original.data,o),sampleMode:recolorSampleMode,wandMode:recolorWandMode,clientX:event.clientX,clientY:event.clientY,canvasWidth:recolorCanvas.width,canvasHeight:recolorCanvas.height};
  if(recolorWandMode){
   try{
    const region=selectAnimeRegion(s.original,{x,y,tolerance:Number(document.querySelector("#recolor-wand-tolerance").value),protectLineArt:true});
