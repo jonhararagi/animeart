@@ -154,6 +154,8 @@ test("asset library upgrades version-one records into separate metadata and bina
   ]);
   assert.ok(panel.includes("const DB_VERSION = 2"));
   assert.ok(panel.includes('const BLOB_STORE = "asset-blobs"'));
+  assert.ok(panel.includes("request.onblocked = () =>"));
+  assert.ok(panel.includes("Cierra las pestañas antiguas para continuar sin perder tu biblioteca"));
   assert.ok(panel.includes("event.oldVersion < 2"));
   assert.ok(panel.includes("cursor.update(asset)"));
   assert.ok(panel.includes("async function allAssets()"));

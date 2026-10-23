@@ -3974,3 +3974,5 @@ Verificar Web CI, Android CI y el artefacto Android ligados al SHA más reciente
 - **Pruebas actualizadas:** contratos estáticos de versión de caché a `animeart-web-shell-v63`; E2E ampliado con inspección real de IndexedDB.
 - **Estado honesto:** pendiente de completar CI en la rama y revisar los resultados reales antes de recomendar la integración. No se modifica `main` para este lote sin las verificaciones del PR.
 - **Riesgo a revisar:** la migración depende de que el upgrade de IndexedDB concluya correctamente; revisar logs de Web E2E, instrumentación Android y manejo de errores de transacción. La carga de binarios para duplicados y exportación es intencionada y ocurre solo en esos flujos.
+
+- **Protección de actualización añadida:** si IndexedDB avisa que otra pestaña bloquea la actualización, el diálogo informa que debe cerrarse la pestaña antigua; la solicitud permanece activa para completar la migración cuando se libere, sin rechazarla prematuramente.

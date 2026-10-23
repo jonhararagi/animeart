@@ -56,6 +56,13 @@ function database() {
         };
       }
     };
+    request.onblocked = () => {
+      const status = document.querySelector("#asset-library-status");
+      if (status) {
+        status.textContent = "La migración está esperando otra pestaña de KapiArt. Cierra las pestañas antiguas para continuar sin perder tu biblioteca.";
+        status.dataset.error = "true";
+      }
+    };
     request.onsuccess = () => {
       const db = request.result;
       db.onversionchange = () => {
