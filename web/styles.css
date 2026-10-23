@@ -4406,3 +4406,26 @@ dialog {
     min-height: 36px !important;
   }
 }
+
+/* AA-BRUSH-SYMMETRY-003: show a synced, large-target control in the mobile draw sheet. */
+.brush-symmetry-mobile-control { display: none !important; }
+@media (max-width: 920px) {
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > .brush-symmetry-mobile-control {
+    display: grid !important; visibility: visible !important; opacity: 1 !important;
+    grid-column: 1 / -1 !important; width: 100% !important; min-height: 52px !important;
+    position: relative !important; z-index: 2 !important;
+    grid-template-columns: minmax(0, 1fr) 32px !important; align-items: center !important;
+    gap: 12px !important; padding: 8px 12px !important; pointer-events: auto !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > .brush-symmetry-mobile-control span {
+    display: grid !important; gap: 3px !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > .brush-symmetry-mobile-control small {
+    display: block !important; color: #a9b5c7 !important; font-size: .68rem !important; line-height: 1.3 !important;
+  }
+  body.mobile-tools-open.mobile-draw-panel-open > .workspace > .toolbar > .brush-symmetry-mobile-control input[type="checkbox"] {
+    display: block !important; visibility: visible !important; opacity: 1 !important;
+    width: 24px !important; height: 24px !important; min-width: 24px !important; min-height: 24px !important;
+    justify-self: end !important; pointer-events: auto !important;
+  }
+}

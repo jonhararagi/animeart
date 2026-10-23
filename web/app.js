@@ -3897,6 +3897,7 @@ const brushHardnessInput = document.querySelector("#brush-hardness");
 const brushHardnessValue = document.querySelector("#brush-hardness-value");
 const brushEffectInput = document.querySelector("#brush-effect");
 const brushSymmetryInput = document.querySelector("#brush-symmetry");
+const brushSymmetryMobileInput = document.querySelector("#brush-symmetry-mobile");
 
 brushColorInput.addEventListener("input", event => {
   if (setBrushColor(event.currentTarget.value)) redraw();
@@ -3922,12 +3923,16 @@ brushEffectInput.addEventListener("change", event => {
   status.textContent = "Brush effect: " + brushEffectInput.selectedOptions[0].textContent;
 });
 
-brushSymmetryInput.addEventListener("change", event => {
-  state.brush.symmetry = event.currentTarget.checked === true;
+function setBrushSymmetryEnabled(enabled) {
+  state.brush.symmetry = enabled === true;
+  if (brushSymmetryInput) brushSymmetryInput.checked = state.brush.symmetry;
+  if (brushSymmetryMobileInput) brushSymmetryMobileInput.checked = state.brush.symmetry;
   status.textContent = state.brush.symmetry
     ? "Simetría vertical activada para pincel y borrador de capa."
     : "Simetría vertical desactivada.";
-});
+}
+brushSymmetryInput.addEventListener("change", event => setBrushSymmetryEnabled(event.currentTarget.checked));
+brushSymmetryMobileInput?.addEventListener("change", event => setBrushSymmetryEnabled(event.currentTarget.checked));
 
 const censorInputs = {
   color: document.querySelector("#censor-light-color"),
@@ -6432,7 +6437,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v66";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v67";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
