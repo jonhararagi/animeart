@@ -1593,6 +1593,11 @@ try {
     documentPointToClientPoint(symmetryFrame,leftCenter.x,leftCenter.y),
     documentPointToClientPoint(symmetryFrame,rightCenter.x,rightCenter.y)
   ];
+  await saveScreenshot("animeart-studio-brush-symmetry-debug.png");
+  console.log("SYMMETRY_STROKE_DEBUG: " + JSON.stringify(mirroredPair.map(stroke => ({
+    tool:stroke.tool,color:stroke.color,size:stroke.size,opacity:stroke.opacity,effect:stroke.effect,
+    pointCount:stroke.points.length,first:stroke.points[0],last:stroke.points.at(-1),center:strokeCenter(stroke)
+  }))));
   const symmetryPixelEvidence = await evaluate('(() => { const c=document.querySelector("#canvas"),r=c.getBoundingClientRect(),p=' + JSON.stringify(pixelTargets) + ',ctx=c.getContext("2d",{willReadFrequently:true}),radius=Math.max(2,Math.ceil(8*c.height/r.height)); return p.map(v=>{const x=Math.max(0,Math.min(c.width-1,Math.round((v.x-r.left)*c.width/r.width))),y=Math.max(0,Math.min(c.height-1,Math.round((v.y-r.top)*c.height/r.height))),left=Math.max(0,x-radius),top=Math.max(0,y-radius),right=Math.min(c.width,x+radius+1),bottom=Math.min(c.height,y+radius+1),data=ctx.getImageData(left,top,right-left,bottom-top).data;let maxAlpha=0;for(let i=3;i<data.length;i+=4)maxAlpha=Math.max(maxAlpha,data[i]);return {maxAlpha,radius};}); })()');
   assert(symmetryPixelEvidence.every(evidence => evidence.maxAlpha > 0),
     "the real canvas renders visible pixels along both stored mirrored stroke paths: " + JSON.stringify({symmetryPixelEvidence,pixelTargets,leftCenter,rightCenter,leftDoc,rightDoc,symmetryFrame}));
