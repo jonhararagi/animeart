@@ -1548,7 +1548,7 @@ try {
 
   // AA-BRUSH-SYMMETRY-001: the canvas stores two editable paths mirrored around the document centre.
   await click('.mobile-touch-dock [data-touch-action="paint"]');
-  await waitFor('document.querySelector("#brush-symmetry-mobile")?.getClientRects().length > 0 && getComputedStyle(document.querySelector("#brush-symmetry-mobile")).display !== "none');
+  await waitFor('document.querySelector("#brush-symmetry-mobile")?.getClientRects().length > 0 && getComputedStyle(document.querySelector("#brush-symmetry-mobile")).display !== "none"');
   await click(".brush-symmetry-mobile-control");
   await waitFor('document.querySelector("#brush-symmetry-mobile").checked === true && document.querySelector("#brush-symmetry").checked === true');
   await click("#mobile-context-close");
