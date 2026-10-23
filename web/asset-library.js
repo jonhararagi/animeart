@@ -14,11 +14,14 @@ import {
 } from "./domain/asset-library.mjs";
 
 const DB_NAME = "animeart-local-asset-library";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = "assets";
+const BLOB_STORE = "asset-blobs";
 const ALLOWED_TYPES = new Set(["image/png","image/jpeg","image/webp","image/gif","image/avif","image/bmp"]);
 let dbPromise;
 const previewUrls = new Set();
+const previewLoaders = new WeakMap();
+let previewObserver = null;
 const CATEGORY_LABELS = Object.freeze({character:"Personajes",sticker:"Stickers",background:"Fondos",texture:"Texturas",reference:"Referencias"});
 const ORIGIN_LABELS = Object.freeze({original:"Original",derivative:"Variación / derivado",unknown:"Procedencia desconocida",generated:"Generado por AnimeArt",experimental:"Experimental · sin verificar"});
 const VERIFICATION_LABELS = Object.freeze({"user-confirmed":"Confirmado por mí",unverified:"Sin verificar",unknown:"Estado desconocido"});
@@ -28,11 +31,43 @@ function database() {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onupgradeneeded = () => {
-      if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE, { keyPath: "id" });
+    request.onupgradeneeded = event => {
+      const db = request.result;
+      const transaction = request.transaction;
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: "id" });
+      if (!db.objectStoreNames.contains(BLOB_STORE)) db.createObjectStore(BLOB_STORE, { keyPath: "id" });
+      if (event.oldVersion < 2) {
+        const legacyAssets = transaction.objectStore(STORE);
+        const imageBlobs = transaction.objectStore(BLOB_STORE);
+        const cursorRequest = legacyAssets.openCursor();
+        cursorRequest.onsuccess = () => {
+          const cursor = cursorRequest.result;
+          if (!cursor) return;
+          const asset = cursor.value || {};
+          const imageBlob = asset.imageBlob;
+          if (imageBlob instanceof Blob) {
+            imageBlobs.put({ id: asset.id, imageBlob });
+            asset.size = imageBlob.size;
+            asset.mimeType = imageBlob.type || asset.mimeType || "application/octet-stream";
+            delete asset.imageBlob;
+            cursor.update(asset);
+          }
+          cursor.continue();
+        };
+      }
     };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error || new Error("Could not open image library"));
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onversionchange = () => {
+        db.close();
+        dbPromise = null;
+      };
+      resolve(db);
+    };
+    request.onerror = () => {
+      dbPromise = null;
+      reject(request.error || new Error("Could not open image library"));
+    };
   });
   return dbPromise;
 }
@@ -41,27 +76,47 @@ async function allAssets() {
   return new Promise((resolve, reject) => {
     const request = db.transaction(STORE, "readonly").objectStore(STORE).getAll();
     request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(request.error || new Error("Could not read image library"));
+    request.onerror = () => reject(request.error || new Error("Could not read image library metadata"));
+  });
+}
+async function getAssetBlob(id) {
+  const db = await database();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(BLOB_STORE, "readonly").objectStore(BLOB_STORE).get(id);
+    request.onsuccess = () => resolve(request.result?.imageBlob instanceof Blob ? request.result.imageBlob : null);
+    request.onerror = () => reject(request.error || new Error("Could not read image binary"));
   });
 }
 async function saveAsset(asset) {
   const db = await database();
+  const metadata = { ...asset };
+  const imageBlob = metadata.imageBlob instanceof Blob ? metadata.imageBlob : null;
+  delete metadata.imageBlob;
+  if (imageBlob) {
+    metadata.size = imageBlob.size;
+    metadata.mimeType = imageBlob.type || metadata.mimeType || "application/octet-stream";
+  }
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).put(asset);
-    tx.oncomplete = () => resolve(asset);
+    const tx = db.transaction([STORE, BLOB_STORE], "readwrite");
+    tx.objectStore(STORE).put(metadata);
+    if (imageBlob) tx.objectStore(BLOB_STORE).put({ id: metadata.id, imageBlob });
+    tx.oncomplete = () => resolve(imageBlob ? { ...metadata, imageBlob } : metadata);
     tx.onerror = () => reject(tx.error || new Error("Could not save image"));
+    tx.onabort = () => reject(tx.error || new Error("Image save was cancelled"));
   });
 }
 async function deleteAsset(id) {
   const db = await database();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readwrite");
+    const tx = db.transaction([STORE, BLOB_STORE], "readwrite");
     tx.objectStore(STORE).delete(id);
+    tx.objectStore(BLOB_STORE).delete(id);
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error || new Error("No se pudo eliminar la imagen"));
+    tx.onabort = () => reject(tx.error || new Error("La eliminación de imagen se canceló"));
   });
 }
+
 function makeId() {
   return "asset_" + (globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + Math.random().toString(36).slice(2));
 }
@@ -88,16 +143,28 @@ async function sha256Hex(blob) {
   return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
 }
 async function backfillLegacyHashes(current, incomingBlobs) {
+  const targetSizes = new Set(incomingBlobs.filter(blob => blob instanceof Blob).map(blob => blob.size));
+  if (!targetSizes.size) return;
+  const candidates = await Promise.all(current
+    .filter(asset => !asset.contentHash && targetSizes.has(Number(asset.size)))
+    .map(async asset => {
+      const imageBlob = await getAssetBlob(asset.id);
+      return imageBlob instanceof Blob ? { ...asset, imageBlob } : { ...asset, imageBlob: null };
+    }));
   await backfillAssetHashesForMatchingSizes({
-    existingAssets: current,
+    existingAssets: candidates,
     incomingBlobs,
     hashBlob: sha256Hex,
     persistAsset: async asset => {
       const normalized = normalizeAssetMetadata(asset, asset.updatedAt);
-      const updated = { ...normalized, imageBlob: asset.imageBlob };
-      await saveAsset(updated);
+      await saveAsset({ ...normalized, imageBlob: asset.imageBlob });
     }
   });
+  for (const candidate of candidates) {
+    if (!candidate.contentHash) continue;
+    const original = current.find(asset => asset.id === candidate.id);
+    if (original) original.contentHash = candidate.contentHash;
+  }
 }
 
 function downloadJson(filename, value) {
@@ -130,12 +197,41 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
   });
   grid.after(loadMoreButton);
   function report(message, error=false) { status.textContent=message; status.dataset.error=String(error); }
-  function releaseUrls() { for (const url of previewUrls) URL.revokeObjectURL(url); previewUrls.clear(); }
+  function releaseUrls() {
+    previewObserver?.disconnect();
+    previewObserver = null;
+    for (const url of previewUrls) URL.revokeObjectURL(url);
+    previewUrls.clear();
+  }
+  function schedulePreview(image, asset) {
+    const load = () => {
+      getAssetBlob(asset.id).then(imageBlob => {
+        if (!(imageBlob instanceof Blob) || !image.isConnected) return;
+        const url = URL.createObjectURL(imageBlob);
+        if (!image.isConnected) { URL.revokeObjectURL(url); return; }
+        previewUrls.add(url);
+        image.src = url;
+      }).catch(() => { if (image.isConnected) image.dataset.previewError = "true"; });
+    };
+    if (typeof IntersectionObserver !== "function") { load(); return; }
+    if (!previewObserver) {
+      previewObserver = new IntersectionObserver(entries => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          previewObserver.unobserve(entry.target);
+          const callback = previewLoaders.get(entry.target);
+          previewLoaders.delete(entry.target);
+          callback?.();
+        }
+      }, { root: null, rootMargin: "120px" });
+    }
+    previewLoaders.set(image, load);
+    previewObserver.observe(image);
+  }
   function updateCard(asset, patch) {
     const updated={...asset,...patch,updatedAt:new Date().toISOString()};
     try {
-      const normalized=normalizeAssetMetadata({...updated,tags:updated.tags},updated.updatedAt);
-      const next={...normalized,imageBlob:updated.imageBlob};
+      const next=normalizeAssetMetadata({...updated,tags:updated.tags},updated.updatedAt);
       return saveAsset(next).then(()=>{ assets=assets.map(item=>item.id===asset.id?next:item); render(); report("Guardado: "+next.name); });
     } catch (error) { report(error.message||"Recurso no válido",true); return Promise.resolve(); }
   }
@@ -158,7 +254,7 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
       const card=document.createElement("article"); card.className="asset-card";
       const preview=document.createElement("div"); preview.className="asset-card-preview";
       const image=document.createElement("img"); image.alt=asset.name; image.loading="lazy"; image.decoding="async";
-      if(asset.imageBlob instanceof Blob) { const url=URL.createObjectURL(asset.imageBlob); previewUrls.add(url); image.src=url; }
+      schedulePreview(image, asset);
       preview.append(image);
       const fields=document.createElement("div"); fields.className="asset-card-fields";
       const nameLabel=document.createElement("label"); nameLabel.textContent="Nombre";
@@ -206,7 +302,7 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
       hash.textContent=asset.contentHash?"SHA-256: "+asset.contentHash:"SHA-256 no disponible para este recurso";
       provenanceFields.append(hash); provenance.append(provenanceFields); fields.append(provenance);
       const meta=document.createElement("div"); meta.className="asset-card-meta";
-      const size=document.createElement("span"); size.textContent=(asset.imageBlob?.size/1024/1024||0).toFixed(2)+" MiB";
+      const size=document.createElement("span"); size.textContent=(Number(asset.size)/1024/1024||0).toFixed(2)+" MiB";
       const favoriteLabel=document.createElement("label"); favoriteLabel.className="asset-favorite";
       const favorite=document.createElement("input"); favorite.type="checkbox"; favorite.checked=asset.favorite; favorite.setAttribute("aria-label","Marcar favorita: "+asset.name);
       favorite.addEventListener("change",()=>updateCard(asset,{favorite:favorite.checked})); favoriteLabel.append(favorite,document.createTextNode(" Favorite"));
@@ -217,15 +313,15 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
       originChip.setAttribute("aria-label","Origen: "+(ORIGIN_LABELS[asset.originType]||"desconocido")+". "+(VERIFICATION_LABELS[asset.verificationStatus]||"estado desconocido"));
       meta.append(originChip,size,favoriteLabel);
       const actions=document.createElement("div"); actions.className="asset-card-actions";
-      const use=document.createElement("button"); use.type="button"; use.textContent="＋ Insertar al lienzo"; use.disabled=!(asset.imageBlob instanceof Blob);
-      use.addEventListener("click",async()=>{try{const file=new File([asset.imageBlob],asset.name,{type:asset.imageBlob.type||asset.mimeType||"image/png"});const ok=await onImportImage(file,"Imagen insertada: "+asset.name);if(ok){dialog.close();onStatus("Imagen insertada como capa editable. Ya puedes moverla en el lienzo.");}}catch(error){report(error.message||"No se pudo insertar la imagen en el lienzo",true);}});
+      const use=document.createElement("button"); use.type="button"; use.textContent="＋ Insertar al lienzo"; use.disabled=!(Number(asset.size)>0);
+      use.addEventListener("click",async()=>{try{const imageBlob=await getAssetBlob(asset.id);if(!(imageBlob instanceof Blob))throw new Error("El archivo de imagen ya no está disponible en la biblioteca");const file=new File([imageBlob],asset.name,{type:imageBlob.type||asset.mimeType||"image/png"});const ok=await onImportImage(file,"Imagen insertada: "+asset.name);if(ok){dialog.close();onStatus("Imagen insertada como capa editable. Ya puedes moverla en el lienzo.");}}catch(error){report(error.message||"No se pudo insertar la imagen en el lienzo",true);}});
       const remove=document.createElement("button"); remove.type="button"; remove.textContent="Eliminar";
       remove.addEventListener("click",async()=>{if(!confirm("¿Eliminar "+asset.name+" de tu biblioteca local?"))return;try{await deleteAsset(asset.id);assets=assets.filter(item=>item.id!==asset.id);render();report("Imagen eliminada de la biblioteca");}catch(error){report(error.message||"Could not delete image",true);}});
       actions.append(use,remove); card.append(preview,fields,meta,actions); grid.append(card);
     }
   }
   async function reload() {
-    assets=(await allAssets()).map(asset=>({...normalizeAssetMetadata(asset),imageBlob:asset.imageBlob}));
+    assets=(await allAssets()).map(asset=>normalizeAssetMetadata(asset));
     visibleCount = ASSET_LIBRARY_PAGE_SIZE;
     render(); report(assets.length+" imagen(es) guardada(s)");
   }
@@ -262,7 +358,9 @@ export function initializeAssetLibrary({ onImportImage, onStatus = () => {} } = 
 
   async function exportLibrary() {
     try {
-      const current=await allAssets();
+      const metadata=await allAssets();
+      const current=await Promise.all(metadata.map(async asset=>({...asset,imageBlob:await getAssetBlob(asset.id)})));
+      if(current.some(asset=>!(asset.imageBlob instanceof Blob)))throw new Error("No se puede exportar: falta el archivo binario de al menos una imagen");
       const pkg=createAssetLibraryPackage(current);
       pkg.assets=await Promise.all(current.map(async asset=>{
         const contentHash=asset.contentHash||(asset.imageBlob instanceof Blob?await sha256Hex(asset.imageBlob):"");
