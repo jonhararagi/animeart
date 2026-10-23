@@ -1868,6 +1868,9 @@ try {
     "canvas layout shifts during a stationary touch without changing the image transform");
 
   // AA-EXTERNAL-BUGFIX-RESEARCH-002: the pixel eraser must target the same document point after zoom + pan.
+  // A previous mobile selection row can change canvas height without updating the test's frame snapshot.
+  await evaluate('window.dispatchEvent(new Event("resize"))');
+  await sleep(100);
   const eraseViewportBaseline = await readFrameMetrics();
   await wheelCanvasZoom("in", 2);
   const eraseViewportZoomed = await readFrameMetrics();
@@ -1926,6 +1929,8 @@ try {
   await waitFor('document.querySelector(".toolbar .tool[data-tool=select]")?.classList.contains("active")');
   await panCanvasByTouch(-18, -12);
   await wheelCanvasZoom("out", 2);
+  await evaluate('window.dispatchEvent(new Event("resize"))');
+  await sleep(100);
   const eraseViewportRestored = await readFrameMetrics();
   const normalizedView = frame => ({
     scaleX: (frame.right - frame.left) / frame.documentWidth,
