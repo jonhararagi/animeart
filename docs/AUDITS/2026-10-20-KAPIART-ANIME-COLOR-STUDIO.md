@@ -43,3 +43,12 @@ No integrar en `main` hasta tener Web CI con E2E de navegador y Android CI en el
 - Pruebas ampliadas para selección rectangular, ajustes de temperatura/oscuridad, interfaz y flujo E2E de capa reversible. No considerar esos flujos aceptados hasta que Web E2E y Android CI pasen en el mismo SHA final.
 - **Estado actual de aceptación:** `PARTIAL` hasta verificar los runs vinculados al HEAD definitivo y probar en el Xiaomi. No hay prueba física ni modelo entrenado con miles de ilustraciones.
 
+## 2026-10-23 · Consolidación sobre main y corrección del cuentagotas
+
+**TIMER estimado:** 3–5 horas para sincronización, ajuste del motor y validación; tiempo real no medido.
+
+- La rama se consolidó con el código de `main` en el merge commit `f8b375029f274a6da7fc93a87b51cb26de6d4845`, conservando ambos historiales. Base integrada: `d1dcc6f29ed6e11654fe0698de0c2a790297babe`.
+- El test del cuentagotas ahora calcula el color esperado desde los píxeles del recurso original inmutable, no desde la vista previa recoloreada.
+- El motor local admite `selectionMask` y el alias histórico `mask`, conserva alfa, mantiene el modo inmutable por defecto, admite mutación explícita para worker y conserva protección de lineart en recolor global. Las selecciones anime son autoritativas para poder recolorear rellenos negros sin bloquear el cabello.
+- El shell offline está sincronizado en `animeart-web-shell-v68` entre app y service worker; incluye el motor de color, la biblioteca de paleta anime y los módulos de deduplicación/paginación de la biblioteca.
+- **Estado previo a la nueva CI:** los tests Web y Android deben repetirse sobre el HEAD que resulte de este commit documental. No fusionar la PR hasta que ambos pasen sobre ese mismo SHA.
