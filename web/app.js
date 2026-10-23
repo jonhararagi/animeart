@@ -5528,6 +5528,11 @@ document.querySelector("#recolor-wand-toggle").addEventListener("click",()=>{
 for(const [id,mode] of [["select-anime-region","replace"],["recolor-add-region","add"],["recolor-subtract-region","subtract"]]){
  document.querySelector("#"+id).addEventListener("click",()=>armRecolorRegionSelection(mode));
 }
+document.querySelector("#recolor-wand-add").addEventListener("change",event=>{
+ recolorRegionSelectionMode=event.currentTarget.checked?"add":"replace";
+ syncAnimeRegionModeButtons();
+ if(recolorWandMode)document.querySelector("#recolor-status").textContent=recolorRegionSelectionMode==="add"?"Suma de zonas activa: toca otra región para agregarla.":"Varita activa: la próxima zona reemplazará la selección.";
+});
 
 function applyAnimeRegionSelection(nextMask,sourceColor,pixelCount){
  const session=recolorSession;if(!session||!(nextMask instanceof Uint8Array))return null;
