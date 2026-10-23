@@ -1878,9 +1878,9 @@ try {
   await waitFor('document.body.classList.contains("mobile-layers-open")');
   await click(layerButtonSelector(eraseImageLayerId));
   await waitFor('document.querySelector("#layers li[data-selected=true]")?.dataset.layerId === ' + JSON.stringify(eraseImageLayerId));
-  await clickMoreGoal("layers");
-  await waitFor('!document.body.classList.contains("mobile-layers-open")');
+  // Returning to the eraser sheet closes the layer drawer through the same mobile action router.
   await clickMoreGoal("eraser");
+  await waitFor('!document.body.classList.contains("mobile-layers-open")');
   await waitFor('document.querySelector(".toolbar .tool[data-tool=eraser]")?.classList.contains("active") && document.querySelector("#mobile-context-heading")?.hidden === false');
   // Refresh selection geometry after returning from the drawer to the canvas tool sheet.
   await evaluate('window.dispatchEvent(new Event("resize"))');
