@@ -470,6 +470,7 @@
         <button type="button" data-creative-tab="stickers" role="tab" aria-selected="false">✨ Stickers</button>
         <button type="button" data-creative-tab="words" role="tab" aria-selected="false">🔤 Palabras</button>
         <button type="button" data-creative-tab="packs" role="tab" aria-selected="false">🎨 Conjuntos</button>
+        <button type="button" data-creative-tab="traits" role="tab" aria-selected="false">🧩 Rasgos anime</button>
       </nav>
       <div class="creative-studio-search-row">
         <label for="creative-catalog-search">Buscar en el catálogo<input id="creative-catalog-search" type="search" placeholder="Anime, galaxia, sakura, neón…"></label>
@@ -481,6 +482,23 @@
         <label for="creative-cover-size">Formato<select id="creative-cover-size"><option value="portrait">Portada vertical · 1080 × 1350</option><option value="square">Cuadrado · 1080 × 1080</option><option value="story">Historia · 1080 × 1920</option><option value="banner">Banner · 1920 × 1080</option></select></label>
         <label for="creative-cover-background">Fondo<input id="creative-cover-background" type="color" value="#0b102a"></label>
         <label for="creative-cover-accent">Color de acento<input id="creative-cover-accent" type="color" value="#ffd84d"></label>
+      </section>
+      <section id="creative-traits-controls" class="creative-traits-controls" aria-label="Filtrar y combinar rasgos anime" hidden>
+        <div class="creative-traits-toolbar">
+          <label for="creative-trait-part">Filtrar parte
+            <select id="creative-trait-part">
+              <option value="all">Todas las partes</option>
+              <option value="eyes">Ojos</option>
+              <option value="hair">Cabello</option>
+              <option value="face">Rostro y mandíbula</option>
+            </select>
+          </label>
+          <div class="creative-trait-selection-actions">
+            <p id="creative-trait-selection-status" role="status" aria-live="polite">Elige hasta cuatro rasgos para compararlos junto al dibujo.</p>
+            <button type="button" id="creative-trait-add-selected" class="creative-primary" disabled>Añadir referencias seleccionadas</button>
+          </div>
+        </div>
+        <p class="creative-traits-note">Cada opción es un SVG original del programa, no una imagen externa. Las referencias se añaden como capas independientes y se excluyen de la exportación final.</p>
       </section>
       <div id="creative-catalog-grid" class="creative-catalog-grid" role="region" aria-label="Resultados del catálogo" aria-live="polite"></div>
       <footer class="creative-studio-footer">

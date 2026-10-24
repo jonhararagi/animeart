@@ -6,6 +6,7 @@ import {
   createPosterSvg, createStickerSvg, svgDataUrl, getCreativeTemplate,
   getSticker, getWordArtPreset
 } from "../domain/creative-catalog.mjs";
+import { ANIME_STYLE_COMPONENTS, searchAnimeStyleComponents, createAnimeStyleComponentSvg } from "../domain/anime-style-library.mjs";
 
 test("original cover catalog provides anime, galaxy, manga, romance and cyberpunk themes",()=>{
   assert.ok(CREATIVE_TEMPLATES.length>=10);
@@ -72,14 +73,22 @@ test("creative studio UI is discoverable, searchable, offline-ready and packaged
     readFile("index.html","utf8"),readFile("app.js","utf8"),readFile("styles.css","utf8"),
     readFile("service-worker.js","utf8"),readFile("../.github/workflows/android.yml","utf8")
   ]);
-  for(const tab of ["covers","stickers","words","packs"])assert.match(html,new RegExp('data-creative-tab="'+tab+'"'));
-  for(const id of ["creative-studio-dialog","creative-catalog-grid","creative-catalog-search","creative-cover-title","creative-cover-subtitle","creative-create-cover","quick-open-creative-studio"])assert.match(html,new RegExp('id="'+id+'"'));
+  for(const tab of ["covers","stickers","words","packs","traits"])assert.match(html,new RegExp('data-creative-tab="'+tab+'"'));
+  for(const id of ["creative-studio-dialog","creative-catalog-grid","creative-catalog-search","creative-cover-title","creative-cover-subtitle","creative-create-cover","quick-open-creative-studio","creative-traits-controls","creative-trait-part","creative-trait-add-selected"])assert.match(html,new RegExp('id="'+id+'"'));
   assert.match(app,/function addCreativeStickerLayer\(/);
   assert.match(app,/function addCreativeWordArt\(/);
   assert.match(app,/function applyCreativeStylePack\(/);
   assert.match(app,/createPosterSvg\(/);
+  assert.match(app,/addSelectedAnimeStyleReferences\(/);
+  assert.match(app,/createAnimeStyleComponentSvg\(/);
+  assert.match(app,/searchAnimeStyleComponents\(/);
+  assert.match(worker,/anime-style-library\.mjs/);
+  assert.ok(android.includes('test -s "$WEB/domain/anime-style-library.mjs"'));
+  assert.equal(ANIME_STYLE_COMPONENTS.length,12);
+  assert.equal(searchAnimeStyleComponents("coletas","hair").length,1);
+  assert.match(createAnimeStyleComponentSvg("hair-twin-tails"),/<path/);
   assert.match(css,/AA-CREATIVE-STUDIO-001/);
-  assert.match(worker,/animeart-web-shell-v68/);
+  assert.match(worker,/animeart-web-shell-v69/);
   assert.match(worker,/\.\/domain\/creative-catalog\.mjs/);
   assert.match(android, /test -s "\$WEB\/domain\/creative-catalog\.mjs"/);
   assert.match(android, /test -s "\$WEB\/domain\/canvas-rendering\.mjs"/);

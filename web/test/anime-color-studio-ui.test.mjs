@@ -3,11 +3,12 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 test("KapiArt anime color studio wires the offline palette, wand and non-destructive layer split", async () => {
-  const [html, app, worker, engine] = await Promise.all([
+  const [html, app, worker, engine, styleLibrary] = await Promise.all([
     readFile("index.html", "utf8"),
     readFile("app.js", "utf8"),
     readFile("service-worker.js", "utf8"),
-    readFile("domain/anime-color-studio.mjs", "utf8")
+    readFile("domain/anime-color-studio.mjs", "utf8"),
+    readFile("domain/anime-style-library.mjs", "utf8")
   ]);
   for (const id of [
     "recolor-wand-toggle", "recolor-wand-tolerance", "recolor-wand-add",
@@ -23,7 +24,9 @@ test("KapiArt anime color studio wires the offline palette, wand and non-destruc
   assert.match(app, /Efecto de color · /);
   assert.match(app, /recolorCanvasPointFromClient/);
   assert.match(html, /id="erase-color-effect"/);
-  assert.match(worker, /animeart-web-shell-v68/);
+  assert.match(worker, /animeart-web-shell-v69/);
+  assert.match(worker,/anime-style-library\.mjs/);
+  assert.match(styleLibrary,/export function createAnimeStyleComponentSvg/);
   assert.ok(worker.includes("./domain/anime-color-studio.mjs"));
   assert.match(engine, /Selects a contiguous flat-color region/);
   assert.match(engine, /export function selectAnimeRectangle/);
