@@ -49,7 +49,11 @@ export function renderDocumentToCanvas(documentModel, canvas, renderDocument) {
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.save();
   const center = { x: canvas.width / 2, y: canvas.height / 2 };
-  renderDocument({ context, document: documentModel, center });
+  const hasReferenceLayers = Array.isArray(documentModel?.layers) && documentModel.layers.some(layer => layer?.isReference === true);
+  const exportDocument = hasReferenceLayers
+    ? { ...documentModel, layers: documentModel.layers.filter(layer => layer?.isReference !== true) }
+    : documentModel;
+  renderDocument({ context, document: exportDocument, center });
   context.restore();
   return canvas;
 }

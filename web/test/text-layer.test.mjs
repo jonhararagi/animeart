@@ -95,7 +95,7 @@ test("text edits participate in History and use the existing non-destructive PNG
   assert.match(app, /state\.history\.record\(before, next\)/);
   assert.match(app, /persistDocument\(\)/);
   assert.match(app, /renderDocumentToCanvas\(state\.document, exportCanvas/);
-  assert.match(exporter, /renderDocument\(\{ context, document: documentModel, center \}\)/);
+  assert.match(exporter, /renderDocument\(\{ context, document: exportDocument, center \}\)/);
 
   const initial = createDocument(320, 240);
   const title = createTextLayer("Title", { value: "Before" });

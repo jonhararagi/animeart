@@ -77,7 +77,7 @@ test("the live canvas and PNG export share the existing renderer for layer effec
   assert.match(app, /state\.history\.record\(before, next\)/);
   assert.match(app, /persistDocument\(\)/);
   assert.match(app, /layerAdjustmentsToCanvasFilter/);
-  assert.match(exporter, /renderDocument\(\{ context, document: documentModel, center \}\)/);
+  assert.match(exporter, /renderDocument\(\{ context, document: exportDocument, center \}\)/);
 });
 
 test("warm/cool temperature and color cast serialize to reversible layer filters", () => {

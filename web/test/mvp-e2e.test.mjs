@@ -164,7 +164,8 @@ test("T042 E2E contract: import image → reference → opacity/lock → drawing
   });
 
   assert.equal(renderSnapshot.length, 1);
-  assert.equal(renderSnapshot[0].length, recovered.layers.filter(layer => layer.visible).length);
+  assert.equal(renderSnapshot[0].length, recovered.layers.filter(layer => layer.visible && layer.isReference !== true).length);
+  assert.equal(renderSnapshot[0].some(layer => layer.id === referenceImage.id), false, "reference images are excluded from flattened exports");
   assert.equal(renderSnapshot[0].some(layer => layer.locked), true);
   assert.equal(renderSnapshot[0].some(layer => layer.opacity === 0.5), true);
   assert.equal(calls[0][0], "clearRect");
