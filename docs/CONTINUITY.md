@@ -4016,7 +4016,7 @@ Verificar Web CI, Android CI y el artefacto Android ligados al SHA más reciente
 ## 2026-10-20 · KapiArt Anime Color Studio · integrado
 
 - **Commit de main:** `e67216573c61aa0f271f83596762e454cd0d9d40`, título `KapiArt: add anime color studio and region selection`.
-- **PR #108 / rama histórica:** `feature/kapiart-anime-color-studio-001` quedó cerrada sin merge. Se hizo comparación de contenido entre su árbol y main: los archivos funcionales y de prueba coinciden exactamente, incluidos `web/app.js`, `web/index.html`, `web/domain/color-replacement.mjs`, `web/domain/anime-region-selection.mjs`, `web/domain/anime-color-studio.mjs`, `web/scripts/browser-e2e.mjs`, `web/service-worker.js`, `web/styles.css`, las pruebas del estudio, las pruebas de biblioteca y el workflow Android. No reabrir ni fusionar la rama vieja como si faltara el código.
+- **PR #108 / rama histórica:** [PR #108](https://github.com/jonhararagi/animeart/pull/108) sí quedó fusionada por squash el 2026-10-23 mediante `e67216573c61aa0f271f83596762e454cd0d9d40` (`KapiArt: add anime color studio and region selection`). El HEAD validado fue `3a9cff49b6b7ea862b6d392c2e6c127f338698c5`: Web CI PASS [run #40028960380](https://github.com/jonhararagi/animeart/actions/runs/40028960380) y Android CI PASS [run #40028960399](https://github.com/jonhararagi/animeart/actions/runs/40028960399). La rama remota queda como snapshot histórico; no se debe volver a importar como duplicado.
 - **Paleta:** buscador local en español, colores predefinidos y tonos generados en el dispositivo, con selección de cualquier valor RGB compatible. No descarga imágenes ni requiere una API de pago.
 - **Selección anime:** varita de regiones conectadas con tolerancia, selección rectangular por arrastre y modos explícitos de reemplazar, sumar, restar y limpiar regiones. La máscara limita el recoloreado a la zona elegida.
 - **Procesamiento:** reemplazo de color local con alfa preservado, controles de temperatura/oscuridad/tono, salida en una capa independiente `Efecto de color` y borrador alfa para descubrir el original. El motor de imagen se ejecuta en worker cuando está disponible, evitando el fallback en el hilo UI en el E2E verificado.
@@ -4024,27 +4024,56 @@ Verificar Web CI, Android CI y el artefacto Android ligados al SHA más reciente
 - **Límite de IA:** la varita usa heurísticas locales para ilustraciones de relleno plano/cel-shading. No es un modelo semántico entrenado con miles de imágenes y no garantiza reconocer cabello, ojos o ropa en todo estilo anime. La generación inteligente futura requiere corpus autorizado y evaluación aparte.
 - **TIMER histórico estimado:** 4–8 horas para la primera iteración; no es una medición de tiempo real.
 
-## 2026-10-24 · Consolidación verificada de ramas autorizadas en main
+## 2026-10-24 · Conciliación de ramas autorizadas y verificación post-merge
 
-**Regla permanente de entrega:** una rama aprobada no cuenta como trabajo terminado si su implementación o un complemento necesario permanece únicamente en esa rama. Después de aprobar una mejora, comparar sus archivos con `main`, integrar lo que falte, verificar Web CI y Android CI sobre el SHA final de `main` y actualizar este registro. No crear ramas duplicadas para una función ya integrada. Solo retirar una rama obsoleta después de comprobar que su código y sus pruebas ya están en `main`.
+**Regla permanente de entrega:** una rama aprobada no cuenta como trabajo terminado si su implementación o un complemento necesario permanece únicamente en esa rama. Después de aprobar una mejora, comparar su contenido con `main`, integrar lo que falte, ejecutar Web CI y Android CI sobre el HEAD candidato, fusionar solo con ambos PASS, verificar el SHA de `main` y volver a ejecutar CI después del merge. Actualizar esta continuidad en el mismo lote. No crear ramas duplicadas para funciones ya integradas, no fusionar snapshots históricos divergentes a ciegas y no declarar completada una entrega que queda solo en una PR.
 
-### Estado autoritativo de main
+### Estado autoritativo comprobado
 
-- **SHA actual auditado:** `2ae72cb70af259de3f89050dee89697eef81458d`.
-- **Web CI sobre ese SHA:** PASS, [run #40049062404](https://github.com/jonhararagi/animeart/actions/runs/40049062404).
-- **Android CI sobre ese SHA:** PASS, [run #40049062532](https://github.com/jonhararagi/animeart/actions/runs/40049062532).
-- **PR abiertas en la auditoría:** ninguna antes de la actual PR documental.
-- **Estado global:** código integrado y CI PASS; la entrega física/estable sigue PARTIAL por las limitaciones indicadas abajo.
+- **SHA actual de `main`:** `fedc125b407c1463db219f421abcf37c912d2fd4`.
+- **Web CI post-merge: PASS**, sobre ese SHA: [run #40062101605](https://github.com/jonhararagi/animeart/actions/runs/40062101605).
+- **Android CI post-merge: PASS**, sobre el mismo SHA: [run #40062101639](https://github.com/jonhararagi/animeart/actions/runs/40062101639).
+- **Despliegue web más reciente del código funcional:** PASS [run #40029394443](https://github.com/jonhararagi/animeart/actions/runs/40029394443), sobre `e67216573c61aa0f271f83596762e454cd0d9d40`. Los commits posteriores hasta `fedc125` actualizan continuidad y reglas, no el código desplegado.
+- **PRs abiertas al auditar:** ninguna. Las PR #108, #109, #110, #111, #112 y #113 están cerradas por integración; las PR documentales #114 y #115 también están integradas.
+- **Resultado:** `PASS` para la consolidación de los lotes autorizados enumerados a continuación y CI de `main`. No equivale a prueba física en el Xiaomi ni a firma Android persistente.
 
-### Conciliación de las ramas antiguas
+### Registro de integraciones verificadas
 
-- No se encontró una PR abierta que requiera una integración de código adicional para las funcionalidades enumeradas arriba. La fuente autoritativa es el árbol actual de `main`, no el estado histórico de una rama.
-- La corrección de continuidad no reemplaza código ni pruebas; actualiza el estado de integración y conserva el historial técnico sin dejar mensajes incompatibles de “pendiente de merge”.
+- **PR #113 · Simetría vertical del pincel:** integrada en `d1dcc6f29ed6e11654fe0698de0c2a790297babe`. Web y Android CI PASS en el HEAD de PR `76b50a9e50aa9241c46bc7852a28f6be88fe0b7d`; la prueba Chromium verificó píxeles visibles en ambos lados y el recorrido real del borrador móvil.
+- **PR #108 · Anime Color Studio:** integrada en `e67216573c61aa0f271f83596762e454cd0d9d40`. Web y Android CI PASS en el HEAD `3a9cff49b6b7ea862b6d392c2e6c127f338698c5`; Chromium verificó el cuentagotas contra el píxel del recurso original, el worker de recolor y la ruta de borrador móvil.
+- **PR #109 · Varita y selección de región anime:** integrada en `1b256a6324bdd8544e49bf8a735c4cd93349f8bb`; sus módulos `anime-region-selection.mjs`, `asset-deduplication.mjs` y las pruebas relacionadas forman parte del código posterior de `main`.
+- **PR #110 · Carga progresiva de biblioteca:** integrada en `71cf75d0692fc5122463e3500fef9104062ba5e7`.
+- **PR #111 · Almacenamiento de metadatos y binarios IndexedDB v2:** integrada en `f6fcba7310a8df64b69df913a5b9394d20ac9fb2`.
+- **PR #112 · Miniaturas ligeras para la biblioteca:** integrada en `5851396bc63f0ac4efb44bfe125c5f9c29184c5a`.
+- **Edición guiada en tres pasos:** PR #97 y rutas ampliadas en PR #99 integradas en `main`; no reimportar las ramas históricas `feature/kapiart-guided-editing-001` ni `feature/kapiart-guided-learning-008-routes` como si faltara su implementación base.
+- **Edición rápida:** `web/domain/quick-edit-recipes.mjs` tiene el mismo blob SHA en `main` y `feat/animeart-quick-edit-recipes-001` (`24316fb030d756fe3331b13401f5ce92bda45232)); no hace falta duplicarlo.
+- **Ajustes de imagen:** `feat/animeart-image-adjustments-workspace-001` está detrás de `main` sin commits únicos pendientes según la comparación de refs.
 
-### Límites que no deben ocultarse
+### Auditoría de snapshots históricos: decisiones para evitar pérdida o regresiones
 
-La CI más reciente de main valida build, tests y E2E web en Chromium, además de build, recursos, unit tests, lint e instrumentación/smoke Android. Esto no sustituye una prueba manual en el Xiaomi `24116RACCG`.
+La comparación de nombre de rama o cantidad de commits no basta para decidir una integración. Se compararon archivos funcionales concretos contra el árbol actual:
 
-Siguen pendientes: prueba táctil física y revisión visual final en el Xiaomi; reconocimiento semántico avanzado de personajes/cabello (la varita actual es heurística local y no es un modelo entrenado con miles de imágenes); y configuración de firma persistente para una actualización Android estable. Los APK de firma efímera no garantizan compatibilidad de actualización. No declarar estas partes como completas ni confundir CI PASS con validación física o distribución estable.
+- `feat/animeart-edge-aware-background-cutout`: la copia antigua de `background-removal.mjs` es anterior a la versión actual de `main` (el archivo de `main` incluye más lógica); el módulo actual y `background-removal-profiles.mjs` siguen presentes. No fusionar la rama completa. Si aparece una función nueva concreta, portarla como cambio aislado con prueba.
+- `fix/animeart-large-image-import-001`: la copia antigua de `image-import.mjs` es más corta y anterior a la implementación actual. No sobrescribir la ruta actual de importación ni sus límites de memoria.
+- `feat/animeart-local-asset-library-001`: su módulo de biblioteca es una versión anterior al esquema v2, la paginación, la separación de binarios y las miniaturas actuales. No sustituir el código de `main` con esa versión.
+- `fix/android-native-file-access-001`: `AndroidFileAccessTest.kt` coincide byte por byte con el archivo actual (`e9529ed31b79db31b25585ae7d3d8d8c0075c333`), mientras que el `MainActivity.kt` de `main` es una versión posterior. No importar el contenedor Android antiguo en bloque.
+- `feat/animeart-consolidated-editor-001`, `feat/animeart-poster-mask-typography-001`, `feat/animeart-aa-closure-001`, `feat/animeart-mobile-touch-workspace-001` y ramas móviles antiguas presentan historiales muy divergentes. Sus funciones base se deben contrastar por archivo y prueba; sus diferencias no justifican un merge integral ni una sustitución de `main`.
+- La comprobación de árbol también encontró que los módulos funcionales actuales de importación, biblioteca, ajustes y recetas ya tienen sucesores más recientes. La rama histórica puede seguir existiendo para conservar el historial, pero su contador `ahead_by` no significa por sí mismo que haya funcionalidad pendiente.
+
+### Procedimiento obligatorio desde ahora
+
+1. Inventariar las ramas autorizadas por lote y asociar cada una con su PR, HEAD y función.
+2. Comparar archivos contra el SHA vigente de `main`; distinguir cambios únicos de diferencias causadas por squash, bases antiguas o reemplazos más recientes.
+3. Integrar solo cambios únicos, compatibles y necesarios. Conservar sus pruebas, recursos, licencias, migraciones, caché offline y complementos de Android.
+4. Ejecutar Web CI y Android CI sobre el mismo HEAD de la PR y no fusionar con checks fallidos o pendientes.
+5. Tras fusionar, verificar el nuevo SHA de `main`, ambos CI post-merge y despliegue cuando corresponda. Actualizar este documento y cerrar el lote solo con evidencia.
+6. Mantener separado el estado `PASS` de CI del estado `PARTIAL` de aceptación física o distribución.
+
+### Límites de aceptación todavía abiertos
+
+- La prueba con dedo/stylus, zoom/pan, capas y exportación en el Xiaomi `24116RACCG` no se considera realizada por Chromium o emulador.
+- La firma Android persistente de distribución sigue sin estar configurada; los APK de firma `ephemeral-debug` no garantizan compatibilidad de actualización.
+- La varita para arte anime sigue siendo heurística local, no un modelo semántico entrenado con miles de imágenes. No promete reconocer con fiabilidad cada cabello, ojo o prenda.
+- La biblioteca visual puede ampliarse con materiales del usuario y recursos originales/licencias comprobadas; no afirmar que se ha reunido o catalogado una colección externa si no se hizo.
 
 ---
