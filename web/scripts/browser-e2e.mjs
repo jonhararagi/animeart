@@ -887,7 +887,6 @@ try {
   assert(!(await readDocument()).layers.some(layer => layer.id === cancelledText.id), "X cancels creation and removes the provisional text layer");
 
   // Anime character composer: select one real SVG trait for each category and create aligned editable layers.
-  const layersBeforeCharacter = (await readDocument()).layers.length;
   const characterVariantsBefore = (await readDocument()).layers.filter(layer => layer.name.startsWith("Personaje anime V")).length;
   await click("#toolbox-open");
   await waitFor('document.querySelector("#toolbox-dialog")?.open === true');
