@@ -905,12 +905,12 @@ try {
   assert(new Set(composedCharacterLayers.map(layer => JSON.stringify(layer.transform))).size === 1, "character parts begin aligned with the same transform and remain independently editable");
   assert(composedCharacterLayers.some(layer => layer.name.includes("Cabello base")) && composedCharacterLayers.some(layer => layer.name.includes("Rostro")) && composedCharacterLayers.some(layer => layer.name.includes("Flequillo")) && composedCharacterLayers.some(layer => layer.name.includes("Ojos")), "the four layers preserve the selected character parts by name");
   assert(await evaluate('document.querySelector("#creative-character-status").textContent.includes("creado en cuatro capas")'), "character composer reports a successful editable character");
+  await click("#creative-studio-close");
+  await waitFor('document.querySelector("#creative-studio-dialog")?.open === false');
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + layersBeforeCharacter + ', 10000);
   await click("#redo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (layersBeforeCharacter + 4) + ', 10000);
-  await click("#creative-studio-close");
-  await waitFor('document.querySelector("#creative-studio-dialog")?.open === false');
 
   await evaluate('window.__animeArtStrokeTextCount = 0; const originalStrokeText = CanvasRenderingContext2D.prototype.strokeText; CanvasRenderingContext2D.prototype.strokeText = function(...args) { window.__animeArtStrokeTextCount += 1; return originalStrokeText.apply(this, args); };');
   await click("#add-meme-text");
