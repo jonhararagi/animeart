@@ -4557,3 +4557,17 @@ dialog {
 .creative-card-traits[aria-pressed="true"]{border-color:#7de8f2;background:linear-gradient(145deg,#24223d,#22243a);box-shadow:0 0 0 2px #43d8e744,0 0 20px #00d9ea18}
 .creative-card-traits[aria-pressed="true"] .creative-card-action-label{color:#7df3ff}
 @media(max-width:640px){.creative-traits-controls{padding:9px;gap:8px}.creative-traits-toolbar{grid-template-columns:minmax(0,1fr);gap:9px}.creative-trait-selection-actions{align-items:stretch;flex-direction:column}#creative-trait-add-selected{width:100%}.creative-trait-checker img{padding:5px}}
+
+
+/* KAPIART-ANIME-CHARACTER-COMPOSER-001 */
+.creative-character-composer{display:grid;gap:10px;padding:12px;border:1px solid #684941;border-radius:14px;background:linear-gradient(135deg,#302320,#211a19)}
+.creative-character-composer h3{margin:0;color:#FFF4EB;font-size:.92rem}
+.creative-character-intro{margin:0;color:#D8C3B8;font-size:.73rem;line-height:1.45}
+.creative-character-colors{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.creative-character-colors label{display:grid;gap:5px;min-width:0;color:#F0DCD2;font-size:.7rem;font-weight:750}
+.creative-character-colors input[type="color"]{width:100%;min-width:0;height:42px;padding:3px;border:1px solid #71544a;border-radius:9px;background:#241A19}
+#creative-trait-create-character{min-height:46px;padding:10px 13px;background:#F2A2A0;border-color:#F2A2A0;color:#241A19;font-weight:850}
+#creative-trait-create-character:hover:not(:disabled){background:#E6817B;border-color:#E6817B}
+#creative-trait-create-character:disabled{opacity:.48;cursor:not-allowed}
+#creative-character-status{margin:0;color:#E3CFC6;font-size:.73rem;line-height:1.45}
+@media(max-width:640px){.creative-character-composer{padding:10px;gap:9px}.creative-character-colors{grid-template-columns:repeat(2,minmax(0,1fr))}.creative-character-colors input[type="color"]{height:44px}}

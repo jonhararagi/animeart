@@ -4030,12 +4030,13 @@ Verificar Web CI, Android CI y el artefacto Android ligados al SHA más reciente
 
 ### Estado autoritativo comprobado
 
-- **SHA actual de `main`:** `fedc125b407c1463db219f421abcf37c912d2fd4`.
-- **Web CI post-merge: PASS**, sobre ese SHA: [run #40062101605](https://github.com/jonhararagi/animeart/actions/runs/40062101605).
-- **Android CI post-merge: PASS**, sobre el mismo SHA: [run #40062101639](https://github.com/jonhararagi/animeart/actions/runs/40062101639).
-- **Despliegue web más reciente del código funcional:** PASS [run #40029394443](https://github.com/jonhararagi/animeart/actions/runs/40029394443), sobre `e67216573c61aa0f271f83596762e454cd0d9d40`. Los commits posteriores hasta `fedc125` actualizan continuidad y reglas, no el código desplegado.
-- **PRs abiertas al auditar:** ninguna. Las PR #108, #109, #110, #111, #112 y #113 están cerradas por integración; las PR documentales #114 y #115 también están integradas.
-- **Resultado:** `PASS` para la consolidación de los lotes autorizados enumerados a continuación y CI de `main`. No equivale a prueba física en el Xiaomi ni a firma Android persistente.
+- **SHA actual de `main` antes del nuevo lote de composición:** `548078b299d095a246ca79ea4a509132a8e23f12`.
+- **Web CI post-merge: PASS**, sobre ese SHA: [run #40137677220](https://github.com/jonhararagi/animeart/actions/runs/40137677220).
+- **Android CI post-merge: PASS**, sobre el mismo SHA: [run #40137677215](https://github.com/jonhararagi/animeart/actions/runs/40137677215).
+- **Workflow Deploy AnimeArt Web:** el build terminó en PASS en [run #40137677226](https://github.com/jonhararagi/animeart/actions/runs/40137677226), pero el paso `deploy` quedó `skipped`; no se afirma un despliegue de Pages nuevo a partir de ese run.
+- **PR #117 · Biblioteca de rasgos anime:** integrada mediante `548078b299d095a246ca79ea4a509132a8e23f12`. Aporta 12 SVG originales de ojos, cabello y rostro, filtros por categoría y capas de referencia que no se aplanan en la exportación.
+- **Ramas autorizadas auditadas:** se mantienen las decisiones de abajo. Los cambios duplicados o reemplazados no se vuelven a importar por diferencias de historial.
+- **Resultado:** `PASS` para la consolidación de los lotes enumerados arriba y CI post-merge de `main`. No equivale a prueba física en el Xiaomi ni a firma Android persistente.
 
 ### Registro de integraciones verificadas
 
@@ -4068,6 +4069,14 @@ La comparación de nombre de rama o cantidad de commits no basta para decidir un
 4. Ejecutar Web CI y Android CI sobre el mismo HEAD de la PR y no fusionar con checks fallidos o pendientes.
 5. Tras fusionar, verificar el nuevo SHA de `main`, ambos CI post-merge y despliegue cuando corresponda. Actualizar este documento y cerrar el lote solo con evidencia.
 6. Mantener separado el estado `PASS` de CI del estado `PARTIAL` de aceptación física o distribución.
+
+
+### Lote activo · Compositor de personajes anime
+
+- **Rama autorizada:** `feature/kapiart-anime-character-composer-001`, creada desde el `main` verificado anterior.
+- **Objetivo:** combinar un rasgo de ojos, uno de cabello y uno de rostro en cuatro capas SVG alineadas, mantenerlas editables, permitir cuatro colores, y verificar historial y composición desde Chromium.
+- **Caché offline:** actualizada de `animeart-web-shell-v69` a `animeart-web-shell-v70`; el workflow Android comprueba ahora que el compositor y sus controles se empaqueten.
+- **Estado al redactar esta entrada:** `IN_PROGRESS`. La validación de Web CI, Chromium E2E y Android CI sobre el HEAD definitivo de la rama sigue siendo requisito previo a la integración.
 
 ### Límites de aceptación todavía abiertos
 
