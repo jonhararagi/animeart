@@ -886,6 +886,32 @@ try {
   await waitFor('!JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.id === ' + JSON.stringify(cancelledText.id) + ')', 10000);
   assert(!(await readDocument()).layers.some(layer => layer.id === cancelledText.id), "X cancels creation and removes the provisional text layer");
 
+  // Anime character composer: select one real SVG trait for each category and create aligned editable layers.
+  const layersBeforeCharacter = (await readDocument()).layers.length;
+  await click("#toolbox-open");
+  await waitFor('document.querySelector("#toolbox-dialog")?.open === true');
+  await click("#quick-open-creative-studio");
+  await waitFor('document.querySelector("#creative-studio-dialog")?.open === true');
+  await click('[data-creative-tab="traits"]');
+  await click('[data-creative-action="select-trait"][data-item-id="eyes-round-glossy"]');
+  await click('[data-creative-action="select-trait"][data-item-id="hair-twin-tails"]');
+  await click('[data-creative-action="select-trait"][data-item-id="face-angular-defined"]');
+  await waitFor('document.querySelector("#creative-trait-create-character")?.disabled === false');
+  await evaluate('(() => { for (const [id,value] of [["creative-trait-hair-color","#bb5533"],["creative-trait-eye-color","#0099cc"],["creative-trait-skin-color","#f0c2b0"],["creative-trait-line-color","#332211"]]) { const input=document.querySelector("#"+id); input.value=value; input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); } })()');
+  await click("#creative-trait-create-character");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (layersBeforeCharacter + 4) + ', 10000);
+  const composedCharacterLayers = (await readDocument()).layers.filter(layer => layer.name.startsWith("Personaje anime V")).slice(-4);
+  assert(composedCharacterLayers.length === 4 && composedCharacterLayers.every(layer => layer.contentType === "image" && layer.isReference !== true && layer.image?.source?.startsWith("data:image/svg+xml")), "character composer creates four actual SVG image layers rather than a flattened preview");
+  assert(new Set(composedCharacterLayers.map(layer => JSON.stringify(layer.transform))).size === 1, "character parts begin aligned with the same transform and remain independently editable");
+  assert(composedCharacterLayers.some(layer => layer.name.includes("Cabello base")) && composedCharacterLayers.some(layer => layer.name.includes("Rostro")) && composedCharacterLayers.some(layer => layer.name.includes("Flequillo")) && composedCharacterLayers.some(layer => layer.name.includes("Ojos")), "the four layers preserve the selected character parts by name");
+  assert(await evaluate('document.querySelector("#creative-character-status").textContent.includes("creado en cuatro capas")'), "character composer reports a successful editable character");
+  await click("#undo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + layersBeforeCharacter + ', 10000);
+  await click("#redo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (layersBeforeCharacter + 4) + ', 10000);
+  await click("#creative-studio-close");
+  await waitFor('document.querySelector("#creative-studio-dialog")?.open === false');
+
   await evaluate('window.__animeArtStrokeTextCount = 0; const originalStrokeText = CanvasRenderingContext2D.prototype.strokeText; CanvasRenderingContext2D.prototype.strokeText = function(...args) { window.__animeArtStrokeTextCount += 1; return originalStrokeText.apply(this, args); };');
   await click("#add-meme-text");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name === "Meme Top" || layer.name === "Meme Bottom").length === 2', 10000);
