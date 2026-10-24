@@ -9,7 +9,7 @@ function freezeComponent(component) {
     defaultColors: Object.freeze({ ...component.defaultColors }),
     originType: "generated",
     license: "SVG original generado por KapiArt; no utiliza un archivo de terceros.",
-    provenance: "Dibujo vectorial original construido por el programa a partir de trazados locales."
+    provenance: "Dibujo vectorial original creado por KapiArt mediante trazados locales incluidos en el programa."
   });
 }
 

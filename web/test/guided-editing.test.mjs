@@ -139,7 +139,7 @@ test("AA-TYPOGRAPHY-CANVA-001 keeps the text modal reachable on mobile and suppo
  assert.match(app, /finishTransformInteraction\(false, event\)/);
  assert.match(css, /AA-TYPOGRAPHY-CANVA-002/);
  assert.match(css, /#text-edit-dialog\[open\]/);
- assert.match(worker, /animeart-web-shell-v68/);
+ assert.match(worker, /animeart-web-shell-v69/);
  assert.match(browserE2E, /mobile Text fills the available app viewport, remains editable, and switches away from brush mode/);
  assert.match(browserE2E, /dragging text never adds brush strokes/);
  assert.match(browserE2E, /tapping the moved text opens the editor/);
@@ -173,7 +173,7 @@ test("AA-TOOL-STUDIOS-001 keeps the mobile dock focused and separates image crop
  assert.match(css, /#shape-maker-dialog\[open\]/);
  assert.match(css, /height: 100dvh/);
  assert.match(css, /#canvas-crop-dialog/);
- assert.match(worker, /animeart-web-shell-v68/);
+ assert.match(worker, /animeart-web-shell-v69/);
 });
 
 test("KapiArt offers three real, three-step routes using existing editor actions",()=>{
@@ -252,7 +252,7 @@ test("three-step guide is reachable in desktop and mobile toolbox, with offline 
  for(const action of ["import-image","create-canvas","fit-image","remove-background","color-adjustments","crop-image","creative-studio","add-text","add-drawing-layer","draw-tool","quick-recipe-ice-blue","quick-recipe-manga-ink","quick-recipe-soft-dream","export-transparent","export-png","export-document","export-jpeg"])assert.ok(app.includes('"'+action+'"'),"missing real editor action: "+action);
  assert.match(app,/completeGuidedStep\(currentGuidedProgress\(\),activeGuidedFlowId,state\.document\)/);
  assert.match(css,/#241A19/);assert.match(css,/#F2A2A0/);assert.match(css,/min-height:48px/);
- assert.match(worker,/animeart-web-shell-v68/);assert.match(worker,/\.\/domain\/guided-editing\.mjs/);
+ assert.match(worker,/animeart-web-shell-v69/);assert.match(worker,/\.\/domain\/guided-editing\.mjs/);
 });
 
 
