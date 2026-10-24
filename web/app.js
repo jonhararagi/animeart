@@ -6150,10 +6150,10 @@ function createAnimeCharacterFromSelectedTraits(){
   });
   const message="Personaje anime V"+variant+" creado en cuatro capas editables: cabello base, rostro, flequillo y ojos. Cambia los colores o selecciona otros rasgos para crear variantes sin reemplazar el original.";
   if(!commitCreativeLayers(layers,message))return false;
-  document.querySelector("#creative-character-status").textContent=message;
   document.querySelector("#creative-studio-status").textContent=message;
   updateAnimeCharacterComposerUi();
   renderCreativeCatalog();
+  document.querySelector("#creative-character-status").textContent=message;
   return true;
 }
 
