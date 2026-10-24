@@ -1022,7 +1022,7 @@ try {
   const creativeBaselineIds = (await readDocument()).layers.map(layer => layer.id);
   await clickMoreGoal("creative-studio");
   await waitFor('document.querySelector("#creative-studio-dialog")?.open === true');
-  assert(await evaluate('document.querySelectorAll("[data-creative-tab]").length === 4'), "creative studio exposes Covers, Stickers, Words and Style Packs tabs");
+  assert(await evaluate('document.querySelectorAll("[data-creative-tab]").length === 5'), "creative studio exposes Covers, Stickers, Words, Style Packs and Anime Traits tabs");
   await click('[data-creative-tab="stickers"]');
   await click('[data-creative-action="add-sticker"][data-item-id="sakura-bloom"]');
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image")');
