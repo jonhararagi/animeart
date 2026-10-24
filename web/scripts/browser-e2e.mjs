@@ -899,7 +899,7 @@ try {
   await waitFor('document.querySelector("#creative-trait-create-character")?.disabled === false');
   await evaluate('(() => { for (const [id,value] of [["creative-trait-hair-color","#bb5533"],["creative-trait-eye-color","#0099cc"],["creative-trait-skin-color","#f0c2b0"],["creative-trait-line-color","#332211"]]) { const input=document.querySelector("#"+id); input.value=value; input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); } })()');
   await click("#creative-trait-create-character");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (layersBeforeCharacter + 4) + ', 10000);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (layersBeforeCharacter + 4), 10000);
   const composedCharacterLayers = (await readDocument()).layers.filter(layer => layer.name.startsWith("Personaje anime V")).slice(-4);
   assert(composedCharacterLayers.length === 4 && composedCharacterLayers.every(layer => layer.contentType === "image" && layer.isReference !== true && layer.image?.source?.startsWith("data:image/svg+xml")), "character composer creates four actual SVG image layers rather than a flattened preview");
   assert(new Set(composedCharacterLayers.map(layer => JSON.stringify(layer.transform))).size === 1, "character parts begin aligned with the same transform and remain independently editable");
@@ -907,7 +907,7 @@ try {
   assert(await evaluate('document.querySelector("#creative-character-status").textContent.includes("creado en cuatro capas")'), "character composer reports a successful editable character");
   await evaluate('(() => { const input=document.querySelector("#creative-trait-hair-color"); input.value="#4D2E5F"; input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); })()');
   await click("#creative-trait-create-character");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (layersBeforeCharacter + 8) + ', 10000);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (layersBeforeCharacter + 8), 10000);
   const secondVariantLayers = (await readDocument()).layers.filter(layer => layer.name.startsWith("Personaje anime V")).slice(-4);
   assert(secondVariantLayers.every(layer => layer.name.startsWith("Personaje anime V2 ·") && layer.contentType === "image"), "the selected traits can generate a second separately named character variant");
   assert(new Set(secondVariantLayers.map(layer => JSON.stringify(layer.transform))).size === 1 && JSON.stringify(secondVariantLayers[0].transform) !== JSON.stringify(composedCharacterLayers[0].transform), "the second character variant occupies a different comparison slot");
@@ -915,10 +915,10 @@ try {
   await click("#creative-studio-close");
   await waitFor('document.querySelector("#creative-studio-dialog")?.open === false');
   await click("#undo");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (layersBeforeCharacter + 4) + ', 10000);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (layersBeforeCharacter + 4), 10000);
   assert((await readDocument()).layers.filter(layer => layer.name.startsWith("Personaje anime V1 ·")).length === 4, "undo removes only the newest character variant and preserves its predecessor");
   await click("#redo");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (layersBeforeCharacter + 8) + ', 10000);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (layersBeforeCharacter + 8), 10000);
   await evaluate('window.__animeArtStrokeTextCount = 0; const originalStrokeText = CanvasRenderingContext2D.prototype.strokeText; CanvasRenderingContext2D.prototype.strokeText = function(...args) { window.__animeArtStrokeTextCount += 1; return originalStrokeText.apply(this, args); };');
   await click("#add-meme-text");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name === "Meme Top" || layer.name === "Meme Bottom").length === 2', 10000);
