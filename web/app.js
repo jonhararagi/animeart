@@ -6121,16 +6121,27 @@ function createAnimeCharacterFromSelectedTraits(){
     skinColor:document.querySelector("#creative-trait-skin-color").value,
     lineColor:document.querySelector("#creative-trait-line-color").value
   });
-  const variantNumbers=state.document.layers.map(layer=>{
+  const usedVariants=new Set(state.document.layers.map(layer=>{
     const match=/^Personaje anime V(\d+) ·/.exec(String(layer.name||""));
     return match?Number(match[1]):0;
-  });
-  const variant=Math.max(0,...variantNumbers)+1;
-  const size=Math.min(width*.34,height*.34);
-  const scale=Math.max(.18,Math.min(1.45,size/256));
-  const column=(variant-1)%2,row=Math.floor((variant-1)/2)%2;
-  const targetX=width*(column===0?.29:.71);
-  const targetY=height*(row===0?.31:.69);
+  }).filter(number=>number>0));
+  const variant=Array.from({length:9},(_,index)=>index+1).find(number=>!usedVariants.has(number));
+  if(!variant){
+    const message="Este documento ya contiene nueve variaciones visibles. Guarda una copia o crea otro documento para conservar más versiones.";
+    document.querySelector("#creative-character-status").textContent=message;
+    document.querySelector("#creative-studio-status").textContent=message;
+    return false;
+  }
+  const positions=[
+    {x:.50,y:.50},{x:.27,y:.50},{x:.73,y:.50},
+    {x:.27,y:.25},{x:.73,y:.25},{x:.27,y:.75},
+    {x:.73,y:.75},{x:.50,y:.25},{x:.50,y:.75}
+  ];
+  const position=positions[variant-1];
+  const size=Math.min(width*.29,height*.22);
+  const scale=Math.max(.16,Math.min(1.25,size/256));
+  const targetX=width*position.x;
+  const targetY=height*position.y;
   const transform={
     x:(targetX-width/2)+scale*(width/2-128),
     y:(targetY-height/2)+scale*(height/2-128),
