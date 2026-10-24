@@ -58,6 +58,8 @@ function svgRoot(label, body) {
   return '<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="' + label + '">' + body + "</svg>";
 }
 
+const HAIR_FACE_MARKER = "<!--KAPIART_FACE_DETAILS-->";
+
 function eyesArtwork(id, dark, iris) {
   const round = '<path d="M29 112 Q64 64 108 109 Q72 151 29 112Z" fill="#fffaf7" stroke="' + dark + '" stroke-width="5" stroke-linejoin="round"/><path d="M148 109 Q192 64 227 112 Q184 151 148 109Z" fill="#fffaf7" stroke="' + dark + '" stroke-width="5" stroke-linejoin="round"/><circle cx="70" cy="108" r="19" fill="' + iris + '"/><circle cx="186" cy="108" r="19" fill="' + iris + '"/><circle cx="70" cy="111" r="10" fill="' + dark + '"/><circle cx="186" cy="111" r="10" fill="' + dark + '"/><circle cx="63" cy="99" r="7" fill="#fff"/><circle cx="179" cy="99" r="7" fill="#fff"/><circle cx="79" cy="118" r="3" fill="#fff"/><circle cx="195" cy="118" r="3" fill="#fff"/><path d="M35 95 Q67 70 103 92 M153 92 Q189 70 221 95" fill="none" stroke="' + dark + '" stroke-width="7" stroke-linecap="round"/>';
   const almond = '<path d="M27 112 Q59 84 109 107 Q74 130 27 112Z" fill="#fffaf7" stroke="' + dark + '" stroke-width="5" stroke-linejoin="round"/><path d="M147 107 Q197 84 229 112 Q182 130 147 107Z" fill="#fffaf7" stroke="' + dark + '" stroke-width="5" stroke-linejoin="round"/><ellipse cx="72" cy="108" rx="13" ry="15" fill="' + iris + '"/><ellipse cx="184" cy="108" rx="13" ry="15" fill="' + iris + '"/><ellipse cx="72" cy="111" rx="6" ry="9" fill="' + dark + '"/><ellipse cx="184" cy="111" rx="6" ry="9" fill="' + dark + '"/><circle cx="68" cy="102" r="4" fill="#fff"/><circle cx="180" cy="102" r="4" fill="#fff"/><path d="M28 108 L16 98 M35 101 L27 87 M102 102 L111 96 M228 108 L240 98 M221 101 L229 87 M154 102 L145 96" stroke="' + dark + '" stroke-width="4" stroke-linecap="round"/><path d="M38 91 Q67 78 101 92 M155 92 Q189 78 218 91" fill="none" stroke="' + dark + '" stroke-width="6" stroke-linecap="round"/>';
@@ -74,7 +76,7 @@ function hairArtwork(id, hair, skin, dark, iris) {
     "hair-long-swept": '<path d="M57 137 Q34 86 61 49 Q93 11 145 30 Q207 31 210 91 L201 231 L170 241 L169 155 L150 119 L128 93 L104 117 L87 152 L84 239 L52 229Z" fill="' + hair + '" stroke="' + dark + '" stroke-width="5" stroke-linejoin="round"/><path d="M65 84 Q105 34 174 47 Q150 72 124 91 Q101 111 88 146 L73 117 Q91 85 111 72 Q90 70 65 84Z" fill="' + hair + '" stroke="' + dark + '" stroke-width="4" stroke-linejoin="round"/><path d="M70 166 Q77 198 68 218 M185 126 Q194 177 187 214 M111 42 Q147 33 174 47" fill="none" stroke="#ffffff" stroke-opacity=".36" stroke-width="4" stroke-linecap="round"/>',
     "hair-twin-tails": '<path d="M65 89 Q25 45 30 119 Q33 171 56 207 L81 194 L70 127Z M191 89 Q231 45 226 119 Q223 171 200 207 L175 194 L186 127Z" fill="' + hair + '" stroke="' + dark + '" stroke-width="5" stroke-linejoin="round"/><path d="M65 126 Q46 55 93 34 Q128 13 163 34 Q210 55 191 126 L183 170 L166 135 Q146 123 128 102 Q111 127 90 136 L74 170Z" fill="' + hair + '" stroke="' + dark + '" stroke-width="5" stroke-linejoin="round"/><path d="M84 84 Q110 60 126 77 L128 104 L145 78 Q164 64 177 85 L169 111 Q150 118 128 102 Q106 120 87 109Z" fill="' + hair + '" stroke="' + dark + '" stroke-width="4" stroke-linejoin="round"/><path d="M47 81 L67 93 L53 108 L34 94Z M190 93 L210 81 L223 94 L203 108Z" fill="#fff0a8" stroke="' + dark + '" stroke-width="4" stroke-linejoin="round"/><path d="M42 126 Q51 159 61 178 M214 126 Q205 159 195 178 M98 45 Q128 31 157 45" fill="none" stroke="#ffffff" stroke-opacity=".38" stroke-width="4" stroke-linecap="round"/>'
   };
-  return shapes[id] + face + '<path d="M72 113 Q88 98 105 109 M151 109 Q168 98 183 113" fill="none" stroke="' + dark + '" stroke-width="3.5" stroke-linecap="round"/>';
+  return shapes[id] + HAIR_FACE_MARKER + face + '<path d="M72 113 Q88 98 105 109 M151 109 Q168 98 183 113" fill="none" stroke="' + dark + '" stroke-width="3.5" stroke-linecap="round"/>';
 }
 
 function faceArtwork(id, skin, dark, iris) {
@@ -87,6 +89,67 @@ function faceArtwork(id, skin, dark, iris) {
   return shapes[id];
 }
 
+
+function faceBaseArtwork(id, skin, dark) {
+  const shapes = {
+    "face-round-soft": '<path d="M47 118 Q42 64 83 42 Q128 15 173 42 Q214 64 209 118 Q204 192 128 221 Q52 192 47 118Z" fill="' + skin + '" stroke="' + dark + '" stroke-width="5" stroke-linejoin="round"/><path d="M47 105 Q31 108 41 136 Q49 147 55 132 M209 105 Q225 108 215 136 Q207 147 201 132" fill="' + skin + '" stroke="' + dark + '" stroke-width="4"/>',
+    "face-oval-balanced": '<path d="M62 111 Q59 59 91 39 Q128 17 165 39 Q197 59 194 111 L181 164 Q162 204 128 214 Q94 204 75 164Z" fill="' + skin + '" stroke="' + dark + '" stroke-width="5" stroke-linejoin="round"/><path d="M62 105 Q47 108 54 132 Q60 144 68 130 M194 105 Q209 108 202 132 Q196 144 188 130" fill="' + skin + '" stroke="' + dark + '" stroke-width="4"/>',
+    "face-angular-defined": '<path d="M51 96 Q55 48 92 34 Q128 18 164 34 Q201 48 205 96 L190 153 L162 190 L128 220 L94 190 L66 153Z" fill="' + skin + '" stroke="' + dark + '" stroke-width="5" stroke-linejoin="round"/><path d="M51 96 L66 153 L94 190 M205 96 L190 153 L162 190" fill="none" stroke="' + dark + '" stroke-width="3" stroke-opacity=".42"/>',
+    "face-long-oval": '<path d="M67 109 Q61 58 93 38 Q128 16 163 38 Q195 58 189 109 L177 172 Q158 213 128 229 Q98 213 79 172Z" fill="' + skin + '" stroke="' + dark + '" stroke-width="5" stroke-linejoin="round"/><path d="M67 105 Q52 108 58 130 Q63 142 73 129 M189 105 Q204 108 198 130 Q193 142 183 129" fill="' + skin + '" stroke="' + dark + '" stroke-width="4"/>'
+  };
+  return shapes[id] +
+    '<path d="M128 137 L123 156 L132 157" fill="none" stroke="' + dark + '" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M109 179 Q128 190 147 179" fill="none" stroke="' + dark + '" stroke-width="3.5" stroke-linecap="round"/>' +
+    '<path d="M63 156 Q76 165 91 156 M165 156 Q180 165 193 156" fill="none" stroke="#e89a9c" stroke-opacity=".72" stroke-width="5" stroke-linecap="round"/>';
+}
+
+function hairFrontArtwork(id, hair, dark) {
+  const shapes = {
+    "hair-spiky-short": '<path d="M69 91 L91 108 L104 81 L125 109 L149 76 L154 107 L184 87 L177 116 Q155 126 128 105 Q104 129 78 116Z" fill="' + hair + '" stroke="' + dark + '" stroke-width="4.5" stroke-linejoin="round"/>',
+    "hair-straight-bob": '<path d="M72 76 Q98 68 123 76 L128 104 L141 76 Q163 78 183 65 L180 112 Q162 124 144 108 L128 126 L110 109 Q90 124 75 108Z" fill="' + hair + '" stroke="' + dark + '" stroke-width="4.5" stroke-linejoin="round"/>',
+    "hair-long-swept": '<path d="M62 78 Q98 46 133 68 L126 101 Q110 99 94 118 L78 145 L75 112 Q87 90 111 71 Q83 69 62 87Z" fill="' + hair + '" stroke="' + dark + '" stroke-width="4.5" stroke-linejoin="round"/>',
+    "hair-twin-tails": '<path d="M83 68 Q106 48 126 69 L128 103 L145 73 Q166 61 178 80 L169 107 Q150 116 128 97 Q106 116 87 105Z" fill="' + hair + '" stroke="' + dark + '" stroke-width="4.5" stroke-linejoin="round"/>'
+  };
+  return shapes[id] || "";
+}
+
+/**
+ * Creates a character composition as four aligned, editable SVG image layers.
+ * The parts share a viewBox but stay independent in the editor and history.
+ */
+export function createAnimeCharacterParts({
+  eyesId,
+  hairId,
+  faceId,
+  hairColor,
+  eyeColor,
+  skinColor,
+  lineColor
+} = {}) {
+  const eyes = getAnimeStyleComponent(eyesId);
+  const hair = getAnimeStyleComponent(hairId);
+  const face = getAnimeStyleComponent(faceId);
+  if (!eyes || eyes.part !== "eyes" || !hair || hair.part !== "hair" || !face || face.part !== "face") {
+    throw new TypeError("A character needs one valid eyes, hair and face component");
+  }
+
+  const safeHair = safeColor(hairColor, hair.defaultColors.primary);
+  const safeEyes = safeColor(eyeColor, eyes.defaultColors.eye);
+  const safeSkin = safeColor(skinColor, face.defaultColors.skin);
+  const safeLine = safeColor(lineColor, "#2b2035");
+  const fullHairBody = hairArtwork(hair.id, safeHair, safeSkin, safeLine, safeEyes);
+  const hairBackBody = fullHairBody.split(HAIR_FACE_MARKER)[0];
+
+  return Object.freeze({
+    hairBack: svgRoot("Cabello base: " + hair.label, hairBackBody),
+    face: svgRoot("Rostro: " + face.label, faceBaseArtwork(face.id, safeSkin, safeLine)),
+    hairFront: svgRoot("Flequillo: " + hair.label, hairFrontArtwork(hair.id, safeHair, safeLine)),
+    eyes: svgRoot("Ojos: " + eyes.label, eyesArtwork(eyes.id, safeLine, safeEyes)),
+    componentIds: Object.freeze({ eyes: eyes.id, hair: hair.id, face: face.id }),
+    colors: Object.freeze({ hair: safeHair, eyes: safeEyes, skin: safeSkin, line: safeLine })
+  });
+}
+
 export function createAnimeStyleComponentSvg(id, options = {}) {
   const component = getAnimeStyleComponent(id);
   if (!component) throw new TypeError("Unknown anime style component: " + String(id));
@@ -97,7 +160,7 @@ export function createAnimeStyleComponentSvg(id, options = {}) {
   const dark = safeColor(options.lineColor, "#2b2035");
   let body;
   if (component.part === "eyes") body = eyesArtwork(id, dark, iris);
-  else if (component.part === "hair") body = hairArtwork(id, primary, skin, dark, iris);
+  else if (component.part === "hair") body = hairArtwork(id, primary, skin, dark, iris).replace(HAIR_FACE_MARKER, "");
   else body = faceArtwork(id, skin, dark, iris);
   return svgRoot(component.label, body);
 }
