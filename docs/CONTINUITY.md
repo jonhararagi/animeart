@@ -1,3 +1,34 @@
+# Regla permanente de consolidación de ramas · 2026-10-23
+
+**TIMER estimado:** revisión de integración y registro de continuidad; tiempo real de trabajo no medido.
+
+## Regla obligatoria para todo trabajo nuevo
+
+Una rama autorizada no se considera terminada por implementar su función ni por tener una PR aprobada. **La entrega solo queda cerrada cuando toda la implementación útil y sus complementos necesarios están en `main` y el estado de `main` se verifica después de la integración.** No exigir al usuario que vuelva a recordar esta consolidación.
+
+Antes de integrar una rama:
+1. Comparar su HEAD con el `main` vigente y revisar commits, archivos, pruebas, documentación, recursos, configuración y dependencias complementarias.
+2. Clasificar cada cambio: ya integrado, cambio único pendiente, duplicado/superado, conflicto real o bloqueado. No descartar una mejora complementaria porque llegue en otra rama/PR.
+3. Preservar el trabajo válido de `main`; no reemplazar archivos completos ni mezclar ramas históricas divergentes sin resolver y verificar diferencias.
+4. Ejecutar Web CI y Android CI sobre el mismo HEAD candidato. Un test unitario o una compilación no sustituyen el E2E real; emulador/Chromium no equivalen a aceptación física en el Xiaomi.
+5. Integrar solo cuando se cumplan los controles autorizados. No modificar `main` directamente para saltarse el proceso de revisión.
+6. Después del merge, comprobar el SHA real de `main`, verificar que los archivos y comportamientos esperados siguen ahí, y revisar Web CI, Android CI y despliegue cuando corresponda sobre ese SHA integrado.
+7. Registrar en esta continuidad el commit de integración, runs de CI, artefactos verificables, límites y pendientes. Cerrar el lote como `PASS`, `PARTIAL` o `BLOCKED` según evidencia, nunca por declaración.
+8. Solo después de confirmar la integración, marcar ramas/PR duplicadas como obsoletas o eliminarlas si está autorizado y no contienen cambios únicos. La mera existencia de una rama no la hace automáticamente autorizada: se audita antes de integrar.
+
+## Estado comprobado de la consolidación
+
+- PR [#113 · Simetría vertical del pincel](https://github.com/jonhararagi/animeart/pull/113) integrada en `main` mediante [`d1dcc6f29ed6e11654fe0698de0c2a790297babe`](https://github.com/jonhararagi/animeart/commit/d1dcc6f29ed6e11654fe0698de0c2a790297babe).
+- PR [#108 · Paleta anime, varita y selección por capas](https://github.com/jonhararagi/animeart/pull/108) integrada en `main` mediante [`e67216573c61aa0f271f83596762e454cd0d9d40`](https://github.com/jonhararagi/animeart/commit/e67216573c61aa0f271f83596762e454cd0d9d40). Se incluyeron la biblioteca offline de colores, selección rectangular y por regiones conectadas, modos reemplazar/sumar/restar, recolor compatible con lineart y capas de efecto separadas.
+- SHA de `main` verificado: `e67216573c61aa0f271f83596762e454cd0d9d40`.
+- Web CI del SHA integrado: [run #40029394655 PASS](https://github.com/jonhararagi/animeart/actions/runs/40029394655).
+- Android CI del mismo SHA integrado: [run #40029394773 PASS](https://github.com/jonhararagi/animeart/actions/runs/40029394773).
+- Despliegue web del mismo SHA integrado: [run #40029394443 PASS](https://github.com/jonhararagi/animeart/actions/runs/40029394443).
+- Al registrar este estado, no había PR abiertas en el repositorio. Quedan ramas históricas; no se deben fusionar por lote ni asumir que todas están integradas por estar cerradas. Revisar si cada una tiene una mejora única no cubierta por su PR de cierre o por una integración posterior.
+- La prueba física en el Xiaomi `24116RACCG` sigue siendo una aceptación separada; los PASS de CI no la sustituyen.
+
+---
+
 # KapiArt Studio · estado verificado de entrega v0.3.6 · 2026-10-20
 
 **TIMER estimado:** 4–8 horas para la primera iteración importante; tiempo real de trabajo no medido.
