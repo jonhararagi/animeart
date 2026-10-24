@@ -29,7 +29,7 @@ import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mj
 import { clampSelectionHandles, constrainTranslationToDocument, groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, layerCorners, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, exportScaleForResolution, renderDocumentToCanvas } from "./domain/png-export.mjs";
 import { CREATIVE_TEMPLATES, STICKER_CATALOG, WORD_ART_PRESETS, STYLE_PACKS, createStickerSvg, createPosterSvg, svgDataUrl, getCreativeTemplate, getSticker, getWordArtPreset, getStylePack } from "./domain/creative-catalog.mjs";
-import { ANIME_STYLE_COMPONENTS, getAnimeStyleComponent, searchAnimeStyleComponents, createAnimeStyleComponentSvg } from "./domain/anime-style-library.mjs";
+import { ANIME_STYLE_COMPONENTS, getAnimeStyleComponent, searchAnimeStyleComponents, createAnimeStyleComponentSvg, createAnimeCharacterParts } from "./domain/anime-style-library.mjs";
 
 const canvas = document.querySelector("#canvas");
 const removeSelectedImageButton = document.querySelector("#remove-selected-image");
@@ -6070,8 +6070,21 @@ function updateAnimeTraitSelectionUi(){
   const count=selectedAnimeTraitIds.size;
   if(button){button.disabled=count===0;button.textContent=count?"Añadir "+count+" referencia"+(count===1?"":"s")+" al lienzo":"Añadir referencias seleccionadas";}
   if(message)message.textContent=count
-    ?count+" de "+MAX_SELECTED_ANIME_TRAITS+" rasgos seleccionados. Se añadirán como capas de referencia separadas."
-    :"Elige hasta cuatro rasgos para compararlos junto al dibujo. Son referencias vectoriales originales.";
+    ?count+" de "+MAX_SELECTED_ANIME_TRAITS+" rasgos seleccionados. Puedes añadirlos como referencias o crear un personaje si eliges uno de cada categoría."
+    :"Elige ojos, un peinado y un rostro para crear un personaje editable; también puedes añadir rasgos como referencias separadas.";
+  updateAnimeCharacterComposerUi();
+}
+function updateAnimeCharacterComposerUi(){
+  const button=document.querySelector("#creative-trait-create-character");
+  const statusMessage=document.querySelector("#creative-character-status");
+  if(!button)return;
+  const selected=[...selectedAnimeTraitIds].map(getAnimeStyleComponent).filter(Boolean);
+  const parts=["eyes","hair","face"];
+  const valid=selected.length===3&&parts.every(part=>selected.filter(component=>component.part===part).length===1);
+  button.disabled=!valid;
+  if(statusMessage)statusMessage.textContent=valid
+    ?"Listo: se crearán cuatro capas alineadas y editables. Puedes generar otra variación sin reemplazar esta."
+    :"Selecciona exactamente un rasgo de Ojos, uno de Cabello y uno de Rostro.";
 }
 function toggleAnimeTraitSelection(id){
   if(!getAnimeStyleComponent(id))return false;
@@ -6082,6 +6095,68 @@ function toggleAnimeTraitSelection(id){
   }else selectedAnimeTraitIds.add(id);
   updateAnimeTraitSelectionUi();renderCreativeCatalog();return true;
 }
+function createAnimeCharacterFromSelectedTraits(){
+  const selected=[...selectedAnimeTraitIds].map(getAnimeStyleComponent).filter(Boolean);
+  const eyes=selected.filter(component=>component.part==="eyes");
+  const hair=selected.filter(component=>component.part==="hair");
+  const face=selected.filter(component=>component.part==="face");
+  if(selected.length!==3||eyes.length!==1||hair.length!==1||face.length!==1){
+    const message="Selecciona exactamente un rasgo de Ojos, uno de Cabello y uno de Rostro.";
+    document.querySelector("#creative-character-status").textContent=message;
+    document.querySelector("#creative-studio-status").textContent=message;
+    return false;
+  }
+  const width=Number(state.document?.width),height=Number(state.document?.height);
+  if(!Number.isInteger(width)||width<1||!Number.isInteger(height)||height<1){
+    const message="Crea un documento o importa una imagen antes de crear un personaje.";
+    status.textContent=message;document.querySelector("#creative-character-status").textContent=message;
+    document.querySelector("#creative-studio-status").textContent=message;return false;
+  }
+  const parts=createAnimeCharacterParts({
+    eyesId:eyes[0].id,
+    hairId:hair[0].id,
+    faceId:face[0].id,
+    hairColor:document.querySelector("#creative-trait-hair-color").value,
+    eyeColor:document.querySelector("#creative-trait-eye-color").value,
+    skinColor:document.querySelector("#creative-trait-skin-color").value,
+    lineColor:document.querySelector("#creative-trait-line-color").value
+  });
+  const variantNumbers=state.document.layers.map(layer=>{
+    const match=/^Personaje anime V(\d+) ·/.exec(String(layer.name||""));
+    return match?Number(match[1]):0;
+  });
+  const variant=Math.max(0,...variantNumbers)+1;
+  const size=Math.min(width*.34,height*.34);
+  const scale=Math.max(.18,Math.min(1.45,size/256));
+  const column=(variant-1)%2,row=Math.floor((variant-1)/2)%2;
+  const targetX=width*(column===0?.29:.71);
+  const targetY=height*(row===0?.31:.69);
+  const transform={
+    x:(targetX-width/2)+scale*(width/2-128),
+    y:(targetY-height/2)+scale*(height/2-128),
+    scale,rotation:0
+  };
+  const specs=[
+    ["hairBack","Cabello base · "+hair[0].label],
+    ["face","Rostro · "+face[0].label],
+    ["hairFront","Flequillo · "+hair[0].label],
+    ["eyes","Ojos · "+eyes[0].label]
+  ];
+  const layers=specs.map(([part,label])=>{
+    const layer=createImageLayer("Personaje anime V"+variant+" · "+label,256,256,svgDataUrl(parts[part]));
+    layer.isReference=false;
+    layer.transform={...transform};
+    return layer;
+  });
+  const message="Personaje anime V"+variant+" creado en cuatro capas editables: cabello base, rostro, flequillo y ojos. Cambia los colores o selecciona otros rasgos para crear variantes sin reemplazar el original.";
+  if(!commitCreativeLayers(layers,message))return false;
+  document.querySelector("#creative-character-status").textContent=message;
+  document.querySelector("#creative-studio-status").textContent=message;
+  updateAnimeCharacterComposerUi();
+  renderCreativeCatalog();
+  return true;
+}
+
 function addSelectedAnimeStyleReferences(){
   const selected=[...selectedAnimeTraitIds].map(getAnimeStyleComponent).filter(Boolean);
   if(!selected.length)return false;
@@ -6209,6 +6284,7 @@ document.querySelectorAll("[data-creative-tab]").forEach(button=>button.addEvent
 document.querySelector("#creative-catalog-search")?.addEventListener("input",renderCreativeCatalog);
 document.querySelector("#creative-trait-part")?.addEventListener("change",renderCreativeCatalog);
 document.querySelector("#creative-trait-add-selected")?.addEventListener("click",addSelectedAnimeStyleReferences);
+document.querySelector("#creative-trait-create-character")?.addEventListener("click",createAnimeCharacterFromSelectedTraits);
 document.querySelector("#creative-studio-open")?.addEventListener("click",openCreativeStudio);
 document.querySelector("#quick-open-creative-studio")?.addEventListener("click",openCreativeStudio);
 document.querySelector("#creative-studio-x")?.addEventListener("click",()=>document.querySelector("#creative-studio-dialog")?.close());
