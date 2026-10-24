@@ -3980,70 +3980,71 @@ La CI de Android de la PR generó un artefacto de 10.724.319 bytes. El artefacto
 Verificar Web CI, Android CI y el artefacto Android ligados al SHA más reciente de `main`. Después, configurar firma persistente de distribución y verificar la actualización sobre una instalación existente con respaldo de los proyectos. Completar una prueba física en el Xiaomi y la matriz de referentes con fuentes y fechas reales.
 
 
-## 2026-10-21 · PR #110 · carga progresiva de la biblioteca visual
+## 2026-10-21 · Carga progresiva de la biblioteca visual · registro actualizado
 
-- **Estado del lote:** Web CI PASS y Android CI PASS en HEAD `c7fdb3434a6b9b20ef36894db8e9bdeab1aa3c8a`. La PR #110 está abierta y en borrador: https://github.com/jonhararagi/animeart/pull/110.
-- **Main no modificado por esta iteración:** SHA `1b256a6324bdd8544e49bf8a735c4cd93349f8bb`.
-- **Rama de trabajo:** `feature/animeart-library-progressive-loading-001`.
-- **Cambios:** máximo 36 tarjetas por render inicial; botón accesible «Cargar más»; búsqueda y filtros reinician la vista al primer bloque; miniaturas con `loading="lazy"` y `decoding="async"`; helper `web/domain/asset-library-pagination.mjs`; caché PWA `animeart-web-shell-v62`.
-- **Pruebas nuevas:** pruebas de dominio para listas de 500 recursos, último bloque parcial, entradas inválidas y límites; el E2E de Chromium siembra 40 registros temporales en IndexedDB, comprueba 36 iniciales, muestra 40 tras «Cargar más», filtra a un resultado, reinicia a 36 al limpiar búsqueda y restaura los registros anteriores.
-- **Evidencia CI:** Web PASS https://github.com/jonhararagi/animeart/actions/runs/39648162906; Android PASS https://github.com/jonhararagi/animeart/actions/runs/39648162976.
-- **APK del HEAD de la PR:** artefacto temporal de GitHub Actions #12367838419, nombre `kapiart-android-debug-v0.3.7-a14fe189f0da5ed7ce8a99a445d8b4941afa4e38`. Es una compilación de la rama de la PR, no de `main`. Firma configurada como `ephemeral-debug`; la compatibilidad de actualización no está garantizada. No hay prueba física registrada en el Xiaomi.
-- **Limitación conocida:** este lote limita la creación de tarjetas, URLs de previsualización y decodificación inicial, pero `allAssets()` todavía usa `IndexedDB.getAll()` y recupera los blobs junto con los metadatos. Un futuro lote puede separar metadatos y binarios en almacenes IndexedDB distintos, con migración y pruebas de recuperación antes de cambiar el formato local.
-- **TIMER estimado:** 2–4 horas para la implementación y validación; tiempo real no medido.
-- **Siguiente criterio de decisión:** no fusionar PR #110 sin autorización explícita. Antes de prometer que la biblioteca evita cargar todos los datos binarios, completar la separación de almacenamiento y probar migración desde DB_VERSION=1.
+- **Rama histórica:** `feature/animeart-library-progressive-loading-001`; la nota inicial registraba la PR #110 como borrador. Ese estado es histórico, no el estado actual de integración.
+- **Implementación integrada en main:** `71cf75d0692fc5122463e3500fef9104062ba5e7` (carga progresiva). La biblioteca presenta un bloque inicial de hasta 36 tarjetas, botón accesible «Cargar más», reinicia la paginación al cambiar búsqueda/filtros y usa miniaturas con carga/decodificación diferidas.
+- **Módulo:** `web/domain/asset-library-pagination.mjs`. Las pruebas cubren listas grandes (incluidos 500 recursos), último bloque parcial, entradas inválidas y límites.
+- **E2E histórico:** siembra 40 registros de prueba en IndexedDB, verifica 36 tarjetas iniciales, 40 tras «Cargar más», un resultado tras filtrar y el restablecimiento del primer bloque al limpiar la búsqueda.
+- **CI histórico de la rama:** Web PASS [run #39648162906](https://github.com/jonhararagi/animeart/actions/runs/39648162906) y Android PASS [run #39648162976](https://github.com/jonhararagi/animeart/actions/runs/39648162976).
+- **Artefacto histórico de PR:** #12367838419, nombre `kapiart-android-debug-v0.3.7-a14fe189f0da5ed7ce8a99a445d8b4941afa4e38`. No se presenta como artefacto del main actual.
+- **Limitación que motivó el siguiente lote:** el primer cambio de paginación limitaba tarjetas y decodificación visual, pero `allAssets()` todavía recuperaba todos los registros y blobs de IndexedDB. La separación de metadatos y binarios descrita a continuación trata ese punto.
 
+## 2026-10-22 · Biblioteca visual · almacenamiento IndexedDB v2 · integrado
 
-## 2026-10-22 · Biblioteca visual, almacenamiento v2 en rama de trabajo
+- **Rama histórica:** `feature/animeart-library-binary-store-002`.
+- **Implementación actual en main:** `f6fcba7310a8df64b69df913a5b9394d20ac9fb2`. IndexedDB v2 conserva fichas de metadatos en `assets` y binarios en `asset-blobs`; las lecturas de biblioteca cargan metadatos, y los flujos de previsualizar, insertar o exportar solicitan el binario cuando hace falta.
+- **Migración:** la actualización desde DB_VERSION=1 migra los recursos existentes en la transacción de actualización. El borrado elimina la ficha y su binario juntos; la inserción y la exportación cargan los binarios de forma explícita.
+- **Protección ante actualización bloqueada:** si otra pestaña antigua impide actualizar IndexedDB, se avisa que debe cerrarse; la solicitud permanece activa para completar la migración cuando se libere, en lugar de rechazarla prematuramente.
+- **Pruebas históricas:** E2E de migración de registros, inspección de IndexedDB, inserción/exportación, borrado y flujos de duplicados. El CI actual de main se registra en la sección de conciliación final.
 
-- **Repositorio:** `jonhararagi/animeart`
-- **Rama:** `feature/animeart-library-binary-store-002`
-- **Base de trabajo:** `main` en `71cf75d0692fc5122463e3500fef9104062ba5e7` después de integrar la carga progresiva de biblioteca (PR #110).
-- **TIMER estimado:** 3–5 horas de ingeniería para la migración y verificación; tiempo real no medido.
-- **Objetivo de este lote:** IndexedDB v2 mantiene las fichas sin el `Blob` inline en `assets` y almacena los binarios en `asset-blobs`; la subida v1→v2 recorre los recursos existentes y los migra en la transacción de actualización.
-- **Cambios de código en progreso:** carga solo metadatos al abrir la biblioteca; miniaturas cargan el binario cuando la tarjeta entra en el área visible; inserción/exportación obtienen binarios de forma explícita; borrado elimina ficha y binario juntos; comprobación E2E cubre la migración de 40 registros.
-- **Pruebas actualizadas:** contratos estáticos de versión de caché a `animeart-web-shell-v63`; E2E ampliado con inspección real de IndexedDB.
-- **Estado honesto:** pendiente de completar CI en la rama y revisar los resultados reales antes de recomendar la integración. No se modifica `main` para este lote sin las verificaciones del PR.
-- **Riesgo a revisar:** la migración depende de que el upgrade de IndexedDB concluya correctamente; revisar logs de Web E2E, instrumentación Android y manejo de errores de transacción. La carga de binarios para duplicados y exportación es intencionada y ocurre solo en esos flujos.
+## 2026-10-23 · Previsualizaciones ligeras de la biblioteca visual · integrado
 
-- **Protección de actualización añadida:** si IndexedDB avisa que otra pestaña bloquea la actualización, el diálogo informa que debe cerrarse la pestaña antigua; la solicitud permanece activa para completar la migración cuando se libere, sin rechazarla prematuramente.
+- **Rama histórica:** `feature/animeart-asset-thumbnails-003`.
+- **Implementación actual en main:** `5851396bc63f0ac4efb44bfe125c5f9c29184c5a`. Genera miniaturas derivadas de hasta 512 px, conserva el original para insertar/exportar, reutiliza la miniatura en consultas posteriores y libera los bitmaps temporales después de convertirlos.
+- **Compatibilidad offline:** app y service worker usan ahora `animeart-web-shell-v68`; los contratos del workflow Android comprueban esa versión. Las referencias antiguas a v63/v64 ya no describen el shell actual.
+- **Comprobación de equivalencia:** la carga progresiva, el almacén binario y los módulos auxiliares están presentes en el árbol actual de main; no se necesita reimportar esas ramas ni copiar sus archivos antiguos encima.
 
+## 2026-10-23 · Simetría vertical del pincel y borrador de capa · integrada
 
-## 2026-10-23 · Previsualizaciones ligeras de la biblioteca visual
+- **PR #113:** [Simetría vertical del pincel](https://github.com/jonhararagi/animeart/pull/113), fusionada por squash en `d1dcc6f29ed6e11654fe0698de0c2a790297babe`.
+- **Implementación:** el pincel y el borrador de trazos duplican y reflejan los puntos respecto al eje vertical central del documento. Ambos trazos permanecen editables en la misma capa y se confirman/deshacen como una operación de historial.
+- **Límite funcional:** no anuncia simetría para el borrado rasterizado de píxeles ni para la herramienta de censura.
+- **Evidencia previa al merge:** Web CI PASS [run #40024546997](https://github.com/jonhararagi/animeart/actions/runs/40024546997); Android CI PASS [run #40024546975](https://github.com/jonhararagi/animeart/actions/runs/40024546975). Chromium comprobó geometría reflejada, píxeles visibles a ambos lados, deshacer y el flujo de borrador móvil con transparencia real.
+- **Estado actual:** el control, su motor y las pruebas se encuentran en main; no volver a crear una rama/PR para repetir esa función.
 
-- **Rama:** `feature/animeart-asset-thumbnails-003`, partiendo de main `f6fcba7310a8df64b69df913a5b9394d20ac9fb2`.
-- **TIMER estimado:** 2–4 horas de ingeniería y validación; tiempo real no medido.
-- **Objetivo:** persistir miniaturas derivadas de hasta 512 px para vistas previas, conservar el original para inserción y exportación, y no decodificar repetidamente originales grandes al recorrer la biblioteca.
-- **Implementación en curso:** genera miniaturas cuando se consulta una tarjeta visible, las guarda junto al binario original en la tienda IndexedDB existente, reutiliza las miniaturas la siguiente vez y libera los bitmaps de memoria tras la conversión.
-- **Verificación planificada:** E2E con imagen de 640×640, dimensiones de miniatura limitadas a 512 px, preservación del original y pruebas existentes; la caché PWA sube a `v64`.
-- **Estado honesto:** pendiente de Web CI, E2E y Android CI antes de proponer integración.
+## 2026-10-20 · KapiArt Anime Color Studio · integrado
 
+- **Commit de main:** `e67216573c61aa0f271f83596762e454cd0d9d40`, título `KapiArt: add anime color studio and region selection`.
+- **PR #108 / rama histórica:** `feature/kapiart-anime-color-studio-001` quedó cerrada sin merge. Se hizo comparación de contenido entre su árbol y main: los archivos funcionales y de prueba coinciden exactamente, incluidos `web/app.js`, `web/index.html`, `web/domain/color-replacement.mjs`, `web/domain/anime-region-selection.mjs`, `web/domain/anime-color-studio.mjs`, `web/scripts/browser-e2e.mjs`, `web/service-worker.js`, `web/styles.css`, las pruebas del estudio, las pruebas de biblioteca y el workflow Android. No reabrir ni fusionar la rama vieja como si faltara el código.
+- **Paleta:** buscador local en español, colores predefinidos y tonos generados en el dispositivo, con selección de cualquier valor RGB compatible. No descarga imágenes ni requiere una API de pago.
+- **Selección anime:** varita de regiones conectadas con tolerancia, selección rectangular por arrastre y modos explícitos de reemplazar, sumar, restar y limpiar regiones. La máscara limita el recoloreado a la zona elegida.
+- **Procesamiento:** reemplazo de color local con alfa preservado, controles de temperatura/oscuridad/tono, salida en una capa independiente `Efecto de color` y borrador alfa para descubrir el original. El motor de imagen se ejecuta en worker cuando está disponible, evitando el fallback en el hilo UI en el E2E verificado.
+- **Cuentagotas:** Chromium confirmó que el color de entrada coincide con el píxel de origen que realmente mapea el clic. La prueba de región rectangular comprobó píxeles seleccionados; la prueba de recolor confirmó que el original permanece debajo de la capa de efecto.
+- **Límite de IA:** la varita usa heurísticas locales para ilustraciones de relleno plano/cel-shading. No es un modelo semántico entrenado con miles de imágenes y no garantiza reconocer cabello, ojos o ropa en todo estilo anime. La generación inteligente futura requiere corpus autorizado y evaluación aparte.
+- **TIMER histórico estimado:** 4–8 horas para la primera iteración; no es una medición de tiempo real.
 
-## 2026-10-23 · Simetría vertical del pincel y borrador de capa
+## 2026-10-24 · Consolidación verificada de ramas autorizadas en main
 
-- **Rama:** `feature/animeart-brush-symmetry-004`, desde `main` `5851396bc63f0ac4efb44bfe125c5f9c29184c5a`.
-- **TIMER estimado:** 2–4 horas de ingeniería y validación; tiempo real no medido.
-- **Implementación:** control de simetría vertical en el grupo de pincel; duplica y refleja los puntos del pincel o borrador de trazos respecto al centro del documento en tiempo real. Los dos trazos permanecen editables en la misma capa y se confirman/deshacen como una sola operación.
-- **Límite explícito:** el control afecta trazos de capa, no operaciones rasterizadas de borrado de píxeles ni la herramienta de censura.
-- **Pruebas incorporadas:** unidad de geometría/reflejo e inputs inválidos, contratos de UI y caché, además de Chromium E2E que activa el control, dibuja en el lienzo, comprueba puntos espejados y píxeles visibles a ambos lados y ejecuta Deshacer.
-- **Estado antes de CI:** implementación en rama; validar Web E2E y Android CI sobre el HEAD final antes de integrar.
+**Regla permanente de entrega:** una rama aprobada no cuenta como trabajo terminado si su implementación o un complemento necesario permanece únicamente en esa rama. Después de aprobar una mejora, comparar sus archivos con `main`, integrar lo que falte, verificar Web CI y Android CI sobre el SHA final de `main` y actualizar este registro. No crear ramas duplicadas para una función ya integrada. Solo retirar una rama obsoleta después de comprobar que su código y sus pruebas ya están en `main`.
 
+### Estado autoritativo de main
+
+- **SHA actual auditado:** `2ae72cb70af259de3f89050dee89697eef81458d`.
+- **Web CI sobre ese SHA:** PASS, [run #40049062404](https://github.com/jonhararagi/animeart/actions/runs/40049062404).
+- **Android CI sobre ese SHA:** PASS, [run #40049062532](https://github.com/jonhararagi/animeart/actions/runs/40049062532).
+- **PR abiertas en la auditoría:** ninguna antes de la actual PR documental.
+- **Estado global:** código integrado y CI PASS; la entrega física/estable sigue PARTIAL por las limitaciones indicadas abajo.
+
+### Conciliación de las ramas antiguas
+
+- No se encontró una PR abierta que requiera una integración de código adicional para las funcionalidades enumeradas arriba. La fuente autoritativa es el árbol actual de `main`, no el estado histórico de una rama.
+- La corrección de continuidad no reemplaza código ni pruebas; actualiza el estado de integración y conserva el historial técnico sin dejar mensajes incompatibles de “pendiente de merge”.
+
+### Límites que no deben ocultarse
+
+La CI más reciente de main valida build, tests y E2E web en Chromium, además de build, recursos, unit tests, lint e instrumentación/smoke Android. Esto no sustituye una prueba manual en el Xiaomi `24116RACCG`.
+
+Siguen pendientes: prueba táctil física y revisión visual final en el Xiaomi; reconocimiento semántico avanzado de personajes/cabello (la varita actual es heurística local y no es un modelo entrenado con miles de imágenes); y configuración de firma persistente para una actualización Android estable. Los APK de firma efímera no garantizan compatibilidad de actualización. No declarar estas partes como completas ni confundir CI PASS con validación física o distribución estable.
 
 ---
-
-## Trabajo en curso · KapiArt Anime Color Studio · 2026-10-20
-
-- **Estado:** `PARTIAL`. Rama dedicada: [feature/kapiart-anime-color-studio-001](https://github.com/jonhararagi/animeart/tree/feature/kapiart-anime-color-studio-001).
-- **Base main al iniciar:** `33ab69e66e902b62e411d4cd764ef2dff180d125`.
-- Añadidos un catálogo local de tonos anime, buscador en español, varita por región conectada, máscaras para recolorear con alfa preservado, selección aditiva y acción para separar una región en una capa.
-- La paleta se genera en código. No descarga imágenes ni entrena un modelo. La varita usa heurísticas para arte anime de relleno plano y no puede garantizar reconocimiento semántico de cabello.
-- Se añadieron pruebas de módulo e integración. **CI Web, CI Android/APK y prueba física siguen pendientes** hasta comprobar el HEAD definitivo de la rama.
-- Registro ampliado: [docs/AUDITS/2026-10-20-KAPIART-ANIME-COLOR-STUDIO.md](./AUDITS/2026-10-20-KAPIART-ANIME-COLOR-STUDIO.md).
-- **TIMER estimado:** 4–8 horas; tiempo real no medido.
-
-## Actualización de alcance · selección y borrador de color · 2026-10-20
-
-- Se amplió la rama de trabajo para incluir selector rectangular por arrastre, tolerancia de la varita anime, combinación/limpieza de zonas, búsqueda de tonos en español y controles de temperatura, luminosidad/oscuridad y giro de tono.
-- El recoloreado puede crear una capa independiente `Efecto de color`; el original permanece debajo. La acción `Borrar efecto de color` activa el borrador alfa sobre esa capa para descubrir de nuevo el dibujo original.
-- La rama mantiene el trabajo separado de `main`. **No integrar hasta confirmar Web CI con E2E y Android CI en el SHA definitivo.** TIMER estimado: 4–8 horas para esta primera iteración, tiempo real no medido.
-- Limitación de ML documentada: esta versión usa heurísticas locales para rellenos anime/cel-shading y no ha sido entrenada con miles de imágenes. Una futura etapa de reconocimiento semántico requiere corpus de referencia con procedencia/licencia verificadas, además de evaluación específica en anime.
