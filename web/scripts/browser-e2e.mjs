@@ -905,13 +905,20 @@ try {
   assert(new Set(composedCharacterLayers.map(layer => JSON.stringify(layer.transform))).size === 1, "character parts begin aligned with the same transform and remain independently editable");
   assert(composedCharacterLayers.some(layer => layer.name.includes("Cabello base")) && composedCharacterLayers.some(layer => layer.name.includes("Rostro")) && composedCharacterLayers.some(layer => layer.name.includes("Flequillo")) && composedCharacterLayers.some(layer => layer.name.includes("Ojos")), "the four layers preserve the selected character parts by name");
   assert(await evaluate('document.querySelector("#creative-character-status").textContent.includes("creado en cuatro capas")'), "character composer reports a successful editable character");
+  await evaluate('(() => { const input=document.querySelector("#creative-trait-hair-color"); input.value="#4D2E5F"; input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await click("#creative-trait-create-character");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (layersBeforeCharacter + 8) + ', 10000);
+  const secondVariantLayers = (await readDocument()).layers.filter(layer => layer.name.startsWith("Personaje anime V")).slice(-4);
+  assert(secondVariantLayers.every(layer => layer.name.startsWith("Personaje anime V2 ·") && layer.contentType === "image"), "the selected traits can generate a second separately named character variant");
+  assert(new Set(secondVariantLayers.map(layer => JSON.stringify(layer.transform))).size === 1 && JSON.stringify(secondVariantLayers[0].transform) !== JSON.stringify(composedCharacterLayers[0].transform), "the second character variant occupies a different comparison slot");
+  assert(await evaluate('document.querySelector("#creative-character-status").textContent.includes("V2 creado en cuatro capas")'), "second variant reports its own version status");
   await click("#creative-studio-close");
   await waitFor('document.querySelector("#creative-studio-dialog")?.open === false');
   await click("#undo");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + layersBeforeCharacter + ', 10000);
-  await click("#redo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (layersBeforeCharacter + 4) + ', 10000);
-
+  assert((await readDocument()).layers.filter(layer => layer.name.startsWith("Personaje anime V1 ·")).length === 4, "undo removes only the newest character variant and preserves its predecessor");
+  await click("#redo");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (layersBeforeCharacter + 8) + ', 10000);
   await evaluate('window.__animeArtStrokeTextCount = 0; const originalStrokeText = CanvasRenderingContext2D.prototype.strokeText; CanvasRenderingContext2D.prototype.strokeText = function(...args) { window.__animeArtStrokeTextCount += 1; return originalStrokeText.apply(this, args); };');
   await click("#add-meme-text");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name === "Meme Top" || layer.name === "Meme Bottom").length === 2', 10000);
