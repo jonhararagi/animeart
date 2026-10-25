@@ -1,4 +1,4 @@
-# Regla permanente de consolidación de ramas · 2026-10-23
+# Regla permanente de consolidación de ramas · 2026-10-24
 
 **TIMER estimado:** revisión de integración y registro de continuidad; tiempo real de trabajo no medido.
 
@@ -20,12 +20,33 @@ Antes de integrar una rama:
 
 - PR [#113 · Simetría vertical del pincel](https://github.com/jonhararagi/animeart/pull/113) integrada en `main` mediante [`d1dcc6f29ed6e11654fe0698de0c2a790297babe`](https://github.com/jonhararagi/animeart/commit/d1dcc6f29ed6e11654fe0698de0c2a790297babe).
 - PR [#108 · Paleta anime, varita y selección por capas](https://github.com/jonhararagi/animeart/pull/108) integrada en `main` mediante [`e67216573c61aa0f271f83596762e454cd0d9d40`](https://github.com/jonhararagi/animeart/commit/e67216573c61aa0f271f83596762e454cd0d9d40). Se incluyeron la biblioteca offline de colores, selección rectangular y por regiones conectadas, modos reemplazar/sumar/restar, recolor compatible con lineart y capas de efecto separadas.
-- SHA de `main` verificado: `e67216573c61aa0f271f83596762e454cd0d9d40`.
-- Web CI del SHA integrado: [run #40029394655 PASS](https://github.com/jonhararagi/animeart/actions/runs/40029394655).
-- Android CI del mismo SHA integrado: [run #40029394773 PASS](https://github.com/jonhararagi/animeart/actions/runs/40029394773).
-- Despliegue web del mismo SHA integrado: [run #40029394443 PASS](https://github.com/jonhararagi/animeart/actions/runs/40029394443).
+- PR [#117 · Biblioteca original de rasgos anime](https://github.com/jonhararagi/animeart/pull/117) integrada mediante [`548078b299d095a246ca79ea4a509132a8e23f12`](https://github.com/jonhararagi/animeart/commit/548078b299d095a246ca79ea4a509132a8e23f12). Incluye un catálogo estructurado con pruebas para rasgos y referencias.
+- PR [#118 · Composición de personajes con rasgos SVG editables](https://github.com/jonhararagi/animeart/pull/118) integrada mediante [`565770b36c77d3cd1abdc359ea0079ea63e715ef`](https://github.com/jonhararagi/animeart/commit/565770b36c77d3cd1abdc359ea0079ea63e715ef). La composición mantiene componentes editables en lugar de una galería estática.
+- SHA de `main` verificado: `565770b36c77d3cd1abdc359ea0079ea63e715ef`.
+- Web CI del SHA integrado: [run #40139485618 PASS](https://github.com/jonhararagi/animeart/actions/runs/40139485618).
+- Android CI del mismo SHA integrado: [run #40139485617 PASS](https://github.com/jonhararagi/animeart/actions/runs/40139485617).
+- Despliegue web del mismo SHA integrado: [run #40139485615 PASS](https://github.com/jonhararagi/animeart/actions/runs/40139485615).
 - Al registrar este estado, no había PR abiertas en el repositorio. Quedan ramas históricas; no se deben fusionar por lote ni asumir que todas están integradas por estar cerradas. Revisar si cada una tiene una mejora única no cubierta por su PR de cierre o por una integración posterior.
 - La prueba física en el Xiaomi `24116RACCG` sigue siendo una aceptación separada; los PASS de CI no la sustituyen.
+
+
+### Auditoría de complementos y ramas históricas · 2026-10-24
+
+La auditoría distingue código que falta de ramas cuyo contenido ya está cubierto por una implementación posterior:
+- **PR #110, #111 y #112:** carga progresiva de biblioteca, almacenamiento de binarios separado de metadatos y miniaturas cacheadas ya están integrados.
+- **PR #96, #97 y #99:** identidad visual KapiArt y edición guiada ya están integradas.
+- **PR #106 (cerrada sin merge):** el diagnóstico offline ya usa `document.documentElement.dataset` y consola; el estado visible de guardado no se sustituye con mensajes de Service Worker en el código actual.
+- **PR #103 (cerrada sin merge):** la prueba Chromium de arrastre de stickers superpuestos y de conservar inmóvil la capa superior ya está en `web/scripts/browser-e2e.mjs`.
+- **PR #100 (cerrada sin merge):** el renderizado suavizado y las pruebas de trazos forman parte del renderer actual; no copiar la implementación antigua encima.
+- **PR #58 (cerrada sin merge):** la importación de imágenes grandes ya está optimizada en `web/domain/image-import.mjs`, con techo de 25 MB, límites de dimensiones/píxeles y optimización local.
+- **PR #60 (cerrada sin merge):** `web/domain/quick-edit-recipes.mjs` y sus pruebas existen en main.
+- **PR #64 (cerrada sin merge):** la eliminación de fondo conectada al borde existe en main y la versión actual del módulo y de sus pruebas es más extensa que la rama antigua; no sustituirla por el archivo antiguo.
+- **PR #54:** la rama histórica asociada a ajustes de imagen no tiene commits exclusivos por delante de main en su referencia actual; no hay nada que fusionar de esa referencia.
+- **PR #61/#62:** fueron cerradas como antiguas/superadas. Mantener las plantillas, máscaras y UX actuales; rescatar solo un delta específico que no esté ya implementado y que pueda probarse.
+
+La rama `feature/kapiart-anime-color-selection-001` no tiene módulos de selección perdidos: se verificaron SHA de blob idénticos en main para `web/domain/anime-region-selection.mjs`, `web/domain/asset-deduplication.mjs`, `docs/ASSET_LIBRARY_PROVENANCE.md` y `docs/KAPIART_ANIME_COLOR_SELECTION.md`.
+
+No se debe hacer merge en bloque de ramas con más de cien commits de divergencia ni eliminar ramas históricas solo por ser antiguas. Si aparece un complemento único, crear una rama desde main, rescatar ese delta y ejecutar Web CI + Android CI en el mismo HEAD. La existencia de una rama no sustituye la prueba de que su cambio está ausente o de que sea seguro integrarlo.
 
 ---
 
