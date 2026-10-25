@@ -21,19 +21,36 @@ import org.junit.runner.RunWith
 class ProjectPersistenceRecoveryTest {
     private lateinit var context: Context
     private lateinit var persistence: ProjectPersistence
+    private var originalPreferences: Map<String, Any?> = emptyMap()
 
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
-        context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
-            .edit().clear().commit()
+        val prefs = context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
+        originalPreferences = prefs.all.mapValues { (_, value) ->
+            if (value is Set<*>) value.filterIsInstance<String>().toSet() else value
+        }
+        check(prefs.edit().clear().commit()) { "Could not isolate recovery test preferences" }
         persistence = ProjectPersistence(context)
     }
 
     @After
     fun tearDown() {
-        context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
-            .edit().clear().commit()
+        val prefs = context.getSharedPreferences("animeart_recovery", Context.MODE_PRIVATE)
+        val editor = prefs.edit().clear()
+        originalPreferences.forEach { (key, value) ->
+            when (value) {
+                is String -> editor.putString(key, value)
+                is Boolean -> editor.putBoolean(key, value)
+                is Int -> editor.putInt(key, value)
+                is Long -> editor.putLong(key, value)
+                is Float -> editor.putFloat(key, value)
+                is Set<*> -> editor.putStringSet(key, value.filterIsInstance<String>().toSet())
+                null -> Unit
+                else -> error("Unsupported SharedPreferences test fixture type: ${value::class.java.name}")
+            }
+        }
+        check(editor.commit()) { "Could not restore original recovery preferences after instrumentation test" }
     }
 
     @Test

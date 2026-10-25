@@ -313,7 +313,7 @@ class MainActivity : ComponentActivity() {
                     request: WebResourceRequest,
                     error: WebResourceError
                 ) {
-                    if (request.isForMainFrame) showLegacyEditor()
+                    handleWebViewLoadError(request.isForMainFrame)
                 }
             }
         }
@@ -334,6 +334,14 @@ class MainActivity : ComponentActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         webView?.saveState(outState)
         super.onSaveInstanceState(outState)
+    }
+
+    /**
+     * Deterministic routing seam for WebView load failures. Subresource errors must not
+     * tear down the editor or present the recovery UI.
+     */
+    internal fun handleWebViewLoadError(isMainFrame: Boolean) {
+        if (isMainFrame) showLegacyEditor()
     }
 
     private fun showLegacyEditor() {
