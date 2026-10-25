@@ -16,6 +16,22 @@ Antes de integrar una rama:
 7. Registrar en esta continuidad el commit de integración, runs de CI, artefactos verificables, límites y pendientes. Cerrar el lote como `PASS`, `PARTIAL` o `BLOCKED` según evidencia, nunca por declaración.
 8. Solo después de confirmar la integración, marcar ramas/PR duplicadas como obsoletas o eliminarlas si está autorizado y no contienen cambios únicos. La mera existencia de una rama no la hace automáticamente autorizada: se audita antes de integrar.
 
+## Estado comprobado de la consolidación · actualización 2026-10-25
+
+- **SHA real de `main`:** `47bd382e72484155af029fe014b8ced970bcfb7a`.
+- PR [#120 · Conjuntos de personajes, paletas y favoritos](https://github.com/jonhararagi/animeart/pull/120) está integrada en `main` mediante `5921cee2d98aa1b8562b2f42fd9b960c573a01cf`. La entrega conserva los conjuntos reutilizables del compositor, paletas y favoritos entre sesiones.
+- PR [#121 · Protección de recuperación Android y pruebas de UI](https://github.com/jonhararagi/animeart/pull/121) está integrada mediante [`47bd382e72484155af029fe014b8ced970bcfb7a`](https://github.com/jonhararagi/animeart/commit/47bd382e72484155af029fe014b8ced970bcfb7a).
+- El delta de #121 se rescató desde las antiguas PR cerradas #41/#43/#44 después de contrastarlas con `main`: la persistencia básica ya existía; faltaban pruebas de UI Compose para Cancelar/Iniciar documento nuevo/Guardar explícitamente y una ruta determinista para distinguir errores de WebView del marco principal frente a errores de subrecursos. También se corrigió el aislamiento de los tests para restaurar las SharedPreferences originales y no borrarlas al terminar.
+- La cobertura de cuota/persistencia Web de la antigua PR #46 ya existía en `web/scripts/browser-e2e.mjs`; no se copió una segunda versión.
+- **Web CI de PR #121 PASS:** [run #40232589239](https://github.com/jonhararagi/animeart/actions/runs/40232589239), HEAD candidato `b2789d41fbf13e8412dc47b87c38e908270c680c`, incluido Chromium E2E.
+- **Android CI de PR #121 PASS:** [run #40232589261](https://github.com/jonhararagi/animeart/actions/runs/40232589261), el mismo HEAD candidato; incluye build, verificación del Web editor dentro de la APK, unit tests, Lint, instrumentación/arranque y checksum/artefacto.
+- **Web CI post-merge PASS en main:** [run #40232977106](https://github.com/jonhararagi/animeart/actions/runs/40232977106), SHA integrado `47bd382e72484155af029fe014b8ced970bcfb7a`.
+- **Android CI post-merge PASS en main:** [run #40232977128](https://github.com/jonhararagi/animeart/actions/runs/40232977128), el mismo SHA integrado.
+- **APK debug verificada desde el SHA actual de main:** [artifact #12613713071](https://github.com/jonhararagi/animeart/actions/runs/40232977128/artifacts/12613713071), `kapiart-android-debug-v0.3.7-47bd382e72484155af029fe014b8ced970bcfb7a`, 10.773.093 bytes. SHA-256 del ZIP: `e37924a20ab976033867c0a249fa404d6e7b2b51f6e0619fd95fda9e1b8a7719`.
+- El workflow de despliegue web no se disparó por #121 porque sus cambios se limitaron a Android/Gradle y pruebas; no cambió `web/**`. El código web sigue siendo el de la versión desplegada en [run #40151257417 PASS](https://github.com/jonhararagi/animeart/actions/runs/40151257417), SHA `5921cee2d98aa1b8562b2f42fd9b960c573a01cf`. Si una entrega futura cambia `web/**`, la continuidad exige revisar también el despliegue post-merge.
+- En `main` quedan integradas las líneas principales de trabajo: simetría de pincel (#113), paleta/varita/selección por regiones (#108), catálogo original de rasgos (#117), compositor SVG editable (#118) y persistencia de conjuntos/paletas/favoritos (#120), además del complemento de recuperación de #121.
+- **Aceptación que sigue pendiente:** prueba física con dedo/stylus, zoom/pan, edición, deshacer/rehacer y exportación en el Xiaomi `24116RACCG`. CI/Chromium/emulador no equivalen a una prueba física. La misión global del estudio sigue siendo evolutiva; estos PASS no certifican que todas las capacidades de la misión inicial estén terminadas.
+
 ## Estado comprobado de la consolidación
 
 - PR [#113 · Simetría vertical del pincel](https://github.com/jonhararagi/animeart/pull/113) integrada en `main` mediante [`d1dcc6f29ed6e11654fe0698de0c2a790297babe`](https://github.com/jonhararagi/animeart/commit/d1dcc6f29ed6e11654fe0698de0c2a790297babe).
@@ -4092,12 +4108,14 @@ La comparación de nombre de rama o cantidad de commits no basta para decidir un
 6. Mantener separado el estado `PASS` de CI del estado `PARTIAL` de aceptación física o distribución.
 
 
-### Lote activo · Compositor de personajes anime
+### Compositor de personajes anime · integración ya completada
 
-- **Rama autorizada:** `feature/kapiart-anime-character-composer-001`, creada desde el `main` verificado anterior.
-- **Objetivo:** combinar un rasgo de ojos, uno de cabello y uno de rostro en cuatro capas SVG alineadas, mantenerlas editables, permitir cuatro colores, y verificar historial y composición desde Chromium.
-- **Caché offline:** actualizada de `animeart-web-shell-v69` a `animeart-web-shell-v70`; el workflow Android comprueba ahora que el compositor y sus controles se empaqueten.
-- **Estado al redactar esta entrada:** `IN_PROGRESS`. La validación de Web CI, Chromium E2E y Android CI sobre el HEAD definitivo de la rama sigue siendo requisito previo a la integración.
+- **Rama de origen:** `feature/kapiart-anime-character-composer-001`.
+- **PR #118:** [integrada en main](https://github.com/jonhararagi/animeart/pull/118) mediante `565770b36c77d3cd1abdc359ea0079ea63e715ef`.
+- **Alcance integrado:** combina rasgos de ojos, cabello y rostro en capas SVG editables y conserva los componentes separados para corrección manual.
+- **CI posterior:** la rama pasó Web CI y Android CI en las ejecuciones registradas en la sección de consolidación. `main` evolucionó después; el estado actual y los checks del SHA vigente están en la actualización superior de 2026-10-25.
+- **Caché offline canónica actual:** `animeart-web-shell-v71` en `web/app.js` y `web/service-worker.js`.
+- **Estado:** `PASS` para integración y CI en main; aceptación física en el Xiaomi sigue pendiente.
 
 ### Límites de aceptación todavía abiertos
 
