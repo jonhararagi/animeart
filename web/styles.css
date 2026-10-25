@@ -4571,3 +4571,20 @@ dialog {
 #creative-trait-create-character:disabled{opacity:.48;cursor:not-allowed}
 #creative-character-status{margin:0;color:#E3CFC6;font-size:.73rem;line-height:1.45}
 @media(max-width:640px){.creative-character-composer{padding:10px;gap:9px}.creative-character-colors{grid-template-columns:repeat(2,minmax(0,1fr))}.creative-character-colors input[type="color"]{height:44px}}
+
+/* KAPIART-ANIME-CHARACTER-PRESETS-001 */
+.creative-character-presets{display:grid;gap:10px;padding:10px 12px;border:1px solid #604941;border-radius:12px;background:#251c1a}
+.creative-character-presets>summary{min-height:42px;display:flex;align-items:center;cursor:pointer;color:#fff4eb;font-size:.8rem;font-weight:800;list-style-position:inside}
+.creative-character-presets-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding-top:8px}
+.creative-character-preset-section{display:grid;align-content:start;gap:8px;min-width:0;padding:10px;border:1px solid #604941;border-radius:10px;background:#2b211f}
+.creative-character-preset-section h4{margin:0;color:#fff4eb;font-size:.78rem}
+.creative-character-preset-section label{display:grid;gap:5px;color:#d8c3b8;font-size:.7rem;font-weight:700}
+.creative-character-preset-section input[type=text],.creative-character-preset-section select{width:100%;min-width:0;min-height:42px;padding:8px;border:1px solid #604941;border-radius:8px;background:#241a19;color:#fff4eb;font:inherit}
+.creative-character-preset-section button{min-height:42px;padding:8px 10px;font-size:.72rem}
+.creative-character-preset-checkbox{display:flex!important;align-items:center;gap:8px;min-height:42px}
+.creative-character-preset-checkbox input{width:20px;height:20px;accent-color:#f2a2a0}
+.creative-character-preset-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+#creative-character-presets-status{margin:0;color:#f2c6bd;font-size:.73rem;line-height:1.45}
+.creative-card-traits.is-favorite .creative-card-action-label{color:#f2a2a0}
+.creative-character-preset-section button:disabled{opacity:.48;cursor:not-allowed}
+@media(max-width:720px){.creative-character-presets-grid{grid-template-columns:minmax(0,1fr)}.creative-character-presets{padding:9px}.creative-character-preset-section{padding:9px}.creative-character-preset-buttons button{min-height:44px}}

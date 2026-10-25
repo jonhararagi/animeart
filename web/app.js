@@ -1,4 +1,4 @@
-import { DOCUMENT_VERSION, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
+import { DOCUMENT_VERSION, createId, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
 import { initializeAssetLibrary } from "./asset-library.js";
 import { getEditingHelpPreference, initializeAppearanceSettings, setEditingHelpPreference } from "./appearance-settings.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
@@ -30,6 +30,7 @@ import { clampSelectionHandles, constrainTranslationToDocument, groupRotationTra
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, exportScaleForResolution, renderDocumentToCanvas } from "./domain/png-export.mjs";
 import { CREATIVE_TEMPLATES, STICKER_CATALOG, WORD_ART_PRESETS, STYLE_PACKS, createStickerSvg, createPosterSvg, svgDataUrl, getCreativeTemplate, getSticker, getWordArtPreset, getStylePack } from "./domain/creative-catalog.mjs";
 import { ANIME_STYLE_COMPONENTS, getAnimeStyleComponent, searchAnimeStyleComponents, createAnimeStyleComponentSvg, createAnimeCharacterParts } from "./domain/anime-style-library.mjs";
+import { loadAnimeCharacterSets, saveAnimeCharacterSet, deleteAnimeCharacterSet, loadAnimeColorPalettes, saveAnimeColorPalette, deleteAnimeColorPalette, loadAnimeTraitFavorites, updateAnimeTraitFavorites } from "./domain/anime-character-presets.mjs";
 
 const canvas = document.querySelector("#canvas");
 const removeSelectedImageButton = document.querySelector("#remove-selected-image");
@@ -5996,12 +5997,112 @@ let activeCreativeTab="covers";
 let selectedCreativeTemplateId="anime-awakening";
 const selectedAnimeTraitIds = new Set();
 const MAX_SELECTED_ANIME_TRAITS = 4;
+let animeTraitFavoriteIds = new Set();
+let savedAnimeCharacterSets = [];
+let savedAnimeColorPalettes = [];
+let activeAnimeCharacterPresetId = null;
 function validCreativeColor(value,fallback){return typeof value==="string"&&/^#[0-9a-fA-F]{6}$/.test(value)?value:fallback;}
+function animePresetStorage(){try{return window.localStorage||null;}catch{return null;}}
+function currentAnimeCharacterColors(){return {
+ hair:validCreativeColor(document.querySelector("#creative-trait-hair-color")?.value,"#3a2b45"),
+ eyes:validCreativeColor(document.querySelector("#creative-trait-eye-color")?.value,"#6dd6e8"),
+ skin:validCreativeColor(document.querySelector("#creative-trait-skin-color")?.value,"#f4c7b7"),
+ line:validCreativeColor(document.querySelector("#creative-trait-line-color")?.value,"#2b2035")
+};}
+function setAnimeCharacterPresetStatus(message){const node=document.querySelector("#creative-character-presets-status");if(node)node.textContent=String(message||"");}
+function populateAnimePresetSelect(id,records,placeholder){
+ const select=document.querySelector("#"+id);if(!select)return;const previous=select.value;select.replaceChildren();
+ const empty=document.createElement("option");empty.value="";empty.textContent=placeholder;select.append(empty);
+ for(const record of records){const option=document.createElement("option");option.value=record.id;option.textContent=record.name;select.append(option);}
+ select.value=records.some(record=>record.id===previous)?previous:"";select.disabled=records.length===0;
+}
+function refreshAnimeCharacterPresetControls(message=""){
+ try{
+  const storage=animePresetStorage();
+  animeTraitFavoriteIds=new Set(loadAnimeTraitFavorites(storage,ANIME_STYLE_COMPONENTS));
+  savedAnimeCharacterSets=loadAnimeCharacterSets(storage,ANIME_STYLE_COMPONENTS);
+  savedAnimeColorPalettes=loadAnimeColorPalettes(storage);
+  populateAnimePresetSelect("creative-character-set-select",savedAnimeCharacterSets,"Elegir conjunto guardado…");
+  populateAnimePresetSelect("creative-character-palette-select",savedAnimeColorPalettes,"Elegir paleta guardada…");
+  document.querySelector("#creative-trait-save-favorites").disabled=selectedAnimeTraitIds.size===0;
+  document.querySelector("#creative-trait-remove-favorites").disabled=selectedAnimeTraitIds.size===0||![...selectedAnimeTraitIds].some(id=>animeTraitFavoriteIds.has(id));
+  document.querySelector("#creative-character-set-load").disabled=savedAnimeCharacterSets.length===0;
+  document.querySelector("#creative-character-set-delete").disabled=savedAnimeCharacterSets.length===0;
+  document.querySelector("#creative-character-palette-load").disabled=savedAnimeColorPalettes.length===0;
+  document.querySelector("#creative-character-palette-delete").disabled=savedAnimeColorPalettes.length===0;
+  if(message)setAnimeCharacterPresetStatus(message);
+ }catch(error){
+  animeTraitFavoriteIds=new Set();savedAnimeCharacterSets=[];savedAnimeColorPalettes=[];
+  populateAnimePresetSelect("creative-character-set-select",[],"Almacenamiento no disponible");
+  populateAnimePresetSelect("creative-character-palette-select",[],"Almacenamiento no disponible");
+  setAnimeCharacterPresetStatus(error?.message||"No se pudo leer la biblioteca local de personajes.");
+ }
+}
+function selectedAnimeCharacterComponents(){
+ const components=[...selectedAnimeTraitIds].map(getAnimeStyleComponent).filter(Boolean);
+ const eyes=components.filter(item=>item.part==="eyes"),hair=components.filter(item=>item.part==="hair"),face=components.filter(item=>item.part==="face");
+ return components.length===3&&eyes.length===1&&hair.length===1&&face.length===1?{eyes:eyes[0],hair:hair[0],face:face[0]}:null;
+}
+function saveCurrentAnimeCharacterSet(){
+ const selected=selectedAnimeCharacterComponents();
+ if(!selected){setAnimeCharacterPresetStatus("Selecciona exactamente un rasgo de ojos, cabello y rostro antes de guardar el conjunto.");return false;}
+ try{
+  const record=saveAnimeCharacterSet(animePresetStorage(),{name:document.querySelector("#creative-character-set-name").value,componentIds:{eyes:selected.eyes.id,hair:selected.hair.id,face:selected.face.id},colors:currentAnimeCharacterColors()},ANIME_STYLE_COMPONENTS);
+  activeAnimeCharacterPresetId=record.id;refreshAnimeCharacterPresetControls('Conjunto "'+record.name+'" guardado en este dispositivo.');
+  document.querySelector("#creative-character-set-select").value=record.id;return true;
+ }catch(error){setAnimeCharacterPresetStatus(error?.message||"No se pudo guardar el conjunto.");return false;}
+}
+function loadSelectedAnimeCharacterSet(){
+ const record=savedAnimeCharacterSets.find(item=>item.id===document.querySelector("#creative-character-set-select").value);
+ if(!record){setAnimeCharacterPresetStatus("Elige un conjunto guardado para cargarlo.");return false;}
+ selectedAnimeTraitIds.clear();for(const part of ["eyes","hair","face"])selectedAnimeTraitIds.add(record.componentIds[part]);
+ document.querySelector("#creative-trait-hair-color").value=record.colors.hair;
+ document.querySelector("#creative-trait-eye-color").value=record.colors.eyes;
+ document.querySelector("#creative-trait-skin-color").value=record.colors.skin;
+ document.querySelector("#creative-trait-line-color").value=record.colors.line;
+ document.querySelector("#creative-trait-favorites-only").checked=false;document.querySelector("#creative-trait-part").value="all";
+ activeAnimeCharacterPresetId=record.id;updateAnimeTraitSelectionUi();renderCreativeCatalog();
+ setAnimeCharacterPresetStatus('Conjunto "'+record.name+'" cargado. Puedes modificar los rasgos o los colores antes de crear otra variante.');return true;
+}
+function deleteSelectedAnimeCharacterSet(){
+ const id=document.querySelector("#creative-character-set-select").value,record=savedAnimeCharacterSets.find(item=>item.id===id);
+ if(!record){setAnimeCharacterPresetStatus("Elige un conjunto que quieras eliminar.");return false;}
+ try{const removed=deleteAnimeCharacterSet(animePresetStorage(),id,ANIME_STYLE_COMPONENTS);if(activeAnimeCharacterPresetId===id)activeAnimeCharacterPresetId=null;
+  refreshAnimeCharacterPresetControls(removed?'Conjunto "'+record.name+'" eliminado de este dispositivo.':"Ese conjunto ya no existe.");return removed;
+ }catch(error){setAnimeCharacterPresetStatus(error?.message||"No se pudo eliminar el conjunto.");return false;}
+}
+function saveCurrentAnimeColorPalette(){
+ try{const record=saveAnimeColorPalette(animePresetStorage(),{name:document.querySelector("#creative-character-palette-name").value,colors:currentAnimeCharacterColors()});
+  refreshAnimeCharacterPresetControls('Paleta "'+record.name+'" guardada en este dispositivo.');document.querySelector("#creative-character-palette-select").value=record.id;return true;
+ }catch(error){setAnimeCharacterPresetStatus(error?.message||"No se pudo guardar la paleta.");return false;}
+}
+function loadSelectedAnimeColorPalette(){
+ const record=savedAnimeColorPalettes.find(item=>item.id===document.querySelector("#creative-character-palette-select").value);
+ if(!record){setAnimeCharacterPresetStatus("Elige una paleta guardada para cargarla.");return false;}
+ document.querySelector("#creative-trait-hair-color").value=record.colors.hair;
+ document.querySelector("#creative-trait-eye-color").value=record.colors.eyes;
+ document.querySelector("#creative-trait-skin-color").value=record.colors.skin;
+ document.querySelector("#creative-trait-line-color").value=record.colors.line;activeAnimeCharacterPresetId=null;
+ setAnimeCharacterPresetStatus('Paleta "'+record.name+'" aplicada a los controles de color.');return true;
+}
+function deleteSelectedAnimeColorPalette(){
+ const id=document.querySelector("#creative-character-palette-select").value,record=savedAnimeColorPalettes.find(item=>item.id===id);
+ if(!record){setAnimeCharacterPresetStatus("Elige una paleta que quieras eliminar.");return false;}
+ try{const removed=deleteAnimeColorPalette(animePresetStorage(),id);refreshAnimeCharacterPresetControls(removed?'Paleta "'+record.name+'" eliminada de este dispositivo.':"Esa paleta ya no existe.");return removed;}
+ catch(error){setAnimeCharacterPresetStatus(error?.message||"No se pudo eliminar la paleta.");return false;}
+}
+function updateSelectedAnimeTraitFavorites(mode){
+ const ids=[...selectedAnimeTraitIds];if(!ids.length){setAnimeCharacterPresetStatus("Selecciona uno o varios rasgos antes de cambiar sus favoritos.");return false;}
+ try{updateAnimeTraitFavorites(animePresetStorage(),ids,ANIME_STYLE_COMPONENTS,mode);refreshAnimeCharacterPresetControls(mode==="add"?"Rasgos seleccionados guardados como favoritos.":"Favoritos de los rasgos seleccionados eliminados.");renderCreativeCatalog();return true;}
+ catch(error){setAnimeCharacterPresetStatus(error?.message||"No se pudieron actualizar los favoritos.");return false;}
+}
+
 function openCreativeStudio(){
   if(toolboxDialog?.open)toolboxDialog.close();
   const dialog=document.querySelector("#creative-studio-dialog");
   if(!dialog)return;
   if(!dialog.open)dialog.showModal();
+  refreshAnimeCharacterPresetControls();
   setCreativeTab("covers");
   renderCreativeCatalog();
 }
@@ -6068,6 +6169,10 @@ function updateAnimeTraitSelectionUi(){
   const button=document.querySelector("#creative-trait-add-selected");
   const message=document.querySelector("#creative-trait-selection-status");
   const count=selectedAnimeTraitIds.size;
+  const saveFavorites=document.querySelector("#creative-trait-save-favorites");
+  const removeFavorites=document.querySelector("#creative-trait-remove-favorites");
+  if(saveFavorites)saveFavorites.disabled=count===0;
+  if(removeFavorites)removeFavorites.disabled=count===0||![...selectedAnimeTraitIds].some(id=>animeTraitFavoriteIds.has(id));
   if(button){button.disabled=count===0;button.textContent=count?"Añadir "+count+" referencia"+(count===1?"":"s")+" al lienzo":"Añadir referencias seleccionadas";}
   if(message)message.textContent=count
     ?count+" de "+MAX_SELECTED_ANIME_TRAITS+" rasgos seleccionados. Puedes añadirlos como referencias o crear un personaje si eliges uno de cada categoría."
@@ -6093,6 +6198,7 @@ function toggleAnimeTraitSelection(id){
     document.querySelector("#creative-studio-status").textContent="Puedes añadir como máximo cuatro referencias por lote; añade estas y luego elige otras.";
     return false;
   }else selectedAnimeTraitIds.add(id);
+  activeAnimeCharacterPresetId=null;
   updateAnimeTraitSelectionUi();renderCreativeCatalog();return true;
 }
 function createAnimeCharacterFromSelectedTraits(){
@@ -6153,11 +6259,11 @@ function createAnimeCharacterFromSelectedTraits(){
     ["hairFront","Flequillo · "+hair[0].label],
     ["eyes","Ojos · "+eyes[0].label]
   ];
+  const characterGroupId=createId();
+  const compositionBase={groupId:characterGroupId,variantIndex:variant,componentIds:{...parts.componentIds},colors:{...parts.colors},presetId:activeAnimeCharacterPresetId};
   const layers=specs.map(([part,label])=>{
     const layer=createImageLayer("Personaje anime V"+variant+" · "+label,256,256,svgDataUrl(parts[part]));
-    layer.isReference=false;
-    layer.transform={...transform};
-    return layer;
+    layer.isReference=false;layer.transform={...transform};layer.characterComposition={...compositionBase,part};return layer;
   });
   const message="Personaje anime V"+variant+" creado en cuatro capas editables: cabello base, rostro, flequillo y ojos. Cambia los colores o selecciona otros rasgos para crear variantes sin reemplazar el original.";
   if(!commitCreativeLayers(layers,message))return false;
@@ -6197,12 +6303,13 @@ function renderCreativeCatalog(){
   const query=document.querySelector("#creative-catalog-search").value.trim();
   const data={covers:CREATIVE_TEMPLATES,stickers:STICKER_CATALOG,words:WORD_ART_PRESETS,packs:STYLE_PACKS};
   const part=document.querySelector("#creative-trait-part")?.value||"all";
-  const items=activeCreativeTab==="traits"
+  let items=activeCreativeTab==="traits"
     ?searchAnimeStyleComponents(query,part)
     :(data[activeCreativeTab]||[]).filter(item=>{
       const haystack=[item.label,item.category,item.description,item.keywords,item.sample,item.title,item.subtitle].filter(Boolean).join(" ").toLocaleLowerCase();
       return !query||haystack.includes(query.toLocaleLowerCase());
     });
+  if(activeCreativeTab==="traits"&&document.querySelector("#creative-trait-favorites-only")?.checked)items=items.filter(item=>animeTraitFavoriteIds.has(item.id));
   const actionName={covers:"select-template",stickers:"add-sticker",words:"add-word",packs:"apply-pack",traits:"select-trait"}[activeCreativeTab];
   items.forEach(item=>{
     const card=document.createElement("button");card.type="button";card.className="creative-card creative-card-"+activeCreativeTab;
@@ -6210,14 +6317,16 @@ function renderCreativeCatalog(){
     const actionLabel={covers:"Seleccionar portada",stickers:"Añadir sticker como capa",words:"Añadir palabra decorativa editable",packs:"Aplicar conjunto de capas",traits:"Seleccionar referencia anime"}[activeCreativeTab];
     card.setAttribute("aria-label",item.label+" · "+actionLabel);
     const selected=(activeCreativeTab==="covers"&&item.id===selectedCreativeTemplateId)||(activeCreativeTab==="traits"&&selectedAnimeTraitIds.has(item.id));
-    card.setAttribute("aria-pressed",String(Boolean(selected)));card.classList.toggle("is-selected",Boolean(selected));
+    const isFavorite=activeCreativeTab==="traits"&&animeTraitFavoriteIds.has(item.id);
+    card.setAttribute("aria-label",item.label+" · "+actionLabel+(isFavorite?" · Favorito":""));card.title=isFavorite?"Favorito guardado en este dispositivo":"";
+    card.setAttribute("aria-pressed",String(Boolean(selected)));card.classList.toggle("is-selected",Boolean(selected));card.classList.toggle("is-favorite",Boolean(isFavorite));
     card.append(createCreativeCardPreview(activeCreativeTab,item));
     const caption=document.createElement("span");caption.className="creative-card-caption";
     const heading=document.createElement("strong");heading.textContent=item.label;
     const description=document.createElement("small");description.textContent=item.description;
     const action=document.createElement("span");action.className="creative-card-action-label";
     action.textContent=activeCreativeTab==="traits"
-      ?(selected?"✓ Seleccionado":"＋ Seleccionar rasgo")
+      ?(selected?"✓ Seleccionado":"＋ Seleccionar rasgo")+(isFavorite?" · ★ Favorito":"")
       :{covers:selected?"✓ Seleccionada":"Usar portada",stickers:"＋ Añadir sticker",words:"＋ Añadir título editable",packs:"＋ Añadir conjunto"}[activeCreativeTab];
     caption.append(heading,description,action);card.append(caption);
     card.addEventListener("click",()=>{
@@ -6229,7 +6338,7 @@ function renderCreativeCatalog(){
     });
     grid.append(card);
   });
-  if(!items.length){const empty=document.createElement("p");empty.className="creative-catalog-empty";empty.textContent=activeCreativeTab==="traits"?"No hay rasgos para este filtro. Prueba otra categoría o búsqueda.":"No encontramos diseños con esa búsqueda. Prueba otra palabra.";grid.append(empty);}
+  if(!items.length){const empty=document.createElement("p");empty.className="creative-catalog-empty";empty.textContent=activeCreativeTab==="traits"&&document.querySelector("#creative-trait-favorites-only")?.checked?"Todavía no hay favoritos que coincidan. Selecciona rasgos y pulsa Guardar favoritos.":activeCreativeTab==="traits"?"No hay rasgos para este filtro. Prueba otra categoría o búsqueda.":"No encontramos diseños con esa búsqueda. Prueba otra palabra.";grid.append(empty);}
   updateAnimeTraitSelectionUi();
 }
 function commitCreativeLayers(layers,message){
@@ -6296,6 +6405,17 @@ document.querySelector("#creative-catalog-search")?.addEventListener("input",ren
 document.querySelector("#creative-trait-part")?.addEventListener("change",renderCreativeCatalog);
 document.querySelector("#creative-trait-add-selected")?.addEventListener("click",addSelectedAnimeStyleReferences);
 document.querySelector("#creative-trait-create-character")?.addEventListener("click",createAnimeCharacterFromSelectedTraits);
+document.querySelector("#creative-trait-favorites-only")?.addEventListener("change",renderCreativeCatalog);
+document.querySelector("#creative-trait-save-favorites")?.addEventListener("click",()=>updateSelectedAnimeTraitFavorites("add"));
+document.querySelector("#creative-trait-remove-favorites")?.addEventListener("click",()=>updateSelectedAnimeTraitFavorites("remove"));
+document.querySelector("#creative-character-set-save")?.addEventListener("click",saveCurrentAnimeCharacterSet);
+document.querySelector("#creative-character-set-load")?.addEventListener("click",loadSelectedAnimeCharacterSet);
+document.querySelector("#creative-character-set-delete")?.addEventListener("click",deleteSelectedAnimeCharacterSet);
+document.querySelector("#creative-character-palette-save")?.addEventListener("click",saveCurrentAnimeColorPalette);
+document.querySelector("#creative-character-palette-load")?.addEventListener("click",loadSelectedAnimeColorPalette);
+document.querySelector("#creative-character-palette-delete")?.addEventListener("click",deleteSelectedAnimeColorPalette);
+document.querySelectorAll('.creative-character-colors input[type="color"]').forEach(input=>input.addEventListener("input",()=>{activeAnimeCharacterPresetId=null;}));
+
 document.querySelector("#creative-studio-open")?.addEventListener("click",openCreativeStudio);
 document.querySelector("#quick-open-creative-studio")?.addEventListener("click",openCreativeStudio);
 document.querySelector("#creative-studio-x")?.addEventListener("click",()=>document.querySelector("#creative-studio-dialog")?.close());
@@ -6808,7 +6928,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v70";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v71";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -6820,6 +6940,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/asset-library-pagination.mjs",
   "./domain/creative-catalog.mjs",
   "./domain/anime-style-library.mjs",
+  "./domain/anime-character-presets.mjs",
   "./manifest.webmanifest",
   "./icons/animeart-mark.svg",
   "./service-worker.js",

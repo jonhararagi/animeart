@@ -135,6 +135,53 @@ function normalizeImage(image) {
   return { source: image.source, width, height, flipX: image.flipX === true, flipY: image.flipY === true, mask: masks.includes(image.mask) ? image.mask : "none", ...(typeof image.restoreSource === "string" && image.restoreSource.length <= 2_000_000 ? { restoreSource: image.restoreSource } : {}) };
 }
 
+const ANIME_CHARACTER_PARTS = new Set(["hairBack", "face", "hairFront", "eyes"]);
+const ANIME_CHARACTER_COMPONENT_KEYS = ["eyes", "hair", "face"];
+const ANIME_CHARACTER_COLOR_KEYS = ["hair", "eyes", "skin", "line"];
+
+function isSafeCharacterId(value) {
+  return typeof value === "string" && /^[a-z0-9][a-z0-9-]{0,95}$/i.test(value);
+}
+
+function isSafeCharacterGroupId(value) {
+  return typeof value === "string" && /^[a-zA-Z0-9._:-]{1,96}$/.test(value);
+}
+
+export function normalizeCharacterComposition(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  if (!isSafeCharacterGroupId(value.groupId) ||
+      !Number.isInteger(value.variantIndex) || value.variantIndex < 1 || value.variantIndex > 9 ||
+      !ANIME_CHARACTER_PARTS.has(value.part)) return null;
+  const componentIds = value.componentIds;
+  if (!componentIds || typeof componentIds !== "object" || Array.isArray(componentIds) ||
+      !ANIME_CHARACTER_COMPONENT_KEYS.every(key => isSafeCharacterId(componentIds[key]))) return null;
+  const colors = value.colors;
+  if (!colors || typeof colors !== "object" || Array.isArray(colors) ||
+      !ANIME_CHARACTER_COLOR_KEYS.every(key => typeof colors[key] === "string" && /^#[0-9a-f]{6}$/i.test(colors[key]))) return null;
+  if (value.presetId !== undefined && value.presetId !== null && !isSafeCharacterId(value.presetId)) return null;
+  return {
+    groupId: value.groupId,
+    variantIndex: value.variantIndex,
+    part: value.part,
+    componentIds: {
+      eyes: componentIds.eyes,
+      hair: componentIds.hair,
+      face: componentIds.face
+    },
+    colors: {
+      hair: colors.hair.toLowerCase(),
+      eyes: colors.eyes.toLowerCase(),
+      skin: colors.skin.toLowerCase(),
+      line: colors.line.toLowerCase()
+    },
+    presetId: value.presetId ?? null
+  };
+}
+
+export function isValidCharacterComposition(value) {
+  return normalizeCharacterComposition(value) !== null;
+}
+
 function normalizeLayer(layer, index) {
   const contentType = layer?.contentType === "image" || layer?.contentType === "text" ? layer.contentType : "drawing";
   const strokes = Array.isArray(layer?.strokes)
@@ -158,6 +205,8 @@ function normalizeLayer(layer, index) {
     strokes,
     ...(image ? { image } : {}),
     ...(text ? { text } : {}),
+    ...(contentType === "image" && normalizeCharacterComposition(layer?.characterComposition)
+      ? { characterComposition: normalizeCharacterComposition(layer.characterComposition) } : {}),
     ...(!isDefaultLayerAdjustments(layer?.adjustments) ? { adjustments: normalizeLayerAdjustments(layer.adjustments) } : {})
   };
 }
@@ -223,7 +272,9 @@ export function isValidDocument(document) {
           )
         );
       const validAdjustments = layer?.adjustments === undefined || isValidLayerAdjustments(layer.adjustments);
-      if (!validCommon || !validAdjustments || !["drawing", "image", "text"].includes(layer.contentType)) return false;
+      const validCharacterMetadata = layer?.characterComposition === undefined ||
+        (layer.contentType === "image" && isValidCharacterComposition(layer.characterComposition));
+      if (!validCommon || !validAdjustments || !validCharacterMetadata || !["drawing", "image", "text"].includes(layer.contentType)) return false;
       if (layer.contentType === "drawing") return !layer.image && !layer.text;
       if (layer.contentType === "image") return Boolean(
         layer.image && !layer.text &&

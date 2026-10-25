@@ -510,6 +510,40 @@
           <button type="button" id="creative-trait-create-character" class="creative-primary" disabled>Crear personaje en 4 capas</button>
           <p id="creative-character-status" role="status" aria-live="polite">Selecciona exactamente un rasgo de Ojos, uno de Cabello y uno de Rostro.</p>
         </div>
+        <details id="creative-character-presets" class="creative-character-presets">
+          <summary>Favoritos, conjuntos y paletas guardadas</summary>
+          <div class="creative-character-presets-grid">
+            <section class="creative-character-preset-section" aria-labelledby="creative-trait-favorites-title">
+              <h4 id="creative-trait-favorites-title">Favoritos de rasgos</h4>
+              <label class="creative-character-preset-checkbox"><input id="creative-trait-favorites-only" type="checkbox"> Mostrar solo favoritos</label>
+              <div class="creative-character-preset-buttons">
+                <button type="button" id="creative-trait-save-favorites">Guardar favoritos seleccionados</button>
+                <button type="button" id="creative-trait-remove-favorites">Quitar de favoritos</button>
+              </div>
+            </section>
+            <section class="creative-character-preset-section" aria-labelledby="creative-character-set-title">
+              <h4 id="creative-character-set-title">Conjuntos de personaje</h4>
+              <label for="creative-character-set-name">Nombre del conjunto<input id="creative-character-set-name" maxlength="48" type="text" placeholder="Ej. Capitana coral"></label>
+              <button type="button" id="creative-character-set-save">Guardar rasgos y colores</button>
+              <label for="creative-character-set-select">Conjunto guardado<select id="creative-character-set-select"><option value="">Todavía no hay conjuntos…</option></select></label>
+              <div class="creative-character-preset-buttons">
+                <button type="button" id="creative-character-set-load" disabled>Cargar conjunto</button>
+                <button type="button" id="creative-character-set-delete" disabled>Eliminar conjunto</button>
+              </div>
+            </section>
+            <section class="creative-character-preset-section" aria-labelledby="creative-character-palette-title">
+              <h4 id="creative-character-palette-title">Paletas personalizadas</h4>
+              <label for="creative-character-palette-name">Nombre de la paleta<input id="creative-character-palette-name" maxlength="48" type="text" placeholder="Ej. Noche de sakura"></label>
+              <button type="button" id="creative-character-palette-save">Guardar cuatro colores</button>
+              <label for="creative-character-palette-select">Paleta guardada<select id="creative-character-palette-select"><option value="">Todavía no hay paletas…</option></select></label>
+              <div class="creative-character-preset-buttons">
+                <button type="button" id="creative-character-palette-load" disabled>Cargar paleta</button>
+                <button type="button" id="creative-character-palette-delete" disabled>Eliminar paleta</button>
+              </div>
+            </section>
+          </div>
+          <p id="creative-character-presets-status" role="status" aria-live="polite">Los favoritos, conjuntos y paletas se guardan localmente en este dispositivo.</p>
+        </details>
         <p class="creative-traits-note">Los componentes son SVG originales generados localmente, no un modelo de IA. Las referencias se añaden como capas separadas y se excluyen de la exportación final; el personaje compuesto sí forma parte de la ilustración y de su exportación.</p>
       </section>
       <div id="creative-catalog-grid" class="creative-catalog-grid" role="region" aria-label="Resultados del catálogo" aria-live="polite"></div>
