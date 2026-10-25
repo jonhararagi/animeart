@@ -40,7 +40,7 @@ test("named character sets save, update by name, load, validate categories, and 
   assert.equal(updated.createdAt, 100);
   assert.equal(updated.updatedAt, 200);
   assert.equal(loadAnimeCharacterSets(storage).length, 1);
-  assert.throws(() => saveAnimeCharacterSet(storage, { name: "Wrong part", componentIds: { ...componentIds, eyes: "hair-twin-tails" }, colors }), /eyes, hair and face/);
+  assert.throws(() => saveAnimeCharacterSet(storage, { name: "Wrong part", componentIds: { ...componentIds, eyes: "hair-twin-tails" }, colors }), /ojos, cabello y rostro/);
   assert.equal(deleteAnimeCharacterSet(storage, updated.id), true);
   assert.deepEqual(loadAnimeCharacterSets(storage), []);
   assert.equal(deleteAnimeCharacterSet(storage, updated.id), false);
@@ -51,7 +51,7 @@ test("color palettes persist separately and reject malformed color input", () =>
   const palette = saveAnimeColorPalette(storage, { name: "Atardecer", colors }, 50);
   assert.equal(palette.colors.eyes, "#0099cc");
   assert.deepEqual(loadAnimeColorPalettes(storage), [palette]);
-  assert.throws(() => saveAnimeColorPalette(storage, { name: "Bad", colors: { ...colors, hair: "url(https://bad)" } }), /four colors/);
+  assert.throws(() => saveAnimeColorPalette(storage, { name: "Bad", colors: { ...colors, hair: "url(https://bad)" } }), /cuatro colores/);
   assert.equal(deleteAnimeColorPalette(storage, palette.id), true);
   assert.deepEqual(loadAnimeColorPalettes(storage), []);
 });
@@ -74,7 +74,7 @@ test("invalid local JSON is recovered safely, and unavailable/quota-limited stor
   assert.throws(() => saveAnimeColorPalette(new ReadOnlyStorage(), { name: "Offline", colors }), /almacenamiento local no está disponible/i);
   const quota = new MemoryStorage();
   quota.setItem = () => { throw new Error("quota"); };
-  assert.throws(() => saveAnimeColorPalette(quota, { name: "Offline", colors }), /save|space/i);
+  assert.throws(() => saveAnimeColorPalette(quota, { name: "Offline", colors }), /guardar|espacio/i);
 });
 
 test("local preset collections have explicit bounded capacity", () => {
