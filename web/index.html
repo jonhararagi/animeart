@@ -45,7 +45,7 @@
           <svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>
           <span><b>Mis diseños</b><small>Guardar, abrir, duplicar y organizar tus proyectos locales</small></span>
         </button>
-        <button type="button" id="open-apk-installer" class="brand-apk-action">
+        <button type="button" id="multi-page-open" class="brand-share-action"> <svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/><path d="M2 7v13a2 2 0 0 0 2 2h12"/></svg> <span><b>Proyectos multipágina</b><small>Cómics, carruseles y documentos por páginas</small></span> </button> <button type="button" id="open-apk-installer" class="brand-apk-action">
           <svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h4"/><path d="m16 15 2 2 3-4"/></svg>
           <span><b>Abrir APK con Android</b><small>Elegí un APK y confirmá la instalación en el sistema</small></span>
         </button>
@@ -404,7 +404,7 @@
           <button type="button" id="quick-import-images"><span aria-hidden="true">＋</span><b>Importar imágenes</b><small>Desde tu dispositivo</small></button>
           <button type="button" id="quick-open-asset-library"><span aria-hidden="true">▦</span><b>Mis imágenes</b><small>Biblioteca reutilizable</small></button>
           <button type="button" id="quick-open-creative-studio"><span aria-hidden="true">✦</span><b>Stickers y portadas</b><small>Diseños anime listos para usar</small></button>
-          <button type="button" id="quick-open-design-library"><span aria-hidden="true">▤</span><b>Mis diseños</b><small>Guardar y continuar proyectos</small></button>
+          <button type="button" id="quick-open-design-library"><span aria-hidden="true">▤</span><b>Mis diseños</b><small>Guardar y continuar proyectos</small></button> <button type="button" id="quick-open-page-manager"><span aria-hidden="true">▤</span><b>Páginas</b><small>Crear y organizar cómics o carruseles</small></button>
         </div>
         <button type="button" id="guided-editing-open-mobile" class="guided-editing-mobile-launcher"><span aria-hidden="true">🧭</span> Edición guiada en 3 pasos</button>
         <div class="mobile-output-options" role="group" aria-label="Formato y tamaño de exportación">
@@ -1046,6 +1046,35 @@
     <p id="design-library-status" class="design-library-status" role="status" aria-live="polite"></p>
     <div id="design-library-list" class="design-library-list" aria-label="Diseños guardados"></div>
     <footer class="design-library-footer"><p>Los diseños se almacenan en este dispositivo, sin subirlos a una nube. Exporta también un archivo de proyecto para tener una copia externa.</p></footer>
+  </section>
+</dialog>
+<dialog id="multi-page-dialog" class="multi-page-dialog" aria-labelledby="multi-page-title">
+  <section class="multi-page-shell">
+    <header class="multi-page-header">
+      <div><p class="eyebrow">KAPIART · DOCUMENTOS</p><h2 id="multi-page-title">Proyectos multipágina</h2><p>Crea varias páginas editables dentro de un proyecto. Cada página mantiene sus propias capas y su límite de 2,5 MB.</p></div>
+      <button type="button" id="multi-page-close" class="mini-dialog-close" aria-label="Cerrar proyectos multipágina">✕</button>
+    </header>
+    <form id="multi-page-create-form" class="multi-page-create-form">
+      <label for="multi-page-project-name">Nombre del proyecto<input id="multi-page-project-name" maxlength="90" required value="Mi cómic" placeholder="Ej. Mi primer manga"></label>
+      <button type="submit" id="multi-page-create-project">Crear desde el lienzo actual</button>
+    </form>
+    <p id="multi-page-status" class="multi-page-status" role="status" aria-live="polite"></p>
+    <section id="multi-page-active" class="multi-page-active" hidden>
+      <div class="multi-page-active-heading"><div><p class="eyebrow">PROYECTO ABIERTO</p><h3 id="multi-page-active-name"></h3><p id="multi-page-active-page"></p></div><button type="button" id="multi-page-save-page">Guardar página</button></div>
+      <div class="multi-page-actions">
+        <button type="button" id="multi-page-add-blank">+ Página en blanco</button>
+        <button type="button" id="multi-page-duplicate-page">Duplicar página actual</button>
+        <label for="multi-page-copy-target">Copiar capa seleccionada a<select id="multi-page-copy-target"></select></label>
+        <button type="button" id="multi-page-copy-layer">Copiar capa</button>
+      </div>
+      <h4>Páginas del proyecto</h4>
+      <div id="multi-page-page-list" class="multi-page-page-list" aria-label="Páginas editables"></div>
+    </section>
+    <section class="multi-page-saved-projects">
+      <h3>Proyectos guardados en este dispositivo</h3>
+      <div id="multi-page-project-list" class="multi-page-project-list" aria-label="Proyectos multipágina guardados"></div>
+    </section>
+    <footer class="multi-page-footer"><p>Los proyectos se guardan en IndexedDB en este dispositivo, sin nube. Máximo 10 proyectos y 10 páginas por proyecto; no se borran proyectos antiguos automáticamente. La exportación PDF de varias páginas queda para una fase posterior.</p></footer>
   </section>
 </dialog>
 <dialog id="project-dialog" aria-labelledby="project-dialog-title">
