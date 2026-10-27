@@ -86,8 +86,8 @@ wait_for_log_marker() {
 }
 
 cache_name="$(sed -n 's/^const CACHE_NAME = "\(animeart-web-shell-v[0-9][0-9]*\)";/\1/p' web/service-worker.js | head -n 1)"
-shell_count="$(sed -n '/^const APP_SHELL = \[/,/^\];/p' web/service-worker.js | grep -c '"\./')"
-required_count="$(sed -n '/^const OFFLINE_REQUIRED_RESOURCES = \[/,/^\];/p' web/app.js | grep -c '"\./')"
+shell_count="$(sed -n '/^const APP_SHELL = \[/,/^\];/p' web/service-worker.js | grep -o '"\./[^"]*"' | wc -l | tr -d ' ')"
+required_count="$(sed -n '/^const OFFLINE_REQUIRED_RESOURCES = \[/,/^\];/p' web/app.js | grep -o '"\./[^"]*"' | wc -l | tr -d ' ')"
 if [ -z "$cache_name" ] || [ "$shell_count" -lt 1 ] || [ "$required_count" -lt 1 ]; then
   echo "Could not derive the current offline cache contract from canonical web sources."
   exit 1
