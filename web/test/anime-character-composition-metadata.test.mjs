@@ -9,7 +9,7 @@ const metadata = {
   groupId: "group-001",
   variantIndex: 2,
   part: "hairBack",
-  componentIds: { eyes: "eyes-round-glossy", hair: "hair-twin-tails", face: "face-oval-balanced" },
+  componentIds: { eyes: "eyes-round-glossy", hair: "hair-twin-tails", face: "face-oval-balanced", expression: "expression-open-happy" },
   colors: { hair: "#bb5533", eyes: "#0099cc", skin: "#f0c2b0", line: "#332211" },
   presetId: "set-001"
 };
@@ -39,6 +39,7 @@ test("malformed character metadata cannot silently validate as a normal image la
   doc.layers.push(image);
   assert.equal(isValidDocument(doc), false);
   assert.equal(normalizeCharacterComposition({ ...metadata, colors: { ...metadata.colors, hair: "url(https://bad)" } }), null);
+  assert.equal(normalizeCharacterComposition({ ...metadata, componentIds: { ...metadata.componentIds, expression: "bad expression" } }), null);
 });
 
 test("legacy image layers without character metadata remain valid", () => {
