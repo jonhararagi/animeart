@@ -4736,3 +4736,27 @@ dialog {
  .multi-page-project-card{grid-template-columns:1fr}
  .multi-page-project-card .multi-page-card-actions button{min-height:44px}
 }
+
+/* KAPIART-TYPOGRAPHY-001 */
+.saved-text-styles-section{display:grid;gap:.55rem;margin:.8rem 0 1rem;padding:.85rem;border:1px solid color-mix(in srgb,#f2a2a0 34%,transparent);border-radius:15px;background:color-mix(in srgb,#392b29 70%,transparent)}
+.saved-text-styles-heading{display:flex;align-items:center;justify-content:space-between;gap:.65rem}
+.saved-text-styles-heading h3{margin:0;color:#fff4eb;font-size:.95rem}
+.saved-text-styles-heading button{min-height:42px;padding:.5rem .7rem;border:1px solid #e6817b;border-radius:10px;color:#fff4eb;background:#673a38;font:inherit;font-size:.82rem;touch-action:manipulation}
+.saved-text-styles-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:.5rem}
+.saved-text-style-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:.25rem .45rem;min-width:0;padding:.5rem;border:1px solid #59403a;border-radius:11px;background:#241a19}
+.saved-text-style-apply{grid-column:1/-1;min-height:42px;overflow:hidden;padding:.45rem .55rem;border:1px solid #73564e;border-radius:8px;color:#fff4eb;background:#392b29;text-align:left;text-overflow:ellipsis;white-space:nowrap;font:inherit;font-size:.87rem;touch-action:manipulation}
+.saved-text-style-card small{min-width:0;overflow-wrap:anywhere;color:#d7c8c0;font-size:.72rem;line-height:1.35}
+.saved-text-style-remove{min-height:36px;padding:.35rem .45rem;border:1px solid #70413d;border-radius:8px;color:#ffc0b7;background:#2b211f;font:inherit;font-size:.74rem;touch-action:manipulation}
+.saved-text-styles-empty{grid-column:1/-1;margin:0;color:#d7c8c0;font-size:.8rem;line-height:1.45}
+.saved-text-styles-status{margin:.3rem 0 .7rem;color:#f2a2a0;font-size:.8rem;line-height:1.45}
+.saved-text-styles-status[data-kind="error"]{color:#ffb8a8}
+.saved-text-styles-status[data-kind="success"]{color:#c7f0cf}
+.typography-spacing-section>p{margin:.25rem 0 0;color:#d7c8c0;font-size:.8rem;line-height:1.45}
+#text-letter-spacing,#text-line-height{min-height:30px;touch-action:pan-y}
+@media(max-width:680px){
+ .saved-text-styles-heading{align-items:stretch;flex-direction:column}
+ .saved-text-styles-heading button{min-height:46px}
+ .saved-text-styles-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .saved-text-style-apply{min-height:44px}
+ .saved-text-style-remove{min-height:40px}
+}
