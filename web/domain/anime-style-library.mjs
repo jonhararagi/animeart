@@ -127,7 +127,7 @@ function hairFrontArtwork(id, hair, dark) {
 }
 
 /**
- * Creates a character composition as four aligned, editable SVG image layers.
+ * Creates a character composition as five aligned, editable SVG image layers.
  * The parts share a viewBox but stay independent in the editor and history.
  */
 export function createAnimeCharacterParts({
