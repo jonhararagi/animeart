@@ -3,6 +3,7 @@ import { isValidDocument, restoreDocument } from "./model.mjs";
 export const DESIGN_LIBRARY_DATABASE = "kapiart-design-library";
 export const DESIGN_LIBRARY_VERSION = 1;
 export const DESIGN_LIBRARY_LIMIT = 40;
+export const MAX_LIBRARY_DOCUMENT_CHARS = 2_500_000;
 const PROJECTS_STORE = "projects";
 const DOCUMENTS_STORE = "documents";
 const MAX_NAME_LENGTH = 90;
@@ -107,6 +108,9 @@ export async function saveDesign({ id = null, name, document, thumbnail = "", no
   if (!isValidDocument(document)) throw new TypeError("No se puede guardar un documento inválido.");
   const normalizedName = normalizeDesignName(name);
   if (!normalizedName) throw new TypeError("Escribe un nombre para el diseño.");
+  if (JSON.stringify(document).length > MAX_LIBRARY_DOCUMENT_CHARS) {
+    throw new RangeError("Este proyecto supera el límite seguro de 2,5 MB para editarse y recuperarse localmente. Reduce el tamaño de las imágenes o exporta una copia del proyecto.");
+  }
   const db = await openDatabase(indexedDBApi);
   const timestamp = Number.isFinite(Number(now)) ? Number(now) : Date.now();
   const nextId = String(id || makeId());
@@ -135,11 +139,9 @@ export async function saveDesign({ id = null, name, document, thumbnail = "", no
             thumbnail: thumbnail || previous?.thumbnail || ""
           });
           if (!previous && all.length >= DESIGN_LIBRARY_LIMIT) {
-            const oldest = [...all].sort((a, b) => a.updatedAt - b.updatedAt)[0];
-            if (oldest) {
-              projects.delete(oldest.id);
-              documents.delete(oldest.id);
-            }
+            try { transaction.abort(); } catch {}
+            reject(new Error("La biblioteca llegó al máximo de 40 diseños. Elimina o exporta uno antes de guardar otro."));
+            return;
           }
           projects.put(metadata);
           documents.put({ id: nextId, document: restoreDocument(document) });
