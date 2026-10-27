@@ -84,13 +84,14 @@ test("creative studio UI is discoverable, searchable, offline-ready and packaged
   assert.match(app,/createAnimeCharacterParts\(/);
   assert.match(app,/layer\.isReference=false/);
   assert.match(css,/creative-character-composer/);
-  assert.equal(Object.keys(createAnimeCharacterParts({eyesId:"eyes-round-glossy",hairId:"hair-twin-tails",faceId:"face-round-soft"})).filter(key=>["hairBack","face","hairFront","eyes"].includes(key)).length,4);
+  assert.equal(Object.keys(createAnimeCharacterParts({eyesId:"eyes-round-glossy",hairId:"hair-twin-tails",faceId:"face-round-soft"})).filter(key=>["hairBack","face","hairFront","eyes","expression"].includes(key)).length,5);
   assert.match(app,/createAnimeStyleComponentSvg\(/);
   assert.match(app,/searchAnimeStyleComponents\(/);
   assert.match(worker,/anime-style-library\.mjs/);
   assert.ok(android.includes('test -s "$WEB/domain/anime-style-library.mjs"'));
-  assert.equal(ANIME_STYLE_COMPONENTS.length,12);
+  assert.equal(ANIME_STYLE_COMPONENTS.length,16);
   assert.equal(searchAnimeStyleComponents("coletas","hair").length,1);
+  assert.equal(searchAnimeStyleComponents("expresión","expression").length,4);
   assert.match(createAnimeStyleComponentSvg("hair-twin-tails"),/<path/);
   assert.match(css,/AA-CREATIVE-STUDIO-001/);
   assert.match(worker,/animeart-web-shell-v71/);
