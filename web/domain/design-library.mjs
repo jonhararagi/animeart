@@ -201,7 +201,11 @@ export async function renameDesign(id, name, { indexedDBApi = globalThis.indexed
 }
 
 export async function duplicateDesign(id, name, { indexedDBApi = globalThis.indexedDB, now = Date.now() } = {}) {
-  const document = await loadDesign(id, { indexedDBApi });
+  const [document, records] = await Promise.all([
+    loadDesign(id, { indexedDBApi }),
+    listDesigns({ indexedDBApi })
+  ]);
   if (!document) throw new Error("No se encontró el diseño que quieres duplicar.");
-  return saveDesign({ name, document, now }, { indexedDBApi });
+  const source = records.find(record => record.id === String(id));
+  return saveDesign({ name, document, thumbnail: source?.thumbnail || "", now }, { indexedDBApi });
 }
