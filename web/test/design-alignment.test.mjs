@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createLayerAlignmentTransforms, getLayerAlignmentBounds } from "../domain/design-alignment.mjs";
+import { createTextLayer } from "../domain/model.mjs";
 
 function imageLayer(id, x, y, width = 100, height = 80, patch = {}) {
   return {
@@ -98,6 +99,15 @@ test("drawing bounds handle long strokes without argument-list overflows", () =>
   assert.equal(bounds.right, 1003);
   assert.equal(bounds.top, -4);
   assert.equal(bounds.bottom, 153);
+});
+
+test("text alignment bounds honor stored letter spacing and line height", () => {
+  const base = createTextLayer("Base", { value: "AB\nCD", x: 100, y: 100, fontSize: 30, letterSpacing: 0, lineHeight: 1.2 });
+  const open = createTextLayer("Open", { value: "AB\nCD", x: 100, y: 100, fontSize: 30, letterSpacing: 12, lineHeight: 2 });
+  const baseBounds = getLayerAlignmentBounds(base, doc([base]));
+  const openBounds = getLayerAlignmentBounds(open, doc([open]));
+  assert.ok(openBounds.width > baseBounds.width);
+  assert.ok(openBounds.bottom - openBounds.top > baseBounds.bottom - baseBounds.top);
 });
 
 test("single-layer vertical alignment and invalid modes are predictable", () => {
