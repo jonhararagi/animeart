@@ -5,10 +5,10 @@ import {
   searchAnimeStyleComponents, createAnimeStyleComponentSvg, createAnimeCharacterParts
 } from "../domain/anime-style-library.mjs";
 
-test("anime style library contains 12 original SVG components across eyes hair and face", () => {
-  assert.equal(ANIME_STYLE_COMPONENTS.length, 12);
-  assert.equal(new Set(ANIME_STYLE_COMPONENTS.map(item => item.id)).size, 12);
-  for (const part of ["eyes", "hair", "face"]) {
+test("anime style library contains 16 original SVG components across eyes hair face and expressions", () => {
+  assert.equal(ANIME_STYLE_COMPONENTS.length, 16);
+  assert.equal(new Set(ANIME_STYLE_COMPONENTS.map(item => item.id)).size, 16);
+  for (const part of ["eyes", "hair", "face", "expression"]) {
     const items = ANIME_STYLE_COMPONENTS.filter(item => item.part === part);
     assert.equal(items.length, 4);
     assert.ok(items.every(item => item.originType === "generated"));
@@ -27,6 +27,15 @@ test("search filters independently by feature and ignores Spanish accents", () =
   assert.throws(() => createAnimeStyleComponentSvg("not-a-component"), /Unknown anime style component/);
 });
 
+test("four expression components generate distinct local mouth artwork and can be searched independently", () => {
+  const expressions = ANIME_STYLE_COMPONENTS.filter(item => item.part === "expression");
+  assert.equal(expressions.length, 4);
+  const artwork = expressions.map(item => createAnimeStyleComponentSvg(item.id));
+  assert.equal(new Set(artwork).size, 4);
+  assert.equal(searchAnimeStyleComponents("sonrisa", "expression").length, 3);
+  assert.ok(searchAnimeStyleComponents("sorpresa", "expression").some(item => item.id === "expression-surprised"));
+});
+
 test("components generate real, distinct local vector art with configurable safe colors", () => {
   const svgs = ANIME_STYLE_COMPONENTS.map(item => createAnimeStyleComponentSvg(item.id));
   assert.equal(new Set(svgs).size, ANIME_STYLE_COMPONENTS.length);
@@ -42,23 +51,25 @@ test("components generate real, distinct local vector art with configurable safe
   assert.doesNotMatch(createAnimeStyleComponentSvg("hair-spiky-short", { primaryColor: "url(https://bad)" }), /url\(https:\/\/bad\)/);
 });
 
-test("character composition creates four independently editable SVG parts with safe custom colors", () => {
+test("character composition creates five independently editable SVG parts including expression", () => {
   const parts = createAnimeCharacterParts({
     eyesId: "eyes-round-glossy",
     hairId: "hair-twin-tails",
     faceId: "face-angular-defined",
+    expressionId: "expression-open-happy",
     hairColor: "#bb5533",
     eyeColor: "#0099cc",
     skinColor: "#f0c2b0",
     lineColor: "#332211"
   });
-  assert.deepEqual(Object.keys(parts).sort(), ["colors", "componentIds", "eyes", "face", "hairBack", "hairFront"].sort());
+  assert.deepEqual(Object.keys(parts).sort(), ["colors", "componentIds", "eyes", "expression", "face", "hairBack", "hairFront"].sort());
   assert.deepEqual(parts.componentIds, {
     eyes: "eyes-round-glossy",
     hair: "hair-twin-tails",
-    face: "face-angular-defined"
+    face: "face-angular-defined",
+    expression: "expression-open-happy"
   });
-  for (const part of ["hairBack", "face", "hairFront", "eyes"]) {
+  for (const part of ["hairBack", "face", "hairFront", "eyes", "expression"]) {
     assert.match(parts[part], /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
     assert.match(parts[part], /<path/);
     assert.doesNotMatch(parts[part], /KAPIART_FACE_DETAILS/);
@@ -75,10 +86,10 @@ test("character composition creates four independently editable SVG parts with s
 test("character composition rejects missing or mismatched feature categories", () => {
   assert.throws(() => createAnimeCharacterParts({
     eyesId: "hair-spiky-short", hairId: "hair-twin-tails", faceId: "face-round-soft"
-  }), /one valid eyes, hair and face component/);
+  }), /valid eyes, hair, face and expression components/);
   assert.throws(() => createAnimeCharacterParts({
     eyesId: "eyes-round-glossy", hairId: "hair-twin-tails", faceId: "not-a-face"
-  }), /one valid eyes, hair and face component/);
+  }), /valid eyes, hair, face and expression components/);
 });
 
 test("different hair selections produce structurally different character hair layers", () => {
@@ -92,4 +103,19 @@ test("different hair selections produce structurally different character hair la
   assert.notEqual(bob.hairFront, twinTails.hairFront);
   assert.equal(bob.face, twinTails.face);
   assert.equal(bob.eyes, twinTails.eyes);
+});
+
+test("different expression selections change only the expression layer", () => {
+  const happy = createAnimeCharacterParts({
+    eyesId: "eyes-round-glossy", hairId: "hair-twin-tails", faceId: "face-round-soft",
+    expressionId: "expression-open-happy"
+  });
+  const surprised = createAnimeCharacterParts({
+    eyesId: "eyes-round-glossy", hairId: "hair-twin-tails", faceId: "face-round-soft",
+    expressionId: "expression-surprised"
+  });
+  assert.notEqual(happy.expression, surprised.expression);
+  assert.equal(happy.face, surprised.face);
+  assert.equal(happy.hairBack, surprised.hairBack);
+  assert.equal(happy.eyes, surprised.eyes);
 });
