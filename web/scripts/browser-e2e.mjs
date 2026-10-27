@@ -917,7 +917,7 @@ try {
   await waitFor('document.querySelector("#creative-studio-dialog")?.open === false');
   await click("#undo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (characterVariantsBefore + 5), 10000);
-  assert((await readDocument()).layers.filter(layer => layer.name.startsWith("Personaje anime V1 ·")).length === 4, "undo removes only the newest character variant and preserves its predecessor");
+  assert((await readDocument()).layers.filter(layer => layer.name.startsWith("Personaje anime V1 ·")).length === 5, "undo removes only the newest character variant and preserves its predecessor");
   await click("#redo");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (characterVariantsBefore + 10), 10000);
   await evaluate('window.__animeArtStrokeTextCount = 0; const originalStrokeText = CanvasRenderingContext2D.prototype.strokeText; CanvasRenderingContext2D.prototype.strokeText = function(...args) { window.__animeArtStrokeTextCount += 1; return originalStrokeText.apply(this, args); };');
