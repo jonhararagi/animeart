@@ -34,11 +34,26 @@ Esta fase mejora el trabajo cotidiano sin convertir la interfaz móvil en un esc
 - web/domain/design-library.mjs: biblioteca local en IndexedDB, operaciones y límites.
 - web/domain/creative-catalog.mjs: nuevas plantillas y formatos predeterminados.
 - web/app.js, web/index.html, web/styles.css: integración de interfaz, miniaturas, controles y panel de proyectos.
-- web/service-worker.js: caché offline v72 con los módulos nuevos.
-- web/test/design-alignment.test.mjs, web/test/design-library.test.mjs y web/test/creative-catalog.test.mjs: pruebas de dominio y contrato del flujo.
+- web/service-worker.js: caché offline v73 con los módulos nuevos.
+- web/test/design-alignment.test.mjs, web/test/design-library.test.mjs, web/test/multi-page-project.test.mjs y web/test/creative-catalog.test.mjs: pruebas de dominio y contrato del flujo.
 
 ## Aceptación pendiente
 
 La implementación solo se considerará validada tras Web CI, incluyendo E2E de Chromium, y Android CI sobre el mismo SHA. Los tests de dominio no prueban por sí solos las interacciones reales. La aceptación táctil en el Xiaomi 24116RACCG es una etapa separada y no debe inferirse de CI/emulador.
 
 No se ha cambiado main ni se ha fusionado ninguna PR como parte de esta fase.
+
+
+## Fase multipágina · implementación en la rama de trabajo
+
+La segunda fase añade un gestor local de documentos multipágina, pendiente de validación CI en el SHA final de la rama.
+
+- Crear un proyecto multipágina a partir del lienzo actual y guardar cada página como un documento editable separado.
+- Crear páginas en blanco, duplicar, abrir, renombrar, reordenar y eliminar páginas; un proyecto siempre conserva al menos una página.
+- Copiar una capa seleccionada a otra página con identificador nuevo, manteniendo su contenido editable y rechazando el resultado si supera los límites.
+- Guardar el proyecto y la página activa en IndexedDB. La edición normal también encola la persistencia de la página activa, sin convertir el documento en un bitmap único.
+- Límites explícitos para esta primera versión: 10 proyectos multipágina, 10 páginas por proyecto, 200 capas y 2,5 MB serializados por página. No se amplía el límite por página heredado ni se eliminan páginas/proyectos automáticamente para liberar cuota.
+- Acceso desde escritorio y desde «Más herramientas» en móvil; la lista y los controles se adaptan a pantallas pequeñas.
+- El paquete offline usa `animeart-web-shell-v73`, incluyendo `web/domain/multi-page-project.mjs`.
+
+La prueba de esta fase debe recorrer en Chromium creación, duplicado, copia de capa entre páginas, alta de página, renombrado, reordenación, apertura, guardado y eliminación; Android CI debe comprobar el empaquetado y el arranque offline sobre exactamente el mismo SHA. La aceptación física en el Xiaomi `24116RACCG` permanece separada.
