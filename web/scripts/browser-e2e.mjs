@@ -2651,7 +2651,7 @@ try {
   await click('#multi-page-page-list .multi-page-page-card:last-child button[data-multi-page-action="up"]');
   await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===3');
   const activeAfterReorder = await evaluate('document.querySelector("#multi-page-active-page")?.textContent||""');
-  assert(/3 de 3/.test(activeAfterReorder),
+  assert(/2 de 3/.test(activeAfterReorder),
     "pages can be renamed and reordered without losing the active page");
   await click('#multi-page-page-list button[data-multi-page-action="open"][data-page-id]:not(:disabled)');
   await waitFor('document.querySelector("#multi-page-status")?.textContent.startsWith("Página abierta:")',10000);
