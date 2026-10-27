@@ -100,6 +100,7 @@ test("creative studio UI is discoverable, searchable, offline-ready and packaged
   assert.ok(android.includes('test -s "$WEB/domain/design-alignment.mjs"'));
   assert.ok(android.includes('test -s "$WEB/domain/design-library.mjs"'));
   assert.match(html,/id="design-library-dialog"/);
+  assert.match(html,/id="quick-open-design-library"/);
   assert.match(html,/data-layer-align="distribute-horizontal"/);
   assert.match(app,/function initializeCanvaWorkflowTools\(/);
   assert.match(app,/animeart-web-shell-v72/);
