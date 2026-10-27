@@ -1,6 +1,7 @@
 import { DOCUMENT_VERSION, createId, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
 import { createLayerAlignmentTransforms } from "./domain/design-alignment.mjs";
 import { deleteDesign, duplicateDesign, listDesigns, loadDesign, renameDesign, saveDesign } from "./domain/design-library.mjs";
+import { addMultiPagePage, copyLayerToPage, createMultiPageProject, deleteMultiPagePage, deleteMultiPageProject, listMultiPageProjects, loadMultiPagePage, renameMultiPagePage, renameMultiPageProject, reorderMultiPagePage, saveMultiPagePage, setActiveMultiPagePage } from "./domain/multi-page-project.mjs";
 import { initializeAssetLibrary } from "./asset-library.js";
 import { getEditingHelpPreference, initializeAppearanceSettings, setEditingHelpPreference } from "./appearance-settings.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
@@ -241,6 +242,8 @@ const state = {
 };
 
 state.history = new DocumentHistory(state.document);
+let activeMultiPageSession = null;
+let multiPagePersistenceQueue = Promise.resolve();
 
 function selectedLayer() {
   return state.document.layers.find(layer => layer.id === state.selectedLayerId) || state.document.layers[0];
@@ -2587,6 +2590,7 @@ function persistDocument({ markSaved = false } = {}) {
   }
   state.dirty = !markSaved;
   if (markSaved) setStorageRecoveryPending(false);
+  if (activeMultiPageSession && !state.storageRecoveryPending) void queueActiveMultiPagePageSave();
   status.textContent = markSaved ? "Guardado localmente" : "Copia local actualizada";
   return true;
 }
@@ -7030,7 +7034,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v72";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v73";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
