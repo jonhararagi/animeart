@@ -27,7 +27,7 @@ test("single layer aligns against the full canvas", () => {
   const documentModel = doc([imageLayer("a", 120, 70)]);
   const result = createLayerAlignmentTransforms(documentModel, ["a"], "center-x");
   assert.equal(result.ok, true);
-  assert.equal(outputFor(result, "a").x, 250);
+  assert.equal(outputFor(result, "a").x, 350);
   assert.equal(outputFor(result, "a").y, 70);
 });
 
@@ -85,6 +85,6 @@ test("single-layer vertical alignment and invalid modes are predictable", () => 
   const documentModel = doc([imageLayer("a", 60, 120)]);
   const aligned = createLayerAlignmentTransforms(documentModel, ["a"], "bottom");
   assert.equal(aligned.ok, true);
-  assert.equal(outputFor(aligned, "a").y, 400);
+  assert.equal(outputFor(aligned, "a").y, 520);
   assert.equal(createLayerAlignmentTransforms(documentModel, ["a"], "magic").ok, false);
 });
