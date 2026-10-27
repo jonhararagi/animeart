@@ -25,21 +25,27 @@ function localLayerBounds(layer) {
     return { left, top: bottom - fontSize, right: left + width, bottom: bottom + fontSize * 0.22 };
   }
 
-  const points = [];
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let pointCount = 0, padding = 0;
   for (const stroke of Array.isArray(layer?.strokes) ? layer.strokes : []) {
+    padding = Math.max(padding, finite(stroke?.size) / 2);
     for (const point of Array.isArray(stroke?.points) ? stroke.points : []) {
       const x = Number(point?.x);
       const y = Number(point?.y);
-      if (Number.isFinite(x) && Number.isFinite(y)) points.push({ x, y });
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+      pointCount++;
     }
   }
-  if (points.length) {
-    const padding = Math.max(0, ...((layer.strokes || []).map(stroke => finite(stroke?.size) / 2)));
+  if (pointCount) {
     return {
-      left: Math.min(...points.map(point => point.x)) - padding,
-      top: Math.min(...points.map(point => point.y)) - padding,
-      right: Math.max(...points.map(point => point.x)) + padding,
-      bottom: Math.max(...points.map(point => point.y)) + padding
+      left: minX - padding,
+      top: minY - padding,
+      right: maxX + padding,
+      bottom: maxY + padding
     };
   }
   return { left: 0, top: 0, right: 0, bottom: 0 };
