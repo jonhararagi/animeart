@@ -2660,8 +2660,9 @@ try {
   const pageCountBeforeDelete = await evaluate('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length');
   await click('#multi-page-page-list button[data-multi-page-action="delete"][data-page-id]');
   await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===2',10000);
-  assert(pageCountBeforeDelete===3,
-    "the project supports non-destructive page deletion while retaining the remaining pages");
+  const pageCountAfterDelete = await evaluate('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length');
+  assert(pageCountBeforeDelete===3 && pageCountAfterDelete===2,
+    "the project supports deleting one page while preserving the other editable pages");
   await click("#multi-page-close");
   await waitFor('document.querySelector("#multi-page-dialog")?.open !== true');
 
