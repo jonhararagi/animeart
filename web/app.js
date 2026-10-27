@@ -6964,8 +6964,9 @@ function detachActiveMultiPageSessionForReplacement(replacementLabel = "un docum
  const name = activeMultiPageSession.name || "este proyecto";
  const approved = window.confirm("La página actual pertenece a «" + name + "». KapiArt conservará la página guardada y abrirá " + replacementLabel + " fuera del proyecto multipágina. ¿Continuar?");
  if (!approved) return false;
+ const finalPageSave = queueActiveMultiPagePageSave();
  activeMultiPageSession = null;
- void multiPagePersistenceQueue.catch(() => null);
+ void finalPageSave.catch(() => null);
  setMultiPageStatus("Página anterior conservada en «" + name + "». El nuevo lienzo queda fuera del proyecto.", "success");
  return true;
 }
