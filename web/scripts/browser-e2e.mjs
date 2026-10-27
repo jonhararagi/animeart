@@ -2596,7 +2596,7 @@ try {
   const mobileViewport = await evaluate('window.matchMedia("(max-width: 920px)").matches');
   if (mobileViewport) {
     const mobileLayersOpen = await evaluate('document.body.classList.contains("mobile-layers-open")');
-    if (!mobileLayersOpen) await click('.mobile-touch-dock [data-touch-action="layers"]');
+    if (!mobileLayersOpen) await clickMoreGoal("layers");
     await waitFor('document.body.classList.contains("mobile-layers-open")');
   }
   const alignLayerId = await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const layer=(d.layers||[]).find(item=>!item.locked); return layer?.id||null; })()');
