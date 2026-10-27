@@ -4156,3 +4156,17 @@ La comparación de nombre de rama o cantidad de commits no basta para decidir un
 - Los cambios de esta fase deben validarse con Web CI, incluido E2E real de Chromium, y Android CI sobre el mismo SHA final. La aceptación física del Xiaomi `24116RACCG` sigue pendiente.
 - La exportación PDF multipágina, exportación SVG, redimensionado inteligente, fuentes instalables y agrupación persistente de objetos siguen pendientes.
 - El gestor multipágina es local al perfil/dispositivo. No sincroniza en nube ni entre dispositivos.
+
+
+---
+
+## KapiArt · tipografía y estilos reutilizables · 2026-10-27
+
+**PR abierta de trabajo:** [#124](https://github.com/jonhararagi/animeart/pull/124) · rama `feature/kapiart-canva-workflow-001`.
+
+- Añade espaciado de letras e interlineado a la estructura de cada capa de texto; el renderizado usa el valor tanto en vista previa como en las exportaciones que dibujan el documento.
+- El cálculo geométrico de límites se actualiza para que alineación/selección reflejen el tracking y el interlineado.
+- El modal de texto ahora permite guardar hasta 20 estilos reutilizables locales, aplicar sus propiedades tipográficas a otras capas y eliminarlos. Los estilos no contienen el texto ni posición del objeto, para no reemplazar accidentalmente el contenido al aplicarlos.
+- Compatibilidad retroactiva: documentos que no tienen estos dos campos permanecen válidos y reciben defaults durante la normalización.
+- Shell offline v74, pruebas unitarias y E2E ampliado para revisar el control de texto, estilos guardados y aplicación. La validación final debe comprobar Web CI y Android CI sobre el mismo SHA.
+- No se cambia `main` ni se fusiona la PR. La prueba física en Xiaomi `24116RACCG` sigue pendiente.
