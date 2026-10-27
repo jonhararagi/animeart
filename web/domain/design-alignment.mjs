@@ -19,9 +19,14 @@ function localLayerBounds(layer) {
     const text = layer.text;
     const lines = String(text.value ?? "").split("\n");
     const fontSize = Math.max(1, finite(text.fontSize, 48));
-    const width = Math.max(fontSize * 0.35, ...lines.map(line => [...line].length * fontSize * 0.62));
+    const letterSpacing = finite(text.letterSpacing);
+    const lineHeight = Math.min(2.5, Math.max(0.8, finite(text.lineHeight, 1.2)));
+    const width = Math.max(fontSize * 0.35, ...lines.map(line => {
+      const count = [...line].length;
+      return count * fontSize * 0.62 + Math.max(0, count - 1) * letterSpacing;
+    }));
     const left = finite(text.x) - (text.align === "center" ? width / 2 : text.align === "right" ? width : 0);
-    const bottom = finite(text.y) + Math.max(0, lines.length - 1) * fontSize * 1.2;
+    const bottom = finite(text.y) + Math.max(0, lines.length - 1) * fontSize * lineHeight;
     return { left, top: bottom - fontSize, right: left + width, bottom: bottom + fontSize * 0.22 };
   }
 
