@@ -74,9 +74,9 @@ test("smooth renderer is available in the offline shell and Android package", as
   const worker = await readFile(new URL("../service-worker.js", import.meta.url), "utf8");
   const androidWorkflow = await readFile(new URL("../../.github/workflows/android.yml", import.meta.url), "utf8");
 
-  assert.ok(app.includes('const OFFLINE_CACHE_NAME = "animeart-web-shell-v72"'));
+  assert.ok(app.includes('const OFFLINE_CACHE_NAME = "animeart-web-shell-v73"'));
   assert.ok(app.includes('"./domain/freehand-rendering.mjs"'));
-  assert.ok(worker.includes('const CACHE_NAME = "animeart-web-shell-v72"'));
+  assert.ok(worker.includes('const CACHE_NAME = "animeart-web-shell-v73"'));
   assert.ok(worker.includes('"./domain/freehand-rendering.mjs"'));
   assert.ok(androidWorkflow.includes('test -s "$WEB/domain/freehand-rendering.mjs"'));
 });
@@ -104,12 +104,12 @@ test("symmetry toggle and mirror renderer remain in the PWA offline shell and An
     readFile(new URL("../service-worker.js", import.meta.url), "utf8"),
     readFile(new URL("../../.github/workflows/android.yml", import.meta.url), "utf8")
   ]);
-  assert.ok(app.includes('const OFFLINE_CACHE_NAME = "animeart-web-shell-v72"'));
+  assert.ok(app.includes('const OFFLINE_CACHE_NAME = "animeart-web-shell-v73"'));
   assert.ok(app.includes("mirrorFreehandPoints"));
   assert.ok(app.includes("syncActiveMirrorStroke(stroke)"));
   assert.ok(app.includes("state.activeMirrorStroke = null"));
   assert.ok(html.includes('id="brush-symmetry"'));
-  assert.ok(worker.includes('const CACHE_NAME = "animeart-web-shell-v72"'));
+  assert.ok(worker.includes('const CACHE_NAME = "animeart-web-shell-v73"'));
   assert.ok(worker.includes('"./domain/freehand-rendering.mjs"'));
   assert.ok(androidWorkflow.includes('test -s "$WEB/domain/freehand-rendering.mjs"'));
 });
