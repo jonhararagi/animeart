@@ -46,6 +46,22 @@ test("named character sets save, update by name, load, validate categories, and 
   assert.equal(deleteAnimeCharacterSet(storage, updated.id), false);
 });
 
+test("named character sets preserve an optional expression while legacy sets remain valid", () => {
+  const storage = new MemoryStorage();
+  const withExpression = {
+    name: "Happy Variant",
+    componentIds: { ...componentIds, expression: "expression-open-happy" },
+    colors
+  };
+  const saved = saveAnimeCharacterSet(storage, withExpression, ANIME_STYLE_COMPONENTS, 123);
+  assert.equal(saved.componentIds.expression, "expression-open-happy");
+  assert.deepEqual(loadAnimeCharacterSets(storage), [saved]);
+  const legacyStorage = new MemoryStorage();
+  const legacy = saveAnimeCharacterSet(legacyStorage, { name: "Legacy Set", componentIds, colors }, ANIME_STYLE_COMPONENTS, 124);
+  assert.equal(Object.hasOwn(legacy.componentIds, "expression"), false);
+  assert.deepEqual(loadAnimeCharacterSets(legacyStorage), [legacy]);
+});
+
 test("color palettes persist separately and reject malformed color input", () => {
   const storage = new MemoryStorage();
   const palette = saveAnimeColorPalette(storage, { name: "Atardecer", colors }, 50);
