@@ -6880,6 +6880,81 @@ function load() {
   }
 }
 
+
+function applySelectedLayerAlignment(mode){
+ const ids=[...state.selectedLayerIds],result=createLayerAlignmentTransforms(state.document,ids,mode),feedback=document.querySelector("#layer-alignment-status");
+ if(!result.ok){if(feedback)feedback.textContent=result.error;status.textContent=result.error;return false;}
+ if(!result.transforms.length){if(feedback)feedback.textContent="Las capas ya están alineadas.";return true;}
+ const before=cloneDocument(state.document),next=transformLayers(state.document,result.transforms);
+ if(!next){if(feedback)feedback.textContent="No se pudo alinear la selección.";return false;}
+ state.document=next;state.history.record(before,next);refreshDocument("Alineación aplicada.");persistDocument();
+ if(feedback)feedback.textContent="Listo. Puedes deshacer la alineación.";return true;
+}
+function setDesignLibraryStatus(message,kind="info"){const node=document.querySelector("#design-library-status");if(node){node.textContent=String(message||"");node.dataset.kind=kind;}}
+function renderDesignLibrary(){
+ const grid=document.querySelector("#design-library-list");if(!grid)return Promise.resolve();
+ grid.replaceChildren();const loading=document.createElement("p");loading.className="design-library-empty";loading.textContent="Cargando tus diseños…";grid.append(loading);
+ return listDesigns().then(records=>{
+  grid.replaceChildren();
+  if(!records.length){const empty=document.createElement("p");empty.className="design-library-empty";empty.textContent="Todavía no guardaste diseños. Escribe un nombre y pulsa «Guardar diseño actual».";grid.append(empty);return;}
+  for(const record of records){
+   const card=document.createElement("article");card.className="design-library-card";
+   const preview=document.createElement("div");preview.className="design-library-visual";
+   if(record.thumbnail){const img=document.createElement("img");img.src=record.thumbnail;img.alt="Vista previa de "+record.name;preview.append(img);}
+   else{const mock=document.createElement("div");mock.className="design-library-placeholder";mock.textContent="KapiArt";mock.setAttribute("aria-hidden","true");preview.append(mock);}
+   const details=document.createElement("div");details.className="design-library-copy";
+   const name=document.createElement("strong");name.textContent=record.name;
+   const meta=document.createElement("small");meta.textContent=record.width+" × "+record.height+" px · "+record.layerCount+" capas";
+   const updated=document.createElement("small");updated.textContent="Actualizado "+new Date(record.updatedAt).toLocaleString("es-AR",{dateStyle:"short",timeStyle:"short"});
+   details.append(name,meta,updated);
+   const actions=document.createElement("div");actions.className="design-library-card-actions";
+   for(const [action,label] of [["open","Abrir"],["duplicate","Duplicar"],["rename","Renombrar"],["delete","Eliminar"]]){
+    const button=document.createElement("button");button.type="button";button.dataset.designAction=action;button.dataset.designId=record.id;button.textContent=label;if(action==="delete")button.className="design-library-delete";actions.append(button);
+   }
+   card.append(preview,details,actions);grid.append(card);
+  }
+ }).catch(error=>{grid.replaceChildren();const msg=document.createElement("p");msg.className="design-library-empty";msg.textContent=error?.message||"No se pudo abrir la biblioteca local.";grid.append(msg);setDesignLibraryStatus(msg.textContent,"error");});
+}
+function showDesignLibraryDialog(){
+ const dialog=document.querySelector("#design-library-dialog");if(!dialog)return;
+ if(!dialog.open){try{dialog.showModal();}catch{dialog.setAttribute("open","");}}
+ const name=document.querySelector("#design-library-name");if(name&&!name.value)name.value="Mi diseño";
+ renderDesignLibrary();
+}
+function initializeCanvaWorkflowTools(){
+ document.querySelectorAll("[data-layer-align]").forEach(button=>button.addEventListener("click",()=>applySelectedLayerAlignment(button.dataset.layerAlign)));
+ const dialog=document.querySelector("#design-library-dialog"),input=document.querySelector("#design-library-name"),list=document.querySelector("#design-library-list");
+ document.querySelector("#design-library-open")?.addEventListener("click",showDesignLibraryDialog);
+ document.querySelector("#design-library-close")?.addEventListener("click",()=>{if(dialog?.open)dialog.close();else dialog?.removeAttribute("open");});
+ document.querySelector("#design-library-refresh")?.addEventListener("click",renderDesignLibrary);
+ document.querySelector("#design-library-save-form")?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  if(state.storageRecoveryPending){setDesignLibraryStatus("El guardado actual está protegido. Recupera o exporta sus datos antes de guardar este estado.","error");return;}
+  const button=document.querySelector("#design-library-save-current");button.disabled=true;
+  try{const record=await saveDesign({name:input?.value,document:cloneDocument(state.document)});input.value=record.name;setDesignLibraryStatus("Diseño guardado localmente: "+record.name,"success");await renderDesignLibrary();}
+  catch(error){setDesignLibraryStatus(error?.message||"No se pudo guardar el diseño.","error");}finally{button.disabled=false;}
+ });
+ list?.addEventListener("click",async event=>{
+  const button=event.target.closest("button[data-design-action]");if(!button)return;const action=button.dataset.designAction,id=button.dataset.designId;button.disabled=true;
+  try{
+   const records=await listDesigns(),record=records.find(item=>item.id===id);if(!record)throw new Error("Ese diseño ya no está en la biblioteca.");
+   if(action==="open"){
+    if(state.storageRecoveryPending)throw new Error("El almacenamiento actual está protegido. Recupera o exporta sus datos antes de abrir otro proyecto.");
+    if(state.dirty&&!window.confirm("¿Descartar los cambios no guardados y abrir «"+record.name+"»? Guarda primero una copia en Mis diseños si necesitas conservarlos."))return;
+    const next=await loadDesign(id);if(!next)throw new Error("El diseño no se encontró o no es válido.");
+    persistDocumentSnapshot(localStorage,"animeart-web-document",next);
+    state.document=next;state.history.reset(next);const last=next.layers.at(-1)?.id||null;setSelection(last?[last]:[],last);
+    state.viewport=createViewport();state.transformInteraction=null;state.multiTransformInteraction=null;state.drawing=false;state.strokeBefore=null;state.textPreview=null;state.dirty=false;setStorageRecoveryPending(false);
+    refreshDocument("Diseño abierto: "+record.name);state.dirty=false;if(dialog?.open)dialog.close();else dialog?.removeAttribute("open");status.textContent="Diseño abierto: "+record.name;return;
+   }
+   if(action==="duplicate"){const name=window.prompt("Nombre de la copia:",record.name+" (copia)");if(name===null)return;const copied=await duplicateDesign(id,name);setDesignLibraryStatus("Copia creada: "+copied.name,"success");}
+   else if(action==="rename"){const name=window.prompt("Nuevo nombre:",record.name);if(name===null)return;await renameDesign(id,name);setDesignLibraryStatus("Nombre actualizado.","success");}
+   else if(action==="delete"){if(!window.confirm("¿Eliminar «"+record.name+"» de Mis diseños? Esta acción no se puede deshacer."))return;await deleteDesign(id);setDesignLibraryStatus("Diseño eliminado de la biblioteca local.","success");}
+   await renderDesignLibrary();
+  }catch(error){setDesignLibraryStatus(error?.message||"La operación no se pudo completar.","error");}finally{button.disabled=false;}
+ });
+}
+
 function initializeBrandLaunchpad() {
   document.querySelector("#home-create-cover")?.addEventListener("click", () => {
     document.querySelector("#creative-studio-open")?.click();
@@ -6906,9 +6981,7 @@ function initializeBrandLaunchpad() {
     );
   });
 }
-initializeBrandLaunchpad();
-
-initializeAssetLibrary({ onImportImage: importImageIntoEditor, onStatus: message => { status.textContent = message; } });
+initializeBrandLaunchpad(); initializeCanvaWorkflowTools(); initializeAssetLibrary({ onImportImage: importImageIntoEditor, onStatus: message => { status.textContent = message; } });
 initializeAppearanceSettings();
 setSelection([state.document.layers[0].id], state.document.layers[0].id);
 load();
