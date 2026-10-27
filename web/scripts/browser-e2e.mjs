@@ -254,6 +254,17 @@ const openDesignLibrary = async () => {
   await waitFor('document.querySelector("#design-library-dialog")?.open === true');
 };
 
+const openMultiPageManager = async () => {
+  const open = await evaluate('document.querySelector("#toolbox-dialog")?.open === true');
+  if (!open) {
+    const mobile = await evaluate('window.matchMedia("(max-width: 920px)").matches');
+    await click(mobile ? '.mobile-touch-dock [data-touch-action="more"]' : '#toolbox-open');
+    await waitFor('document.querySelector("#toolbox-dialog")?.open === true');
+  }
+  await click("#quick-open-page-manager");
+  await waitFor('document.querySelector("#multi-page-dialog")?.open === true');
+};
+
 const mouseDrag = async (start, end, modifiers = 0) => {
   await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: start.x, y: start.y });
   await cdp("Input.dispatchMouseEvent", { type: "mousePressed", x: start.x, y: start.y, button: "left", buttons: 1, clickCount: 1, modifiers });
@@ -2606,6 +2617,49 @@ try {
   await waitFor('(/alinead|deshacer/i).test(document.querySelector("#layer-alignment-status")?.textContent||"")');
   assert(await evaluate('(/alinead|deshacer/i).test(document.querySelector("#layer-alignment-status")?.textContent||"")'),
     "the visible layer panel applies canvas alignment and reports a recoverable action");
+
+
+  await openMultiPageManager();
+  await evaluate('document.querySelector("#multi-page-project-name").value="KapiArt Multi E2E"');
+  await click("#multi-page-create-project");
+  await waitFor('document.querySelector("#multi-page-active-name")?.textContent==="KapiArt Multi E2E"',15000);
+  await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===1');
+  assert(await evaluate('document.querySelector("#multi-page-active-name")?.textContent==="KapiArt Multi E2E"'),
+    "a multipage project starts from the current editable canvas");
+
+  await click("#multi-page-duplicate-page");
+  await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===2',10000);
+  const duplicatePageInfo = await evaluate('(() => ({active:document.querySelector("#multi-page-active-page")?.textContent,options:document.querySelectorAll("#multi-page-copy-target option").length}))()');
+  assert(/Página 2 de 2/.test(duplicatePageInfo.active||"") && duplicatePageInfo.options===1,
+    "duplicating a page keeps two independently addressable pages");
+
+  const layerCountBeforeCopy = await evaluate('Number(document.querySelector("#multi-page-page-list .multi-page-page-info small")?.textContent.match(/(\\d+) capas/)?.[1]||0)');
+  await click("#multi-page-copy-layer");
+  await waitFor('document.querySelector("#multi-page-status")?.textContent.includes("Capa copiada a")',10000);
+  const copyFeedback = await evaluate('document.querySelector("#multi-page-status")?.textContent||""');
+  assert(copyFeedback.includes("Se conservó editable"),
+    "copying a layer between pages preserves independent editable content");
+
+  await click("#multi-page-add-blank");
+  await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===3',10000);
+  await click('#multi-page-page-list button[data-multi-page-action="rename"][data-page-id]');
+  await waitFor('Array.from(document.querySelectorAll("#multi-page-page-list .multi-page-page-info strong")).some(node=>node.textContent==="Nombre renombrado E2E")');
+  await click('#multi-page-page-list button[data-multi-page-action="up"][data-page-id]');
+  await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===3');
+  const activeAfterReorder = await evaluate('document.querySelector("#multi-page-active-page")?.textContent||""');
+  assert(/3 de 3/.test(activeAfterReorder),
+    "pages can be renamed and reordered without losing the active page");
+  await click('#multi-page-page-list button[data-multi-page-action="open"][data-page-id]:not(:disabled)');
+  await waitFor('document.querySelector("#multi-page-status")?.textContent.startsWith("Página abierta:")',10000);
+  await click("#multi-page-save-page");
+  await waitFor('document.querySelector("#multi-page-status")?.textContent.includes("Página guardada")',10000);
+  const pageCountBeforeDelete = await evaluate('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length');
+  await click('#multi-page-page-list button[data-multi-page-action="delete"][data-page-id]');
+  await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===2',10000);
+  assert(pageCountBeforeDelete===3,
+    "the project supports non-destructive page deletion while retaining the remaining pages");
+  await click("#multi-page-close");
+  await waitFor('document.querySelector("#multi-page-dialog")?.open !== true');
 
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {
