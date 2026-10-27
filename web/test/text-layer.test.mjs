@@ -93,7 +93,8 @@ test("text edits participate in History and use the existing non-destructive PNG
   const app = await readFile("app.js", "utf8");
   const exporter = await readFile("domain/png-export.mjs", "utf8");
   assert.match(app, /layer\.contentType === "text"/);
-  assert.match(app, /context\.fillText\(line,\s*x,\s*y\)/);
+  assert.match(app, /function drawTextWithLetterSpacing\(/);
+  assert.match(app, /drawTextWithLetterSpacing\(context, line, x, y, previewText\.letterSpacing, false\)/);
   assert.match(app, /state\.history\.record\(before, next\)/);
   assert.match(app, /persistDocument\(\)/);
   assert.match(app, /renderDocumentToCanvas\(state\.document, exportCanvas/);
