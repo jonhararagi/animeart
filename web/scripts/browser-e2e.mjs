@@ -2543,6 +2543,45 @@ try {
   assert(completedStickerGuide?.completedStepIds?.length === 3,
     "the guide records all three confirmed steps after the real import, cutout, and PNG export");
 
+
+  await evaluate('document.querySelectorAll("dialog[open]").forEach(dialog=>dialog.close())');
+  await click("#creative-studio-open");
+  await waitFor('document.querySelector("#creative-studio-dialog")?.open === true');
+  await click('[data-creative-action="select-template"][data-item-id="youtube-anime-thumb"]');
+  await waitFor('document.querySelector("#creative-cover-size")?.value === "banner"');
+  assert(await evaluate('document.querySelector("#creative-cover-size")?.value === "banner"'),
+    "selecting a widescreen template also chooses its suggested banner format");
+  await click("#creative-studio-x");
+
+  await evaluate('window.confirm=()=>true; window.prompt=(message,defaultValue)=>message.startsWith("Nombre de la copia")?(defaultValue||"Copia E2E"):"Nombre renombrado E2E";');
+  await click("#design-library-open");
+  await waitFor('document.querySelector("#design-library-dialog")?.open === true');
+  await evaluate('document.querySelector("#design-library-name").value="KapiArt E2E workflow"');
+  await click("#design-library-save-current");
+  await waitFor('document.querySelector("#design-library-status")?.textContent.includes("Diseño guardado localmente")',15000);
+  await waitFor('document.querySelectorAll("#design-library-list .design-library-card").length===1',10000);
+  const savedDesignCard = await evaluate('(() => { const card=document.querySelector("#design-library-list .design-library-card"); return {name:card?.querySelector(".design-library-copy strong")?.textContent,meta:card?.querySelector(".design-library-copy small")?.textContent,hasPreview:Boolean(card?.querySelector(".design-library-visual img"))}; })()');
+  assert(savedDesignCard.name==="KapiArt E2E workflow" && /px/.test(savedDesignCard.meta||""),
+    "Mis diseños saves an editable project and shows its dimensions");
+  assert(savedDesignCard.hasPreview,
+    "Mis diseños stores and displays a locally rendered thumbnail when canvas encoding is available");
+
+  await click("#design-library-list button[data-design-action=\"duplicate\"]");
+  await waitFor('document.querySelectorAll("#design-library-list .design-library-card").length===2',10000);
+  await click("#design-library-list button[data-design-action=\"rename\"]");
+  await waitFor('Array.from(document.querySelectorAll("#design-library-list .design-library-copy strong")).some(node=>node.textContent==="Nombre renombrado E2E")');
+  await click("#design-library-list button[data-design-action=\"open\"]");
+  await waitFor('document.querySelector("#design-library-dialog")?.open !== true');
+  assert(await evaluate('document.querySelector("#status")?.textContent.startsWith("Diseño abierto:")'),
+    "opening a library entry restores the editable project and closes the dialog");
+
+  await click("#design-library-open");
+  await waitFor('document.querySelector("#design-library-dialog")?.open === true');
+  await click("#design-library-list button[data-design-action=\"delete\"]');
+  await waitFor('document.querySelectorAll("#design-library-list .design-library-card").length===1',10000);
+  assert(await evaluate('document.querySelectorAll("#design-library-list .design-library-card").length===1'),
+    "deleting a library entry keeps the other project intact");
+
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {
   try { ws.close(); } catch {}
