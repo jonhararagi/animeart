@@ -57,3 +57,15 @@ La segunda fase añade un gestor local de documentos multipágina, pendiente de 
 - El paquete offline usa `animeart-web-shell-v73`, incluyendo `web/domain/multi-page-project.mjs`.
 
 La prueba de esta fase debe recorrer en Chromium creación, duplicado, copia de capa entre páginas, alta de página, renombrado, reordenación, apertura, guardado y eliminación; Android CI debe comprobar el empaquetado y el arranque offline sobre exactamente el mismo SHA. La aceptación física en el Xiaomi `24116RACCG` permanece separada.
+
+
+## Fase de tipografía reutilizable · 2026-10-27
+
+- Las capas de texto ahora guardan `letterSpacing` (−8 a 24 px) e `lineHeight` (0,8× a 2,5×). Son valores editables de la capa, no efectos rasterizados.
+- El renderizador de lienzo y la exportación PNG/JPEG/WebP comparten el mismo dibujo de texto; usa `CanvasRenderingContext2D.letterSpacing` cuando está disponible y un fallback por grafemas para WebView que no lo admita.
+- La estimación de límites para selección/alineación respeta tracking e interlineado, para que las herramientas no calculen la caja como si el texto tuviera el espaciado anterior.
+- El modal de texto ofrece controles táctiles para ambos valores y un estante de estilos propios guardados localmente. Se pueden guardar hasta 20 estilos con nombre, aplicar a otra capa y eliminar; un estilo reutilizable solo contiene propiedades tipográficas, por lo que no reemplaza el texto, la posición ni la transformación del objeto destino.
+- Los estilos propios se guardan en localStorage del perfil/dispositivo; no se sincronizan entre equipos ni incluyen archivos de fuentes externos.
+- Los campos nuevos son compatibles hacia atrás: documentos anteriores sin `letterSpacing` o `lineHeight` siguen siendo válidos y se normalizan a 0 px y 1,2×.
+- Caché offline actualizada a `animeart-web-shell-v74`; pruebas de dominio y Chromium E2E cubren normalización, límites, recuperación de estilos y cambio de tracking/interlineado.
+- La aceptación de esta fase exige Web CI y Android CI sobre un mismo SHA final; la aceptación física en el Xiaomi `24116RACCG` continúa separada.
