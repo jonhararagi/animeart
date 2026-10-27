@@ -2577,7 +2577,7 @@ try {
 
   await click("#design-library-open");
   await waitFor('document.querySelector("#design-library-dialog")?.open === true');
-  await click("#design-library-list button[data-design-action=\"delete\"]');
+  await click("#design-library-list button[data-design-action=\"delete\"]");
   await waitFor('document.querySelectorAll("#design-library-list .design-library-card").length===1',10000);
   assert(await evaluate('document.querySelectorAll("#design-library-list .design-library-card").length===1'),
     "deleting a library entry keeps the other project intact");
