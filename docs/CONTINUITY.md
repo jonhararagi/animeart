@@ -4107,3 +4107,17 @@ La comparación de nombre de rama o cantidad de commits no basta para decidir un
 - La biblioteca visual puede ampliarse con materiales del usuario y recursos originales/licencias comprobadas; no afirmar que se ha reunido o catalogado una colección externa si no se hizo.
 
 ---
+
+---
+
+## Lote activo · Compositor KapiArt con expresiones independientes · 2026-10-26
+
+- **PR borrador:** [#123 · Añadir rasgos de expresión anime editables](https://github.com/jonhararagi/animeart/pull/123).
+- **Rama de trabajo:** `feature/kapiart-expression-traits-001`. Base verificada: `47bd382e72484155af029fe014b8ced970bcfb7a`. No se ha modificado ni fusionado `main`.
+- **Catálogo:** se amplía de 12 a 16 recursos SVG locales, con cuatro expresiones de trazado diferente: sonrisa suave, sonrisa abierta con dientes, sonrisa ladeada y sorpresa. El filtro de «Rasgos anime» puede buscar la categoría de expresión por separado.
+- **Composición:** el ensamblador conserva cinco capas SVG editables (cabello base, rostro, flequillo, ojos y expresión). La sonrisa suave se usa cuando el usuario no elige una expresión.
+- **Compatibilidad:** los conjuntos guardados pueden incluir el ID de expresión; los conjuntos anteriores que no tienen este campo siguen siendo válidos. El modelo valida la expresión opcional y conserva sus metadatos al restaurar proyectos.
+- **Pruebas añadidas/actualizadas:** catálogo y diferencias de expresiones, cinco capas de personaje, metadatos, persistencia de conjuntos antiguos/nuevos, E2E Chromium con creación de variantes y undo/redo, y contrato de caché offline/paquete Android v72.
+- **Evidencia del HEAD funcional anterior** `e747293139b88419ccf0479699c8e96b2c49cf3a`: Web CI run [#40431644894](https://github.com/jonhararagi/animeart/actions/runs/40431644894) llegó a **PASS**, incluyendo pruebas unitarias y E2E de Chromium. Android CI run [#40431644982](https://github.com/jonhararagi/animeart/actions/runs/40431644982) estaba en ejecución al redactar esta entrada.
+- **Regla de revalidación:** este apunte de continuidad crea un nuevo HEAD en la rama. El PASS del SHA anterior no se atribuye al nuevo commit documental; hay que verificar Web CI y Android CI de nuevo sobre el HEAD final de la PR antes de considerar el lote validado.
+- **Límites:** los SVG son recursos originales incluidos en el programa, no referencias descargadas ni imágenes generadas por IA. La aceptación física en el Xiaomi `24116RACCG` no se ha realizado y sigue separada de Chromium/emulador.
