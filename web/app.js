@@ -6949,6 +6949,256 @@ function showDesignLibraryDialog(){
  const name=document.querySelector("#design-library-name");if(name&&!name.value)name.value="Mi diseño";
  renderDesignLibrary();
 }
+
+function setMultiPageStatus(message, kind = "info") {
+ const node = document.querySelector("#multi-page-status");
+ if (node) { node.textContent = String(message || ""); node.dataset.kind = kind; }
+}
+function queueActiveMultiPagePageSave() {
+ if (!activeMultiPageSession || state.storageRecoveryPending) return Promise.resolve(null);
+ const projectId = activeMultiPageSession.id, pageId = activeMultiPageSession.activePageId;
+ const snapshot = cloneDocument(state.document);
+ multiPagePersistenceQueue = multiPagePersistenceQueue.catch(() => null).then(async () => {
+  const result = await saveMultiPagePage(projectId, pageId, snapshot);
+  if (activeMultiPageSession?.id === projectId && activeMultiPageSession?.activePageId === pageId) activeMultiPageSession = { ...result.project, activePageId: pageId };
+  return result;
+ }).catch(error => { setMultiPageStatus(error?.message || "No se pudo guardar la página.", "error"); return null; });
+ return multiPagePersistenceQueue;
+}
+async function saveActiveMultiPagePage({ withThumbnail = true, announce = true } = {}) {
+ if (!activeMultiPageSession) return null;
+ if (state.storageRecoveryPending) throw new Error("Resuelve primero el aviso de recuperación del almacenamiento.");
+ await multiPagePersistenceQueue.catch(() => null);
+ const session = activeMultiPageSession, pageId = session.activePageId, projectId = session.id;
+ const snapshot = cloneDocument(state.document);
+ const options = withThumbnail ? { thumbnail: await createDesignThumbnail(snapshot) } : {};
+ const result = await saveMultiPagePage(projectId, pageId, snapshot, options);
+ if (activeMultiPageSession?.id === projectId && activeMultiPageSession?.activePageId === pageId) activeMultiPageSession = { ...result.project, activePageId: pageId };
+ state.dirty = false;
+ if (announce) setMultiPageStatus("Página guardada: " + (result.page?.name || "Página actual"), "success");
+ return result;
+}
+function installMultiPageDocument(project, pageId, documentModel, message) {
+ activeMultiPageSession = { ...project, activePageId: pageId };
+ persistDocumentSnapshot(localStorage, "animeart-web-document", documentModel);
+ state.document = documentModel;
+ state.history.reset(documentModel);
+ const last = documentModel.layers.at(-1)?.id || null;
+ setSelection(last ? [last] : [], last);
+ state.viewport = createViewport();
+ state.transformInteraction = null; state.multiTransformInteraction = null; state.adjustmentPreview = null;
+ state.imageEraseInteraction = null; state.imageRestoreInteraction = null; state.magicEraseInteraction = null;
+ state.drawing = false; state.strokeBefore = null; state.textPreview = null; state.dirty = false;
+ setStorageRecoveryPending(false);
+ refreshDocument(message);
+ state.dirty = false;
+ status.textContent = message;
+}
+function showMultiPageDialog() {
+ const dialog = document.querySelector("#multi-page-dialog");
+ if (!dialog) return;
+ if (!dialog.open) { try { dialog.showModal(); } catch { dialog.setAttribute("open", ""); } }
+ const input = document.querySelector("#multi-page-project-name");
+ if (input && !input.value.trim()) input.value = activeMultiPageSession?.name || "Mi cómic";
+ void renderMultiPageDialog();
+}
+async function renderMultiPageDialog() {
+ const pageList = document.querySelector("#multi-page-page-list"), projectList = document.querySelector("#multi-page-project-list");
+ const activePanel = document.querySelector("#multi-page-active");
+ if (!pageList || !projectList || !activePanel) return;
+ pageList.replaceChildren(); projectList.replaceChildren();
+ try {
+  if (activeMultiPageSession) await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+  const records = await listMultiPageProjects();
+  if (activeMultiPageSession) {
+   const fresh = records.find(project => project.id === activeMultiPageSession.id);
+   if (fresh) activeMultiPageSession = { ...fresh, activePageId: activeMultiPageSession.activePageId };
+  }
+  const session = activeMultiPageSession;
+  activePanel.hidden = !session;
+  if (session) {
+   const currentPage = session.pages.find(page => page.id === session.activePageId);
+   document.querySelector("#multi-page-active-name").textContent = session.name;
+   document.querySelector("#multi-page-active-page").textContent = currentPage
+    ? currentPage.name + " · Página " + (session.pages.findIndex(page => page.id === currentPage.id) + 1) + " de " + session.pages.length
+    : "No hay una página activa";
+   const copyTarget = document.querySelector("#multi-page-copy-target");
+   copyTarget.replaceChildren();
+   const alternatives = session.pages.filter(page => page.id !== session.activePageId);
+   if (!alternatives.length) {
+    const option = document.createElement("option"); option.value = ""; option.textContent = "Crea otra página primero"; copyTarget.append(option);
+   } else {
+    for (const page of alternatives) { const option = document.createElement("option"); option.value = page.id; option.textContent = page.name; copyTarget.append(option); }
+   }
+   document.querySelector("#multi-page-copy-layer").disabled = !alternatives.length || !state.selectedLayerId;
+   for (let index = 0; index < session.pages.length; index++) {
+    const page = session.pages[index], card = document.createElement("article");
+    card.className = "multi-page-page-card" + (page.id === session.activePageId ? " is-active" : "");
+    const preview = document.createElement("div"); preview.className = "multi-page-page-preview";
+    if (page.thumbnail) { const image = document.createElement("img"); image.src = page.thumbnail; image.alt = "Vista previa de " + page.name; image.loading = "lazy"; preview.append(image); }
+    else { const placeholder = document.createElement("span"); placeholder.textContent = "P" + (index + 1); placeholder.setAttribute("aria-hidden", "true"); preview.append(placeholder); }
+    const info = document.createElement("div"); info.className = "multi-page-page-info";
+    const name = document.createElement("strong"); name.textContent = page.name;
+    const meta = document.createElement("small"); meta.textContent = page.width + " × " + page.height + " px · " + page.layerCount + " capas";
+    info.append(name, meta);
+    const actions = document.createElement("div"); actions.className = "multi-page-card-actions";
+    const defs = [["open","Editar",page.id === session.activePageId],["duplicate","Duplicar",session.pages.length >= 10],["rename","Renombrar",false],["up","↑",index === 0],["down","↓",index === session.pages.length - 1],["delete","Eliminar",session.pages.length <= 1]];
+    for (const [action,label,disabled] of defs) {
+     const button = document.createElement("button"); button.type = "button"; button.dataset.multiPageAction = action;
+     button.dataset.projectId = session.id; button.dataset.pageId = page.id; button.textContent = label; button.disabled = disabled;
+     if (action === "delete") button.className = "multi-page-delete";
+     if (action === "open" && disabled) button.textContent = "Actual";
+     actions.append(button);
+    }
+    card.append(preview, info, actions); pageList.append(card);
+   }
+  } else {
+   const empty = document.createElement("p"); empty.className = "multi-page-empty";
+   empty.textContent = "Crea un proyecto desde el lienzo actual para empezar a añadir páginas. Cada página conserva sus capas editables.";
+   pageList.append(empty);
+  }
+  if (!records.length) {
+   const empty = document.createElement("p"); empty.className = "multi-page-empty"; empty.textContent = "Todavía no tienes proyectos multipágina guardados."; projectList.append(empty);
+  } else {
+   for (const project of records) {
+    const card = document.createElement("article"); card.className = "multi-page-project-card";
+    const copy = document.createElement("div"); copy.className = "multi-page-project-copy";
+    const name = document.createElement("strong"); name.textContent = project.name;
+    const meta = document.createElement("small"); meta.textContent = project.pageCount + " páginas · actualizado " + new Date(project.updatedAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
+    copy.append(name, meta);
+    const actions = document.createElement("div"); actions.className = "multi-page-card-actions";
+    for (const [action,label] of [["open","Abrir"],["rename","Renombrar"],["delete","Eliminar"]]) {
+     const button = document.createElement("button"); button.type = "button"; button.dataset.multiProjectAction = action; button.dataset.projectId = project.id; button.textContent = label;
+     if (action === "delete") button.className = "multi-page-delete";
+     actions.append(button);
+    }
+    card.append(copy, actions); projectList.append(card);
+   }
+  }
+ } catch (error) { setMultiPageStatus(error?.message || "No se pudo leer la biblioteca multipágina.", "error"); }
+}
+async function activateMultiPagePage(projectId, pageId, { skipConfirm = false } = {}) {
+ if (state.storageRecoveryPending) throw new Error("Resuelve primero el aviso de recuperación del almacenamiento.");
+ if (!activeMultiPageSession && state.dirty && !skipConfirm && !window.confirm("¿Abrir un proyecto multipágina? Tu documento actual conserva su copia local, pero dejará de ser el lienzo activo.")) return false;
+ if (activeMultiPageSession) await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+ const records = await listMultiPageProjects(), found = records.find(project => project.id === projectId);
+ if (!found) throw new Error("No se encontró el proyecto multipágina.");
+ const page = found.pages.find(item => item.id === pageId);
+ if (!page) throw new Error("No se encontró la página seleccionada.");
+ const next = await loadMultiPagePage(projectId, pageId);
+ if (!next) throw new Error("La página no contiene un documento válido.");
+ const updated = await setActiveMultiPagePage(projectId, pageId);
+ installMultiPageDocument(updated || found, pageId, next, "Página abierta: " + page.name);
+ await renderMultiPageDialog();
+ return true;
+}
+async function createMultiPageFromCurrentCanvas(name) {
+ if (state.storageRecoveryPending) throw new Error("Resuelve primero el aviso de recuperación del almacenamiento.");
+ if (state.document.width <= 0 || state.document.height <= 0) throw new Error("Crea primero un lienzo con ancho y alto definidos.");
+ if (activeMultiPageSession) await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+ const snapshot = cloneDocument(state.document), thumbnail = await createDesignThumbnail(snapshot);
+ const project = await createMultiPageProject({ name, document: snapshot, thumbnail });
+ activeMultiPageSession = { ...project, activePageId: project.pages[0].id };
+ state.dirty = false;
+ setMultiPageStatus("Proyecto creado: " + project.name, "success");
+ await renderMultiPageDialog();
+}
+async function addBlankMultiPagePage() {
+ if (!activeMultiPageSession) throw new Error("Crea o abre primero un proyecto multipágina.");
+ await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+ const name = "Página " + (activeMultiPageSession.pages.length + 1), projectId = activeMultiPageSession.id;
+ const blank = createDocument(state.document.width, state.document.height);
+ const added = await addMultiPagePage(projectId, { name, document: blank });
+ await activateMultiPagePage(projectId, added.page.id, { skipConfirm: true });
+ setMultiPageStatus("Se creó " + added.page.name + ".", "success");
+}
+async function duplicateMultiPagePageFrom(pageId) {
+ if (!activeMultiPageSession) throw new Error("Crea o abre primero un proyecto multipágina.");
+ const session = activeMultiPageSession;
+ if (session.pages.length >= 10) throw new Error("Este proyecto llegó al máximo de 10 páginas.");
+ await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+ const sourcePage = session.pages.find(page => page.id === pageId);
+ if (!sourcePage) throw new Error("No se encontró la página que quieres duplicar.");
+ const source = await loadMultiPagePage(session.id, pageId);
+ if (!source) throw new Error("No se pudo leer la página que quieres duplicar.");
+ const added = await addMultiPagePage(session.id, { name: sourcePage.name + " (copia)", document: source, thumbnail: sourcePage.thumbnail });
+ await activateMultiPagePage(session.id, added.page.id, { skipConfirm: true });
+ setMultiPageStatus("Página duplicada: " + added.page.name, "success");
+}
+async function handleMultiPageItemAction(button) {
+ const action = button.dataset.multiPageAction, projectId = button.dataset.projectId, pageId = button.dataset.pageId;
+ const records = await listMultiPageProjects(), project = records.find(item => item.id === projectId);
+ if (!project) throw new Error("No se encontró el proyecto multipágina.");
+ const page = project.pages.find(item => item.id === pageId);
+ if (!page) throw new Error("No se encontró la página.");
+ if (action === "open") { await activateMultiPagePage(projectId, pageId); return; }
+ if (action === "duplicate") { if (activeMultiPageSession?.id !== projectId) await activateMultiPagePage(projectId, pageId); await duplicateMultiPagePageFrom(pageId); return; }
+ if (action === "rename") {
+  const name = window.prompt("Nombre de la página:", page.name); if (name === null) return;
+  const updated = await renameMultiPagePage(projectId, pageId, name);
+  if (activeMultiPageSession?.id === projectId) activeMultiPageSession = { ...updated, activePageId: activeMultiPageSession.activePageId };
+  setMultiPageStatus("Nombre de página actualizado.", "success"); await renderMultiPageDialog(); return;
+ }
+ if (action === "up" || action === "down") {
+  if (activeMultiPageSession?.id === projectId) await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+  const index = project.pages.findIndex(item => item.id === pageId);
+  const updated = await reorderMultiPagePage(projectId, pageId, index + (action === "up" ? -1 : 1));
+  if (activeMultiPageSession?.id === projectId) activeMultiPageSession = { ...updated, activePageId: activeMultiPageSession.activePageId };
+  setMultiPageStatus("Orden de páginas actualizado.", "success"); await renderMultiPageDialog(); return;
+ }
+ if (action === "delete") {
+  if (!window.confirm("¿Eliminar «" + page.name + "»? Esta acción no se puede deshacer.")) return;
+  const wasActive = activeMultiPageSession?.id === projectId && activeMultiPageSession?.activePageId === pageId;
+  if (activeMultiPageSession?.id === projectId) await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+  const updated = await deleteMultiPagePage(projectId, pageId);
+  if (activeMultiPageSession?.id === projectId) {
+   activeMultiPageSession = { ...updated, activePageId: updated.activePageId };
+   if (wasActive) {
+    const nextPage = updated.pages.find(item => item.id === updated.activePageId) || updated.pages[0];
+    const next = await loadMultiPagePage(projectId, nextPage.id);
+    installMultiPageDocument(updated, nextPage.id, next, "Página eliminada. Abriendo " + nextPage.name + ".");
+   }
+  }
+  setMultiPageStatus("Página eliminada.", "success"); await renderMultiPageDialog();
+ }
+}
+async function handleMultiProjectAction(button) {
+ const action = button.dataset.multiProjectAction, id = button.dataset.projectId;
+ const projects = await listMultiPageProjects(), project = projects.find(item => item.id === id);
+ if (!project) throw new Error("No se encontró el proyecto.");
+ if (action === "open") { const target = project.pages.find(page => page.id === project.activePageId) || project.pages[0]; await activateMultiPagePage(id, target.id); return; }
+ if (action === "rename") {
+  const name = window.prompt("Nombre del proyecto:", project.name); if (name === null) return;
+  const updated = await renameMultiPageProject(id, name);
+  if (activeMultiPageSession?.id === id) activeMultiPageSession = { ...updated, activePageId: activeMultiPageSession.activePageId };
+  setMultiPageStatus("Proyecto renombrado.", "success"); await renderMultiPageDialog(); return;
+ }
+ if (action === "delete") {
+  if (!window.confirm("¿Eliminar el proyecto «" + project.name + "» con todas sus páginas? Esta acción no se puede deshacer.")) return;
+  if (activeMultiPageSession?.id === id) { await saveActiveMultiPagePage({ withThumbnail: true, announce: false }); activeMultiPageSession = null; }
+  await deleteMultiPageProject(id);
+  setMultiPageStatus("Proyecto eliminado de este dispositivo.", "success"); await renderMultiPageDialog();
+ }
+}
+async function copySelectedLayerToAnotherPage() {
+ if (!activeMultiPageSession) throw new Error("Abre primero un proyecto multipágina.");
+ if (!state.selectedLayerId) throw new Error("Selecciona una capa para copiar.");
+ const targetId = document.querySelector("#multi-page-copy-target")?.value;
+ if (!targetId) throw new Error("Elige otra página de destino.");
+ await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+ const session = activeMultiPageSession, target = session.pages.find(page => page.id === targetId);
+ if (!target) throw new Error("No se encontró la página de destino.");
+ const targetDocument = await loadMultiPagePage(session.id, targetId);
+ if (!targetDocument) throw new Error("No se pudo abrir la página de destino.");
+ const copied = copyLayerToPage(state.document, targetDocument, state.selectedLayerId);
+ if (!copied.ok) throw new Error(copied.error);
+ const thumbnail = await createDesignThumbnail(copied.document);
+ const saved = await saveMultiPagePage(session.id, targetId, copied.document, { thumbnail });
+ activeMultiPageSession = { ...saved.project, activePageId: session.activePageId };
+ setMultiPageStatus("Capa copiada a «" + target.name + "». Se conservó editable.", "success");
+ await renderMultiPageDialog();
+}
+
 function initializeCanvaWorkflowTools(){
  document.querySelectorAll("[data-layer-align]").forEach(button=>button.addEventListener("click",()=>applySelectedLayerAlignment(button.dataset.layerAlign)));
  const dialog=document.querySelector("#design-library-dialog"),input=document.querySelector("#design-library-name"),list=document.querySelector("#design-library-list");
