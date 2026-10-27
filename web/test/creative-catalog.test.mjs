@@ -110,13 +110,13 @@ test("creative studio UI is discoverable, searchable, offline-ready and packaged
   assert.match(html,/id="quick-open-design-library"/);
   assert.match(html,/data-layer-align="distribute-horizontal"/);
   assert.match(app,/function initializeCanvaWorkflowTools\(/);
-  assert.match(app,/animeart-web-shell-v73/);
+  assert.match(app,/animeart-web-shell-v74/);
   assert.match(css,/KAPIART-CANVA-WORKFLOW-001/);
   assert.equal(ANIME_STYLE_COMPONENTS.length,12);
   assert.equal(searchAnimeStyleComponents("coletas","hair").length,1);
   assert.match(createAnimeStyleComponentSvg("hair-twin-tails"),/<path/);
   assert.match(css,/AA-CREATIVE-STUDIO-001/);
-  assert.match(worker,/animeart-web-shell-v73/);
+  assert.match(worker,/animeart-web-shell-v74/);
   assert.match(worker,/\.\/domain\/creative-catalog\.mjs/);
   assert.match(android, /test -s "\$WEB\/domain\/creative-catalog\.mjs"/);
   assert.match(android, /test -s "\$WEB\/domain\/canvas-rendering\.mjs"/);
