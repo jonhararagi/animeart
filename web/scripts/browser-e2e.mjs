@@ -892,6 +892,23 @@ try {
   await click("#apply-text-layer");
   await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
 
+  // Typography v2: letter spacing and line height persist, and custom styles are reusable.
+  await evaluate('window.prompt=()=> "E2E Manga Tracking"');
+  await evaluate('document.querySelector("#selection-mini-edit-text").click()');
+  await waitFor('document.querySelector("#text-edit-dialog").open === true', 10000);
+  await evaluate('(() => { const track=document.querySelector("#text-letter-spacing"); track.value="4"; track.dispatchEvent(new Event("input",{bubbles:true})); track.dispatchEvent(new Event("change",{bubbles:true})); const leading=document.querySelector("#text-line-height"); leading.value="1.65"; leading.dispatchEvent(new Event("input",{bubbles:true})); leading.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.letterSpacing===4 && JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.lineHeight===1.65', 10000);
+  await click("#save-text-style");
+  await waitFor('document.querySelector("#saved-text-styles [data-saved-text-style-apply]")?.textContent==="E2E Manga Tracking"', 10000);
+  await evaluate('(() => { const track=document.querySelector("#text-letter-spacing"); track.value="-2"; track.dispatchEvent(new Event("input",{bubbles:true})); track.dispatchEvent(new Event("change",{bubbles:true})); const leading=document.querySelector("#text-line-height"); leading.value="1"; leading.dispatchEvent(new Event("input",{bubbles:true})); leading.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.letterSpacing===-2 && JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.lineHeight===1', 10000);
+  await click('#saved-text-styles [data-saved-text-style-apply]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.letterSpacing===4 && JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.lineHeight===1.65', 10000);
+  assert(await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + '); return layer?.text?.value==="AnimeArt Studio" && layer.text.letterSpacing===4 && layer.text.lineHeight===1.65; })()'),
+    "reusable text styles restore tracking and line height without replacing text content");
+  await click("#apply-text-layer");
+  await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
+
   await click("#add-text-layer");
   const disposableText = (await readDocument()).layers.at(-1);
   assert(disposableText?.contentType === "text", "temporary text fixture is a normal editable layer");
