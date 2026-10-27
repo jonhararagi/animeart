@@ -25,6 +25,8 @@ test("text layer normalizes bounded typography and rejects unsafe font or color 
     fontWeight: "bold",
     color: "#172335",
     align: "left",
+    letterSpacing: 0,
+    lineHeight: 1.2,
     outlineColor: "#ffffff",
     outlineWidth: 0,
     shadowColor: "#000000",
@@ -105,6 +107,20 @@ test("text edits participate in History and use the existing non-destructive PNG
   history.record(cloneDocument(withText), changed);
   assert.equal(history.undo(changed).layers[1].text.value, "Before");
   assert.equal(history.redo(withText).layers[1].text.value, "After");
+});
+
+
+test("letter spacing and line height are clamped, validated, and included in text bounds", () => {
+  assert.equal(normalizeTextLayer({ letterSpacing: 100, lineHeight: 0.1 }).letterSpacing, 24);
+  assert.equal(normalizeTextLayer({ letterSpacing: -100, lineHeight: 8 }).letterSpacing, -8);
+  assert.equal(normalizeTextLayer({ letterSpacing: 0, lineHeight: 0.1 }).lineHeight, 0.8);
+  assert.equal(normalizeTextLayer({ lineHeight: 8 }).lineHeight, 2.5);
+  const base = estimateTextLayerBounds({ value: "AB\nCD", fontSize: 20, x: 30, y: 40, letterSpacing: 0, lineHeight: 1.2 });
+  const expanded = estimateTextLayerBounds({ value: "AB\nCD", fontSize: 20, x: 30, y: 40, letterSpacing: 8, lineHeight: 2 });
+  assert.ok(expanded.maxX - expanded.minX > base.maxX - base.minX);
+  assert.ok(expanded.maxY > base.maxY);
+  assert.equal(isValidTextLayer({ ...normalizeTextLayer(), letterSpacing: 25 }), false);
+  assert.equal(isValidTextLayer({ ...normalizeTextLayer(), lineHeight: 0.4 }), false);
 });
 
 test("outlined and shadowed typography is normalized and validated", () => {
