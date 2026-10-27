@@ -81,6 +81,25 @@ test("distribution requires three unlocked selected layers and leaves unselected
   assert.equal(invalid.ok, false);
 });
 
+test("drawing bounds handle long strokes without argument-list overflows", () => {
+  const points = Array.from({ length: 150_000 }, (_, index) => ({
+    x: index % 1000,
+    y: Math.floor(index / 1000)
+  }));
+  const layer = {
+    id: "long-ink",
+    contentType: "drawing",
+    transform: { x: 0, y: 0, scale: 1, rotation: 0 },
+    strokes: [{ size: 8, points }]
+  };
+  const bounds = getLayerAlignmentBounds(layer, doc([]));
+  assert.ok(bounds);
+  assert.equal(bounds.left, -4);
+  assert.equal(bounds.right, 1003);
+  assert.equal(bounds.top, -4);
+  assert.equal(bounds.bottom, 153);
+});
+
 test("single-layer vertical alignment and invalid modes are predictable", () => {
   const documentModel = doc([imageLayer("a", 60, 120)]);
   const aligned = createLayerAlignmentTransforms(documentModel, ["a"], "bottom");
