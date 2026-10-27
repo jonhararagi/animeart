@@ -27,10 +27,10 @@ test("anime character presets expose real local favorites, reusable sets, palett
   assert.match(domain, /ANIME_COLOR_PALETTE_STORAGE_KEY/);
   assert.match(domain, /ANIME_TRAIT_FAVORITES_STORAGE_KEY/);
   assert.match(domain, /storageCharacters: 80_000/);
-  assert.match(worker, /animeart-web-shell-v72/);
+  assert.match(worker, /animeart-web-shell-v73/);
   assert.match(worker, /\.\/domain\/anime-character-presets\.mjs/);
-  assert.match(app, /animeart-web-shell-v72/);
+  assert.match(app, /animeart-web-shell-v73/);
   assert.match(app, /\.\/domain\/anime-character-presets\.mjs/);
-  assert.match(workflow, /animeart-web-shell-v72/);
+  assert.match(workflow, /animeart-web-shell-v73/);
   assert.match(workflow, /anime-character-presets\.mjs/);
 });
