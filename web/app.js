@@ -5978,6 +5978,7 @@ function restoreStoredProject({ confirmDiscard = true } = {}) {
     const saved = JSON.parse(raw);
     const restored = restoreStoredDocument(saved);
     if (!restored) throw new Error("Stored project is invalid");
+    if (!detachActiveMultiPageSessionForReplacement("el proyecto recuperado")) return false;
     state.document = restored;
     state.history.reset(restored);
     setSelection(restored.layers.at(-1)?.id ? [restored.layers.at(-1).id] : [], restored.layers.at(-1)?.id || null);
@@ -6399,6 +6400,7 @@ function createPosterTemplate(id,background,accent,title,subtitle,dimensions){
   const width=dimensions==="square"?1080:dimensions==="banner"?1920:1080,height=dimensions==="square"?1080:dimensions==="banner"?1080:dimensions==="story"?1920:1350;
   if(state.storageRecoveryPending){status.textContent="El proyecto guardado está protegido. Pulsa Guardar antes de reemplazarlo con una portada.";return false;}
   if(state.dirty&&!window.confirm("¿Reemplazar el lienzo actual por una portada nueva? Guarda o exporta tu trabajo antes si lo necesitas."))return false;
+  if(!detachActiveMultiPageSessionForReplacement("una portada nueva"))return false;
   const next=createDocument(width,height),legacy=["poster","comic","manga"].includes(template.id);
   const bg=createImageLayer(legacy?"Poster background":"Fondo · "+template.label,width,height,posterSvgSource(width,height,safeBackground,safeAccent,template.id));
   const heading=createTextLayer(legacy?"Poster title":"Título · "+template.label,{value:String(title||template.defaultTitle).slice(0,180),x:width*.5,y:height*.34,fontSize:Math.round(height*.085),...template.titleStyle,align:"center",fontWeight:"bold"});
@@ -6454,6 +6456,7 @@ function createNewDocumentFromForm() {
     return false;
   }
   if (state.dirty && !window.confirm("Discard changes since the last explicit save?")) return false;
+  if (!detachActiveMultiPageSessionForReplacement("un documento nuevo")) return false;
   const next = createDocument(width, height);
   state.document = next;
   state.history.reset(next);
@@ -6571,6 +6574,8 @@ projectFileInput.addEventListener("change", async () => {
   }
   try {
     const imported = parseProjectFile(await file.text());
+    if (!detachActiveMultiPageSessionForReplacement("el archivo de proyecto importado")) return;
+    await multiPagePersistenceQueue.catch(() => null);
     persistDocumentSnapshot(localStorage, "animeart-web-document", imported);
     state.document = imported;
     state.history.reset(imported);
@@ -6953,6 +6958,16 @@ function showDesignLibraryDialog(){
 function setMultiPageStatus(message, kind = "info") {
  const node = document.querySelector("#multi-page-status");
  if (node) { node.textContent = String(message || ""); node.dataset.kind = kind; }
+}
+function detachActiveMultiPageSessionForReplacement(replacementLabel = "un documento independiente") {
+ if (!activeMultiPageSession) return true;
+ const name = activeMultiPageSession.name || "este proyecto";
+ const approved = window.confirm("La página actual pertenece a «" + name + "». KapiArt conservará la página guardada y abrirá " + replacementLabel + " fuera del proyecto multipágina. ¿Continuar?");
+ if (!approved) return false;
+ activeMultiPageSession = null;
+ void multiPagePersistenceQueue.catch(() => null);
+ setMultiPageStatus("Página anterior conservada en «" + name + "». El nuevo lienzo queda fuera del proyecto.", "success");
+ return true;
 }
 function queueActiveMultiPagePageSave() {
  if (!activeMultiPageSession || state.storageRecoveryPending) return Promise.resolve(null);
