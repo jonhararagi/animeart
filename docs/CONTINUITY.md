@@ -4132,3 +4132,27 @@ La comparación de nombre de rama o cantidad de commits no basta para decidir un
 - Los tests de dominio y el build no bastan para cerrar esta entrega: hacen falta el recorrido real de Chromium y Android CI sobre un mismo SHA final.
 - La aceptación física en el Xiaomi `24116RACCG` no se ha realizado y no puede inferirse de CI/emulador.
 - La biblioteca de diseños es local al dispositivo/perfil de navegador. No sincroniza con la nube ni con otros dispositivos.
+
+
+---
+
+## KapiArt · fase multipágina local · 2026-10-27
+
+**Trabajo incluido en PR #124:** [plantillas, alineación, Mis diseños y multipágina](https://github.com/jonhararagi/animeart/pull/124)  
+**Rama de implementación:** `feature/kapiart-canva-workflow-001`. `main` debe permanecer sin cambios funcionales hasta una autorización expresa de integración.
+
+### Alcance implementado en esta rama, pendiente de CI final
+
+- Modelo de proyecto multipágina local con almacenamiento IndexedDB separado: cada página conserva su propio documento/lienzo y sus propias capas, no se aplana el proyecto a una sola imagen.
+- Crear proyecto desde el lienzo actual; agregar una página en blanco; duplicar, abrir, renombrar, reordenar y eliminar páginas; no se permite borrar la última página.
+- Copiar la capa seleccionada a otra página asignando un identificador nuevo y manteniendo su tipo y contenido editables.
+- La página activa se guarda al confirmar operaciones de edición y también antes de cambiar de página. La UI ofrece guardar explícitamente y muestra miniaturas, dimensiones, cantidad de capas y estado.
+- Límites conservadores: 10 proyectos multipágina, 10 páginas por proyecto, 200 capas y 2,5 MB serializados por página. No se aumenta el límite de portabilidad heredado ni se expulsan proyectos automáticamente; IndexedDB debe poder rechazar una escritura si el navegador alcanza su cuota.
+- Acceso desde el panel de escritorio y desde «Más herramientas» en móvil; caché offline v73 incluye `web/domain/multi-page-project.mjs`.
+- Tests nuevos para copia de capas, límites y almacenamiento no disponible; Chromium E2E ampliado para la creación, duplicado, copia, alta, renombrado, reordenación, cambio, guardado y eliminación de páginas.
+
+### Validación y límites restantes
+
+- Los cambios de esta fase deben validarse con Web CI, incluido E2E real de Chromium, y Android CI sobre el mismo SHA final. La aceptación física del Xiaomi `24116RACCG` sigue pendiente.
+- La exportación PDF multipágina, exportación SVG, redimensionado inteligente, fuentes instalables y agrupación persistente de objetos siguen pendientes.
+- El gestor multipágina es local al perfil/dispositivo. No sincroniza en nube ni entre dispositivos.
