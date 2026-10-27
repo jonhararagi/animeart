@@ -6949,6 +6949,7 @@ function initializeCanvaWorkflowTools(){
  document.querySelectorAll("[data-layer-align]").forEach(button=>button.addEventListener("click",()=>applySelectedLayerAlignment(button.dataset.layerAlign)));
  const dialog=document.querySelector("#design-library-dialog"),input=document.querySelector("#design-library-name"),list=document.querySelector("#design-library-list");
  document.querySelector("#design-library-open")?.addEventListener("click",showDesignLibraryDialog);
+ document.querySelector("#quick-open-design-library")?.addEventListener("click",()=>{if(toolboxDialog?.open)toolboxDialog.close();showDesignLibraryDialog();});
  document.querySelector("#design-library-close")?.addEventListener("click",()=>{if(dialog?.open)dialog.close();else dialog?.removeAttribute("open");});
  document.querySelector("#design-library-refresh")?.addEventListener("click",renderDesignLibrary);
  document.querySelector("#design-library-save-form")?.addEventListener("submit",async event=>{
