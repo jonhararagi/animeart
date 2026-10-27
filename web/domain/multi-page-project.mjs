@@ -395,7 +395,7 @@ export async function deleteMultiPageProject(id, { indexedDBApi = globalThis.ind
       let pending = 2, failed = false;
       const ready = () => {
         pending -= 1;
-        if (!pending || failed) return;
+        if (pending || failed) return;
         projects.delete(key);
         for (const pageKey of request.result || []) pages.delete(pageKey);
       };
