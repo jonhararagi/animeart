@@ -4680,3 +4680,59 @@ dialog {
   .design-library-card-actions { grid-column: 2; padding-top: 0.35rem; }
   .design-library-header h2 { padding-right: 0.25rem; }
 }
+
+/* KAPIART-MULTIPAGE-001 */
+.multi-page-dialog{width:min(1040px,calc(100vw - 22px));max-width:1040px;max-height:min(90dvh,950px);padding:0;overflow:hidden;border:1px solid #6d514a;border-radius:22px;color:#fff4eb;background:#241a19;box-shadow:0 24px 90px #000b}
+.multi-page-dialog::backdrop{background:rgb(10 7 7 / 80%);backdrop-filter:blur(8px)}
+.multi-page-shell{display:flex;flex-direction:column;gap:1rem;max-height:min(90dvh,950px);padding:clamp(1rem,3vw,1.5rem);overflow:auto}
+.multi-page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+.multi-page-header h2{margin:.2rem 0 .4rem;font-size:clamp(1.35rem,4vw,1.9rem)}
+.multi-page-header p:last-child{max-width:60ch;margin:0;color:#d7c8c0;line-height:1.5}
+.multi-page-create-form{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:.7rem;padding:.85rem;border:1px solid #4c352f;border-radius:15px;background:#2b211f}
+.multi-page-create-form label{display:grid;gap:.4rem;color:#e9d9d0;font-size:.88rem}
+.multi-page-create-form input{width:100%;min-height:44px;padding:.65rem .75rem;border:1px solid #73564e;border-radius:10px;color:#fff4eb;background:#241a19;font:inherit}
+.multi-page-dialog button{min-height:42px;padding:.55rem .8rem;border:1px solid #6d514a;border-radius:10px;color:#fff4eb;background:#392b29;font:inherit;font-size:.86rem;cursor:pointer;touch-action:manipulation}
+.multi-page-dialog button:disabled{opacity:.42;cursor:not-allowed}
+#multi-page-create-project,#multi-page-save-page{border-color:#e6817b;background:#673a38}
+.multi-page-status{min-height:1.15rem;margin:0;color:#f2a2a0}
+.multi-page-status[data-kind="error"]{color:#ffb8a8}
+.multi-page-status[data-kind="success"]{color:#c7f0cf}
+.multi-page-active,.multi-page-saved-projects{display:grid;gap:.75rem}
+.multi-page-active{padding:1rem;border:1px solid #6d514a;border-radius:17px;background:#2b211f}
+.multi-page-active-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.multi-page-active-heading h3{margin:.15rem 0 .35rem;overflow-wrap:anywhere;font-size:1.1rem}
+.multi-page-active-heading p:last-child{margin:0;color:#d7c8c0;font-size:.84rem}
+.multi-page-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}
+.multi-page-actions label{display:grid;gap:.35rem;min-width:0;color:#e9d9d0;font-size:.82rem}
+.multi-page-actions select{width:100%;min-width:0;min-height:42px;padding:.5rem;border:1px solid #73564e;border-radius:10px;color:#fff4eb;background:#241a19;font:inherit}
+.multi-page-dialog h4,.multi-page-saved-projects h3{margin:0;font-size:1rem}
+.multi-page-page-list,.multi-page-project-list{display:grid;gap:.7rem}
+.multi-page-page-card{display:grid;grid-template-columns:82px minmax(0,1fr);gap:.65rem;min-width:0;padding:.65rem;border:1px solid #4c352f;border-radius:14px;background:#241a19}
+.multi-page-page-card.is-active{border-color:#f2a2a0;box-shadow:inset 0 0 0 1px #f2a2a033}
+.multi-page-page-preview{display:grid;place-items:center;min-height:90px;overflow:hidden;border-radius:9px;background:#171110}
+.multi-page-page-preview img{display:block;width:100%;height:100%;max-height:145px;object-fit:contain}
+.multi-page-page-preview span{display:grid;place-items:center;width:54px;height:70px;border:1px solid #e6817b;border-radius:6px;color:#fff4eb;background:linear-gradient(145deg,#392b29,#241a19);font-weight:850}
+.multi-page-page-info{display:grid;align-content:center;gap:.3rem;min-width:0}
+.multi-page-page-info strong,.multi-page-project-copy strong{overflow-wrap:anywhere;color:#fff4eb}
+.multi-page-page-info small,.multi-page-project-copy small{color:#d7c8c0;font-size:.78rem;line-height:1.4}
+.multi-page-card-actions{display:flex;flex-wrap:wrap;gap:.4rem;grid-column:1/-1}
+.multi-page-card-actions button{min-height:40px;flex:1 1 auto;padding:.45rem .6rem;font-size:.8rem}
+.multi-page-card-actions .multi-page-delete{border-color:#70413d;color:#ffc0b7}
+.multi-page-project-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:.75rem;padding:.85rem;border:1px solid #4c352f;border-radius:14px;background:#2b211f}
+.multi-page-project-copy{display:grid;gap:.3rem;min-width:0}
+.multi-page-empty{margin:0;padding:1rem;border:1px dashed #6d514a;border-radius:13px;color:#d7c8c0;line-height:1.5}
+.multi-page-footer{border-top:1px solid #4c352f;padding-top:.7rem}
+.multi-page-footer p{margin:0;color:#cbb9b0;font-size:.82rem;line-height:1.5}
+@media(max-width:680px){
+ .multi-page-create-form{grid-template-columns:1fr}
+ .multi-page-create-form button{min-height:46px}
+ .multi-page-active-heading{align-items:flex-start;flex-direction:column}
+ .multi-page-active-heading button{width:100%;min-height:46px}
+ .multi-page-actions{grid-template-columns:1fr}
+ .multi-page-page-card{grid-template-columns:72px minmax(0,1fr);gap:.55rem;padding:.55rem}
+ .multi-page-page-preview{min-height:80px}
+ .multi-page-card-actions{grid-column:1/-1}
+ .multi-page-card-actions button{min-height:44px}
+ .multi-page-project-card{grid-template-columns:1fr}
+ .multi-page-project-card .multi-page-card-actions button{min-height:44px}
+}
