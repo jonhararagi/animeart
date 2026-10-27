@@ -5,6 +5,8 @@ AnimeArt is a local-first **image editor and compositor**, inspired by everyday 
 ## Editing tools
 
 - Create documents with explicit pixel dimensions.
+- Organize multiple editable pages in a local multipage project: create blank pages, duplicate, rename, reorder, switch, and delete pages while preserving the individual layer stack.
+- Copy a selected editable layer from one page to another without flattening it. Local multipage storage is limited to 10 projects, 10 pages per project, 200 layers and 2.5 MB serialized per page; the existing per-page safety limit is intentionally unchanged.
 - Import images from files, drag-and-drop and clipboard paste; compose many image layers in one project.
 - Move, scale, rotate, flip, crop and resize image layers while preserving transparency.
 - Manage layers: create, select, rename, duplicate, delete, reorder, hide, lock and set opacity.
