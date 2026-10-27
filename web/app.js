@@ -567,9 +567,13 @@ function drawTextWithLetterSpacing(context, text, x, y, letterSpacing, outline =
  if (Math.abs(spacing) < 0.001 || Array.from(text).length < 2) { paint(text, x, y); return; }
  if ("letterSpacing" in context && typeof context.letterSpacing === "string") {
   const previous = context.letterSpacing;
-  try { context.letterSpacing = spacing + "px"; paint(text, x, y); }
-  finally { context.letterSpacing = previous; }
-  return;
+  let renderedNatively = false;
+  try {
+   context.letterSpacing = spacing + "px";
+   if (context.letterSpacing === spacing + "px") { paint(text, x, y); renderedNatively = true; }
+  } catch { /* Some WebViews expose the property without a writable implementation. */ }
+  finally { try { context.letterSpacing = previous; } catch {} }
+  if (renderedNatively) return;
  }
  const segments = typeof Intl.Segmenter === "function"
   ? [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)].map(part => part.segment)
