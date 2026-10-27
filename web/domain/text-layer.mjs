@@ -60,8 +60,8 @@ export function isValidTextLayer(value) {
     Number.isFinite(v.fontSize) && v.fontSize >= MIN_FONT_SIZE && v.fontSize <= MAX_FONT_SIZE &&
     TEXT_FONT_FAMILIES.includes(v.fontFamily) && WEIGHTS.includes(v.fontWeight) &&
     typeof v.color === "string" && COLOR_PATTERN.test(v.color) && ALIGNMENTS.includes(v.align) &&
-    Number.isFinite(v.letterSpacing) && v.letterSpacing >= TEXT_LETTER_SPACING_MIN && v.letterSpacing <= TEXT_LETTER_SPACING_MAX &&
-    Number.isFinite(v.lineHeight) && v.lineHeight >= TEXT_LINE_HEIGHT_MIN && v.lineHeight <= TEXT_LINE_HEIGHT_MAX &&
+    (v.letterSpacing === undefined || (Number.isFinite(v.letterSpacing) && v.letterSpacing >= TEXT_LETTER_SPACING_MIN && v.letterSpacing <= TEXT_LETTER_SPACING_MAX)) &&
+    (v.lineHeight === undefined || (Number.isFinite(v.lineHeight) && v.lineHeight >= TEXT_LINE_HEIGHT_MIN && v.lineHeight <= TEXT_LINE_HEIGHT_MAX)) &&
     typeof v.outlineColor === "string" && COLOR_PATTERN.test(v.outlineColor) &&
     Number.isFinite(v.outlineWidth) && v.outlineWidth >= 0 && v.outlineWidth <= MAX_OUTLINE_WIDTH &&
     typeof v.shadowColor === "string" && COLOR_PATTERN.test(v.shadowColor) &&
