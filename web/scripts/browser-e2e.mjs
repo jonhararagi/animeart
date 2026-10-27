@@ -2545,7 +2545,7 @@ try {
 
 
   await evaluate('document.querySelectorAll("dialog[open]").forEach(dialog=>dialog.close())');
-  await click("#home-create-cover");
+  await clickMoreGoal("creative-studio");
   await waitFor('document.querySelector("#creative-studio-dialog")?.open === true');
   await click('[data-creative-action="select-template"][data-item-id="youtube-anime-thumb"]');
   await waitFor('document.querySelector("#creative-cover-size")?.value === "banner"');
