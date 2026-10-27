@@ -307,6 +307,15 @@
             <button type="button" data-text-style-preset="manga"><span aria-hidden="true">▤</span><span>Manga</span></button>
           </div>
 
+
+          <section class="saved-text-styles-section" aria-labelledby="saved-text-styles-title">
+            <div class="saved-text-styles-heading">
+              <h3 id="saved-text-styles-title">Mis estilos</h3>
+              <button type="button" id="save-text-style">Guardar estilo actual</button>
+            </div>
+            <div id="saved-text-styles" class="saved-text-styles-list" aria-label="Estilos de texto guardados"></div>
+          </section>
+
           <div class="text-simple-controls">
             <label class="text-field" for="text-font-family">Tipo de letra
               <select id="text-font-family">
@@ -342,6 +351,19 @@
                 <label class="text-field" for="text-align">Alineación
                   <select id="text-align"><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select>
                 </label>
+              </div>
+
+              <div class="text-style-section typography-spacing-section">
+                <h3>Espaciado y lectura</h3>
+                <div class="text-inline-controls">
+                  <label class="text-field" for="text-letter-spacing">Espacio entre letras <output id="text-letter-spacing-value">0 px</output>
+                    <input id="text-letter-spacing" type="range" min="-8" max="24" step="0.5" value="0">
+                  </label>
+                  <label class="text-field" for="text-line-height">Interlineado <output id="text-line-height-value">1.20×</output>
+                    <input id="text-line-height" type="range" min="0.8" max="2.5" step="0.05" value="1.2">
+                  </label>
+                </div>
+                <p>El espaciado también sirve para títulos de manga, rótulos compactos y letras con aire cinematográfico.</p>
               </div>
               <div class="text-style-section">
                 <h3>Contorno</h3>
