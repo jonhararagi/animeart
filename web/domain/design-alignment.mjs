@@ -26,8 +26,9 @@ function localLayerBounds(layer) {
       return count * fontSize * 0.62 + Math.max(0, count - 1) * letterSpacing;
     }));
     const left = finite(text.x) - (text.align === "center" ? width / 2 : text.align === "right" ? width : 0);
-    const bottom = finite(text.y) + Math.max(0, lines.length - 1) * fontSize * lineHeight;
-    return { left, top: bottom - fontSize, right: left + width, bottom: bottom + fontSize * 0.22 };
+    const top = finite(text.y) - fontSize;
+    const bottom = finite(text.y) + Math.max(0, lines.length - 1) * fontSize * lineHeight + fontSize * 0.22;
+    return { left, top, right: left + width, bottom };
   }
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
