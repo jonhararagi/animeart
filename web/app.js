@@ -6040,14 +6040,15 @@ function refreshAnimeCharacterPresetControls(message=""){
 }
 function selectedAnimeCharacterComponents(){
  const components=[...selectedAnimeTraitIds].map(getAnimeStyleComponent).filter(Boolean);
- const eyes=components.filter(item=>item.part==="eyes"),hair=components.filter(item=>item.part==="hair"),face=components.filter(item=>item.part==="face");
- return components.length===3&&eyes.length===1&&hair.length===1&&face.length===1?{eyes:eyes[0],hair:hair[0],face:face[0]}:null;
+ const eyes=components.filter(item=>item.part==="eyes"),hair=components.filter(item=>item.part==="hair"),face=components.filter(item=>item.part==="face"),expression=components.filter(item=>item.part==="expression");
+ const valid=eyes.length===1&&hair.length===1&&face.length===1&&expression.length<=1&&components.length===3+expression.length&&new Set(components.map(item=>item.part)).size===components.length;
+ return valid?{eyes:eyes[0],hair:hair[0],face:face[0],...(expression.length?{expression:expression[0]}:{})}:null;
 }
 function saveCurrentAnimeCharacterSet(){
  const selected=selectedAnimeCharacterComponents();
  if(!selected){setAnimeCharacterPresetStatus("Selecciona exactamente un rasgo de ojos, cabello y rostro antes de guardar el conjunto.");return false;}
  try{
-  const record=saveAnimeCharacterSet(animePresetStorage(),{name:document.querySelector("#creative-character-set-name").value,componentIds:{eyes:selected.eyes.id,hair:selected.hair.id,face:selected.face.id},colors:currentAnimeCharacterColors()},ANIME_STYLE_COMPONENTS);
+  const record=saveAnimeCharacterSet(animePresetStorage(),{name:document.querySelector("#creative-character-set-name").value,componentIds:{eyes:selected.eyes.id,hair:selected.hair.id,face:selected.face.id,...(selected.expression?{expression:selected.expression.id}:{})},colors:currentAnimeCharacterColors()},ANIME_STYLE_COMPONENTS);
   activeAnimeCharacterPresetId=record.id;refreshAnimeCharacterPresetControls('Conjunto "'+record.name+'" guardado en este dispositivo.');
   document.querySelector("#creative-character-set-select").value=record.id;return true;
  }catch(error){setAnimeCharacterPresetStatus(error?.message||"No se pudo guardar el conjunto.");return false;}
@@ -6055,7 +6056,7 @@ function saveCurrentAnimeCharacterSet(){
 function loadSelectedAnimeCharacterSet(){
  const record=savedAnimeCharacterSets.find(item=>item.id===document.querySelector("#creative-character-set-select").value);
  if(!record){setAnimeCharacterPresetStatus("Elige un conjunto guardado para cargarlo.");return false;}
- selectedAnimeTraitIds.clear();for(const part of ["eyes","hair","face"])selectedAnimeTraitIds.add(record.componentIds[part]);
+ selectedAnimeTraitIds.clear();for(const part of ["eyes","hair","face"])selectedAnimeTraitIds.add(record.componentIds[part]);if(record.componentIds.expression)selectedAnimeTraitIds.add(record.componentIds.expression);
  document.querySelector("#creative-trait-hair-color").value=record.colors.hair;
  document.querySelector("#creative-trait-eye-color").value=record.colors.eyes;
  document.querySelector("#creative-trait-skin-color").value=record.colors.skin;
@@ -6185,11 +6186,12 @@ function updateAnimeCharacterComposerUi(){
   if(!button)return;
   const selected=[...selectedAnimeTraitIds].map(getAnimeStyleComponent).filter(Boolean);
   const parts=["eyes","hair","face"];
-  const valid=selected.length===3&&parts.every(part=>selected.filter(component=>component.part===part).length===1);
+  const expressionCount=selected.filter(component=>component.part==="expression").length;
+  const valid=parts.every(part=>selected.filter(component=>component.part===part).length===1)&&expressionCount<=1&&selected.length===3+expressionCount&&new Set(selected.map(component=>component.part)).size===selected.length;
   button.disabled=!valid;
   if(statusMessage)statusMessage.textContent=valid
-    ?"Listo: se crearán cuatro capas alineadas y editables. Puedes generar otra variación sin reemplazar esta."
-    :"Selecciona exactamente un rasgo de Ojos, uno de Cabello y uno de Rostro.";
+    ?"Listo: se crearán cinco capas alineadas y editables, incluida la expresión. Puedes generar otra variación sin reemplazar esta."
+    :"Selecciona un rasgo de Ojos, uno de Cabello y uno de Rostro. La expresión es opcional.";
 }
 function toggleAnimeTraitSelection(id){
   if(!getAnimeStyleComponent(id))return false;
@@ -6206,8 +6208,9 @@ function createAnimeCharacterFromSelectedTraits(){
   const eyes=selected.filter(component=>component.part==="eyes");
   const hair=selected.filter(component=>component.part==="hair");
   const face=selected.filter(component=>component.part==="face");
-  if(selected.length!==3||eyes.length!==1||hair.length!==1||face.length!==1){
-    const message="Selecciona exactamente un rasgo de Ojos, uno de Cabello y uno de Rostro.";
+  const expression=selected.filter(component=>component.part==="expression");
+  if(selected.length!==3+expression.length||expression.length>1||eyes.length!==1||hair.length!==1||face.length!==1||new Set(selected.map(component=>component.part)).size!==selected.length){
+    const message="Selecciona un rasgo de Ojos, uno de Cabello y uno de Rostro; la expresión es opcional.";
     document.querySelector("#creative-character-status").textContent=message;
     document.querySelector("#creative-studio-status").textContent=message;
     return false;
@@ -6222,6 +6225,7 @@ function createAnimeCharacterFromSelectedTraits(){
     eyesId:eyes[0].id,
     hairId:hair[0].id,
     faceId:face[0].id,
+    expressionId:expression[0]?.id,
     hairColor:document.querySelector("#creative-trait-hair-color").value,
     eyeColor:document.querySelector("#creative-trait-eye-color").value,
     skinColor:document.querySelector("#creative-trait-skin-color").value,
@@ -6257,7 +6261,8 @@ function createAnimeCharacterFromSelectedTraits(){
     ["hairBack","Cabello base · "+hair[0].label],
     ["face","Rostro · "+face[0].label],
     ["hairFront","Flequillo · "+hair[0].label],
-    ["eyes","Ojos · "+eyes[0].label]
+    ["eyes","Ojos · "+eyes[0].label],
+    ["expression","Expresión · "+(expression[0]?.label||"Sonrisa suave")]
   ];
   const characterGroupId=createId();
   const compositionBase={groupId:characterGroupId,variantIndex:variant,componentIds:{...parts.componentIds},colors:{...parts.colors},presetId:activeAnimeCharacterPresetId};
@@ -6265,7 +6270,8 @@ function createAnimeCharacterFromSelectedTraits(){
     const layer=createImageLayer("Personaje anime V"+variant+" · "+label,256,256,svgDataUrl(parts[part]));
     layer.isReference=false;layer.transform={...transform};layer.characterComposition={...compositionBase,part};return layer;
   });
-  const message="Personaje anime V"+variant+" creado en cuatro capas editables: cabello base, rostro, flequillo y ojos. Cambia los colores o selecciona otros rasgos para crear variantes sin reemplazar el original.";
+  const expressionLabel=expression[0]?.label||"Sonrisa suave";
+  const message="Personaje anime V"+variant+" creado en cinco capas editables: cabello base, rostro, flequillo, ojos y expresión ("+expressionLabel+"). Cambia los colores o selecciona otros rasgos para crear variantes sin reemplazar el original.";
   if(!commitCreativeLayers(layers,message))return false;
   document.querySelector("#creative-studio-status").textContent=message;
   updateAnimeCharacterComposerUi();
@@ -6928,7 +6934,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v71";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v72";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
