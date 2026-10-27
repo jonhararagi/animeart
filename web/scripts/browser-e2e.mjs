@@ -243,6 +243,17 @@ const clickMoreGoal = async goal => {
   await click('[data-edit-goal="' + goal + '"]');
 };
 
+const openDesignLibrary = async () => {
+  const open = await evaluate('document.querySelector("#toolbox-dialog")?.open === true');
+  if (!open) {
+    const mobile = await evaluate('window.matchMedia("(max-width: 920px)").matches');
+    await click(mobile ? '.mobile-touch-dock [data-touch-action="more"]' : '#toolbox-open');
+    await waitFor('document.querySelector("#toolbox-dialog")?.open === true');
+  }
+  await click("#quick-open-design-library");
+  await waitFor('document.querySelector("#design-library-dialog")?.open === true');
+};
+
 const mouseDrag = async (start, end, modifiers = 0) => {
   await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: start.x, y: start.y });
   await cdp("Input.dispatchMouseEvent", { type: "mousePressed", x: start.x, y: start.y, button: "left", buttons: 1, clickCount: 1, modifiers });
@@ -2554,8 +2565,7 @@ try {
   await click("#creative-studio-x");
 
   await evaluate('window.confirm=()=>true; window.prompt=(message,defaultValue)=>message.startsWith("Nombre de la copia")?(defaultValue||"Copia E2E"):"Nombre renombrado E2E";');
-  await click("#design-library-open");
-  await waitFor('document.querySelector("#design-library-dialog")?.open === true');
+  await openDesignLibrary();
   await evaluate('document.querySelector("#design-library-name").value="KapiArt E2E workflow"');
   await click("#design-library-save-current");
   await waitFor('document.querySelector("#design-library-status")?.textContent.includes("Diseño guardado localmente")',15000);
@@ -2575,8 +2585,7 @@ try {
   assert(await evaluate('document.querySelector("#status")?.textContent.startsWith("Diseño abierto:")'),
     "opening a library entry restores the editable project and closes the dialog");
 
-  await click("#design-library-open");
-  await waitFor('document.querySelector("#design-library-dialog")?.open === true');
+  await openDesignLibrary();
   await click("#design-library-list button[data-design-action=\"delete\"]");
   await waitFor('document.querySelectorAll("#design-library-list .design-library-card").length===1',10000);
   assert(await evaluate('document.querySelectorAll("#design-library-list .design-library-card").length===1'),
