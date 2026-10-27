@@ -98,6 +98,15 @@ const shapeMakerDialog = document.querySelector("#shape-maker-dialog");
 const shapeMakerPreview = document.querySelector("#shape-maker-preview");
 let shapeEditingLayerId = null;
 const textAlignInput = document.querySelector("#text-align");
+const textLetterSpacingInput = document.querySelector("#text-letter-spacing");
+const textLetterSpacingValue = document.querySelector("#text-letter-spacing-value");
+const textLineHeightInput = document.querySelector("#text-line-height");
+const textLineHeightValue = document.querySelector("#text-line-height-value");
+const saveTextStyleButton = document.querySelector("#save-text-style");
+const savedTextStylesContainer = document.querySelector("#saved-text-styles");
+const SAVED_TEXT_STYLE_KEY = "kapiart-saved-text-styles-v1";
+const MAX_SAVED_TEXT_STYLES = 20;
+const TEXT_STYLE_FIELDS = ["fontFamily","fontWeight","fontSize","color","align","letterSpacing","lineHeight","outlineColor","outlineWidth","shadowColor","shadowBlur","shadowOffsetX","shadowOffsetY"];
 const textLayerName = document.querySelector("#text-layer-name");
 const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
@@ -552,6 +561,26 @@ function drawDrawingLayer(layer, context, documentModel) {
   context.drawImage(raster, 0, 0, width, height);
 }
 
+function drawTextWithLetterSpacing(context, text, x, y, letterSpacing, outline = false) {
+ const paint = outline ? context.strokeText.bind(context) : context.fillText.bind(context);
+ const spacing = Number(letterSpacing) || 0;
+ if (Math.abs(spacing) < 0.001 || Array.from(text).length < 2) { paint(text, x, y); return; }
+ if ("letterSpacing" in context && typeof context.letterSpacing === "string") {
+  const previous = context.letterSpacing;
+  try { context.letterSpacing = spacing + "px"; paint(text, x, y); }
+  finally { context.letterSpacing = previous; }
+  return;
+ }
+ const segments = typeof Intl.Segmenter === "function"
+  ? [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)].map(part => part.segment)
+  : Array.from(text);
+ const totalWidth = context.measureText(text).width + Math.max(0, segments.length - 1) * spacing;
+ const originalAlign = context.textAlign;
+ let cursor = originalAlign === "center" ? x - totalWidth / 2 : originalAlign === "right" ? x - totalWidth : x;
+ context.textAlign = "left";
+ try { for (const segment of segments) { paint(segment, cursor, y); cursor += context.measureText(segment).width + spacing; } }
+ finally { context.textAlign = originalAlign; }
+}
 function drawDocument({ context = ctx, document = state.document, center = documentCenter(document), transformForLayer = layerTransformForRender, allowOffDocumentPreview = false } = {}) {
   const layersInRenderOrder = [...document.layers].sort((a, b) => Number(Boolean(b.isBackground)) - Number(Boolean(a.isBackground)));
   for (const layer of layersInRenderOrder) {
@@ -593,7 +622,7 @@ function drawDocument({ context = ctx, document = state.document, center = docum
       const genericFamily = ["sans-serif", "serif", "monospace"].includes(safeFamily);
       const fontFamily = genericFamily ? safeFamily : '"' + safeFamily.replace(/["\\]/g, "") + '"';
       context.font = `${previewText.fontWeight} ${previewText.fontSize}px ${fontFamily}`;
-      const lineHeight = previewText.fontSize * 1.2;
+      const lineHeight = previewText.fontSize * (previewText.lineHeight || 1.2);
       context.shadowColor = previewText.shadowBlur > 0 ? previewText.shadowColor : "transparent";
       context.shadowBlur = previewText.shadowBlur;
       context.shadowOffsetX = previewText.shadowOffsetX;
@@ -605,9 +634,9 @@ function drawDocument({ context = ctx, document = state.document, center = docum
           context.strokeStyle = previewText.outlineColor;
           context.lineWidth = previewText.outlineWidth;
           context.lineJoin = "round";
-          context.strokeText(line, x, y);
+          drawTextWithLetterSpacing(context, line, x, y, previewText.letterSpacing, true);
         }
-        context.fillText(line, x, y);
+        drawTextWithLetterSpacing(context, line, x, y, previewText.letterSpacing, false);
       });
     } else {
       drawDrawingLayer(layer, context, document);
@@ -2188,6 +2217,12 @@ function renderLayerText() {
   textShadowYInput.value = String(values.shadowOffsetY);
   textShadowYValue.textContent = values.shadowOffsetY + " px";
   textAlignInput.value = values.align;
+textLetterSpacingInput.value = String(values.letterSpacing);
+textLetterSpacingValue.textContent = values.letterSpacing + " px";
+textLineHeightInput.value = String(values.lineHeight);
+textLineHeightValue.textContent = values.lineHeight.toFixed(2) + "×";
+if (saveTextStyleButton) saveTextStyleButton.disabled = disabled;
+renderSavedTextStyles();
   for (const input of [textContentInput, textFontSizeInput, textFontFamilyInput, textFontWeightInput, textColorInput, textOutlineColorInput, textOutlineWidthInput, textAlignInput, textShadowColorInput, textShadowBlurInput, textShadowXInput, textShadowYInput]) {
     input.disabled = disabled;
   }
@@ -2263,6 +2298,10 @@ textAlignInput.addEventListener("change", () => {
   updateTextPreview({ align: textAlignInput.value });
   commitTextPreview("Text alignment updated");
 });
+textLetterSpacingInput?.addEventListener("input", () => { textLetterSpacingValue.textContent = Number(textLetterSpacingInput.value).toFixed(1) + " px"; updateTextPreview({ letterSpacing: Number(textLetterSpacingInput.value) }); });
+textLetterSpacingInput?.addEventListener("change", () => commitTextPreview("Text letter spacing updated"));
+textLineHeightInput?.addEventListener("input", () => { textLineHeightValue.textContent = Number(textLineHeightInput.value).toFixed(2) + "×"; updateTextPreview({ lineHeight: Number(textLineHeightInput.value) }); });
+textLineHeightInput?.addEventListener("change", () => commitTextPreview("Text line height updated"));
 textShadowColorInput.addEventListener("input",()=>updateTextPreview({shadowColor:textShadowColorInput.value}));textShadowColorInput.addEventListener("change",()=>commitTextPreview("Text shadow color updated"));
 textShadowBlurInput.addEventListener("input",()=>{const v=Number(textShadowBlurInput.value);textShadowBlurValue.textContent=v+" px";updateTextPreview({shadowBlur:v});});textShadowBlurInput.addEventListener("change",()=>commitTextPreview("Text shadow updated"));
 textShadowXInput.addEventListener("input", () => { const v = Number(textShadowXInput.value); textShadowXValue.textContent = v + " px"; updateTextPreview({ shadowOffsetX: v }); });
@@ -2343,6 +2382,78 @@ textStylePresetButtons.forEach(button => button.addEventListener("click", () => 
     commitTextPreview(button.dataset.textStylePreset + " text style applied");
   }
 }));
+
+function extractReusableTextStyle(values) {
+ const normalized = normalizeTextLayer(values || {});
+ return Object.fromEntries(TEXT_STYLE_FIELDS.map(key => [key, normalized[key]]));
+}
+function readSavedTextStyles() {
+ try {
+  const parsed = JSON.parse(localStorage.getItem(SAVED_TEXT_STYLE_KEY) || "[]");
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter(item => item && typeof item.id === "string" && typeof item.name === "string" && item.name.trim())
+   .slice(0, MAX_SAVED_TEXT_STYLES)
+   .map(item => ({ id: item.id.slice(0, 80), name: item.name.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 48), style: extractReusableTextStyle(item.style) }))
+   .filter(item => item.name);
+ } catch { return []; }
+}
+function writeSavedTextStyles(styles) {
+ try { localStorage.setItem(SAVED_TEXT_STYLE_KEY, JSON.stringify(styles.slice(0, MAX_SAVED_TEXT_STYLES))); return true; }
+ catch { setTextStyleStatus("No se pudieron guardar los estilos en este dispositivo. Comprueba el almacenamiento local.", "error"); return false; }
+}
+function setTextStyleStatus(message, kind = "info") {
+ let statusNode = document.querySelector("#saved-text-styles-status");
+ if (!statusNode && savedTextStylesContainer?.parentElement) {
+  statusNode = document.createElement("p"); statusNode.id = "saved-text-styles-status"; statusNode.className = "saved-text-styles-status"; statusNode.setAttribute("role", "status"); statusNode.setAttribute("aria-live", "polite"); savedTextStylesContainer.after(statusNode);
+ }
+ if (statusNode) { statusNode.textContent = String(message || ""); statusNode.dataset.kind = kind; }
+}
+function renderSavedTextStyles() {
+ if (!savedTextStylesContainer) return;
+ savedTextStylesContainer.replaceChildren();
+ const styles = readSavedTextStyles();
+ if (!styles.length) {
+  const empty = document.createElement("p"); empty.className = "saved-text-styles-empty"; empty.textContent = "Tus estilos guardados aparecerán aquí. Se conservan en este dispositivo."; savedTextStylesContainer.append(empty); return;
+ }
+ for (const preset of styles) {
+  const card = document.createElement("div"); card.className = "saved-text-style-card";
+  const apply = document.createElement("button"); apply.type = "button"; apply.className = "saved-text-style-apply"; apply.dataset.savedTextStyleApply = preset.id; apply.textContent = preset.name;
+  const detail = document.createElement("small"); detail.textContent = preset.style.fontFamily + " · " + preset.style.fontSize + " px · " + preset.style.letterSpacing + " px";
+  const remove = document.createElement("button"); remove.type = "button"; remove.className = "saved-text-style-remove"; remove.dataset.savedTextStyleRemove = preset.id; remove.textContent = "Quitar"; remove.setAttribute("aria-label", "Eliminar estilo " + preset.name);
+  card.append(apply, detail, remove); savedTextStylesContainer.append(card);
+ }
+}
+function saveSelectedTextStyle() {
+ const layer = selectedLayerExact();
+ if (!layer || layer.contentType !== "text" || layer.locked) { setTextStyleStatus("Selecciona una capa de texto desbloqueada para guardar su estilo.", "error"); return; }
+ const nameInput = window.prompt("Nombre para este estilo reutilizable:", "Mi estilo");
+ if (nameInput === null) return;
+ const name = String(nameInput).replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 48);
+ if (!name) { setTextStyleStatus("Escribe un nombre para guardar el estilo.", "error"); return; }
+ const styles = readSavedTextStyles();
+ if (styles.length >= MAX_SAVED_TEXT_STYLES) { setTextStyleStatus("Llegaste al máximo de 20 estilos. Elimina uno antes de guardar otro.", "error"); return; }
+ if (styles.some(item => item.name.toLocaleLowerCase() === name.toLocaleLowerCase()) && !window.confirm("Ya existe un estilo con ese nombre. ¿Guardar otra copia con el mismo nombre?")) return;
+ styles.unshift({ id: createId(), name, style: extractReusableTextStyle(getWorkingLayerText(layer)) });
+ if (writeSavedTextStyles(styles)) { renderSavedTextStyles(); setTextStyleStatus("Estilo guardado: " + name, "success"); }
+}
+function handleSavedTextStyleClick(event) {
+ const button = event.target.closest("button[data-saved-text-style-apply],button[data-saved-text-style-remove]");
+ if (!button) return;
+ const styles = readSavedTextStyles();
+ if (button.dataset.savedTextStyleApply) {
+  const item = styles.find(style => style.id === button.dataset.savedTextStyleApply);
+  const layer = selectedLayerExact();
+  if (!item) { setTextStyleStatus("Ese estilo ya no existe.", "error"); renderSavedTextStyles(); return; }
+  if (!layer || layer.contentType !== "text" || layer.locked) { setTextStyleStatus("Selecciona una capa de texto desbloqueada.", "error"); return; }
+  updateTextPreview(item.style); commitTextPreview("Saved text style applied"); setTextStyleStatus("Estilo aplicado: " + item.name, "success"); return;
+ }
+ const id = button.dataset.savedTextStyleRemove;
+ const item = styles.find(style => style.id === id);
+ if (!item || !window.confirm("¿Eliminar el estilo guardado «" + item.name + "»?")) return;
+ if (writeSavedTextStyles(styles.filter(style => style.id !== id))) { renderSavedTextStyles(); setTextStyleStatus("Estilo eliminado.", "success"); }
+}
+saveTextStyleButton?.addEventListener("click", saveSelectedTextStyle);
+savedTextStylesContainer?.addEventListener("click", handleSavedTextStyleClick);
 
 function renderImageMask(){if(!imageMaskPanel||!imageMaskInput)return;const layer=selectedLayerExact(),isImage=layer?.contentType==="image"&&Boolean(layer.image);imageMaskPanel.hidden=!isImage;imageMaskInput.disabled=!isImage||layer.locked;imageMaskInput.value=isImage?(layer.image.mask||"none"):"none";}
 imageMaskInput.addEventListener("change",()=>{const layer=selectedLayerExact();if(!layer||layer.contentType!=="image"||!layer.image||layer.locked)return;const before=cloneDocument(state.document),next=setImageMask(state.document,layer.id,imageMaskInput.value);if(!next)return;state.document=next;state.history.record(before,next);refreshDocument("Image mask updated");persistDocument();});
