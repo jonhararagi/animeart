@@ -451,13 +451,20 @@ test("T064 persistence writer inventory keeps the project key behind the existin
     [...source.matchAll(/localStorage\s*\.\s*setItem\s*\(/g)].map(() => path)
   );
   assert.deepEqual(
-    directWriters.filter(path => !path.endsWith(join("web", "appearance-settings.js"))),
+    directWriters.filter(path => !path.endsWith(join("web", "appearance-settings.js")) && !path.endsWith(join("web", "app.js"))),
     [],
     "the project key remains behind the shared snapshot boundary; appearance settings may use their own isolated key"
   );
   const appearanceModule = sources.find(([path]) => path.endsWith(join("web", "appearance-settings.js")));
   assert.ok(appearanceModule, "editor appearance settings are isolated from project document persistence");
   assert.match(appearanceModule[1], /const STORAGE_KEY = "animeart-editor-appearance-v1"/);
+  const editorDirectWriters = directWriters.filter(path => path.endsWith(join("web", "app.js")));
+  assert.equal(editorDirectWriters.length, 1, "the editor only writes one separate local preference key outside project persistence");
+  const editor = sources.find(([path]) => path.endsWith("app.js"));
+  assert.ok(editor, "editor source is included in the writer inventory");
+  assert.match(editor[1], /const SAVED_TEXT_STYLE_KEY = "kapiart-saved-text-styles-v1"/);
+  assert.match(editor[1], /localStorage\.setItem\(SAVED_TEXT_STYLE_KEY,/);
+  assert.doesNotMatch(editor[1], /localStorage\.setItem\(\s*["']animeart-web-document["']/);
   const snapshotModule = sources.find(([path]) => path.endsWith(join("domain", "image-import.mjs")));
   assert.ok(snapshotModule, "existing image-import domain module is included in the writer inventory");
   assert.match(snapshotModule[1], /storage\.setItem\(key, serialized\)/, "the shared snapshot boundary owns the delegated storage write");
