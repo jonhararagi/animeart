@@ -6993,6 +6993,7 @@ function installMultiPageDocument(project, pageId, documentModel, message) {
  refreshDocument(message);
  state.dirty = false;
  status.textContent = message;
+ setMultiPageStatus(message, "success");
 }
 function showMultiPageDialog() {
  const dialog = document.querySelector("#multi-page-dialog");
