@@ -2639,12 +2639,16 @@ try {
   const copyFeedback = await evaluate('document.querySelector("#multi-page-status")?.textContent||""');
   assert(copyFeedback.includes("Se conservó editable"),
     "copying a layer between pages preserves independent editable content");
+  const layerCountAfterCopy = await evaluate('Number(document.querySelector("#multi-page-page-list .multi-page-page-info small")?.textContent.match(/(\\d+) capas/)?.[1]||0)');
+  assert(layerCountAfterCopy===layerCountBeforeCopy+1,
+    "copying a layer adds one independent editable layer to the target page");
+
 
   await click("#multi-page-add-blank");
   await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===3',10000);
-  await click('#multi-page-page-list button[data-multi-page-action="rename"][data-page-id]');
+  await click('#multi-page-page-list .multi-page-page-card:last-child button[data-multi-page-action="rename"]');
   await waitFor('Array.from(document.querySelectorAll("#multi-page-page-list .multi-page-page-info strong")).some(node=>node.textContent==="Nombre renombrado E2E")');
-  await click('#multi-page-page-list button[data-multi-page-action="up"][data-page-id]');
+  await click('#multi-page-page-list .multi-page-page-card:last-child button[data-multi-page-action="up"]');
   await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===3');
   const activeAfterReorder = await evaluate('document.querySelector("#multi-page-active-page")?.textContent||""');
   assert(/3 de 3/.test(activeAfterReorder),
