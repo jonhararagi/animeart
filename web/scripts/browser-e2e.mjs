@@ -2591,6 +2591,21 @@ try {
   assert(await evaluate('document.querySelectorAll("#design-library-list .design-library-card").length===1'),
     "deleting a library entry keeps the other project intact");
 
+
+  const mobileViewport = await evaluate('window.matchMedia("(max-width: 920px)").matches');
+  if (mobileViewport) {
+    const mobileLayersOpen = await evaluate('document.body.classList.contains("mobile-layers-open")');
+    if (!mobileLayersOpen) await click('.mobile-touch-dock [data-touch-action="layers"]');
+    await waitFor('document.body.classList.contains("mobile-layers-open")');
+  }
+  const alignLayerId = await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const layer=(d.layers||[]).find(item=>!item.locked); return layer?.id||null; })()');
+  assert(alignLayerId, "a mutable layer is available to the alignment controls");
+  await click('#layers li[data-layer-id="' + alignLayerId + '"] .layer-select');
+  await click('[data-layer-align="center-x"]');
+  await waitFor('(/alinead|deshacer/i).test(document.querySelector("#layer-alignment-status")?.textContent||"")');
+  assert(await evaluate('(/alinead|deshacer/i).test(document.querySelector("#layer-alignment-status")?.textContent||"")'),
+    "the visible layer panel applies canvas alignment and reports a recoverable action");
+
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {
   try { ws.close(); } catch {}
