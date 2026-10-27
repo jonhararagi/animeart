@@ -2590,7 +2590,8 @@ try {
   await waitFor('document.querySelectorAll("#design-library-list .design-library-card").length===1',10000);
   assert(await evaluate('document.querySelectorAll("#design-library-list .design-library-card").length===1'),
     "deleting a library entry keeps the other project intact");
-
+  await click("#design-library-close");
+  await waitFor('document.querySelector("#design-library-dialog")?.open !== true');
 
   const mobileViewport = await evaluate('window.matchMedia("(max-width: 920px)").matches');
   if (mobileViewport) {
