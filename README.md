@@ -5,6 +5,8 @@ AnimeArt is a local-first **image editor and compositor**, inspired by everyday 
 ## Editing tools
 
 - Create documents with explicit pixel dimensions.
+- Refine text with editable letter tracking (−8 to 24 px) and line height (0.8× to 2.5×). These values remain part of the text layer and follow the document through undo/redo and image export.
+- Save up to 20 named typography styles locally, then reapply them to another text layer without replacing that layer's text content, position, or transform. The style shelf is device-local and does not upload fonts or projects.
 - Organize multiple editable pages in a local multipage project: create blank pages, duplicate, rename, reorder, switch, and delete pages while preserving the individual layer stack.
 - Copy a selected editable layer from one page to another without flattening it. Local multipage storage is limited to 10 projects, 10 pages per project, 200 layers and 2.5 MB serialized per page; the existing per-page safety limit is intentionally unchanged.
 - Import images from files, drag-and-drop and clipboard paste; compose many image layers in one project.
