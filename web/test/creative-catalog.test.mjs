@@ -106,6 +106,12 @@ test("creative studio UI is discoverable, searchable, offline-ready and packaged
   assert.match(app,/function activateMultiPagePage\(/);
   assert.match(app,/function copySelectedLayerToAnotherPage\(/);
   assert.match(css,/KAPIART-MULTIPAGE-001/);
+  assert.match(html,/id="text-letter-spacing"/);
+  assert.match(html,/id="text-line-height"/);
+  assert.match(html,/id="saved-text-styles"/);
+  assert.match(app,/function drawTextWithLetterSpacing\(/);
+  assert.match(app,/function saveSelectedTextStyle\(/);
+  assert.match(css,/KAPIART-TYPOGRAPHY-001/);
   assert.match(html,/id="design-library-dialog"/);
   assert.match(html,/id="quick-open-design-library"/);
   assert.match(html,/data-layer-align="distribute-horizontal"/);
