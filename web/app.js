@@ -6891,6 +6891,30 @@ function applySelectedLayerAlignment(mode){
  if(feedback)feedback.textContent="Listo. Puedes deshacer la alineación.";return true;
 }
 function setDesignLibraryStatus(message,kind="info"){const node=document.querySelector("#design-library-status");if(node){node.textContent=String(message||"");node.dataset.kind=kind;}}
+
+async function createDesignThumbnail(documentModel){
+ const imageLayers=(documentModel.layers||[]).filter(layer=>layer.visible&&layer.contentType==="image"&&layer.image?.source);
+ await Promise.all(imageLayers.map(layer=>new Promise(resolve=>{
+  const source=layer.image.source,existing=imageCache.get(source);
+  if(existing?.complete){resolve();return;}
+  const image=existing||new Image();
+  image.onload=()=>{imageCache.set(source,image);resolve();};
+  image.onerror=()=>resolve();
+  if(!existing){imageCache.set(source,image);image.src=source;}
+ })));
+ try{
+  const scale=Math.min(1,240/Math.max(1,documentModel.width),200/Math.max(1,documentModel.height));
+  const preview=document.createElement("canvas");
+  preview.width=Math.max(1,Math.round(documentModel.width*scale));
+  preview.height=Math.max(1,Math.round(documentModel.height*scale));
+  const context=preview.getContext("2d",{alpha:true});
+  if(!context)return "";
+  context.scale(scale,scale);
+  drawDocument({context,document:documentModel,center:documentCenter(documentModel),transformForLayer:layer=>layer.transform,allowOffDocumentPreview:false});
+  const thumbnail=preview.toDataURL("image/webp",0.7);
+  return thumbnail.length<=280000?thumbnail:"";
+ }catch{return "";}
+}
 function renderDesignLibrary(){
  const grid=document.querySelector("#design-library-list");if(!grid)return Promise.resolve();
  grid.replaceChildren();const loading=document.createElement("p");loading.className="design-library-empty";loading.textContent="Cargando tus diseños…";grid.append(loading);
@@ -6931,7 +6955,7 @@ function initializeCanvaWorkflowTools(){
   event.preventDefault();
   if(state.storageRecoveryPending){setDesignLibraryStatus("El guardado actual está protegido. Recupera o exporta sus datos antes de guardar este estado.","error");return;}
   const button=document.querySelector("#design-library-save-current");button.disabled=true;
-  try{const record=await saveDesign({name:input?.value,document:cloneDocument(state.document)});input.value=record.name;setDesignLibraryStatus("Diseño guardado localmente: "+record.name,"success");await renderDesignLibrary();}
+  try{const documentCopy=cloneDocument(state.document);const thumbnail=await createDesignThumbnail(documentCopy);const record=await saveDesign({name:input?.value,document:documentCopy,thumbnail});input.value=record.name;setDesignLibraryStatus("Diseño guardado localmente: "+record.name,"success");await renderDesignLibrary();}
   catch(error){setDesignLibraryStatus(error?.message||"No se pudo guardar el diseño.","error");}finally{button.disabled=false;}
  });
  list?.addEventListener("click",async event=>{
