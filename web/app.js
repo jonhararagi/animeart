@@ -2370,16 +2370,16 @@ textStylePresetButtons.forEach(button => button.addEventListener("click", () => 
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "text" || layer.locked) return;
   const presets = {
-    title: { fontFamily: "Arial Black", fontWeight: "bold", fontSize: 76, color: "#ffffff", outlineWidth: 0, shadowColor: "#10131a", shadowBlur: 5, shadowOffsetX: 0, shadowOffsetY: 3, align: "center" },
-    subtitle: { fontFamily: "Georgia", fontWeight: "bold", fontSize: 44, color: "#f4f3ff", outlineWidth: 0, shadowColor: "#171323", shadowBlur: 2, shadowOffsetX: 0, shadowOffsetY: 2, align: "center" },
-    body: { fontFamily: "Arial", fontWeight: "normal", fontSize: 30, color: "#f4f5f7", outlineWidth: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0, align: "left" },
-    quote: { fontFamily: "Palatino Linotype", fontWeight: "normal", fontSize: 50, color: "#fff4dd", outlineWidth: 0, shadowColor: "#20180f", shadowBlur: 3, shadowOffsetX: 0, shadowOffsetY: 2, align: "center" },
-    label: { fontFamily: "Arial Black", fontWeight: "bold", fontSize: 26, color: "#ffe08a", outlineWidth: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0, align: "left" },
-    elegant: { fontFamily: "Georgia", fontWeight: "normal", fontSize: 62, color: "#f5e7d5", outlineWidth: 0, shadowColor: "#30201c", shadowBlur: 2, shadowOffsetX: 0, shadowOffsetY: 2, align: "center" },
-    comic: { fontFamily: "Impact", fontWeight: "bold", color: "#fff200", outlineColor: "#171717", outlineWidth: 5, shadowColor: "#171717", shadowBlur: 0, shadowOffsetX: 5, shadowOffsetY: 6 },
-    poster: { fontFamily: "Arial Black", fontWeight: "bold", color: "#ffffff", outlineColor: "#101014", outlineWidth: 2, shadowColor: "#000000", shadowBlur: 8, shadowOffsetX: 2, shadowOffsetY: 4 },
-    manga: { fontFamily: "Georgia", fontWeight: "bold", color: "#111111", outlineColor: "#ffffff", outlineWidth: 0, shadowColor: "#777777", shadowBlur: 1, shadowOffsetX: 1, shadowOffsetY: 2 },
-    neon: { fontFamily: "Arial Black", fontWeight: "bold", color: "#ffffff", outlineColor: "#f000c8", outlineWidth: 3, shadowColor: "#00dfff", shadowBlur: 18, shadowOffsetX: 0, shadowOffsetY: 0 }
+    title: { fontFamily: "Arial Black", fontWeight: "bold", fontSize: 76, color: "#ffffff", outlineWidth: 0, shadowColor: "#10131a", shadowBlur: 5, shadowOffsetX: 0, shadowOffsetY: 3, align: "center", letterSpacing: -0.5, lineHeight: 1.0 },
+    subtitle: { fontFamily: "Georgia", fontWeight: "bold", fontSize: 44, color: "#f4f3ff", outlineWidth: 0, shadowColor: "#171323", shadowBlur: 2, shadowOffsetX: 0, shadowOffsetY: 2, align: "center", letterSpacing: 0.25, lineHeight: 1.15 },
+    body: { fontFamily: "Arial", fontWeight: "normal", fontSize: 30, color: "#f4f5f7", outlineWidth: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0, align: "left", letterSpacing: 0, lineHeight: 1.5 },
+    quote: { fontFamily: "Palatino Linotype", fontWeight: "normal", fontSize: 50, color: "#fff4dd", outlineWidth: 0, shadowColor: "#20180f", shadowBlur: 3, shadowOffsetX: 0, shadowOffsetY: 2, align: "center", letterSpacing: 0.3, lineHeight: 1.35 },
+    label: { fontFamily: "Arial Black", fontWeight: "bold", fontSize: 26, color: "#ffe08a", outlineWidth: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0, align: "left", letterSpacing: 1.5, lineHeight: 1.05 },
+    elegant: { fontFamily: "Georgia", fontWeight: "normal", fontSize: 62, color: "#f5e7d5", outlineWidth: 0, shadowColor: "#30201c", shadowBlur: 2, shadowOffsetX: 0, shadowOffsetY: 2, align: "center", letterSpacing: 0.8, lineHeight: 1.15 },
+    comic: { fontFamily: "Impact", fontWeight: "bold", color: "#fff200", outlineColor: "#171717", outlineWidth: 5, shadowColor: "#171717", shadowBlur: 0, shadowOffsetX: 5, shadowOffsetY: 6, letterSpacing: 0.5, lineHeight: 0.95 },
+    poster: { fontFamily: "Arial Black", fontWeight: "bold", color: "#ffffff", outlineColor: "#101014", outlineWidth: 2, shadowColor: "#000000", shadowBlur: 8, shadowOffsetX: 2, shadowOffsetY: 4, letterSpacing: 0.8, lineHeight: 1.0 },
+    manga: { fontFamily: "Georgia", fontWeight: "bold", color: "#111111", outlineColor: "#ffffff", outlineWidth: 0, shadowColor: "#777777", shadowBlur: 1, shadowOffsetX: 1, shadowOffsetY: 2, letterSpacing: 0, lineHeight: 1.1 },
+    neon: { fontFamily: "Arial Black", fontWeight: "bold", color: "#ffffff", outlineColor: "#f000c8", outlineWidth: 3, shadowColor: "#00dfff", shadowBlur: 18, shadowOffsetX: 0, shadowOffsetY: 0, letterSpacing: 1.2, lineHeight: 0.95 }
   }[button.dataset.textStylePreset];
   if (presets) {
     updateTextPreview(presets);
