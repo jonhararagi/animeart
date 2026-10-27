@@ -491,6 +491,7 @@
               <option value="eyes">Ojos</option>
               <option value="hair">Cabello</option>
               <option value="face">Rostro y mandíbula</option>
+              <option value="expression">Expresión</option>
             </select>
           </label>
           <div class="creative-trait-selection-actions">
@@ -500,15 +501,15 @@
         </div>
         <div id="creative-character-composer" class="creative-character-composer" aria-label="Crear un personaje anime por capas">
           <h3>Crear personaje por capas</h3>
-          <p class="creative-character-intro">Selecciona un ojo, un peinado y un rostro. Se combinarán como cuatro capas independientes, listas para mover, ocultar, recolorear o corregir.</p>
+          <p class="creative-character-intro">Selecciona un ojo, un peinado y un rostro; la expresión es opcional. Se combinarán como cinco capas independientes, listas para mover, ocultar, recolorear o corregir.</p>
           <div class="creative-character-colors">
             <label for="creative-trait-hair-color">Cabello<input id="creative-trait-hair-color" type="color" value="#3A2B45"></label>
             <label for="creative-trait-eye-color">Ojos<input id="creative-trait-eye-color" type="color" value="#6DD6E8"></label>
             <label for="creative-trait-skin-color">Piel<input id="creative-trait-skin-color" type="color" value="#F4C7B7"></label>
             <label for="creative-trait-line-color">Línea<input id="creative-trait-line-color" type="color" value="#2B2035"></label>
           </div>
-          <button type="button" id="creative-trait-create-character" class="creative-primary" disabled>Crear personaje en 4 capas</button>
-          <p id="creative-character-status" role="status" aria-live="polite">Selecciona exactamente un rasgo de Ojos, uno de Cabello y uno de Rostro.</p>
+          <button type="button" id="creative-trait-create-character" class="creative-primary" disabled>Crear personaje en 5 capas</button>
+          <p id="creative-character-status" role="status" aria-live="polite">Selecciona un rasgo de Ojos, uno de Cabello y uno de Rostro; puedes añadir una expresión.</p>
         </div>
         <details id="creative-character-presets" class="creative-character-presets">
           <summary>Favoritos, conjuntos y paletas guardadas</summary>
