@@ -62,6 +62,20 @@ test("text layers survive document normalization and strict validation", () => {
   assert.equal(isValidDocument(cloneDocument(restored)), true);
 });
 
+test("legacy saved text layers without typography v2 fields remain valid and normalize to defaults", () => {
+  const document = createDocument(320, 240);
+  const text = createTextLayer("Legacy", { value: "Old project", fontSize: 28 });
+  document.layers.push(text);
+  const legacy = JSON.parse(JSON.stringify(document));
+  delete legacy.layers[1].text.letterSpacing;
+  delete legacy.layers[1].text.lineHeight;
+  assert.equal(isValidDocument(legacy), true);
+  const restored = normalizeDocument(legacy);
+  assert.equal(restored.layers[1].text.letterSpacing, 0);
+  assert.equal(restored.layers[1].text.lineHeight, 1.2);
+  assert.equal(isValidDocument(restored), true);
+});
+
 test("setLayerText is immutable, preserves layer identity and clamps text properties", () => {
   const document = createDocument(640, 480);
   const textLayer = createTextLayer("Caption", { value: "Before", fontSize: 40 });
