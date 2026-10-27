@@ -7220,6 +7220,7 @@ function initializeCanvaWorkflowTools(){
    if(action==="open"){
     if(state.storageRecoveryPending)throw new Error("El almacenamiento actual está protegido. Recupera o exporta sus datos antes de abrir otro proyecto.");
     if(state.dirty&&!window.confirm("¿Descartar los cambios no guardados y abrir «"+record.name+"»? Guarda primero una copia en Mis diseños si necesitas conservarlos."))return;
+    if(activeMultiPageSession){await saveActiveMultiPagePage({withThumbnail:true,announce:false});activeMultiPageSession=null;await multiPagePersistenceQueue.catch(()=>null);}
     const next=await loadDesign(id);if(!next)throw new Error("El diseño no se encontró o no es válido.");
     persistDocumentSnapshot(localStorage,"animeart-web-document",next);
     state.document=next;state.history.reset(next);const last=next.layers.at(-1)?.id||null;setSelection(last?[last]:[],last);
@@ -7231,6 +7232,46 @@ function initializeCanvaWorkflowTools(){
    else if(action==="delete"){if(!window.confirm("¿Eliminar «"+record.name+"» de Mis diseños? Esta acción no se puede deshacer."))return;await deleteDesign(id);setDesignLibraryStatus("Diseño eliminado de la biblioteca local.","success");}
    await renderDesignLibrary();
   }catch(error){setDesignLibraryStatus(error?.message||"La operación no se pudo completar.","error");}finally{button.disabled=false;}
+ });
+
+ const multiDialog=document.querySelector("#multi-page-dialog");
+ const projectName=document.querySelector("#multi-page-project-name");
+ document.querySelector("#multi-page-open")?.addEventListener("click",showMultiPageDialog);
+ document.querySelector("#quick-open-page-manager")?.addEventListener("click",()=>{if(toolboxDialog?.open)toolboxDialog.close();showMultiPageDialog();});
+ document.querySelector("#multi-page-close")?.addEventListener("click",()=>{if(multiDialog?.open)multiDialog.close();else multiDialog?.removeAttribute("open");});
+ document.querySelector("#multi-page-create-form")?.addEventListener("submit",async event=>{
+  event.preventDefault();const button=document.querySelector("#multi-page-create-project");button.disabled=true;
+  try{await createMultiPageFromCurrentCanvas(projectName?.value);if(projectName)projectName.value=activeMultiPageSession?.name||projectName.value;}
+  catch(error){setMultiPageStatus(error?.message||"No se pudo crear el proyecto multipágina.","error");}
+  finally{button.disabled=false;}
+ });
+ document.querySelector("#multi-page-save-page")?.addEventListener("click",async()=>{
+  try{await saveActiveMultiPagePage({withThumbnail:true});await renderMultiPageDialog();}
+  catch(error){setMultiPageStatus(error?.message||"No se pudo guardar la página.","error");}
+ });
+ document.querySelector("#multi-page-add-blank")?.addEventListener("click",async()=>{
+  try{await addBlankMultiPagePage();}
+  catch(error){setMultiPageStatus(error?.message||"No se pudo crear la página.","error");}
+ });
+ document.querySelector("#multi-page-duplicate-page")?.addEventListener("click",async()=>{
+  try{if(!activeMultiPageSession)throw new Error("Abre primero un proyecto multipágina.");await duplicateMultiPagePageFrom(activeMultiPageSession.activePageId);}
+  catch(error){setMultiPageStatus(error?.message||"No se pudo duplicar la página.","error");}
+ });
+ document.querySelector("#multi-page-copy-layer")?.addEventListener("click",async()=>{
+  try{await copySelectedLayerToAnotherPage();}
+  catch(error){setMultiPageStatus(error?.message||"No se pudo copiar la capa.","error");}
+ });
+ document.querySelector("#multi-page-page-list")?.addEventListener("click",async event=>{
+  const button=event.target.closest("button[data-multi-page-action]");if(!button)return;button.disabled=true;
+  try{await handleMultiPageItemAction(button);}
+  catch(error){setMultiPageStatus(error?.message||"No se pudo completar la acción de página.","error");}
+  finally{button.disabled=false;}
+ });
+ document.querySelector("#multi-page-project-list")?.addEventListener("click",async event=>{
+  const button=event.target.closest("button[data-multi-project-action]");if(!button)return;button.disabled=true;
+  try{await handleMultiProjectAction(button);}
+  catch(error){setMultiPageStatus(error?.message||"No se pudo completar la acción de proyecto.","error");}
+  finally{button.disabled=false;}
  });
 }
 
