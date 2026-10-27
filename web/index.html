@@ -41,6 +41,10 @@
           <span><b>Compartir diseño</b><small>Canva u otra app, solo si tú la eliges</small></span>
         </button>
         <p class="brand-share-note">Se comparte una imagen terminada. Tu proyecto y sus capas se quedan en KapiArt.</p>
+        <button type="button" id="design-library-open" class="brand-share-action">
+          <svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>
+          <span><b>Mis diseños</b><small>Guardar, abrir, duplicar y organizar tus proyectos locales</small></span>
+        </button>
         <button type="button" id="open-apk-installer" class="brand-apk-action">
           <svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h4"/><path d="m16 15 2 2 3-4"/></svg>
           <span><b>Abrir APK con Android</b><small>Elegí un APK y confirmá la instalación en el sistema</small></span>
@@ -225,6 +229,21 @@
     <aside class="layers" aria-label="Capas">
       <h2>Capas</h2>
       <ol id="layers"></ol>
+        <section class="layer-alignment-panel" aria-labelledby="layer-alignment-title">
+          <h3 id="layer-alignment-title">Alinear y distribuir</h3>
+          <p>Selecciona varias capas para alinearlas entre sí. Con una sola, se alineará con el lienzo.</p>
+          <div class="layer-alignment-grid" role="group" aria-label="Herramientas de alineación">
+            <button type="button" data-layer-align="left" title="Alinear por la izquierda">Izquierda</button>
+            <button type="button" data-layer-align="center-x" title="Alinear centros horizontales">Centro H</button>
+            <button type="button" data-layer-align="right" title="Alinear por la derecha">Derecha</button>
+            <button type="button" data-layer-align="top" title="Alinear por arriba">Arriba</button>
+            <button type="button" data-layer-align="center-y" title="Alinear centros verticales">Centro V</button>
+            <button type="button" data-layer-align="bottom" title="Alinear por abajo">Abajo</button>
+            <button type="button" data-layer-align="distribute-horizontal" title="Distribuir espacios horizontales">Distribuir H</button>
+            <button type="button" data-layer-align="distribute-vertical" title="Distribuir espacios verticales">Distribuir V</button>
+          </div>
+          <p id="layer-alignment-status" role="status" aria-live="polite"></p>
+        </section>
       <section id="image-mask-panel" class="image-mask-panel" aria-labelledby="image-mask-title" hidden><div class="panel-heading"><div><p class="eyebrow">NO DESTRUCTIVO</p><h3 id="image-mask-title">Recorte por forma</h3></div></div><label class="text-field" for="image-mask">Forma de recorte<select id="image-mask"><option value="none">Rectángulo original</option><option value="circle">Círculo / avatar</option><option value="rounded">Tarjeta redondeada</option><option value="star">Estrella</option><option value="heart">Corazón</option><option value="hexagon">Hexágono</option></select></label><p class="adjustment-note">La máscara se puede editar y no borra los píxeles originales.</p></section>
       <section class="adjustment-panel" aria-labelledby="adjustments-title">
         <div class="panel-heading">
@@ -1011,7 +1030,24 @@
     </form>
   </dialog>
 
-  <dialog id="project-dialog" aria-labelledby="project-dialog-title">
+  
+<dialog id="design-library-dialog" class="design-library-dialog" aria-labelledby="design-library-title">
+  <section class="design-library-shell">
+    <header class="design-library-header">
+      <div><p class="eyebrow">KAPIART · TUS PROYECTOS</p><h2 id="design-library-title">Mis diseños</h2><p>Una biblioteca local para seguir editando tus trabajos. Las capas se conservan por separado.</p></div>
+      <button type="button" id="design-library-close" class="mini-dialog-close" aria-label="Cerrar Mis diseños">✕</button>
+    </header>
+    <form id="design-library-save-form" class="design-library-save-form">
+      <label for="design-library-name">Nombre del diseño<input id="design-library-name" maxlength="90" required value="Mi diseño" placeholder="Ej. Portada de mi manga"></label>
+      <button type="submit" id="design-library-save-current">Guardar diseño actual</button>
+      <button type="button" id="design-library-refresh">Actualizar lista</button>
+    </form>
+    <p id="design-library-status" class="design-library-status" role="status" aria-live="polite"></p>
+    <div id="design-library-list" class="design-library-list" aria-label="Diseños guardados"></div>
+    <footer class="design-library-footer"><p>Los diseños se almacenan en este dispositivo, sin subirlos a una nube. Exporta también un archivo de proyecto para tener una copia externa.</p></footer>
+  </section>
+</dialog>
+<dialog id="project-dialog" aria-labelledby="project-dialog-title">
     <form id="project-form" method="dialog">
       <h2 id="project-dialog-title">New document</h2>
       <label>
