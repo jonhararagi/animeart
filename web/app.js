@@ -1,4 +1,6 @@
 import { DOCUMENT_VERSION, createId, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
+import { createLayerAlignmentTransforms } from "./domain/design-alignment.mjs";
+import { deleteDesign, duplicateDesign, listDesigns, loadDesign, renameDesign, saveDesign } from "./domain/design-library.mjs";
 import { initializeAssetLibrary } from "./asset-library.js";
 import { getEditingHelpPreference, initializeAppearanceSettings, setEditingHelpPreference } from "./appearance-settings.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
@@ -6131,6 +6133,8 @@ function selectCreativeTemplate(id,refresh=true){
   document.querySelector("#creative-cover-subtitle").value=template.defaultSubtitle;
   document.querySelector("#creative-cover-background").value=template.background;
   document.querySelector("#creative-cover-accent").value=template.accent;
+  const formatControl=document.querySelector("#creative-cover-size");
+  if(formatControl&&["portrait","square","story","banner"].includes(template.defaultFormat))formatControl.value=template.defaultFormat;
   document.querySelector("#creative-studio-status").textContent="Seleccionada: "+template.label+". Cambia el título, los colores o el formato y crea la portada.";
   if(refresh)renderCreativeCatalog();
   return true;
@@ -6928,7 +6932,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v71";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v72";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -6938,7 +6942,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/asset-library.mjs",
   "./domain/asset-deduplication.mjs",
   "./domain/asset-library-pagination.mjs",
-  "./domain/creative-catalog.mjs",
+  "./domain/creative-catalog.mjs", "./domain/design-alignment.mjs", "./domain/design-library.mjs",
   "./domain/anime-style-library.mjs",
   "./domain/anime-character-presets.mjs",
   "./manifest.webmanifest",
