@@ -4107,3 +4107,28 @@ La comparación de nombre de rama o cantidad de commits no basta para decidir un
 - La biblioteca visual puede ampliarse con materiales del usuario y recursos originales/licencias comprobadas; no afirmar que se ha reunido o catalogado una colección externa si no se hizo.
 
 ---
+
+
+---
+
+## KapiArt · flujo de diseño tipo Canva, primera fase · 2026-10-27
+
+**PR de trabajo:** [#124 · plantillas, alineación y Mis diseños](https://github.com/jonhararagi/animeart/pull/124)  
+**Rama:** `feature/kapiart-canva-workflow-001`  
+**Regla de integración:** no modificar `main` directamente ni fusionar sin autorización expresa. La validación debe corresponder al mismo HEAD final de Web CI y Android CI; E2E Chromium no sustituye una prueba física del teléfono.
+
+### Entrega de esta fase
+
+- Biblioteca de plantillas ampliada con 18 diseños locales nuevos para publicaciones, historias, miniaturas, banners, fondos de pantalla, personajes, manga, libros, eventos, invitaciones, frases, música, educación y comunidad. Cada ficha propone el formato inicial y mantiene editables las capas de arte, título y subtítulo existentes.
+- Herramientas de alineación izquierda/centro/derecha y arriba/centro/abajo, además de distribución horizontal/vertical. Una capa se alinea contra el lienzo; varias capas usan el área total de la selección. La operación conserva escala y rotación, se registra en el historial y rechaza capas bloqueadas. Los límites de los trazos se calculan mediante un recorrido lineal para evitar desbordamientos con dibujos largos.
+- Biblioteca **Mis diseños** local mediante IndexedDB, con miniaturas, dimensiones, número de capas y acciones para guardar, abrir, duplicar, renombrar y eliminar proyectos editables. Máximo 40 proyectos, sin expulsar automáticamente los antiguos. Se mantiene el límite actual de 2,5 MB por documento hasta diseñar y validar una migración de almacenamiento más grande.
+- Acceso móvil a Mis diseños desde el panel «Más herramientas», además del acceso de escritorio. Interfaz y tarjetas adaptables al teléfono, sin colocar paneles nuevos encima del lienzo de forma permanente.
+- Caché offline actualizada a `animeart-web-shell-v72`; la verificación Android comprueba que los módulos y controles nuevos se incluyan en el paquete. Pruebas nuevas para geometría, distribución, trazos extensos, límites de la biblioteca y metadatos; el recorrido E2E incluye plantilla, flujo de proyectos y alineación contextual.
+- Documentación de alcance en `docs/KAPIART_CANVA_WORKFLOW.md` y actualización de capacidades en `README.md`.
+
+### Pendientes y seguridad
+
+- Los documentos de varias páginas, exportación PDF/SVG, fuentes instalables, agrupación persistente de objetos y redimensionado inteligente entre formatos se reservan para fases posteriores; no se declaran implementados.
+- Los tests de dominio y el build no bastan para cerrar esta entrega: hacen falta el recorrido real de Chromium y Android CI sobre un mismo SHA final.
+- La aceptación física en el Xiaomi `24116RACCG` no se ha realizado y no puede inferirse de CI/emulador.
+- La biblioteca de diseños es local al dispositivo/perfil de navegador. No sincroniza con la nube ni con otros dispositivos.
