@@ -2693,6 +2693,11 @@ try {
   const activeAfterReorder = await evaluate('document.querySelector("#multi-page-active-page")?.textContent||""');
   assert(/2 de 3/.test(activeAfterReorder),
     "pages can be renamed and reordered without losing the active page");
+
+  await click("#multi-page-export-pdf");
+  await waitFor('document.querySelector("#multi-page-status")?.textContent.includes("PDF exportado correctamente")',30000);
+  assert(await evaluate('document.querySelector("#multi-page-status")?.textContent.includes("PDF exportado correctamente")'),
+    "the multipage project exports all rendered pages into a single PDF");
   await click('#multi-page-page-list button[data-multi-page-action="open"][data-page-id]:not(:disabled)');
   await waitFor('document.querySelector("#multi-page-status")?.textContent.startsWith("Página abierta:")',10000);
   await click("#multi-page-save-page");
