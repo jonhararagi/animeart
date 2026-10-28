@@ -78,6 +78,17 @@ La prueba de esta fase debe recorrer en Chromium creación, duplicado, copia de 
 - Cada ficha se inserta como su propia capa de imagen SVG local. No se aplana con el fondo ni con otras capas; se mantiene la edición existente de posición, tamaño, rotación, ocultación y borrado.
 - Cada ficha tiene una estrella para guardarla o quitarla de favoritos. La selección de favoritos se persiste en localStorage del dispositivo; el filtro «Solo favoritos» se combina con la búsqueda y la colección.
 - Se añaden pruebas de catálogo para IDs únicos, SVG sin recursos remotos, búsqueda insensible a acentos y colecciones, además de una secuencia Chromium para filtrar globos, guardar un favorito, aplicar el filtro y crear la capa en el documento.
-- El shell offline pasa a `animeart-web-shell-v75`; el módulo nuevo se añade a la shell y al listado explícito de recursos requeridos, y Android CI comprueba su empaquetado y los controles de interfaz.
+- El shell offline pasa a `animeart-web-shell-v76`; el módulo nuevo se añade a la shell y al listado explícito de recursos requeridos, y Android CI comprueba su empaquetado y los controles de interfaz.
 
 Pendiente de aceptación final: Web CI debe completar el build/tests/benchmark/E2E y Android CI debe confirmar build, instrumentación y arranque offline en el mismo SHA. La prueba física en el Xiaomi `24116RACCG` sigue siendo independiente. La gestión de carpetas propias para elementos y la importación de tipografías externas quedan para fases posteriores; esta fase añade filtros de colección y favoritos, no un sistema de carpetas personalizadas.
+
+
+## Exportación local de proyectos multipágina a PDF · 2026-10-28
+
+- Añade `web/domain/pdf-export.mjs`, un generador PDF sin dependencias externas. Crea objetos PDF, imágenes JPEG por página, tabla xref y trailer, con dimensiones independientes por página.
+- El control **Exportar todas las páginas a PDF** del gestor procesa el proyecto entero en orden, guarda primero la página activa y carga cada página editable desde IndexedDB.
+- El render no altera los documentos ni aplana su almacenamiento: genera una imagen por página solo en la exportación, con fondo blanco para salida PDF estándar. Tracking/interlineado y estilos de texto se renderizan a través de la misma función del editor, y el estado transitorio de previsualización no contamina la salida.
+- Seguridad para móviles: máximo 10 páginas, 16 megapíxeles por imagen rasterizada, 48 megapíxeles acumulados por exportación y 45 MB para el PDF final. Se muestra el progreso por página, se reportan imágenes que no se pueden cargar y se mantiene el proyecto editable.
+- El PDF usa una resolución común que se reduce si el total excede el presupuesto de memoria; cada página conserva su proporción y su tamaño físico relativo en el PDF.
+- Se actualiza el shell offline a `animeart-web-shell-v76`, se incluye `web/domain/pdf-export.mjs` en recursos requeridos y se agregan pruebas unitarias del formato y E2E de exportación desde Chromium.
+- Aceptación pendiente de esta fase: Web CI y Android CI deben pasar sobre el mismo HEAD exacto, y debe existir artefacto APK de esa revisión. La prueba física en el Xiaomi `24116RACCG` sigue separada.
