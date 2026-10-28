@@ -16,7 +16,7 @@ test("element library contains unique original local SVG resources", () => {
     assert.match(svg, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
     assert.match(svg, /<g|<path|<rect|<circle|<ellipse/);
     assert.match(svg, /<\/svg>$/);
-    assert.doesNotMatch(svg, /<image\b|https?:\/\//i);
+    assert.doesNotMatch(svg, /<image\b|(?:href|xlink:href)=["']https?:\/\//i);
   }
 });
 
