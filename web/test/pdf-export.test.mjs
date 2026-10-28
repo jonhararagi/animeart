@@ -27,11 +27,12 @@ test("builds a valid classic PDF structure for one page", () => {
   assert.match(text, /%%EOF\n$/);
 
   const xrefOffset = Number(text.match(/startxref\n(\d+)\n%%EOF/)[1]);
-  assert.equal(text.slice(xrefOffset, xrefOffset + 4), "xref");
-  const xrefLines = text.slice(xrefOffset).split("\n");
+  const xrefText = new TextDecoder().decode(bytes.subarray(xrefOffset));
+  assert.equal(xrefText.slice(0, 4), "xref");
+  const xrefLines = xrefText.split("\n");
   assert.match(xrefLines[3], /^\d{10} 00000 n $/);
   const firstObjectOffset = Number(xrefLines[3].slice(0, 10));
-  assert.equal(text.slice(firstObjectOffset, firstObjectOffset + 7), "1 0 obj");
+  assert.equal(new TextDecoder().decode(bytes.subarray(firstObjectOffset, firstObjectOffset + 7)), "1 0 obj");
 });
 
 test("writes distinct image objects and page sizes for a mixed-size document", () => {
