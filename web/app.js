@@ -7616,6 +7616,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
+// Multipage PDF export stays local and caps raster work to protect mobile memory.
 const OFFLINE_CACHE_NAME = "animeart-web-shell-v76";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
