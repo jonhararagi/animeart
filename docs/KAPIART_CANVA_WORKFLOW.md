@@ -69,3 +69,15 @@ La prueba de esta fase debe recorrer en Chromium creación, duplicado, copia de 
 - Los campos nuevos son compatibles hacia atrás: documentos anteriores sin `letterSpacing` o `lineHeight` siguen siendo válidos y se normalizan a 0 px y 1,2×.
 - Caché offline actualizada a `animeart-web-shell-v74`; pruebas de dominio y Chromium E2E cubren normalización, límites, recuperación de estilos y cambio de tracking/interlineado.
 - La aceptación de esta fase exige Web CI y Android CI sobre un mismo SHA final; la aceptación física en el Xiaomi `24116RACCG` continúa separada.
+
+
+## Fase de biblioteca visual de elementos · 2026-10-28
+
+- Añade `web/domain/element-library.mjs` con 16 recursos SVG originales, construidos localmente y sin imágenes remotas: tres globos de diálogo, cartela de narración, marcos neón y manga, trama de semitono, pétalos sakura, destellos, cinta decorativa, flecha luminosa, líneas cinéticas, gota de anime, rubor kawaii, estrella de cómic y nube kawaii.
+- El estudio creativo incorpora la pestaña **Elementos**. Búsqueda y filtro por colección se aplican al catálogo; las colecciones separan globos, manga, marcos, texturas, flores, brillos, decoración, formas/flechas y reacciones kawaii.
+- Cada ficha se inserta como su propia capa de imagen SVG local. No se aplana con el fondo ni con otras capas; se mantiene la edición existente de posición, tamaño, rotación, ocultación y borrado.
+- Cada ficha tiene una estrella para guardarla o quitarla de favoritos. La selección de favoritos se persiste en localStorage del dispositivo; el filtro «Solo favoritos» se combina con la búsqueda y la colección.
+- Se añaden pruebas de catálogo para IDs únicos, SVG sin recursos remotos, búsqueda insensible a acentos y colecciones, además de una secuencia Chromium para filtrar globos, guardar un favorito, aplicar el filtro y crear la capa en el documento.
+- El shell offline pasa a `animeart-web-shell-v75`; el módulo nuevo se añade a la shell y al listado explícito de recursos requeridos, y Android CI comprueba su empaquetado y los controles de interfaz.
+
+Pendiente de aceptación final: Web CI debe completar el build/tests/benchmark/E2E y Android CI debe confirmar build, instrumentación y arranque offline en el mismo SHA. La prueba física en el Xiaomi `24116RACCG` sigue siendo independiente. La gestión de carpetas propias para elementos y la importación de tipografías externas quedan para fases posteriores; esta fase añade filtros de colección y favoritos, no un sistema de carpetas personalizadas.
