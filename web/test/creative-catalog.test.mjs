@@ -113,6 +113,8 @@ test("creative studio UI is discoverable, searchable, offline-ready and packaged
   assert.match(html,/id="multi-page-export-pdf"/);
   assert.match(app,/async function exportActiveMultiPagePdf\(/);
   assert.match(app,/buildMultiPagePdf\(pdfPages\)/);
+  assert.match(app,/from "\.\/domain\/pdf-export\.mjs"/);
+  assert.match(app,/"\.\/domain\/pdf-export\.mjs"/);
   assert.match(worker,/animeart-web-shell-v76/);
   assert.match(worker,/\.\/domain\/pdf-export\.mjs/);
   assert.match(app,/function activateMultiPagePage\(/);
