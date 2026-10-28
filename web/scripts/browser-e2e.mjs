@@ -1094,7 +1094,7 @@ try {
   const creativeBaselineIds = (await readDocument()).layers.map(layer => layer.id);
   await clickMoreGoal("creative-studio");
   await waitFor('document.querySelector("#creative-studio-dialog")?.open === true');
-  assert(await evaluate('document.querySelectorAll("[data-creative-tab]").length === 5'), "creative studio exposes Covers, Stickers, Words, Style Packs and Anime Traits tabs");
+  assert(await evaluate('document.querySelectorAll("[data-creative-tab]").length === 6'), "creative studio exposes Covers, Stickers, Words, Style Packs and Anime Traits tabs");
   await click('[data-creative-tab="stickers"]');
   await click('[data-creative-action="add-sticker"][data-item-id="sakura-bloom"]');
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image")');
@@ -2620,6 +2620,29 @@ try {
     "deleting a library entry keeps the other project intact");
   await click("#design-library-close");
   await waitFor('document.querySelector("#design-library-dialog")?.open !== true');
+
+  await clickMoreGoal("creative-studio");
+  await waitFor('document.querySelector("#creative-studio-dialog")?.open === true');
+  assert(await evaluate('document.querySelectorAll("[data-creative-tab]").length===6'),
+    "creative studio exposes a dedicated Elements library tab");
+  await click('[data-creative-tab="elements"]');
+  await evaluate('(() => { const q=document.querySelector("#creative-catalog-search"); q.value=""; q.dispatchEvent(new Event("input",{bubbles:true})); const category=document.querySelector("#creative-element-category"); category.value="Globos y diálogo"; category.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await waitFor('document.querySelectorAll("#creative-catalog-grid [data-creative-action=\\"add-element\\"]").length===3');
+  assert(await evaluate('Array.from(document.querySelectorAll("#creative-catalog-grid [data-creative-action=\\"add-element\\"]")).some(button=>button.dataset.itemId==="bubble-rounded")'),
+    "element library filters original speech bubbles by collection");
+  await click('#creative-catalog-grid [data-element-favorite="bubble-rounded"]');
+  await waitFor('JSON.parse(localStorage.getItem("kapiart-creative-element-favorites-v1")||"[]").includes("bubble-rounded")');
+  await click("#creative-element-favorites-only");
+  await waitFor('document.querySelectorAll("#creative-catalog-grid [data-creative-action=\\"add-element\\"]").length===1');
+  assert(await evaluate('document.querySelector("#creative-catalog-grid [data-creative-action=\\"add-element\\"]")?.dataset.itemId==="bubble-rounded"'),
+    "the favorites-only filter keeps the saved element and hides other elements");
+  await click('#creative-catalog-grid [data-creative-action="add-element"][data-item-id="bubble-rounded"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Elemento · Globo suave"&&layer.contentType==="image"&&layer.image?.source.startsWith("data:image/svg+xml"))',10000);
+  const addedElement = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="Elemento · Globo suave"); return {type:layer?.contentType,source:layer?.image?.source,scale:layer?.transform?.scale}; })()');
+  assert(addedElement.type==="image" && addedElement.source.startsWith("data:image/svg+xml") && addedElement.scale>0,
+    "adding an element creates its own movable local SVG layer instead of flattening it");
+  await click("#creative-studio-close");
+  await waitFor('document.querySelector("#creative-studio-dialog")?.open === false');
 
   const mobileViewport = await evaluate('window.matchMedia("(max-width: 920px)").matches');
   if (mobileViewport) {
