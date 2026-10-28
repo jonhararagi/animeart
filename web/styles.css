@@ -4760,3 +4760,25 @@ dialog {
  .saved-text-style-apply{min-height:44px}
  .saved-text-style-remove{min-height:40px}
 }
+
+/* KAPIART-ELEMENT-LIBRARY-001 */
+.creative-elements-controls{display:grid;grid-template-columns:minmax(170px,1fr) auto;align-items:end;gap:.65rem;padding:.75rem;border:1px solid #51416f;border-radius:13px;background:#211c39}
+.creative-elements-controls[hidden]{display:none}
+.creative-elements-controls>label:first-child{display:grid;gap:.35rem;color:#e7ddff;font-size:.85rem}
+.creative-elements-controls select{width:100%;min-height:44px;padding:.55rem .7rem;border:1px solid #6f5d96;border-radius:10px;color:#f7f3ff;background:#18152b;font:inherit}
+.creative-element-favorites-toggle{display:flex;align-items:center;gap:.45rem;min-height:44px;padding:.45rem .6rem;border:1px solid #6f5d96;border-radius:10px;color:#f7f3ff;background:#18152b;font-size:.82rem;touch-action:manipulation}
+.creative-element-favorites-toggle input{width:20px;height:20px;accent-color:#ff85c8}
+.creative-elements-controls>p{grid-column:1/-1;margin:0;color:#cfc4e7;font-size:.78rem;line-height:1.45}
+.creative-card-wrap-elements{position:relative;display:grid;min-width:0;align-self:stretch}
+.creative-card-wrap-elements>.creative-card{width:100%;height:100%;min-width:0;padding-top:28px}
+.creative-card-favorite{position:absolute;z-index:2;top:.4rem;right:.4rem;display:grid;place-items:center;width:38px;height:38px;min-width:38px;min-height:38px;padding:0;border:1px solid #78618e;border-radius:11px;color:#ffe18d;background:#29213f;font:inherit;font-size:1.25rem;font-weight:800;line-height:1;box-shadow:0 2px 8px #0005;touch-action:manipulation}
+.creative-card-favorite[aria-pressed="true"]{border-color:#ff8fc8;color:#ff8fc8;background:#47213f}
+.creative-card-favorite:focus-visible{outline:3px solid #b8a5ff;outline-offset:2px}
+.creative-card-wrap-elements .creative-card-preview-elements{background:#1c1930}
+@media(max-width:680px){
+ .creative-elements-controls{grid-template-columns:1fr}
+ .creative-elements-controls>p{grid-column:auto}
+ .creative-element-favorites-toggle{min-height:46px}
+ .creative-card-favorite{width:42px;height:42px;min-width:42px;min-height:42px}
+ .creative-card-wrap-elements>.creative-card{padding-top:32px}
+}
