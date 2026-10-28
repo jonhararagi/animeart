@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  MAX_MULTIPAGE_PDF_BYTES,
   MAX_MULTIPAGE_PDF_PAGES,
   PDF_POINTS_PER_PIXEL,
   buildMultiPagePdf
@@ -9,6 +10,11 @@ import {
 function tinyJpeg(seed = 0) {
   return Uint8Array.of(0xff, 0xd8, seed & 0xff, 0x21, 0x32, 0xff, 0xd9);
 }
+
+test("keeps the PDF export within a mobile-safe file budget", () => {
+  assert.equal(MAX_MULTIPAGE_PDF_BYTES, 45 * 1024 * 1024);
+  assert.equal(MAX_MULTIPAGE_PDF_PAGES, 10);
+});
 
 test("builds a valid classic PDF structure for one page", () => {
   const bytes = buildMultiPagePdf([{
