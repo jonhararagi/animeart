@@ -2627,14 +2627,14 @@ try {
     "creative studio exposes a dedicated Elements library tab");
   await click('[data-creative-tab="elements"]');
   await evaluate('(() => { const q=document.querySelector("#creative-catalog-search"); q.value=""; q.dispatchEvent(new Event("input",{bubbles:true})); const category=document.querySelector("#creative-element-category"); category.value="Globos y diálogo"; category.dispatchEvent(new Event("change",{bubbles:true})); })()');
-  await waitFor('document.querySelectorAll("#creative-catalog-grid [data-creative-action=\\"add-element\\"]").length===3');
-  assert(await evaluate('Array.from(document.querySelectorAll("#creative-catalog-grid [data-creative-action=\\"add-element\\"]")).some(button=>button.dataset.itemId==="bubble-rounded")'),
+  await waitFor('document.querySelectorAll("#creative-catalog-grid [data-creative-action="add-element"]").length===3');
+  assert(await evaluate('Array.from(document.querySelectorAll("#creative-catalog-grid [data-creative-action="add-element"]")).some(button=>button.dataset.itemId==="bubble-rounded")'),
     "element library filters original speech bubbles by collection");
   await click('#creative-catalog-grid [data-element-favorite="bubble-rounded"]');
   await waitFor('JSON.parse(localStorage.getItem("kapiart-creative-element-favorites-v1")||"[]").includes("bubble-rounded")');
   await click("#creative-element-favorites-only");
-  await waitFor('document.querySelectorAll("#creative-catalog-grid [data-creative-action=\\"add-element\\"]").length===1');
-  assert(await evaluate('document.querySelector("#creative-catalog-grid [data-creative-action=\\"add-element\\"]")?.dataset.itemId==="bubble-rounded"'),
+  await waitFor('document.querySelectorAll("#creative-catalog-grid [data-creative-action="add-element"]").length===1');
+  assert(await evaluate('document.querySelector("#creative-catalog-grid [data-creative-action="add-element"]")?.dataset.itemId==="bubble-rounded"'),
     "the favorites-only filter keeps the saved element and hides other elements");
   await click('#creative-catalog-grid [data-creative-action="add-element"][data-item-id="bubble-rounded"]');
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Elemento · Globo suave"&&layer.contentType==="image"&&layer.image?.source.startsWith("data:image/svg+xml"))',10000);
