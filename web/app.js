@@ -32,6 +32,7 @@ import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mj
 import { clampSelectionHandles, constrainTranslationToDocument, groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, layerCorners, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, exportScaleForResolution, renderDocumentToCanvas } from "./domain/png-export.mjs";
 import { CREATIVE_TEMPLATES, STICKER_CATALOG, WORD_ART_PRESETS, STYLE_PACKS, createStickerSvg, createPosterSvg, svgDataUrl, getCreativeTemplate, getSticker, getWordArtPreset, getStylePack } from "./domain/creative-catalog.mjs";
+import { ELEMENT_CATALOG, createDesignElementSvg, getDesignElement, searchDesignElements } from "./domain/element-library.mjs";
 import { ANIME_STYLE_COMPONENTS, getAnimeStyleComponent, searchAnimeStyleComponents, createAnimeStyleComponentSvg, createAnimeCharacterParts } from "./domain/anime-style-library.mjs";
 import { loadAnimeCharacterSets, saveAnimeCharacterSet, deleteAnimeCharacterSet, loadAnimeColorPalettes, saveAnimeColorPalette, deleteAnimeColorPalette, loadAnimeTraitFavorites, updateAnimeTraitFavorites } from "./domain/anime-character-presets.mjs";
 
@@ -6115,6 +6116,31 @@ function restoreStoredProject({ confirmDiscard = true } = {}) {
 
 
 function posterSvgSource(width,height,background,accent,style){return svgDataUrl(createPosterSvg(width,height,background,accent,style));}
+const CREATIVE_ELEMENT_FAVORITES_KEY = "kapiart-creative-element-favorites-v1";
+function loadCreativeElementFavorites() {
+  const storage = animePresetStorage();
+  if (!storage) return new Set();
+  try {
+    const value = JSON.parse(storage.getItem(CREATIVE_ELEMENT_FAVORITES_KEY) || "[]");
+    return new Set((Array.isArray(value) ? value : []).filter(id => Boolean(getDesignElement(id))).slice(0, ELEMENT_CATALOG.length));
+  } catch { return new Set(); }
+}
+let creativeElementFavoriteIds = loadCreativeElementFavorites();
+function toggleCreativeElementFavorite(id) {
+  if (!getDesignElement(id)) return false;
+  if (creativeElementFavoriteIds.has(id)) creativeElementFavoriteIds.delete(id);
+  else creativeElementFavoriteIds.add(id);
+  const storage = animePresetStorage();
+  let persisted = false;
+  try {
+    if (storage) { storage.setItem(CREATIVE_ELEMENT_FAVORITES_KEY, JSON.stringify([...creativeElementFavoriteIds])); persisted = true; }
+  } catch {}
+  const message = creativeElementFavoriteIds.has(id) ? "Elemento guardado en favoritos." : "Elemento quitado de favoritos.";
+  const statusNode = document.querySelector("#creative-studio-status");
+  if (statusNode) statusNode.textContent = message + (persisted ? " Se conserva en este dispositivo." : " El navegador no permitió guardar el cambio de forma permanente.");
+  renderCreativeCatalog();
+  return true;
+}
 let activeCreativeTab="covers";
 let selectedCreativeTemplateId="anime-awakening";
 const selectedAnimeTraitIds = new Set();
@@ -6229,7 +6255,7 @@ function openCreativeStudio(){
   renderCreativeCatalog();
 }
 function setCreativeTab(tab){
-  activeCreativeTab=["covers","stickers","words","packs","traits"].includes(tab)?tab:"covers";
+  activeCreativeTab=["covers","stickers","words","packs","traits","elements"].includes(tab)?tab:"covers";
   document.querySelectorAll("[data-creative-tab]").forEach(button=>{
     const active=button.dataset.creativeTab===activeCreativeTab;
     button.setAttribute("aria-selected",String(active));
@@ -6241,8 +6267,15 @@ function setCreativeTab(tab){
   document.querySelector("#creative-customize-template").hidden=activeCreativeTab!=="covers";
   const traitControls=document.querySelector("#creative-traits-controls");
   if(traitControls)traitControls.hidden=activeCreativeTab!=="traits";
+  const elementControls=document.querySelector("#creative-elements-controls");
+  if(elementControls)elementControls.hidden=activeCreativeTab!=="elements";
   const search=document.querySelector("#creative-catalog-search");
-  search.placeholder=activeCreativeTab==="covers"?"Buscar anime, galaxia, sakura…":activeCreativeTab==="stickers"?"Buscar flor, planeta, brillo…":activeCreativeTab==="words"?"Buscar estilo de letra…":activeCreativeTab==="traits"?"Buscar ojos, coletas, mandíbula…":"Buscar conjunto de estilo…";
+  search.placeholder=activeCreativeTab==="covers"?"Buscar anime, galaxia, sakura…"
+    :activeCreativeTab==="stickers"?"Buscar flor, planeta, brillo…"
+    :activeCreativeTab==="words"?"Buscar estilo de letra…"
+    :activeCreativeTab==="traits"?"Buscar ojos, coletas, mandíbula…"
+    :activeCreativeTab==="elements"?"Buscar globos, marcos, texturas, flechas…"
+    :"Buscar conjunto de estilo…";
   updateAnimeTraitSelectionUi();
 }
 function selectCreativeTemplate(id,refresh=true){
@@ -6270,7 +6303,7 @@ function createCreativeCardPreview(tab,item){
   }else if(tab==="stickers"){
     const checker=document.createElement("span");checker.className="creative-sticker-checker";
     const image=document.createElement("img");image.alt="";image.loading="lazy";image.src=svgDataUrl(createStickerSvg(item.id));checker.append(image);preview.append(checker);
-  }else if(tab==="words"){
+  }else if(tab==="elements"){ const checker=document.createElement("span");checker.className="creative-sticker-checker";const image=document.createElement("img");image.alt="";image.loading="lazy";image.src=svgDataUrl(createDesignElementSvg(item.id));checker.append(image);preview.append(checker); }else if(tab==="words"){
     const style=item.style,sample=document.createElement("span");sample.className="creative-word-sample";sample.textContent=item.sample;
     sample.style.color=style.color;sample.style.fontFamily=style.fontFamily;
     sample.style.webkitTextStroke=Math.max(1,Math.min(4,style.outlineWidth/2))+"px "+style.outlineColor;
@@ -6423,27 +6456,38 @@ function addSelectedAnimeStyleReferences(){
   return true;
 }
 function renderCreativeCatalog(){
-  const grid=document.querySelector("#creative-catalog-grid");if(!grid)return;grid.replaceChildren();
+  const grid=document.querySelector("#creative-catalog-grid");
+  if(!grid)return;
+  grid.replaceChildren();
   const query=document.querySelector("#creative-catalog-search").value.trim();
-  const data={covers:CREATIVE_TEMPLATES,stickers:STICKER_CATALOG,words:WORD_ART_PRESETS,packs:STYLE_PACKS};
+  const data={covers:CREATIVE_TEMPLATES,stickers:STICKER_CATALOG,words:WORD_ART_PRESETS,packs:STYLE_PACKS,elements:ELEMENT_CATALOG};
   const part=document.querySelector("#creative-trait-part")?.value||"all";
+  const category=document.querySelector("#creative-element-category")?.value||"all";
   let items=activeCreativeTab==="traits"
     ?searchAnimeStyleComponents(query,part)
-    :(data[activeCreativeTab]||[]).filter(item=>{
-      const haystack=[item.label,item.category,item.description,item.keywords,item.sample,item.title,item.subtitle].filter(Boolean).join(" ").toLocaleLowerCase();
-      return !query||haystack.includes(query.toLocaleLowerCase());
-    });
+    :activeCreativeTab==="elements"
+      ?searchDesignElements(query,category)
+      :(data[activeCreativeTab]||[]).filter(item=>{
+        const haystack=[item.label,item.category,item.description,item.keywords,item.sample,item.title,item.subtitle].filter(Boolean).join(" ").toLocaleLowerCase();
+        return !query||haystack.includes(query.toLocaleLowerCase());
+      });
   if(activeCreativeTab==="traits"&&document.querySelector("#creative-trait-favorites-only")?.checked)items=items.filter(item=>animeTraitFavoriteIds.has(item.id));
-  const actionName={covers:"select-template",stickers:"add-sticker",words:"add-word",packs:"apply-pack",traits:"select-trait"}[activeCreativeTab];
+  if(activeCreativeTab==="elements"&&document.querySelector("#creative-element-favorites-only")?.checked)items=items.filter(item=>creativeElementFavoriteIds.has(item.id));
+  const actionName={covers:"select-template",stickers:"add-sticker",words:"add-word",packs:"apply-pack",traits:"select-trait",elements:"add-element"}[activeCreativeTab];
   items.forEach(item=>{
-    const card=document.createElement("button");card.type="button";card.className="creative-card creative-card-"+activeCreativeTab;
+    const wrapper=activeCreativeTab==="elements"?document.createElement("article"):null;
+    if(wrapper)wrapper.className="creative-card-wrap-elements";
+    const card=document.createElement("button");
+    card.type="button";card.className="creative-card creative-card-"+activeCreativeTab;
     card.dataset.creativeAction=actionName;card.dataset.itemId=item.id;
-    const actionLabel={covers:"Seleccionar portada",stickers:"Añadir sticker como capa",words:"Añadir palabra decorativa editable",packs:"Aplicar conjunto de capas",traits:"Seleccionar referencia anime"}[activeCreativeTab];
-    card.setAttribute("aria-label",item.label+" · "+actionLabel);
+    const actionLabel={covers:"Seleccionar portada",stickers:"Añadir sticker como capa",words:"Añadir palabra decorativa editable",packs:"Aplicar conjunto de capas",traits:"Seleccionar referencia anime",elements:"Añadir elemento como capa editable"}[activeCreativeTab];
     const selected=(activeCreativeTab==="covers"&&item.id===selectedCreativeTemplateId)||(activeCreativeTab==="traits"&&selectedAnimeTraitIds.has(item.id));
-    const isFavorite=activeCreativeTab==="traits"&&animeTraitFavoriteIds.has(item.id);
-    card.setAttribute("aria-label",item.label+" · "+actionLabel+(isFavorite?" · Favorito":""));card.title=isFavorite?"Favorito guardado en este dispositivo":"";
-    card.setAttribute("aria-pressed",String(Boolean(selected)));card.classList.toggle("is-selected",Boolean(selected));card.classList.toggle("is-favorite",Boolean(isFavorite));
+    const isFavorite=(activeCreativeTab==="traits"&&animeTraitFavoriteIds.has(item.id))||(activeCreativeTab==="elements"&&creativeElementFavoriteIds.has(item.id));
+    card.setAttribute("aria-label",item.label+" · "+actionLabel+(isFavorite?" · Favorito":""));
+    card.title=isFavorite?"Favorito guardado en este dispositivo":"";
+    card.setAttribute("aria-pressed",String(Boolean(selected)));
+    card.classList.toggle("is-selected",Boolean(selected));
+    card.classList.toggle("is-favorite",Boolean(isFavorite));
     card.append(createCreativeCardPreview(activeCreativeTab,item));
     const caption=document.createElement("span");caption.className="creative-card-caption";
     const heading=document.createElement("strong");heading.textContent=item.label;
@@ -6451,18 +6495,38 @@ function renderCreativeCatalog(){
     const action=document.createElement("span");action.className="creative-card-action-label";
     action.textContent=activeCreativeTab==="traits"
       ?(selected?"✓ Seleccionado":"＋ Seleccionar rasgo")+(isFavorite?" · ★ Favorito":"")
-      :{covers:selected?"✓ Seleccionada":"Usar portada",stickers:"＋ Añadir sticker",words:"＋ Añadir título editable",packs:"＋ Añadir conjunto"}[activeCreativeTab];
+      :{covers:selected?"✓ Seleccionada":"Usar portada",stickers:"＋ Añadir sticker",words:"＋ Añadir título editable",packs:"＋ Añadir conjunto",elements:"＋ Añadir elemento"}[activeCreativeTab];
     caption.append(heading,description,action);card.append(caption);
     card.addEventListener("click",()=>{
       if(activeCreativeTab==="covers")selectCreativeTemplate(item.id);
       else if(activeCreativeTab==="stickers")addCreativeStickerLayer(item.id);
       else if(activeCreativeTab==="words")addCreativeWordArt(item.id);
       else if(activeCreativeTab==="traits")toggleAnimeTraitSelection(item.id);
+      else if(activeCreativeTab==="elements")addCreativeElementLayer(item.id);
       else applyCreativeStylePack(item.id);
     });
-    grid.append(card);
+    if(activeCreativeTab==="elements"){
+      const favorite=document.createElement("button");
+      favorite.type="button";favorite.className="creative-card-favorite";
+      favorite.dataset.elementFavorite=item.id;
+      favorite.setAttribute("aria-pressed",String(isFavorite));
+      favorite.setAttribute("aria-label",(isFavorite?"Quitar de favoritos: ":"Guardar en favoritos: ")+item.label);
+      favorite.title=isFavorite?"Quitar de favoritos":"Guardar en favoritos";
+      favorite.textContent=isFavorite?"★":"☆";
+      favorite.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();toggleCreativeElementFavorite(item.id);});
+      wrapper.append(card,favorite);grid.append(wrapper);
+    }else grid.append(card);
   });
-  if(!items.length){const empty=document.createElement("p");empty.className="creative-catalog-empty";empty.textContent=activeCreativeTab==="traits"&&document.querySelector("#creative-trait-favorites-only")?.checked?"Todavía no hay favoritos que coincidan. Selecciona rasgos y pulsa Guardar favoritos.":activeCreativeTab==="traits"?"No hay rasgos para este filtro. Prueba otra categoría o búsqueda.":"No encontramos diseños con esa búsqueda. Prueba otra palabra.";grid.append(empty);}
+  if(!items.length){
+    const empty=document.createElement("p");empty.className="creative-catalog-empty";
+    empty.textContent=activeCreativeTab==="traits"&&document.querySelector("#creative-trait-favorites-only")?.checked
+      ?"Todavía no hay favoritos que coincidan. Selecciona rasgos y pulsa Guardar favoritos."
+      :activeCreativeTab==="elements"&&document.querySelector("#creative-element-favorites-only")?.checked
+        ?"Todavía no guardaste elementos favoritos que coincidan con este filtro."
+        :activeCreativeTab==="traits"?"No hay rasgos para este filtro. Prueba otra categoría o búsqueda."
+          :"No encontramos diseños con esa búsqueda. Prueba otra palabra.";
+    grid.append(empty);
+  }
   updateAnimeTraitSelectionUi();
 }
 function commitCreativeLayers(layers,message){
@@ -6492,6 +6556,22 @@ function addCreativeStickerLayer(id){
   const sticker=getSticker(id),layer=createCreativeStickerLayer(id);
   if(!sticker||!layer)return false;
   return commitCreativeLayers([layer],"Sticker añadido como una capa independiente. Puedes moverlo, girarlo, cambiar su tamaño o eliminarlo.");
+}
+function createCreativeElementLayer(id){
+  const element=getDesignElement(id);
+  if(!element)return null;
+  const width=Math.max(320,Number(state.document.width)||canvas.width||640);
+  const height=Math.max(240,Number(state.document.height)||canvas.height||480);
+  const size=Math.max(88,Math.min(320,Math.round(Math.min(width,height)*.34)));
+  const scale=size/256;
+  const layer=createImageLayer("Elemento · "+element.label,256,256,svgDataUrl(createDesignElementSvg(id)));
+  layer.transform={x:scale*(width/2-128),y:scale*(height/2-128),scale,rotation:0};
+  return layer;
+}
+function addCreativeElementLayer(id){
+  const element=getDesignElement(id),layer=createCreativeElementLayer(id);
+  if(!element||!layer)return false;
+  return commitCreativeLayers([layer],"Elemento añadido como una capa SVG editable: "+element.label+". Puedes moverlo, girarlo, cambiar su tamaño o eliminarlo.");
 }
 function addCreativeWordArt(id){
   const preset=getWordArtPreset(id);if(!preset)return false;
@@ -6526,6 +6606,9 @@ function createPosterTemplate(id,background,accent,title,subtitle,dimensions){
   document.querySelector("#poster-template-dialog")?.close();document.querySelector("#creative-studio-dialog")?.close();return true;
 }
 document.querySelectorAll("[data-creative-tab]").forEach(button=>button.addEventListener("click",()=>{setCreativeTab(button.dataset.creativeTab);renderCreativeCatalog();}));
+document.querySelector("#creative-element-category")?.addEventListener("change",renderCreativeCatalog);
+document.querySelector("#creative-element-favorites-only")?.addEventListener("change",renderCreativeCatalog);
+
 document.querySelector("#creative-catalog-search")?.addEventListener("input",renderCreativeCatalog);
 document.querySelector("#creative-trait-part")?.addEventListener("change",renderCreativeCatalog);
 document.querySelector("#creative-trait-add-selected")?.addEventListener("click",addSelectedAnimeStyleReferences);
@@ -7457,7 +7540,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v74";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v75";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
