@@ -29,8 +29,8 @@ test("builds a valid classic PDF structure for one page", () => {
   const xrefOffset = Number(text.match(/startxref\n(\d+)\n%%EOF/)[1]);
   assert.equal(text.slice(xrefOffset, xrefOffset + 4), "xref");
   const xrefLines = text.slice(xrefOffset).split("\n");
-  assert.match(xrefLines[2], /^\d{10} 00000 n $/);
-  const firstObjectOffset = Number(xrefLines[2].slice(0, 10));
+  assert.match(xrefLines[3], /^\d{10} 00000 n $/);
+  const firstObjectOffset = Number(xrefLines[3].slice(0, 10));
   assert.equal(text.slice(firstObjectOffset, firstObjectOffset + 7), "1 0 obj");
 });
 
