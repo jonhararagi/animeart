@@ -4170,3 +4170,18 @@ La comparación de nombre de rama o cantidad de commits no basta para decidir un
 - Compatibilidad retroactiva: documentos que no tienen estos dos campos permanecen válidos y reciben defaults durante la normalización.
 - Shell offline v74, pruebas unitarias y E2E ampliado para revisar el control de texto, estilos guardados y aplicación. La validación final debe comprobar Web CI y Android CI sobre el mismo SHA.
 - No se cambia `main` ni se fusiona la PR. La prueba física en Xiaomi `24116RACCG` sigue pendiente.
+
+
+---
+
+## KapiArt · biblioteca de elementos SVG locales · 2026-10-28
+
+**Trabajo dentro de PR #124:** [flujo de diseño y biblioteca creativa](https://github.com/jonhararagi/animeart/pull/124) · rama `feature/kapiart-canva-workflow-001`.
+
+- Módulo nuevo `web/domain/element-library.mjs` con 16 recursos SVG originales sin dependencias remotas: globos de pensamiento/grito/diálogo, cartela de narración, marcos manga/neón, trama halftone, pétalos sakura, destellos, washi tape, flecha neón, speedlines cian, gota anime, rubor kawaii, estrella cómic y nube.
+- Nueva pestaña «Elementos» dentro del estudio creativo con búsqueda, selector de colección y filtro «Solo favoritos». Cada tarjeta incluye estrella accesible para guardar/quitar favoritos sin activar por accidente la acción de añadir.
+- Los favoritos se guardan en localStorage del dispositivo bajo `kapiart-creative-element-favorites-v1`. Los SVG se insertan como capas de imagen independientes con fuente `data:image/svg+xml`; pueden moverse, escalarse, girarse, ocultarse o eliminarse sin aplanar el documento.
+- Se agregan tests del catálogo y E2E Chromium para filtro por colección, persistencia del favorito y creación de una capa editable.
+- Shell offline v75 incluye el módulo de elementos y también lo exige la lista offline explícita. Android CI comprueba que el módulo y sus controles formen parte del paquete.
+- La validación final de esta fase debe corresponder al mismo SHA en Web CI y Android CI. No se ha fusionado la PR ni modificado `main`; la prueba física en el Xiaomi `24116RACCG` permanece pendiente.
+- Las carpetas de colecciones personalizadas y la carga de archivos de fuentes se mantienen como trabajo posterior. Los filtros existentes son colecciones predefinidas, no carpetas de usuario.
