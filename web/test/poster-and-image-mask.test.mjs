@@ -11,5 +11,5 @@ test("image shape masks persist through normalization and existing layer operati
 test("poster templates, text effects and masks are connected to the existing editor",async()=>{
  const [html,app,worker]=await Promise.all([readFile("index.html","utf8"),readFile("app.js","utf8"),readFile("service-worker.js","utf8")]);
  assert.match(html,/id="poster-templates"/);assert.match(html,/id="poster-template-form"/);assert.match(html,/id="poster-background-color"/);assert.match(html,/data-text-style-preset="comic"/);assert.match(html,/id="text-outline-width"/);assert.match(html,/id="text-shadow-blur"/);assert.match(html,/id="image-mask"/);
- assert.match(app,/drawTextWithLetterSpacing\(context, line, x, y, previewText\.letterSpacing, true\)/);assert.match(app,/context\.shadowBlur\s*=\s*previewText\.shadowBlur/);assert.match(app,/setImageMask\(state\.document/);assert.match(app,/function createPosterTemplate/);assert.match(app,/posterSvgSource\(/);assert.match(worker,/animeart-web-shell-v75/);
+ assert.match(app,/drawTextWithLetterSpacing\(context, line, x, y, previewText\.letterSpacing, true\)/);assert.match(app,/context\.shadowBlur\s*=\s*previewText\.shadowBlur/);assert.match(app,/setImageMask\(state\.document/);assert.match(app,/function createPosterTemplate/);assert.match(app,/posterSvgSource\(/);assert.match(worker,/animeart-web-shell-v76/);
 });
