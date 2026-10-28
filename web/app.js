@@ -2,6 +2,7 @@ import { DOCUMENT_VERSION, createId, createDocument, createImageLayer, createLay
 import { createLayerAlignmentTransforms } from "./domain/design-alignment.mjs";
 import { deleteDesign, duplicateDesign, listDesigns, loadDesign, renameDesign, saveDesign } from "./domain/design-library.mjs";
 import { addMultiPagePage, copyLayerToPage, createMultiPageProject, deleteMultiPagePage, deleteMultiPageProject, listMultiPageProjects, loadMultiPagePage, renameMultiPagePage, renameMultiPageProject, reorderMultiPagePage, saveMultiPagePage, setActiveMultiPagePage } from "./domain/multi-page-project.mjs";
+import { buildMultiPagePdf } from "./domain/pdf-export.mjs";
 import { initializeAssetLibrary } from "./asset-library.js";
 import { getEditingHelpPreference, initializeAppearanceSettings, setEditingHelpPreference } from "./appearance-settings.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
@@ -586,7 +587,7 @@ function drawTextWithLetterSpacing(context, text, x, y, letterSpacing, outline =
  try { for (const segment of segments) { paint(segment, cursor, y); cursor += context.measureText(segment).width + spacing; } }
  finally { context.textAlign = originalAlign; }
 }
-function drawDocument({ context = ctx, document = state.document, center = documentCenter(document), transformForLayer = layerTransformForRender, allowOffDocumentPreview = false } = {}) {
+function drawDocument({ context = ctx, document = state.document, center = documentCenter(document), transformForLayer = layerTransformForRender, allowOffDocumentPreview = false, includeLivePreviews = true } = {}) {
   const layersInRenderOrder = [...document.layers].sort((a, b) => Number(Boolean(b.isBackground)) - Number(Boolean(a.isBackground)));
   for (const layer of layersInRenderOrder) {
     if (!layer.visible) continue;
@@ -603,10 +604,10 @@ function drawDocument({ context = ctx, document = state.document, center = docum
       context.rect(0, 0, Number(document.width) || 0, Number(document.height) || 0);
       context.clip();
     }
-    const previewAdjustments = state.adjustmentPreview?.layerId === layer.id
+    const previewAdjustments = includeLivePreviews && state.adjustmentPreview?.layerId === layer.id
       ? state.adjustmentPreview.values
       : layer.adjustments;
-    const previewText = state.textPreview?.layerId === layer.id
+    const previewText = includeLivePreviews && state.textPreview?.layerId === layer.id
       ? state.textPreview.values
       : layer.text;
     context.filter = layerAdjustmentsToCanvasFilter(previewAdjustments);
@@ -7395,6 +7396,80 @@ async function handleMultiProjectAction(button) {
   setMultiPageStatus("Proyecto eliminado de este dispositivo.", "success"); await renderMultiPageDialog();
  }
 }
+
+async function awaitDocumentImage(source) {
+ const cached = imageCache.get(source);
+ const image = cached || new Image();
+ if (!cached) imageCache.set(source, image);
+ if (image.complete) {
+  if (image.naturalWidth > 0) return image;
+  throw new Error("No se pudo cargar una imagen necesaria para exportar el PDF.");
+ }
+ await new Promise((resolve, reject) => {
+  const cleanup = () => { image.removeEventListener("load", loaded); image.removeEventListener("error", failed); };
+  const loaded = () => { cleanup(); resolve(); };
+  const failed = () => { cleanup(); reject(new Error("Una imagen de una de las páginas no se pudo cargar. Revisa el proyecto y vuelve a intentarlo.")); };
+  image.addEventListener("load", loaded, { once: true });
+  image.addEventListener("error", failed, { once: true });
+  if (!cached) image.src = source;
+  if (image.complete) { if (image.naturalWidth > 0) loaded(); else failed(); }
+ });
+ if (!image.complete || image.naturalWidth < 1) throw new Error("Una imagen de una página no está disponible para exportar.");
+ return image;
+}
+async function renderMultiPagePdfImage(documentModel, scale) {
+ const sources = [...new Set((documentModel.layers || []).filter(layer => layer.visible && layer.contentType === "image" && layer.image?.source).map(layer => layer.image.source))];
+ await Promise.all(sources.map(awaitDocumentImage));
+ const width = Math.max(1, Math.round(documentModel.width * scale)), height = Math.max(1, Math.round(documentModel.height * scale));
+ const canvas = createPngExportCanvas({ width, height });
+ renderDocumentToCanvas(documentModel, canvas, ({ context, document: exportDocument }) => {
+  context.fillStyle = "#ffffff"; context.fillRect(0, 0, canvas.width, canvas.height);
+  context.save(); context.scale(canvas.width / exportDocument.width, canvas.height / exportDocument.height);
+  drawDocument({ context, document: exportDocument, center: { x: exportDocument.width / 2, y: exportDocument.height / 2 },
+   transformForLayer: layer => layer.transform, allowOffDocumentPreview: false, includeLivePreviews: false });
+  context.restore();
+ });
+ const blob = await canvasToImageBlob(canvas, "jpeg", 0.88);
+ if (blob.size < 4) throw new Error("El navegador no pudo renderizar una página para el PDF.");
+ return { width, height, jpegBytes: new Uint8Array(await blob.arrayBuffer()), blobSize: blob.size };
+}
+async function exportActiveMultiPagePdf() {
+ if (!activeMultiPageSession) throw new Error("Abre o crea primero un proyecto multipágina.");
+ if (state.storageRecoveryPending) throw new Error("Resuelve primero el aviso de recuperación del almacenamiento.");
+ const button = document.querySelector("#multi-page-export-pdf");
+ if (button) button.disabled = true;
+ try {
+  await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+  await multiPagePersistenceQueue.catch(() => null);
+  const records = await listMultiPageProjects(), project = records.find(item => item.id === activeMultiPageSession?.id);
+  if (!project || !project.pages.length) throw new Error("El proyecto no contiene páginas para exportar.");
+  const documents = [];
+  for (const page of project.pages) {
+   const documentModel = await loadMultiPagePage(project.id, page.id);
+   if (!documentModel) throw new Error("No se pudo abrir la página «" + page.name + "» para exportar.");
+   documents.push({ page, document: documentModel });
+  }
+  const totalPixels = documents.reduce((sum, item) => sum + item.document.width * item.document.height, 0);
+  const largestPagePixels = Math.max(...documents.map(item => item.document.width * item.document.height));
+  const scale = Math.min(1, Math.sqrt(16_000_000 / largestPagePixels), Math.sqrt(48_000_000 / totalPixels));
+  const pdfPages = []; let totalJpegBytes = 0;
+  for (let index = 0; index < documents.length; index++) {
+   const item = documents[index];
+   setMultiPageStatus("Renderizando página " + (index + 1) + " de " + documents.length + "…", "info");
+   const rendered = await renderMultiPagePdfImage(item.document, scale);
+   totalJpegBytes += rendered.blobSize;
+   if (totalJpegBytes > 44 * 1024 * 1024) throw new Error("El PDF supera el límite seguro de exportación de 45 MB. Reduce la resolución o exporta menos páginas por proyecto.");
+   pdfPages.push({ width: item.document.width, height: item.document.height, imageWidth: rendered.width, imageHeight: rendered.height, jpegBytes: rendered.jpegBytes });
+  }
+  const pdf = buildMultiPagePdf(pdfPages), blob = new Blob([pdf], { type: "application/pdf" });
+  const baseName = String(project.name || "kapiart").normalize("NFKD").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60).toLowerCase() || "kapiart";
+  await saveBlobToDevice(blob, baseName + ".pdf");
+  setMultiPageStatus("PDF exportado correctamente: " + project.name + " · " + project.pages.length + " páginas.", "success");
+ } catch (error) {
+  setMultiPageStatus(error?.message || "No se pudo exportar el PDF.", "error");
+ } finally { if (button) button.disabled = false; }
+}
+
 async function copySelectedLayerToAnotherPage() {
  if (!activeMultiPageSession) throw new Error("Abre primero un proyecto multipágina.");
  if (!state.selectedLayerId) throw new Error("Selecciona una capa para copiar.");
@@ -7472,6 +7547,7 @@ function initializeCanvaWorkflowTools(){
   try{if(!activeMultiPageSession)throw new Error("Abre primero un proyecto multipágina.");await duplicateMultiPagePageFrom(activeMultiPageSession.activePageId);}
   catch(error){setMultiPageStatus(error?.message||"No se pudo duplicar la página.","error");}
  });
+ document.querySelector("#multi-page-export-pdf")?.addEventListener("click",()=>{void exportActiveMultiPagePdf();});
  document.querySelector("#multi-page-copy-layer")?.addEventListener("click",async()=>{
   try{await copySelectedLayerToAnotherPage();}
   catch(error){setMultiPageStatus(error?.message||"No se pudo copiar la capa.","error");}
@@ -7540,7 +7616,7 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v75";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v76";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
