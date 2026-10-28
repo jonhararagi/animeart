@@ -4185,3 +4185,19 @@ La comparación de nombre de rama o cantidad de commits no basta para decidir un
 - Shell offline v75 incluye el módulo de elementos y también lo exige la lista offline explícita. Android CI comprueba que el módulo y sus controles formen parte del paquete.
 - La validación final de esta fase debe corresponder al mismo SHA en Web CI y Android CI. No se ha fusionado la PR ni modificado `main`; la prueba física en el Xiaomi `24116RACCG` permanece pendiente.
 - Las carpetas de colecciones personalizadas y la carga de archivos de fuentes se mantienen como trabajo posterior. Los filtros existentes son colecciones predefinidas, no carpetas de usuario.
+
+
+---
+
+## KapiArt · exportación PDF multipágina · 2026-10-28
+
+**Rama:** `feature/kapiart-canva-workflow-001` · **PR:** [#124](https://github.com/jonhararagi/animeart/pull/124)  
+**Estado:** implementación añadida; pendiente de Web CI y Android CI sobre el HEAD final posterior a esta modificación.
+
+- Se incorpora `web/domain/pdf-export.mjs`, generador PDF local sin dependencias remotas. Cada página se convierte en un JPEG temporal incrustado en su propio objeto PDF; las capas del proyecto guardado siguen intactas y editables.
+- El gestor incluye **Exportar todas las páginas a PDF**. Guarda antes la página activa, abre las páginas desde IndexedDB en su orden, precarga imágenes y renderiza una tras otra en lugar de mantener todos los lienzos vivos al mismo tiempo.
+- Se desactivan las previsualizaciones transitorias de edición durante la exportación para que los ajustes o cambios no confirmados de una interacción no se filtren en el resultado.
+- Límites de seguridad: 10 páginas por documento; 16 MP como máximo por imagen incrustada; 48 MP agregados por exportación; 45 MB de PDF final. La resolución se reduce de manera uniforme dentro del presupuesto, manteniendo proporciones y dimensiones relativas de página.
+- El shell offline cambia de v75 a `animeart-web-shell-v76`; se añade el módulo al Service Worker, a los recursos obligatorios del editor, al chequeo Android y a las pruebas de contrato. Hay pruebas de estructura PDF, tabla xref, tamaños mixtos, preservación de los bytes JPEG y límites.
+- El E2E Chromium exporta el proyecto multipágina creado durante la prueba y verifica el mensaje de resultado. CI debe confirmar el flujo completo y publicar la APK del mismo SHA.
+- La prueba física en Xiaomi `24116RACCG` sigue pendiente. No se declara compatibilidad táctil por haber pasado CI/emulador.
