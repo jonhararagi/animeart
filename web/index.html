@@ -510,6 +510,7 @@
       <nav class="creative-studio-tabs" role="tablist" aria-label="Catálogo creativo">
         <button type="button" data-creative-tab="covers" role="tab" aria-selected="true">🖼 Portadas</button>
         <button type="button" data-creative-tab="stickers" role="tab" aria-selected="false">✨ Stickers</button>
+        <button type="button" data-creative-tab="elements" role="tab" aria-selected="false">◇ Elementos</button>
         <button type="button" data-creative-tab="words" role="tab" aria-selected="false">🔤 Palabras</button>
         <button type="button" data-creative-tab="packs" role="tab" aria-selected="false">🎨 Conjuntos</button>
         <button type="button" data-creative-tab="traits" role="tab" aria-selected="false">🧩 Rasgos anime</button>
@@ -518,6 +519,27 @@
         <label for="creative-catalog-search">Buscar en el catálogo<input id="creative-catalog-search" type="search" placeholder="Anime, galaxia, sakura, neón…"></label>
         <label id="creative-word-field" for="creative-custom-word" hidden>Tu palabra o frase<input id="creative-custom-word" maxlength="180" type="text" placeholder="Escribe algo para tu título…"></label>
       </div>
+      <section id="creative-elements-controls" class="creative-elements-controls" aria-label="Filtrar elementos de diseño" hidden>
+        <label for="creative-element-category">Colección
+          <select id="creative-element-category">
+            <option value="all">Todos los elementos</option>
+            <option value="Globos y diálogo">Globos y diálogo</option>
+            <option value="Manga">Manga</option>
+            <option value="Marcos">Marcos</option>
+            <option value="Texturas">Texturas</option>
+            <option value="Flores y naturaleza">Flores y naturaleza</option>
+            <option value="Brillos">Brillos</option>
+            <option value="Decoración">Decoración</option>
+            <option value="Formas y flechas">Formas y flechas</option>
+            <option value="Kawaii y reacciones">Kawaii y reacciones</option>
+          </select>
+        </label>
+        <label class="creative-element-favorites-toggle" for="creative-element-favorites-only">
+          <input id="creative-element-favorites-only" type="checkbox">
+          <span>Mostrar solo favoritos</span>
+        </label>
+        <p>Elementos SVG originales, locales y editables como capas independientes. Los favoritos se conservan en este dispositivo.</p>
+      </section>
       <section id="creative-template-settings" class="creative-template-settings" aria-label="Personalizar portada seleccionada">
         <label for="creative-cover-title">Título<input id="creative-cover-title" maxlength="180" value="NUEVO DESPERTAR"></label>
         <label for="creative-cover-subtitle">Subtítulo<input id="creative-cover-subtitle" maxlength="240" value="UN NUEVO ARCO COMIENZA"></label>
