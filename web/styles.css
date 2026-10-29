@@ -4822,3 +4822,8 @@ dialog {
  #design-resize-form select,#design-resize-form input[type=number]{min-height:48px}
 }
 @media(prefers-reduced-motion:reduce){.design-resize-modes>label{transition:none}}
+
+
+/* KapiArt · shared typography across pages */
+#multi-page-copy-text-style{border-color:#e6817b;background:#673a38;min-height:46px;touch-action:manipulation}
+@media(max-width:600px){.multi-page-actions{grid-template-columns:minmax(0,1fr)}.multi-page-dialog button{min-height:46px}}
