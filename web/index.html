@@ -141,6 +141,7 @@
       <button id="recover-project">Recuperar proyecto local</button>
       <button id="save">Guardar localmente</button>
       <button id="export-project">Exportar proyecto</button>
+      <button id="open-brand-kit" type="button" title="Guardar colores, estilos tipográficos, logos y firmas reutilizables">Kit de marca</button>
       <button id="import-project">Abrir proyecto</button>
       <input id="project-file-input" type="file" accept="application/json,.json" hidden>
       <label class="export-format-control" for="export-format">Export format
@@ -436,7 +437,7 @@
           <button type="button" id="quick-import-images"><span aria-hidden="true">＋</span><b>Importar imágenes</b><small>Desde tu dispositivo</small></button>
           <button type="button" id="quick-open-asset-library"><span aria-hidden="true">▦</span><b>Mis imágenes</b><small>Biblioteca reutilizable</small></button>
           <button type="button" id="quick-open-creative-studio"><span aria-hidden="true">✦</span><b>Stickers y portadas</b><small>Diseños anime listos para usar</small></button>
-          <button type="button" id="quick-open-design-library"><span aria-hidden="true">▤</span><b>Mis diseños</b><small>Guardar y continuar proyectos</small></button><button type="button" id="quick-open-design-resize"><span aria-hidden="true">↔</span><b>Cambiar formato</b><small>Conservar las capas editables</small></button> <button type="button" id="quick-open-page-manager"><span aria-hidden="true">▤</span><b>Páginas</b><small>Crear y organizar cómics o carruseles</small></button>
+          <button type="button" id="quick-open-design-library"><span aria-hidden="true">▤</span><b>Mis diseños</b><small>Guardar y continuar proyectos</small></button><button type="button" id="quick-open-brand-kit"><span aria-hidden="true">◈</span><b>Kit de marca</b><small>Colores, textos, logos y firmas</small></button><button type="button" id="quick-open-design-resize"><span aria-hidden="true">↔</span><b>Cambiar formato</b><small>Conservar las capas editables</small></button> <button type="button" id="quick-open-page-manager"><span aria-hidden="true">▤</span><b>Páginas</b><small>Crear y organizar cómics o carruseles</small></button>
         </div>
         <button type="button" id="guided-editing-open-mobile" class="guided-editing-mobile-launcher"><span aria-hidden="true">🧭</span> Edición guiada en 3 pasos</button>
         <div class="mobile-output-options" role="group" aria-label="Formato y tamaño de exportación">
@@ -1125,6 +1126,45 @@
   </dialog>
 
   
+<dialog id="brand-kit-dialog" class="brand-kit-dialog" aria-labelledby="brand-kit-title">
+  <section class="brand-kit-shell">
+    <header class="brand-kit-header">
+      <div><p class="eyebrow">KAPIART · IDENTIDAD REUTILIZABLE</p><h2 id="brand-kit-title">Kit de marca</h2><p>Guarda una identidad visual en este dispositivo y reutilízala en portadas, páginas de manga, carruseles y diseños sin rehacer los detalles.</p></div>
+      <button type="button" id="brand-kit-close" class="mini-dialog-close" aria-label="Cerrar kit de marca">✕</button>
+    </header>
+    <form id="brand-kit-name-form" class="brand-kit-name-form">
+      <label for="brand-kit-name">Nombre de la identidad<input id="brand-kit-name" maxlength="60" required value="Mi marca" placeholder="Ej. KapiStudio"></label>
+      <button type="submit">Guardar nombre</button>
+    </form>
+    <section class="brand-kit-section" aria-labelledby="brand-kit-colors-heading">
+      <div class="brand-kit-section-heading"><div><h3 id="brand-kit-colors-heading">Colores de marca</h3><p>Hasta 12 colores HEX reutilizables.</p></div><span id="brand-kit-color-count">0/12</span></div>
+      <form id="brand-kit-color-form" class="brand-kit-color-form">
+        <label for="brand-kit-color-name">Nombre<input id="brand-kit-color-name" maxlength="60" required placeholder="Rosa principal"></label>
+        <label for="brand-kit-color-value">Color<input id="brand-kit-color-value" type="color" value="#f2a2a0" aria-label="Elegir color de marca"></label>
+        <button id="brand-kit-add-color" type="submit">＋ Guardar color</button>
+      </form>
+      <div id="brand-kit-colors" class="brand-kit-colors" aria-label="Colores guardados"></div>
+    </section>
+    <section class="brand-kit-section" aria-labelledby="brand-kit-text-heading">
+      <div class="brand-kit-section-heading"><div><h3 id="brand-kit-text-heading">Estilos tipográficos</h3><p>Guarda el estilo de una capa de texto y aplícalo en otros diseños.</p></div><span id="brand-kit-style-count">0/20</span></div>
+      <form id="brand-kit-style-form" class="brand-kit-style-form">
+        <label for="brand-kit-style-name">Nombre del estilo<input id="brand-kit-style-name" maxlength="60" required value="Título principal" placeholder="Título principal, diálogo manga…"></label>
+        <button id="brand-kit-save-style" type="submit">Guardar estilo del texto seleccionado</button>
+      </form>
+      <div id="brand-kit-styles" class="brand-kit-style-list" aria-label="Estilos tipográficos guardados"></div>
+    </section>
+    <section class="brand-kit-section" aria-labelledby="brand-kit-logos-heading">
+      <div class="brand-kit-section-heading"><div><h3 id="brand-kit-logos-heading">Logos y firmas</h3><p>Guarda hasta 4 PNG, JPEG o WebP locales y vuelve a insertarlos como capas independientes.</p></div><span id="brand-kit-logo-count">0/4</span></div>
+      <div class="brand-kit-logo-actions">
+        <label class="brand-kit-file-label" for="brand-kit-logo-file">＋ Añadir logo o firma<input id="brand-kit-logo-file" type="file" accept="image/png,image/jpeg,image/webp" hidden></label>
+        <small>Máximo 300 KB por recurso. No se sube a ningún servidor.</small>
+      </div>
+      <div id="brand-kit-logos" class="brand-kit-logo-list" aria-label="Logos y firmas guardados"></div>
+    </section>
+    <p id="brand-kit-status" class="brand-kit-status" role="status" aria-live="polite">El kit se guarda localmente y puede usarse en cualquier diseño que abras en este dispositivo.</p>
+    <footer class="brand-kit-footer"><span>Local-first · Sin cuentas · Sin nube</span><button type="button" id="brand-kit-done">Listo</button></footer>
+  </section>
+</dialog>
 <dialog id="design-library-dialog" class="design-library-dialog" aria-labelledby="design-library-title">
   <section class="design-library-shell">
     <header class="design-library-header">
