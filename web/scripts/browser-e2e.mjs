@@ -2711,6 +2711,57 @@ try {
   await click("#multi-page-close");
   await waitFor('document.querySelector("#multi-page-dialog")?.open !== true');
 
+
+  const groupingMobileViewport = await evaluate('window.matchMedia("(max-width: 920px)").matches');
+  if (groupingMobileViewport && !(await evaluate('document.body.classList.contains("mobile-layers-open")'))) {
+    await clickMoreGoal("layers");
+    await waitFor('document.body.classList.contains("mobile-layers-open")');
+  }
+  await waitFor('document.querySelectorAll("#layers .layer-select").length >= 2',10000);
+  const selectedTwoLayers = await evaluate(`(() => {
+    const buttons = [...document.querySelectorAll("#layers .layer-select")];
+    if (buttons.length < 2) return false;
+    buttons[0].click();
+    buttons[1].dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true }));
+    return document.querySelectorAll("#layers li[data-selected="selected"]").length >= 2;
+  })()`);
+  assert(selectedTwoLayers, "the layer list supports selecting multiple editable objects");
+  await waitFor('document.querySelector("#layer-group-selection")?.disabled === false');
+  await click("#layer-group-selection");
+  await waitFor(`(() => {
+    const doc = JSON.parse(localStorage.getItem("animeart-web-document") || "{}");
+    const grouped = (doc.layers || []).filter(layer => layer.groupId);
+    return grouped.length >= 2 && new Set(grouped.map(layer => layer.groupId)).size === 1;
+  })()`,10000);
+  const groupSnapshot = await evaluate(`(() => {
+    const doc = JSON.parse(localStorage.getItem("animeart-web-document") || "{}");
+    const grouped = (doc.layers || []).filter(layer => layer.groupId);
+    return { count: grouped.length, groupId: grouped[0]?.groupId, editable: grouped.every(layer => ["drawing","image","text"].includes(layer.contentType)) };
+  })()`);
+  assert(groupSnapshot.count >= 2 && Boolean(groupSnapshot.groupId) && groupSnapshot.editable,
+    "grouping persists membership metadata without flattening the layers");
+
+  await evaluate(`(() => {
+    const first = document.querySelector("#layers .layer-select");
+    first?.click();
+    return true;
+  })()`);
+  await waitFor('document.querySelectorAll("#layers li[data-selected]").length >= 2');
+  const allGroupMembersSelected = await evaluate('document.querySelectorAll("#layers li[data-selected]").length === ' + groupSnapshot.count);
+  assert(allGroupMembersSelected, "selecting one grouped object selects the group as a unit");
+
+  await click("#layer-ungroup-selection");
+  await waitFor(`(() => {
+    const doc = JSON.parse(localStorage.getItem("animeart-web-document") || "{}");
+    return !(doc.layers || []).some(layer => layer.groupId);
+  })()`,10000);
+  const ungroupedSnapshot = await evaluate(`(() => {
+    const doc = JSON.parse(localStorage.getItem("animeart-web-document") || "{}");
+    return { total: doc.layers?.length || 0, grouped: (doc.layers || []).filter(layer => layer.groupId).length };
+  })()`);
+  assert(ungroupedSnapshot.grouped === 0,
+    "ungrouping removes persisted group membership while keeping every layer editable");
+
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {
   try { ws.close(); } catch {}
