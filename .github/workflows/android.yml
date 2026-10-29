@@ -95,6 +95,7 @@ jobs:
           test -s "$WEB/domain/pdf-export.mjs"
           test -s "$WEB/domain/element-library.mjs"
           test -s "$WEB/domain/anime-style-library.mjs"
+          grep -q 'expression-soft-smile' "$WEB/domain/anime-style-library.mjs"
           test -s "$WEB/domain/anime-character-presets.mjs"
           test -s "$WEB/domain/canvas-rendering.mjs"
           test -s "$WEB/domain/stroke-smoothing.mjs"
