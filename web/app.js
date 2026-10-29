@@ -1692,7 +1692,7 @@ imageEditForm.addEventListener("submit", async event => {
 
 function hideMobileToolSheets() {
   closeMobileContextPanel();
-  document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
+  document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open", "mobile-canvas-focus");
   mobileDock?.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
   mobileDock?.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
 }
@@ -4463,11 +4463,14 @@ mobileToolsToggle?.addEventListener("click", event => {
   event.stopPropagation();
   document.body.classList.remove("mobile-tools-open", "mobile-layers-open");
   document.querySelectorAll('.mobile-touch-dock [data-touch-action="more"], .mobile-touch-dock [data-touch-action="layers"]').forEach(item => item.setAttribute("aria-expanded", "false"));
-  const collapsed = document.body.classList.toggle("mobile-tools-collapsed");
+  const isPhoneLayout = window.matchMedia("(max-width: 620px)").matches;
+  const focusClass = isPhoneLayout ? "mobile-canvas-focus" : "mobile-tools-collapsed";
+  const collapsed = document.body.classList.toggle(focusClass);
   mobileToolsToggle.setAttribute("aria-expanded", String(!collapsed));
-  mobileToolsToggle.setAttribute("aria-label", collapsed ? "Mostrar herramientas" : "Ocultar herramientas");
-  mobileToolsToggle.title = collapsed ? "Mostrar herramientas para elegir una acción" : "Ocultar herramientas para ampliar el lienzo";
-  mobileToolsToggle.querySelector("span").textContent = collapsed ? "⌃" : "⌄";
+  mobileToolsToggle.setAttribute("aria-label", collapsed ? "Mostrar controles" : "Ocultar controles y ampliar el lienzo");
+  mobileToolsToggle.title = collapsed ? "Volver a mostrar las herramientas" : "Ocultar los controles para apreciar el arte";
+  mobileToolsToggle.querySelector("span").textContent = collapsed ? "＋" : "−";
+  mobileToolsToggle.querySelector("span").setAttribute("aria-hidden", "true");
 });
 
 const mobileDock = document.querySelector(".mobile-touch-dock");
