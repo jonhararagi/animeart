@@ -2690,7 +2690,9 @@ try {
   assert(resizeAfter.layers.some(layer=>layer.contentType==="text"&&typeof layer.text?.value==="string") ||
     resizeBefore.layers.every(layer=>layer.contentType!=="text"),
     "editable text content is preserved when the canvas format changes");
-  await click("#undo");
+  const resizeUndoSelector = await evaluate('window.matchMedia("(max-width: 920px)").matches ? ".mobile-top-actions [data-mobile-top-action=\\\"undo\\\"]" : "#undo"');
+  await waitFor('document.querySelector(' + JSON.stringify(resizeUndoSelector) + ')?.disabled === false',10000);
+  await click(resizeUndoSelector);
   await waitFor('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return d.width===' + resizeBefore.width + ' && d.height===' + resizeBefore.height + '; })()',10000);
   assert(await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return d.width===' + resizeBefore.width + ' && d.height===' + resizeBefore.height + '; })()'),
     "canvas format changes are undoable through the existing document history");
