@@ -10,7 +10,10 @@ Estado: PARTIAL · rama abierta, sin merge.
 ## Ramas complementarias
 - PR #123 cerrada sin merge, HEAD 8ecc9543dea6c4843f46a9b9498d0c80ecedd724: 27 commits, 23 archivos; expresiones anime SVG editables, persistencia/undo-redo, caché offline v72 y pruebas. Rescatar diferencias útiles, no cherry-pick ciego.
 - PR #129 abierta en borrador, HEAD cfab1c162a4a4cd0f9b70884863df2eb5acd346f: reutilización de estilos tipográficos entre páginas. Revalidar contra main vigente antes de integrar.
-- SHA observado en main al consultar web/app.js: 80760e037493507429470905e4525d9bf2c2adcf (blob SHA, no commit SHA).
+- Comparación contra main vigente: PR #123 está DIVERGED (27 commits exclusivos, main 7 commits por delante; 23 archivos con diferencias). Requiere rescate selectivo por archivo, no merge directo.
+- PR #129 está AHEAD (22 commits, main no tiene commits por delante según comparación); 18 archivos con diferencias, incluye módulo y pruebas de continuidad tipográfica. Mantener abierta y revalidar CI antes de integración.
+- PR #130 está AHEAD (3 commits, sin divergencia respecto de main en la comparación), limitado a estilos y prueba táctil.
+- SHA 80760e037493507429470905e4525d9bf2c2adcf corresponde al blob de web/app.js, no al commit de main.
 
 ## Implementación iniciada
 - Rama: feature/kapiart-smart-snapping-001, creada desde main.
