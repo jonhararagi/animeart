@@ -19,7 +19,7 @@ import { appendInterpolatedStrokePoint } from "./domain/stroke-smoothing.mjs";
 import { ANIME_COLOR_PRESETS, combineAnimeSelections, countAnimeSelection, generateAnimePalette, searchAnimeColors, selectAnimeRectangle, selectAnimeRegion } from "./domain/anime-color-studio.mjs";
 import { mirrorFreehandPoints, traceSmoothStrokePath } from "./domain/freehand-rendering.mjs";
 import { clearCanvasBackingStore } from "./domain/canvas-rendering.mjs";
-import { addLayer, clearLayer, cropDocumentCanvas, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { addLayer, clearLayer, cropDocumentCanvas, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, groupLayers, transformLayers, translateLayer, translateLayers, ungroupLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
 import { GUIDED_EDITING_FLOWS, canCompleteGuidedStep, completeGuidedStep, createGuidedProgress, getGuidedFlow, getGuidedStep, goToPreviousGuidedStep, hasGuidedImage, isGuidedFlowComplete, persistGuidedEditingProgress, recordGuidedActionLaunched } from "./domain/guided-editing.mjs";
@@ -270,7 +270,14 @@ function selectedLayersExact() {
 }
 
 function setSelection(layerIds, anchorId = null) {
-  const normalized = normalizeLayerSelection(layerIds, state.document);
+  const base = normalizeLayerSelection(layerIds, state.document);
+  const groupIds = new Set(state.document.layers
+    .filter(layer => base.includes(layer.id) && layer.groupId)
+    .map(layer => layer.groupId));
+  const expanded = groupIds.size
+    ? [...base, ...state.document.layers.filter(layer => groupIds.has(layer.groupId)).map(layer => layer.id)]
+    : base;
+  const normalized = normalizeLayerSelection(expanded, state.document);
   state.selectedLayerIds = normalized;
   state.selectedLayerId = anchorId && normalized.includes(anchorId)
     ? anchorId
@@ -342,6 +349,21 @@ function updateSelectionMiniPanel(layer = selectedLayerExact()) {
 
 function updateSelectionIndicator() {
   const layer = selectedLayerExact();
+  const groupButton = document.querySelector("#layer-group-selection");
+  const ungroupButton = document.querySelector("#layer-ungroup-selection");
+  const selected = selectedLayersExact();
+  if (groupButton) {
+    groupButton.disabled = selected.length < 2 || selected.some(item => item.locked || item.isBackground);
+    groupButton.title = groupButton.disabled
+      ? "Seleccioná al menos dos capas desbloqueadas para agrupar"
+      : "Agrupar las capas seleccionadas y moverlas como una unidad";
+  }
+  if (ungroupButton) {
+    ungroupButton.disabled = !selected.some(item => item.groupId);
+    ungroupButton.title = ungroupButton.disabled
+      ? "Seleccioná una capa que pertenezca a un grupo"
+      : "Separar el grupo; cada capa conservará su contenido y posición";
+  }
   updateSelectionMiniPanel(layer);
   const indicator = document.querySelector("#selection-indicator");
   if (!indicator) return;
@@ -1010,7 +1032,7 @@ function renderLayers() {
     selectButton.className = "layer-select";
     const layerName = document.createElement("span");
     layerName.className = "layer-name";
-    layerName.textContent = layer.name + (layer.isBackground ? " [Fondo fijo]" : layer.contentType === "image" ? (layer.isReference ? " [Referencia]" : " [Imagen]") : layer.contentType === "text" ? " [Texto]" : "");
+    layerName.textContent = layer.name + (layer.groupId ? " [Grupo]" : "") + (layer.isBackground ? " [Fondo fijo]" : layer.contentType === "image" ? (layer.isReference ? " [Referencia]" : " [Imagen]") : layer.contentType === "text" ? " [Texto]" : "");
     selectButton.append(createLayerThumbnail(layer), layerName);
     selectButton.setAttribute("aria-label", "Seleccionar capa " + layer.name);
     selectButton.addEventListener("click", event => {
@@ -7489,8 +7511,48 @@ async function copySelectedLayerToAnotherPage() {
  await renderMultiPageDialog();
 }
 
+
+function applyGroupSelection() {
+  const selectedIds = [...state.selectedLayerIds];
+  if (selectedIds.length < 2) {
+    showMobileFeedback("Seleccioná al menos dos capas para agrupar.", "error");
+    return false;
+  }
+  const before = cloneDocument(state.document);
+  const next = groupLayers(state.document, selectedIds);
+  if (!next) {
+    showMobileFeedback("No se pudo agrupar. Comprobá que las capas existan y estén desbloqueadas.", "error");
+    return false;
+  }
+  state.document = next;
+  state.history.record(before, next);
+  setSelection(selectedIds, state.selectedLayerId);
+  refreshDocument("Grupo creado. Las capas siguen siendo independientes y puedes desagruparlas.");
+  persistDocument();
+  showMobileFeedback("Grupo creado. Moverás sus capas como una unidad.", "success");
+  return true;
+}
+function applyUngroupSelection() {
+  const selectedIds = [...state.selectedLayerIds];
+  const before = cloneDocument(state.document);
+  const next = ungroupLayers(state.document, selectedIds);
+  if (!next) {
+    showMobileFeedback("Seleccioná una capa agrupada para desagruparla.", "error");
+    return false;
+  }
+  state.document = next;
+  state.history.record(before, next);
+  setSelection(selectedIds, state.selectedLayerId);
+  refreshDocument("Grupo separado. Cada capa conserva su contenido y transformación.");
+  persistDocument();
+  showMobileFeedback("Grupo separado. Cada capa vuelve a editarse por separado.", "success");
+  return true;
+}
+
 function initializeCanvaWorkflowTools(){
  document.querySelectorAll("[data-layer-align]").forEach(button=>button.addEventListener("click",()=>applySelectedLayerAlignment(button.dataset.layerAlign)));
+ document.querySelector("#layer-group-selection")?.addEventListener("click",applyGroupSelection);
+ document.querySelector("#layer-ungroup-selection")?.addEventListener("click",applyUngroupSelection);
  const dialog=document.querySelector("#design-library-dialog"),input=document.querySelector("#design-library-name"),list=document.querySelector("#design-library-list");
  document.querySelector("#design-library-open")?.addEventListener("click",showDesignLibraryDialog);
  document.querySelector("#quick-open-design-library")?.addEventListener("click",()=>{if(toolboxDialog?.open)toolboxDialog.close();showDesignLibraryDialog();});
