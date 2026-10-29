@@ -4822,3 +4822,60 @@ dialog {
  #design-resize-form select,#design-resize-form input[type=number]{min-height:48px}
 }
 @media(prefers-reduced-motion:reduce){.design-resize-modes>label{transition:none}}
+
+
+/* KAPIART-BRAND-KIT-001 · reusable local brand identity */
+.brand-kit-shell{box-sizing:border-box;width:min(860px,calc(100vw - 24px));max-height:min(94dvh,960px);overflow:auto;padding:clamp(16px,3vw,28px);border:1px solid #6d514a;border-radius:20px;background:linear-gradient(155deg,#241a19,#2b211f 58%,#392b29);color:#fff4eb}
+.brand-kit-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1rem}
+.brand-kit-header h2{margin:.2rem 0 .4rem;font-size:clamp(1.5rem,4vw,2.1rem)}
+.brand-kit-header p:last-child{max-width:62ch;margin:0;color:#d7c8c0;line-height:1.5}
+.brand-kit-name-form,.brand-kit-color-form,.brand-kit-style-form{display:grid;gap:.7rem;align-items:end}
+.brand-kit-name-form{grid-template:minmax(0,1fr) auto;padding:1rem;border:1px solid #6d514a;border-radius:14px;background:#241a19}
+.brand-kit-color-form{grid-template:minmax(0,1fr) 76px auto}
+.brand-kit-style-form{grid-template:minmax(0,1fr) auto}
+.brand-kit-name-form label,.brand-kit-color-form label,.brand-kit-style-form label{display:grid;gap:.35rem;font-size:.9rem;font-weight:650}
+.brand-kit-name-form input,.brand-kit-color-form input:not([type=color]),.brand-kit-style-form input{box-sizing:border-box;width:100%;min-height:44px;padding:.65rem .75rem;border:1px solid #6d514a;border-radius:10px;background:#181312;color:#fff4eb;font:inherit}
+.brand-kit-color-form input[type=color]{width:100%;height:44px;padding:3px;border:1px solid #6d514a;border-radius:10px;background:#181312}
+.brand-kit-name-form button,.brand-kit-color-form button,.brand-kit-style-form button,.brand-kit-card-actions button,.brand-kit-footer button{min-height:44px;padding:.65rem .8rem;border:1px solid #8c645b;border-radius:10px;background:#4c352f;color:#fff4eb;font:inherit;font-weight:700;touch-action:manipulation}
+.brand-kit-section{display:grid;gap:.8rem;margin-top:1rem;padding:1rem;border:1px solid #60453f;border-radius:16px;background:color-mix(in srgb,#241a19 82%,transparent)}
+.brand-kit-section-heading{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.brand-kit-section-heading h3{margin:0 0 .2rem;font-size:1.05rem}
+.brand-kit-section-heading p{margin:0;color:#d7c8c0;font-size:.88rem;line-height:1.4}
+.brand-kit-section-heading>span{flex:0 0 auto;color:#f2a2a0;font-size:.85rem;font-variant-numeric:tabular-nums}
+.brand-kit-colors{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:.55rem}
+.brand-kit-color-card{display:grid;grid-template-columns:40px minmax(0,1fr);align-items:center;gap:.3rem .55rem;padding:.55rem;border:1px solid #60453f;border-radius:12px;background:#1c1513;min-width:0}
+.brand-kit-color-swatch{grid-row:span 2;width:40px;height:40px;border:2px solid #fff4eb;border-radius:10px;background:var(--brand-color);box-shadow:inset 0 0 0 1px #0005}
+.brand-kit-color-copy{overflow:hidden;padding:0;border:0;background:transparent;color:#fff4eb;text-align:left;text-overflow:ellipsis;white-space:nowrap;font:inherit;font-weight:700}
+.brand-kit-color-card small{color:#cdbcb3;font-size:.73rem}
+.brand-kit-remove{border-color:#744b47!important;background:#33201f!important;color:#ffcbc2!important}
+.brand-kit-color-card .brand-kit-remove{grid-column:1/-1;min-height:34px;padding:.35rem;font-size:.78rem}
+.brand-kit-style-list,.brand-kit-logo-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.65rem}
+.brand-kit-style-card,.brand-kit-logo-card{display:grid;align-content:start;gap:.55rem;min-width:0;padding:.75rem;border:1px solid #60453f;border-radius:12px;background:#1c1513}
+.brand-kit-style-preview{display:flex;align-items:center;min-height:52px;padding:.5rem;border-radius:8px;background:#2b211f;overflow:hidden;overflow-wrap:anywhere}
+.brand-kit-style-card>small,.brand-kit-logo-card>small{color:#cdbcb3;font-size:.76rem}
+.brand-kit-card-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.4rem}
+.brand-kit-card-actions button{min-height:40px;font-size:.82rem}
+.brand-kit-logo-card img{display:block;width:100%;height:92px;object-fit:contain;padding:.35rem;box-sizing:border-box;border-radius:8px;background-color:#fff4eb;background-image:linear-gradient(45deg,#e9dfd9 25%,transparent 25%),linear-gradient(-45deg,#e9dfd9 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e9dfd9 75%),linear-gradient(-45deg,transparent 75%,#e9dfd9 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}
+.brand-kit-logo-card strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brand-kit-logo-actions{display:flex;align-items:center;flex-wrap:wrap;gap:.8rem}
+.brand-kit-file-label{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:.65rem .9rem;border:1px solid #bc7d77;border-radius:10px;background:#4c352f;color:#fff4eb;font-weight:700;cursor:pointer}
+.brand-kit-logo-actions small{color:#d7c8c0;line-height:1.4}
+.brand-kit-empty{grid-column:1/-1;margin:0;padding:.8rem;border:1px dashed #6d514a;border-radius:10px;color:#cdbcb3;font-size:.88rem;line-height:1.45}
+.brand-kit-status{margin:1rem 0 0;padding:.7rem .85rem;border-radius:10px;background:#1c1513;color:#d7c8c0;font-size:.9rem;line-height:1.5;overflow-wrap:anywhere}
+.brand-kit-status[data-kind="success"]{color:#c7f0cf}
+.brand-kit-status[data-kind="error"]{color:#ffb8a8}
+.brand-kit-footer{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-top:1rem;color:#cdbcb3;font-size:.85rem}
+.brand-kit-footer button{min-width:104px}
+#brand-kit-add-color:disabled,#brand-kit-save-style:disabled,#brand-kit-logo-file:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:680px){
+ .brand-kit-shell{width:calc(100vw - 12px);max-height:96dvh;padding:12px;border-radius:16px}
+ .brand-kit-name-form,.brand-kit-color-form,.brand-kit-style-form{grid-template-columns:minmax(0,1fr)}
+ .brand-kit-color-form{grid-template-columns:minmax(0,1fr) 76px}
+ .brand-kit-color-form button{grid-column:1/-1}
+ .brand-kit-section{padding:.75rem;gap:.7rem}
+ .brand-kit-name-form button,.brand-kit-color-form button,.brand-kit-style-form button{min-height:48px}
+ .brand-kit-style-list,.brand-kit-logo-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .brand-kit-card-actions{grid-template-columns:1fr}
+ .brand-kit-card-actions button{min-height:44px}
+ .brand-kit-footer{align-items:stretch}
+}
