@@ -4221,8 +4221,13 @@ La comparación de nombre de rama o cantidad de commits no basta para decidir un
 - Pruebas de dominio cubren persistencia tras normalización, validación de ID, bloqueo, desagrupado y duplicación; Chromium E2E recorre selección múltiple, agrupar, seleccionar el grupo y desagrupar.
 - Caché offline actualizada a v77; CI Android verifica los controles y el archivo de pruebas.
 
-### Aceptación pendiente
+### Validación final de la fase · 2026-10-29
 
-- Web CI debe pasar build, tests y E2E real de Chromium.
-- Android CI debe pasar build, unit tests, lint, instrumentación y arranque offline, con APK verificada del mismo SHA.
-- La aceptación física en Xiaomi `24116RACCG` es una etapa separada; no se presume por los tests automatizados.
+El código está consolidado en `main` por la PR #124: commit squash `2a2847be9f05e5ba35caf09fe5bde0e7fdb52e91`. La PR #123 se cerró sin merge separado porque su complemento de expresiones anime ya quedó incorporado en la misma integración.
+
+- **HEAD de la PR validado:** `225bb82e059b80bcafe4ff08f21d3cbd1146e09b` (base `main` en `47bd382e72484155af029fe014b8ced970bcfb7a`).
+- **Web CI PASS, run #1445:** https://github.com/jonhararagi/animeart/actions/runs/40843352467. 469/469 pruebas unitarias, cero fallos y E2E real de Chromium con `ANIMEART_REAL_WEB_E2E: PASS`; el recorrido comprueba el personaje de cinco capas y undo/redo.
+- **Android CI PASS, run #1544:** https://github.com/jonhararagi/animeart/actions/runs/40843352526. Build, comprobación de assets del APK, tests, lint, instrumentación y smoke test de arranque offline aprobados.
+- **Artefacto APK:** https://github.com/jonhararagi/animeart/actions/runs/40843352526/artifacts/12883264410. `KapiArt-Android-v0.3.7-1e22ffdd42bce53b8490c1d0eca9fc1ed466354b.apk`, `versionCode=10`, `versionName=0.3.7`; incluye checksum `.sha256` y reporte de firma. El SHA-256 del ZIP del artefacto es `bbebbfaed66adaa4a4d417fe86ed6d0489ef17f02c76992cd936f744287da34f`.
+- **Límite de distribución:** las claves estables no están configuradas; la APK de CI usa certificado debug efímero y no se garantiza que pueda instalarse como actualización de otra firma.
+- **Pendiente real:** aceptación táctil en el Xiaomi `24116RACCG`. El emulador/CI pasó, pero no equivale a probar el APK en el teléfono físico.
