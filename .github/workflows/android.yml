@@ -128,7 +128,7 @@ jobs:
           grep -q 'id="erase-color-effect"' "$WEB/index.html"
           grep -q 'id="recolor-temperature"' "$WEB/index.html"
           grep -q 'id="recolor-darkness"' "$WEB/index.html"
-          grep -q "animeart-web-shell-v78" "$WEB/service-worker.js"
+          grep -q "animeart-web-shell-v79" "$WEB/service-worker.js"
           grep -q 'id="design-library-dialog"' "$WEB/index.html"
           grep -q 'id="multi-page-dialog"' "$WEB/index.html"
           grep -q 'id="multi-page-export-pdf"' "$WEB/index.html"
