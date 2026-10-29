@@ -1,4 +1,4 @@
-import { normalizeDocument, normalizeTransform } from "./model.mjs";
+import { createId, normalizeDocument, normalizeTransform } from "./model.mjs";
 import { isDefaultLayerAdjustments, normalizeLayerAdjustments } from "./layer-adjustments.mjs";
 import { normalizeTextLayer } from "./text-layer.mjs";
 
@@ -259,12 +259,43 @@ export function renameLayer(document, layerId, name) {
   return next;
 }
 
+export function groupLayers(document, layerIds) {
+  if (!document || !Array.isArray(document.layers) || !Array.isArray(layerIds)) return null;
+  const ids = [...new Set(layerIds.filter(id => typeof id === "string" && id.length > 0))];
+  if (ids.length < 2) return null;
+  const next = cloneDocument(document);
+  const selected = next.layers.filter(layer => ids.includes(layer.id));
+  if (selected.length !== ids.length || selected.some(layer => layer.locked || layer.isBackground)) return null;
+  const groupId = createId();
+  for (const layer of selected) layer.groupId = groupId;
+  return next;
+}
+
+export function ungroupLayers(document, layerIds) {
+  if (!document || !Array.isArray(document.layers) || !Array.isArray(layerIds)) return null;
+  const ids = new Set(layerIds.filter(id => typeof id === "string" && id.length > 0));
+  if (!ids.size) return null;
+  const next = cloneDocument(document);
+  const selected = next.layers.filter(layer => ids.has(layer.id));
+  if (!selected.length) return null;
+  const groups = new Set(selected.map(layer => layer.groupId).filter(Boolean));
+  if (!groups.size) return null;
+  let changed = false;
+  for (const layer of next.layers) {
+    if (!groups.has(layer.groupId)) continue;
+    delete layer.groupId;
+    changed = true;
+  }
+  return changed ? next : null;
+}
+
 export function duplicateLayer(document, layerId) {
   const next = cloneDocument(document);
   const index = next.layers.findIndex(item => item.id === layerId);
   if (index < 0) return null;
   const duplicate = cloneDocument({ ...next, layers: [next.layers[index]] }).layers[0];
-  duplicate.id = crypto.randomUUID();
+  duplicate.id = createId();
+  delete duplicate.groupId;
   duplicate.name = next.layers[index].name + " Copy";
   next.layers.splice(index + 1, 0, duplicate);
   return next;
