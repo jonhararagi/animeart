@@ -34,6 +34,24 @@ val syncWebEditorAssets = tasks.register<Sync>("syncWebEditorAssets") {
         )
     }
     into(generatedWebAssets.map { it.dir("web") })
+
+    // Never reuse a stale cache entry for the editor sources that are embedded in the APK.
+    outputs.cacheIf("Always sync the canonical Web editor into Android assets") { false }
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val copiedIndex = destinationDir.resolve("index.html")
+        check(copiedIndex.isFile) {
+            "The canonical Web editor was not copied to ${copiedIndex.absolutePath}"
+        }
+        val copiedHtml = copiedIndex.readText(Charsets.UTF_8)
+        check(
+            copiedHtml.contains("id=\\\"layer-group-selection\\\"") &&
+            copiedHtml.contains("id=\\\"layer-ungroup-selection\\\"")
+        ) {
+            "The generated Android Web assets do not contain the complete layer grouping controls."
+        }
+    }
 }
 
 android {
@@ -111,4 +129,11 @@ dependencies {
 
 tasks.named("preBuild").configure {
     dependsOn(syncWebEditorAssets)
+}
+
+// Asset merging must consume the just-synced editor, not a cached intermediate copy.
+tasks.matching { it.name == "mergeDebugAssets" || it.name == "mergeReleaseAssets" }.configureEach {
+    dependsOn(syncWebEditorAssets)
+    outputs.cacheIf("Merge freshly synchronized editor assets") { false }
+    outputs.upToDateWhen { false }
 }
