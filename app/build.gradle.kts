@@ -103,7 +103,7 @@ android {
         compose = true
     }
 
-    sourceSets.getByName("main").assets.setSrcDirs(listOf(generatedWebAssets))
+    sourceSets.getByName("main").assets.setSrcDirs(listOf(generatedWebAssets.get().asFile))
 }
 
 dependencies {
