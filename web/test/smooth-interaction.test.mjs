@@ -45,7 +45,7 @@ test("release position is applied before committing layer transforms", async () 
   const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
   const pointerUp = app.slice(app.indexOf('canvas.addEventListener("pointerup", event => {'), app.indexOf('canvas.addEventListener("pointerleave"'));
   assert.match(pointerUp, /updateTransformPreview\(event\)/);
-  assert.match(pointerUp, /interaction\.previewDelta = constrainMoveDelta\(layers, current\.x - interaction\.startDocument\.x, current\.y - interaction\.startDocument\.y\)/);
+  assert.match(pointerUp, /interaction\.previewDelta = snapMoveDelta\(layers, current\.x - interaction\.startDocument\.x, current\.y - interaction\.startDocument\.y\)/);
 });
 
 test("pinch-to-one-finger transition establishes a fresh pan origin", async () => {
