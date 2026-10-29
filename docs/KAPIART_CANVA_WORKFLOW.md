@@ -106,7 +106,13 @@ Esta fase añade agrupación/desagrupación real al modelo de capas existente:
 - La UI ofrece controles táctiles en el panel Capas y etiqueta los miembros con `[Grupo]`. La acción entra en el historial normal de undo/redo.
 - Hay pruebas de dominio y E2E Chromium para persistencia tras normalización, capas bloqueadas, duplicación, selección conjunta, agrupación y desagrupación. El shell offline se actualizó a `animeart-web-shell-v77` y Android CI comprueba el panel y el test dedicado.
 
-El estado final de esta fase debe documentar Web CI y Android CI sobre el mismo SHA. La validación física en el Xiaomi `24116RACCG` sigue pendiente.
+### Validación final
+
+- Web CI PASS #1445: https://github.com/jonhararagi/animeart/actions/runs/40843352467 (469/469 tests, E2E real Chromium PASS).
+- Android CI PASS #1544: https://github.com/jonhararagi/animeart/actions/runs/40843352526 (build, assets del APK, tests, lint, instrumentación y startup smoke PASS).
+- Código integrado en `main` por PR #124, squash `2a2847be9f05e5ba35caf09fe5bde0e7fdb52e91`.
+- APK y checksum sidecar: https://github.com/jonhararagi/animeart/actions/runs/40843352526/artifacts/12883264410 (v0.3.7, versionCode 10).
+- La validación física en Xiaomi `24116RACCG` sigue pendiente.
 
 ## Complemento de expresiones anime · 2026-10-29
 
@@ -119,4 +125,4 @@ Se incorpora a esta rama el trabajo funcional de la PR #123 para no dejar el com
 - Se amplían las pruebas de metadatos, selección, catálogo y composición; Android CI comprueba que la biblioteca SVG que contiene las expresiones se haya empaquetado.
 - Se conserva la versión de caché offline v77: no se retrocede la caché por traer cambios de la antigua rama de expresiones.
 
-La integración de código está preparada en esta rama. La aceptación de Web CI, Android CI y el artefacto APK se registra solo cuando los checks del HEAD final terminen. La prueba física en el Xiaomi 24116RACCG continúa siendo independiente.
+El complemento de expresiones anime de la PR #123 está integrado en `main` dentro de la PR #124 y la PR #123 se cerró para evitar una rama complementaria redundante. El E2E real de Chromium verificó la creación de cinco capas editables y undo/redo. Web CI #1445 y Android CI #1544 finalizaron en PASS; el APK v0.3.7 con checksum está publicado en https://github.com/jonhararagi/animeart/actions/runs/40843352526/artifacts/12883264410. La aceptación física en el Xiaomi 24116RACCG sigue siendo independiente y pendiente.
