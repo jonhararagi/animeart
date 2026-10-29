@@ -129,6 +129,15 @@ test("creative studio UI is discoverable, searchable, offline-ready and packaged
   assert.match(html,/id="design-library-dialog"/);
   assert.match(html,/id="quick-open-design-library"/);
   assert.match(html,/data-layer-align="distribute-horizontal"/);
+  assert.match(html,/id="layer-group-selection"/);
+  assert.match(html,/id="layer-ungroup-selection"/);
+  assert.match(html,/id="layer-grouping-status"/);
+  assert.match(app,/function applyGroupSelection\(/);
+  assert.match(app,/function applyUngroupSelection\(/);
+  assert.match(app,/groupLayers, transformLayers/);
+  assert.match(app,/layer\.groupId \? " \[Grupo\]"/);
+  assert.match(css,/KAPIART-LAYER-GROUPS-001/);
+  assert.ok(android.includes('test -s "$WEB/test/layer-groups.test.mjs"'));
   assert.match(app,/function initializeCanvaWorkflowTools\(/);
   assert.match(app,/animeart-web-shell-v77/);
   assert.match(css,/KAPIART-CANVA-WORKFLOW-001/);
