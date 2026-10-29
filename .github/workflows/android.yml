@@ -132,8 +132,16 @@ jobs:
           grep -q 'id="quick-open-page-manager"' "$WEB/index.html"
           grep -q 'id="multi-page-copy-layer"' "$WEB/index.html"
           grep -Fn 'id="layer-ungroup-selection"' "$WEB/index.html" || true
-          grep -Fq 'id="layer-group-selection"' "$WEB/index.html"
-          grep -Fq 'id="layer-ungroup-selection"' "$WEB/index.html"
+          python3 - "$WEB/index.html" <<'PY'
+          from pathlib import Path
+          import sys
+          html = Path(sys.argv[1]).read_text(encoding="utf-8")
+          required = ('id="layer-group-selection"', 'id="layer-ungroup-selection"')
+          missing = [marker for marker in required if marker not in html]
+          if missing:
+              raise SystemExit(f"APK editor HTML is missing required layer controls: {missing}")
+          print("PASS: both layer grouping controls are present in the APK editor HTML")
+          PY
           test -s "$WEB/test/layer-groups.test.mjs"
           grep -q 'data-creative-tab="elements"' "$WEB/index.html"
           grep -q 'id="creative-element-category"' "$WEB/index.html"
