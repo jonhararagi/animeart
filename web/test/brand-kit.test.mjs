@@ -52,13 +52,13 @@ test("brand colors are added, deduplicated, removed and bounded", () => {
   let kit = createEmptyBrandKit();
   kit = addBrandColor(kit, { name: "Coral", value: "#F2A2A0" });
   assert.equal(kit.colors.length, 1);
-  assert.throws(() => addBrandColor(kit, { name: "Coral duplicate", value: "#f2a2a0" }), /already saved/i);
-  assert.throws(() => addBrandColor(kit, { name: "", value: "#ffffff" }), /name and a valid/i);
+  assert.throws(() => addBrandColor(kit, { name: "Coral duplicate", value: "#f2a2a0" }), /ya está guardado/i);
+  assert.throws(() => addBrandColor(kit, { name: "", value: "#ffffff" }), /nombre y un color hexadecimal válido/i);
   for (let index = 1; index < BRAND_KIT_MAX_COLORS; index += 1) {
     kit = addBrandColor(kit, { name: "Color " + index, value: "#" + index.toString(16).padStart(2, "0") + "3344aa" });
   }
   assert.equal(kit.colors.length, BRAND_KIT_MAX_COLORS);
-  assert.throws(() => addBrandColor(kit, { name: "Extra", value: "#123456" }), /up to 12/i);
+  assert.throws(() => addBrandColor(kit, { name: "Extra", value: "#123456" }), /hasta 12/i);
   kit = removeBrandColor(kit, kit.colors[0].id);
   assert.equal(kit.colors.length, BRAND_KIT_MAX_COLORS - 1);
 });
@@ -81,8 +81,8 @@ test("brand text styles preserve bounded typography but never replace editable t
   assert.equal("x" in kit.textStyles[0].style, false);
   assert.equal("y" in kit.textStyles[0].style, false);
   assert.deepEqual(style, kit.textStyles[0].style);
-  assert.throws(() => addBrandTextStyle(kit, { name: "tÍTULO PRINCIPAL", style }), /already exists/i);
-  assert.throws(() => addBrandTextStyle(kit, { name: "Unsupported font", style: { ...style, fontFamily: "Fake Font" } }), /valid style/i);
+  assert.throws(() => addBrandTextStyle(kit, { name: "tÍTULO PRINCIPAL", style }), /ya existe/i);
+  assert.throws(() => addBrandTextStyle(kit, { name: "Unsupported font", style: { ...style, fontFamily: "Fake Font" } }), /capa de texto y escribe un nombre/i);
   kit = removeBrandTextStyle(kit, kit.textStyles[0].id);
   assert.equal(kit.textStyles.length, 0);
 });
@@ -93,14 +93,14 @@ test("brand kit stores only bounded raster logos and limits the count and payloa
   kit = addBrandLogo(kit, logo);
   assert.equal(kit.logos.length, 1);
   assert.equal(kit.logos[0].source, logo.source);
-  assert.throws(() => addBrandLogo(kit, { ...logo, name: "External SVG", source: "data:image/svg+xml,<svg/>" }), /PNG, JPEG or WebP/i);
+  assert.throws(() => addBrandLogo(kit, { ...logo, name: "External SVG", source: "data:image/svg+xml,<svg/>" }), /PNG, JPEG o WebP/i);
   assert.throws(() => addBrandLogo(kit, { ...logo, name: "Big", source: "data:image/png;base64," + "A".repeat(300_001) }), /300 KB/i);
-  assert.throws(() => addBrandLogo(kit, { ...logo, width: 9000, height: 10 }), /PNG, JPEG or WebP/i);
+  assert.throws(() => addBrandLogo(kit, { ...logo, width: 9000, height: 10 }), /PNG, JPEG o WebP/i);
   for (let index = 2; index <= BRAND_KIT_MAX_LOGOS; index += 1) {
     kit = addBrandLogo(kit, { ...logo, name: "Logo " + index });
   }
   assert.equal(kit.logos.length, BRAND_KIT_MAX_LOGOS);
-  assert.throws(() => addBrandLogo(kit, { ...logo, name: "Logo extra" }), /up to 4/i);
+  assert.throws(() => addBrandLogo(kit, { ...logo, name: "Logo extra" }), /hasta 4/i);
   kit = removeBrandLogo(kit, kit.logos[0].id);
   assert.equal(kit.logos.length, BRAND_KIT_MAX_LOGOS - 1);
 });
