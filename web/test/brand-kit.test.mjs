@@ -55,7 +55,7 @@ test("brand colors are added, deduplicated, removed and bounded", () => {
   assert.throws(() => addBrandColor(kit, { name: "Coral duplicate", value: "#f2a2a0" }), /ya está guardado/i);
   assert.throws(() => addBrandColor(kit, { name: "", value: "#ffffff" }), /nombre y un color hexadecimal válido/i);
   for (let index = 1; index < BRAND_KIT_MAX_COLORS; index += 1) {
-    kit = addBrandColor(kit, { name: "Color " + index, value: "#" + index.toString(16).padStart(2, "0") + "3344aa" });
+    kit = addBrandColor(kit, { name: "Color " + index, value: "#" + index.toString(16).padStart(2, "0") + "34aa" });
   }
   assert.equal(kit.colors.length, BRAND_KIT_MAX_COLORS);
   assert.throws(() => addBrandColor(kit, { name: "Extra", value: "#123456" }), /hasta 12/i);
@@ -122,7 +122,7 @@ test("brand kit persists locally, reloads deterministically and fails safely on 
 });
 
 test("brand kit normalization enforces style and color collection ceilings", () => {
-  const colors = Array.from({ length: 20 }, (_, index) => ({ id: "color-" + index, name: "C" + index, value: "#" + index.toString(16).padStart(2, "0") + "223344" }));
+  const colors = Array.from({ length: 20 }, (_, index) => ({ id: "color-" + index, name: "C" + index, value: "#" + index.toString(16).padStart(2, "0") + "2233" }));
   const textStyles = Array.from({ length: 25 }, (_, index) => ({ id: "style-" + index, name: "Style " + index, style: createTextLayer("t").text }));
   const kit = normalizeBrandKit({ colors, textStyles });
   assert.equal(kit.colors.length, BRAND_KIT_MAX_COLORS);
