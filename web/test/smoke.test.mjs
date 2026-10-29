@@ -1118,3 +1118,33 @@ test("KAPIART-DESIGN-RESIZE-001 exposes editable format adaptation with undo and
   assert.match(resize, /MAX_DESIGN_RESIZE_PIXELS = 40_000_000/);
   assert.match(resize, /export function resizeDocumentForFormat/);
 });
+
+
+test("KAPIART-BRAND-KIT-001 wires a local brand identity to text layers, logos and the offline shell", async () => {
+  const [html, app, worker, brandKit, brandKitTests] = await Promise.all([
+    readFile("index.html", "utf8"),
+    readFile("app.js", "utf8"),
+    readFile("service-worker.js", "utf8"),
+    readFile("domain/brand-kit.mjs", "utf8"),
+    readFile("test/brand-kit.test.mjs", "utf8")
+  ]);
+  assert.match(html, /id="brand-kit-dialog"/);
+  assert.match(html, /id="open-brand-kit"/);
+  assert.match(html, /id="quick-open-brand-kit"/);
+  assert.match(html, /id="brand-kit-logo-file" type="file" accept="image\/png,image\/jpeg,image\/webp"/);
+  assert.match(app, /initializeBrandKitTools\(\)/);
+  assert.match(app, /addBrandColor\(kit/);
+  assert.match(app, /addBrandTextStyle\(kit/);
+  assert.match(app, /addBrandLogo\(kit/);
+  assert.match(app, /setLayerText\(state\.document,layer\.id,patch\)/);
+  assert.match(app, /createImageLayer\("Marca · "\+item\.name/);
+  assert.match(app, /addLayer\(state\.document,layer\)/);
+  assert.match(app, /animeart-web-shell-v79/);
+  assert.match(app, /"\.\/domain\/brand-kit\.mjs"/);
+  assert.match(worker, /animeart-web-shell-v79/);
+  assert.match(worker, /"\.\/domain\/brand-kit\.mjs"/);
+  assert.match(brandKit, /BRAND_KIT_MAX_COLORS = 12/);
+  assert.match(brandKit, /BRAND_KIT_MAX_TEXT_STYLES = 20/);
+  assert.match(brandKit, /BRAND_KIT_MAX_LOGOS = 4/);
+  assert.match(brandKitTests, /brand kit stores only bounded raster logos/);
+});
