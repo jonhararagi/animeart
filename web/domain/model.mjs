@@ -147,6 +147,10 @@ function isSafeCharacterGroupId(value) {
   return typeof value === "string" && /^[a-zA-Z0-9._:-]{1,96}$/.test(value);
 }
 
+function isSafeLayerGroupId(value) {
+  return typeof value === "string" && /^[a-zA-Z0-9._:-]{1,96}$/.test(value);
+}
+
 export function normalizeCharacterComposition(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   if (!isSafeCharacterGroupId(value.groupId) ||
@@ -193,6 +197,7 @@ function normalizeLayer(layer, index) {
   return {
     id: layer?.id || createId(),
     name: layer?.name || `Layer ${index + 1}`,
+    ...(isSafeLayerGroupId(layer?.groupId) ? { groupId: layer.groupId } : {}),
     visible: layer?.visible !== false,
     locked: layer?.locked === true,
     opacity: Number.isFinite(Number(layer?.opacity))
@@ -271,10 +276,11 @@ export function isValidDocument(document) {
             Number.isFinite(point.y)
           )
         );
+      const validGroup = layer?.groupId === undefined || isSafeLayerGroupId(layer.groupId);
       const validAdjustments = layer?.adjustments === undefined || isValidLayerAdjustments(layer.adjustments);
       const validCharacterMetadata = layer?.characterComposition === undefined ||
         (layer.contentType === "image" && isValidCharacterComposition(layer.characterComposition));
-      if (!validCommon || !validAdjustments || !validCharacterMetadata || !["drawing", "image", "text"].includes(layer.contentType)) return false;
+      if (!validCommon || !validGroup || !validAdjustments || !validCharacterMetadata || !["drawing", "image", "text"].includes(layer.contentType)) return false;
       if (layer.contentType === "drawing") return !layer.image && !layer.text;
       if (layer.contentType === "image") return Boolean(
         layer.image && !layer.text &&
