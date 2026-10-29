@@ -131,8 +131,9 @@ jobs:
           grep -q 'id="multi-page-export-pdf"' "$WEB/index.html"
           grep -q 'id="quick-open-page-manager"' "$WEB/index.html"
           grep -q 'id="multi-page-copy-layer"' "$WEB/index.html"
-          grep -q 'id="layer-group-selection"' "$WEB/index.html"
-          grep -q 'id="layer-ungroup-selection"' "$WEB/index.html"
+          grep -Fn 'id="layer-ungroup-selection"' "$WEB/index.html" || true
+          grep -Fq 'id="layer-group-selection"' "$WEB/index.html"
+          grep -Fq 'id="layer-ungroup-selection"' "$WEB/index.html"
           test -s "$WEB/test/layer-groups.test.mjs"
           grep -q 'data-creative-tab="elements"' "$WEB/index.html"
           grep -q 'id="creative-element-category"' "$WEB/index.html"
