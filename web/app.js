@@ -1,5 +1,6 @@
 import { DOCUMENT_VERSION, createId, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
 import { createLayerAlignmentTransforms } from "./domain/design-alignment.mjs";
+import { applyTextStyleToPage } from "./domain/page-style-continuity.mjs";
 import { resizeDocumentForFormat } from "./domain/design-resize.mjs";
 import { deleteDesign, duplicateDesign, listDesigns, loadDesign, renameDesign, saveDesign } from "./domain/design-library.mjs";
 import { addMultiPagePage, copyLayerToPage, createMultiPageProject, deleteMultiPagePage, deleteMultiPageProject, listMultiPageProjects, loadMultiPagePage, renameMultiPagePage, renameMultiPageProject, reorderMultiPagePage, saveMultiPagePage, setActiveMultiPagePage } from "./domain/multi-page-project.mjs";
@@ -7499,6 +7500,27 @@ async function exportActiveMultiPagePdf() {
  } finally { if (button) button.disabled = false; }
 }
 
+async function applySelectedTextStyleToAnotherPage() {
+ if (!activeMultiPageSession) throw new Error("Abre primero un proyecto multipágina.");
+ if (!state.selectedLayerId) throw new Error("Selecciona una capa de texto para reutilizar su estilo.");
+ const sourceLayer = state.document.layers.find(layer => layer.id === state.selectedLayerId);
+ if (!sourceLayer || sourceLayer.contentType !== "text") throw new Error("Esta acción necesita una capa de texto seleccionada.");
+ const targetId = document.querySelector("#multi-page-copy-target")?.value;
+ if (!targetId) throw new Error("Elige otra página de destino.");
+ await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+ const session = activeMultiPageSession, target = session.pages.find(page => page.id === targetId);
+ if (!target) throw new Error("No se encontró la página de destino.");
+ const targetDocument = await loadMultiPagePage(session.id, targetId);
+ if (!targetDocument) throw new Error("No se pudo abrir la página de destino.");
+ const styled = applyTextStyleToPage(state.document, targetDocument, state.selectedLayerId);
+ if (!styled.ok) throw new Error(styled.error);
+ const thumbnail = await createDesignThumbnail(styled.document);
+ const saved = await saveMultiPagePage(session.id, targetId, styled.document, { thumbnail });
+ activeMultiPageSession = { ...saved.project, activePageId: session.activePageId };
+ setMultiPageStatus("Estilo tipográfico aplicado a " + styled.updatedCount + " texto(s) de «" + target.name + "». Se conservaron el contenido, la posición y las capas bloqueadas.", "success");
+ await renderMultiPageDialog();
+}
+
 async function copySelectedLayerToAnotherPage() {
  if (!activeMultiPageSession) throw new Error("Abre primero un proyecto multipágina.");
  if (!state.selectedLayerId) throw new Error("Selecciona una capa para copiar.");
@@ -7704,6 +7726,10 @@ function initializeCanvaWorkflowTools(){
   catch(error){setMultiPageStatus(error?.message||"No se pudo duplicar la página.","error");}
  });
  document.querySelector("#multi-page-export-pdf")?.addEventListener("click",()=>{void exportActiveMultiPagePdf();});
+ document.querySelector("#multi-page-copy-text-style")?.addEventListener("click",async()=>{
+  try{await applySelectedTextStyleToAnotherPage();}
+  catch(error){setMultiPageStatus(error?.message||"No se pudo reutilizar el estilo tipográfico.", "error");}
+ });
  document.querySelector("#multi-page-copy-layer")?.addEventListener("click",async()=>{
   try{await copySelectedLayerToAnotherPage();}
   catch(error){setMultiPageStatus(error?.message||"No se pudo copiar la capa.","error");}
