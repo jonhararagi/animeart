@@ -245,6 +245,7 @@ const state = {
   transformInteraction: null,
   multiTransformInteraction: null,
   snapGuides: [],
+  magneticSnappingEnabled: true,
   adjustmentPreview: null,
   textPreview: null,
   viewport: createViewport(),
@@ -2905,6 +2906,7 @@ function interactionLayers(interaction) {
 
 function snapMoveDelta(layers, desiredX, desiredY) {
   const constrained = constrainMoveDelta(layers, desiredX, desiredY);
+  if (!state.magneticSnappingEnabled) { state.snapGuides = []; return constrained; }
   const bounds = layers.map(layer => getLayerAlignmentBounds(layer, state.document)).filter(Boolean);
   if (!bounds.length) { state.snapGuides = []; return constrained; }
   const movingBounds = {
@@ -4431,6 +4433,30 @@ document.querySelectorAll("[data-brush-color]").forEach(button => {
 });
 
 // This control sits outside the canvas event surface: toggling the tools must never paint or erase.
+const magneticSnappingToggle = document.querySelector("#magnetic-snapping-toggle");
+function syncMagneticSnappingToggle() {
+  if (!magneticSnappingToggle) return;
+  magneticSnappingToggle.setAttribute("aria-pressed", String(state.magneticSnappingEnabled));
+  magneticSnappingToggle.dataset.active = String(state.magneticSnappingEnabled);
+  magneticSnappingToggle.title = state.magneticSnappingEnabled
+    ? "Ajuste magnético activado. Toca para permitir movimiento libre"
+    : "Movimiento libre activado. Toca para alinear automáticamente";
+  magneticSnappingToggle.setAttribute("aria-label", state.magneticSnappingEnabled
+    ? "Desactivar ajuste magnético y mover libremente"
+    : "Activar ajuste magnético");
+  magneticSnappingToggle.querySelector(".magnet-label").textContent = state.magneticSnappingEnabled ? "Imán: activado" : "Imán: apagado";
+}
+magneticSnappingToggle?.addEventListener("click", () => {
+  state.magneticSnappingEnabled = !state.magneticSnappingEnabled;
+  state.snapGuides = [];
+  syncMagneticSnappingToggle();
+  redraw();
+  status.textContent = state.magneticSnappingEnabled
+    ? "Ajuste magnético activado"
+    : "Movimiento libre: ajuste magnético desactivado";
+});
+syncMagneticSnappingToggle();
+
 const mobileToolsToggle = document.querySelector("#mobile-tools-toggle");
 mobileToolsToggle?.addEventListener("click", event => {
   event.preventDefault();
