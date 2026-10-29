@@ -229,6 +229,15 @@
     <aside class="layers" aria-label="Capas">
       <h2>Capas</h2>
       <ol id="layers"></ol>
+        <section class="layer-grouping-panel" aria-labelledby="layer-grouping-title">
+          <h3 id="layer-grouping-title">Agrupar capas</h3>
+          <p>Seleccioná varias capas. Agrupar conserva cada elemento editable y permite moverlos juntos; desagrupar devuelve el control individual.</p>
+          <div class="layer-grouping-actions">
+            <button type="button" id="layer-group-selection" disabled>Agrupar selección</button>
+            <button type="button" id="layer-ungroup-selection" disabled>Desagrupar</button>
+          </div>
+          <p id="layer-grouping-status" role="status" aria-live="polite">Elegí dos o más capas para crear un grupo.</p>
+        </section>
         <section class="layer-alignment-panel" aria-labelledby="layer-alignment-title">
           <h3 id="layer-alignment-title">Alinear y distribuir</h3>
           <p>Selecciona varias capas para alinearlas entre sí. Con una sola, se alineará con el lienzo.</p>
