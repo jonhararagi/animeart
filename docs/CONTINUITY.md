@@ -4247,3 +4247,43 @@ El código está consolidado en `main` por la PR #124: commit squash `2a2847be9f
 ### Estado de aceptación
 
 Los commits de implementación en la rama son reales, pero todavía no se declara PASS de compilación/tests/E2E ni APK porque debe ejecutarse CI en el HEAD final. Ejecutar Web CI y Android CI sobre el mismo SHA; revisar resultados y artefacto APK antes de integrar. La aceptación táctil en Xiaomi `24116RACCG` permanece pendiente y no se presume por CI/emulador.
+
+
+## KapiArt · redimensionado inteligente de lienzo integrado · 2026-10-29
+
+### Consolidación en main
+
+- PR #126: https://github.com/jonhararagi/animeart/pull/126
+- Estado: **MERGED** por squash.
+- Merge commit en `main`: `8c3ba62546e4855558787b8d877ddd28e3863000`.
+- SHA de la rama validada antes de integrar: `970bda90eda5abd5d2e974425fafe9b57c36ae25`.
+- Se conserva el shell offline v78 y el nuevo módulo `web/domain/design-resize.mjs`.
+
+### Validación real sobre el SHA de la PR
+
+- **Web CI PASS**, ejecución #40862970925: https://github.com/jonhararagi/animeart/actions/runs/40862970925
+  - 474 pruebas Node aprobadas, 0 fallos.
+  - Build, benchmark de procesamiento de imagen y empaquetado web aprobados.
+  - E2E real de Chromium terminó con `ANIMEART_REAL_WEB_E2E: PASS`; verificó cambio a formato historia, conservación de IDs/orden/texto editable y Deshacer. Continuó aprobando biblioteca de elementos, alineación, proyectos multipágina, exportación PDF y agrupación.
+- **Android CI PASS**, ejecución #40862971109: https://github.com/jonhararagi/animeart/actions/runs/40862971109
+  - Build, verificación del editor empaquetado, unit tests, lint, instrumentación y arranque offline aprobados.
+  - Diagnóstico de caché: `animeart-web-shell-v78`, 51 recursos en caché, 46 requeridos, ninguno ausente.
+  - La validación offline confirmó red bloqueada, recarga desde caché, JavaScript y Canvas disponibles.
+
+### APK producida por esa ejecución
+
+- Artefacto Android: https://github.com/jonhararagi/animeart/actions/runs/40862971109/artifacts/12891539443
+- Nombre del artefacto: `kapiart-android-debug-v0.3.7-92be24975422cad7a3860cd4b7015cb8b3cd27b1`.
+- Tamaño ZIP: 10.821.664 bytes.
+- Digest SHA-256 del ZIP de artefacto publicado por GitHub: `dfb836391f2e1d5fa9fa8ab0bb354aefb3297e28c7bb489a599b5ae59f120877`.
+- APK: `versionName=0.3.7`, `versionCode=10`; el workflow verificó el sidecar `.apk.sha256` con `sha256sum --check`.
+- Certificado de firma SHA-256: `8a1e4b210677e258c919eb85c4037262a722227465af791bfdf0b0852dd181ea`. Esta APK de CI usa firma de depuración efímera; no se garantiza instalarla como actualización de una APK firmada con otra clave.
+- Pendiente independiente: probar los controles táctiles físicamente en Xiaomi `24116RACCG`; el emulador no sustituye esa aceptación.
+
+### Alcance funcional entregado
+
+- Presets para post cuadrado, post vertical, historia/short, vídeo horizontal, wallpaper móvil, A4 y tamaños personalizados.
+- Modos **Ajustar todo**, **Cubrir el lienzo** y **Cambiar solo el marco**.
+- Conserva las capas editables y sus IDs, orden, contenido de texto e imagen, grupos, máscaras, opacidad y rotaciones; usa el historial existente para Deshacer.
+- Límites seguros de 8192 px por lado y 40 megapíxeles, sin ampliar el límite heredado de 2,5 MB del proyecto portable.
+- Accesible desde escritorio y desde «Más herramientas» en móvil. El módulo está incluido en el shell offline y las verificaciones del paquete Android.
