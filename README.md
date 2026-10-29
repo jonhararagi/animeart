@@ -23,6 +23,7 @@ AnimeArt is a local-first **image editor and compositor**, inspired by everyday 
 - Create from an expanded local library of editable anime-oriented templates for social posts, stories, video thumbnails, banners, wallpapers, character sheets, manga, books, events, invitations and more; suggested canvas formats are preselected but remain editable.
 - Align single layers to the canvas or multiple selected layers to each other; distribute three or more layers evenly, preserving each layer's scale/rotation and supporting undo/redo.
 - Adapt an existing composition to square posts, portrait posts, stories, video, mobile wallpapers or A4 with **Cambiar formato**. Fit, fill and reframe modes transform the existing editable layers without flattening them; the operation is undoable and validates the canvas against 8192 px per side and 40 MP.
+- Save a local **Kit de marca** with up to 12 colors, 20 reusable text styles and 4 raster logos/signatures. Apply brand colors and typography to editable text layers, or insert logos as separate editable image layers. Nothing is uploaded to a cloud service.
 - Keep a local **Mis diseños** library in IndexedDB with thumbnails and editable projects: save, open, duplicate, rename and delete. It is capped at 40 entries and refuses new saves at capacity instead of silently deleting older designs. The current 2.5 MB document-storage limit still applies.
 - Install as a PWA with an offline application shell.
 
