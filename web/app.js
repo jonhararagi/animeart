@@ -1,5 +1,6 @@
 import { DOCUMENT_VERSION, createId, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
 import { createLayerAlignmentTransforms } from "./domain/design-alignment.mjs";
+import { resizeDocumentForFormat } from "./domain/design-resize.mjs";
 import { deleteDesign, duplicateDesign, listDesigns, loadDesign, renameDesign, saveDesign } from "./domain/design-library.mjs";
 import { addMultiPagePage, copyLayerToPage, createMultiPageProject, deleteMultiPagePage, deleteMultiPageProject, listMultiPageProjects, loadMultiPagePage, renameMultiPagePage, renameMultiPageProject, reorderMultiPagePage, saveMultiPagePage, setActiveMultiPagePage } from "./domain/multi-page-project.mjs";
 import { buildMultiPagePdf } from "./domain/pdf-export.mjs";
@@ -7565,6 +7566,84 @@ function applyUngroupSelection() {
 }
 
 function initializeCanvaWorkflowTools(){
+ const resizeDialog=document.querySelector("#design-resize-dialog");
+ const resizeForm=document.querySelector("#design-resize-form");
+ const resizePreset=document.querySelector("#design-resize-preset");
+ const resizeWidth=document.querySelector("#design-resize-width");
+ const resizeHeight=document.querySelector("#design-resize-height");
+ const resizeCurrent=document.querySelector("#design-resize-current");
+ const resizeStatus=document.querySelector("#design-resize-status");
+ const resizeApply=document.querySelector("#design-resize-apply");
+ const resizePresets={square:[1080,1080],post:[1080,1350],story:[1080,1920],video:[1920,1080],wallpaper:[1440,3200],a4:[2480,3508]};
+ const resizeModeLabels={fit:"Ajustar todo",fill:"Cubrir el lienzo",reframe:"Cambiar solo el marco"};
+ const updateResizeAvailability=()=>{
+  if(!resizeApply)return;
+  const width=Number(resizeWidth?.value),height=Number(resizeHeight?.value);
+  resizeApply.disabled=!(Number.isInteger(width)&&width>0&&width<=8192&&Number.isInteger(height)&&height>0&&height<=8192&&width*height<=40000000&&state.document.width>0&&state.document.height>0);
+ };
+ const openResizeDialog=()=>{
+  if(!resizeDialog||!resizeWidth||!resizeHeight)return;
+  resizeWidth.value=String(state.document.width>0?state.document.width:800);
+  resizeHeight.value=String(state.document.height>0?state.document.height:600);
+  if(resizePreset)resizePreset.value="custom";
+  if(resizeCurrent)resizeCurrent.textContent=state.document.width>0&&state.document.height>0
+   ?"Lienzo actual: "+state.document.width+" × "+state.document.height+" px · "+state.document.layers.length+" capas editables."
+   :"Primero crea un lienzo para poder adaptar su composición.";
+  if(resizeStatus)resizeStatus.textContent="Las capas seguirán separadas. Puedes deshacer el cambio con el botón Deshacer.";
+  updateResizeAvailability();
+  if(!resizeDialog.open)resizeDialog.showModal();
+ };
+ document.querySelector("#open-design-resize")?.addEventListener("click",openResizeDialog);
+ document.querySelector("#quick-open-design-resize")?.addEventListener("click",()=>{if(toolboxDialog?.open)toolboxDialog.close();openResizeDialog();});
+ document.querySelector("#design-resize-close")?.addEventListener("click",()=>resizeDialog?.close());
+ document.querySelector("#design-resize-cancel")?.addEventListener("click",()=>resizeDialog?.close());
+ resizePreset?.addEventListener("change",()=>{
+  const dimensions=resizePresets[resizePreset.value];
+  if(dimensions){resizeWidth.value=String(dimensions[0]);resizeHeight.value=String(dimensions[1]);}
+  updateResizeAvailability();
+ });
+ [resizeWidth,resizeHeight].forEach(input=>input?.addEventListener("input",()=>{
+  if(resizePreset)resizePreset.value="custom";
+  updateResizeAvailability();
+ }));
+ resizeForm?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  if(state.storageRecoveryPending){
+   if(resizeStatus)resizeStatus.textContent="El proyecto está protegido. Guarda o exporta una copia antes de adaptar el lienzo.";
+   return;
+  }
+  const width=Number(resizeWidth?.value),height=Number(resizeHeight?.value);
+  const mode=resizeForm.querySelector('input[name="design-resize-mode"]:checked')?.value||"fit";
+  if(!resizeApply)return;
+  resizeApply.disabled=true;
+  try{
+   const before=cloneDocument(state.document);
+   const next=resizeDocumentForFormat(state.document,width,height,mode);
+   state.document=next;
+   state.history.record(before,next);
+   state.viewport=createViewport();
+   state.transformInteraction=null;
+   state.multiTransformInteraction=null;
+   state.drawing=false;
+   state.strokeBefore=null;
+   state.textPreview=null;
+   state.dirty=true;
+   const message="Formato adaptado: "+width+" × "+height+" px. Se conservaron "+next.layers.length+" capas editables.";
+   refreshDocument(message);
+   persistDocument();
+   let notice=message+" Modo: "+resizeModeLabels[mode]+".";
+   if(activeMultiPageSession){
+    try{await saveActiveMultiPagePage({withThumbnail:true,announce:false});}
+    catch(error){notice+=" Aviso: no se pudo actualizar la copia multipágina guardada; abre Páginas y pulsa «Guardar página». "+(error?.message||"");}
+   }
+   if(resizeCurrent)resizeCurrent.textContent="Nuevo lienzo: "+width+" × "+height+" px · "+next.layers.length+" capas editables.";
+   if(resizeStatus)resizeStatus.textContent=notice;
+   resizeDialog.close();
+   showMobileFeedback(notice,notice.startsWith(message+" Modo:")?"success":"info");
+  }catch(error){
+   if(resizeStatus)resizeStatus.textContent=error?.message||"No se pudo adaptar el lienzo. No se han aplanado las capas.";
+  }finally{updateResizeAvailability();}
+ });
  document.querySelectorAll("[data-layer-align]").forEach(button=>button.addEventListener("click",()=>applySelectedLayerAlignment(button.dataset.layerAlign)));
  document.querySelector("#layer-group-selection")?.addEventListener("click",applyGroupSelection);
  document.querySelector("#layer-ungroup-selection")?.addEventListener("click",applyUngroupSelection);
@@ -7694,7 +7773,7 @@ if (typeof ResizeObserver === "function") {
 
 
 // Multipage PDF export stays local and caps raster work to protect mobile memory.
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v77";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v78";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -7704,7 +7783,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/asset-library.mjs",
   "./domain/asset-deduplication.mjs",
   "./domain/asset-library-pagination.mjs",
-  "./domain/creative-catalog.mjs", "./domain/design-alignment.mjs", "./domain/design-library.mjs", "./domain/multi-page-project.mjs", "./domain/element-library.mjs",
+  "./domain/creative-catalog.mjs", "./domain/design-alignment.mjs", "./domain/design-resize.mjs", "./domain/design-library.mjs", "./domain/multi-page-project.mjs", "./domain/element-library.mjs",
   "./domain/anime-style-library.mjs",
   "./domain/anime-character-presets.mjs",
   "./manifest.webmanifest",
