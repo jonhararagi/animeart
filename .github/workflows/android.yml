@@ -108,6 +108,8 @@ jobs:
           test -s "$WEB/domain/design-resize.mjs"
           test -s "$WEB/domain/design-library.mjs"
           test -s "$WEB/domain/multi-page-project.mjs"
+          test -s "$WEB/domain/page-style-continuity.mjs"
+          grep -q 'id="multi-page-copy-text-style"' "$WEB/index.html"
           test -s "$WEB/domain/pdf-export.mjs"
           test -s "$WEB/domain/element-library.mjs"
           test -s "$WEB/domain/anime-style-library.mjs"
