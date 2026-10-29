@@ -163,7 +163,7 @@ test("expanded KapiArt template library covers practical creator workflows with 
     ["manga-chapter-opener", "portrait"],
     ["event-poster-pastel", "portrait"],
     ["creator-banner", "banner"],
-    ["character-relationship", "landscape"],
+    ["character-relationship", "banner"],
     ["phone-wallpaper-neon", "story"],
     ["product-promo-kawaii", "square"]
   ];
