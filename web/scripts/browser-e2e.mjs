@@ -2822,6 +2822,7 @@ try {
   await waitFor('document.querySelector("#brand-kit-dialog")?.open === true');
   await evaluate(`(() => {
     document.querySelector("#brand-kit-name").value="KapiStudio E2E";
+    document.querySelector("#brand-kit-name-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
     document.querySelector("#brand-kit-color-name").value="Coral Kapi";
     document.querySelector("#brand-kit-color-value").value="#ff44aa";
     document.querySelector("#brand-kit-color-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
