@@ -2717,6 +2717,12 @@ try {
     await clickMoreGoal("layers");
     await waitFor('document.body.classList.contains("mobile-layers-open")');
   }
+  await evaluate(`(() => {
+    const documentModel = JSON.parse(localStorage.getItem("animeart-web-document") || "{}");
+    const current = documentModel.layers?.length || 0;
+    if (current < 2) document.querySelector("#add-layer")?.click();
+    return true;
+  })()`);
   await waitFor('document.querySelectorAll("#layers .layer-select").length >= 2',10000);
   const selectedTwoLayers = await evaluate(`(() => {
     const buttons = [...document.querySelectorAll("#layers .layer-select")];
