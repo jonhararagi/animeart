@@ -4822,3 +4822,11 @@ dialog {
  #design-resize-form select,#design-resize-form input[type=number]{min-height:48px}
 }
 @media(prefers-reduced-motion:reduce){.design-resize-modes>label{transition:none}}
+
+
+/* KAPIART-TOUCH-ALIGNMENT-001: keep alignment controls comfortable on phones. */
+.layer-alignment-grid button { min-height: 44px; }
+@media (max-width: 720px) {
+  .layer-alignment-grid { gap: 0.55rem; }
+  .layer-alignment-grid button { min-height: 46px; padding-inline: 0.65rem; }
+}
