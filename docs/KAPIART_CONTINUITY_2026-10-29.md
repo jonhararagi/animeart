@@ -42,3 +42,17 @@ Estado: PARTIAL · rama abierta, sin merge.
 4. Ejecutar tests web, E2E Chromium y Android CI sobre el mismo HEAD.
 5. Comparar PR #123 y #129 contra main vigente, rescatar deltas exclusivos y sus complementos.
 6. No fusionar PR ni modificar main sin autorización explícita. Al autorizar integración, consolidar todos los complementos útiles y verificar el SHA de main posterior.
+
+
+## 2026-10-29 · Seguimiento PR #131 tras CI
+
+- Rama activa: `feature/kapiart-smart-snapping-001`.
+- HEAD verificado: `2238c6f54d7577d45df28444e047166159721833`.
+- PR #131 sigue abierta, draft y sin merge. `main` no fue modificado.
+- Web CI anterior, run `40974014286`: compilación PASS, tests FAIL (477/481). Los cuatro fallos fueron contratos de pruebas desactualizados: dos esperaban el antiguo `constrainMoveDelta`, uno esperaba siempre `mobile-tools-collapsed` aunque el teléfono usa `mobile-canvas-focus`, y otro esperaba la etiqueta antigua “Mostrar herramientas”.
+- Se actualizaron las expectativas en `web/test/guided-editing.test.mjs`, `web/test/smoke.test.mjs` y `web/test/smooth-interaction.test.mjs`. Commits: `861411f2999d1e26a62fd5ad691ff573f8ab2c23`, `ef2a7c3f7e4d35aa6b378ec73b1dd84b518822c1`, `2238c6f54d7577d45df28444e047166159721833`.
+- Todavía no hay un nuevo resultado Web CI asociado al HEAD actualizado.
+- Android run `40974014233`: build, verificación del editor, unit tests y lint PASS; instrumented/startup smoke tests seguían en ejecución al último chequeo, sin APK publicado aún.
+- Pendiente: confirmar nueva ejecución Web CI y final Android CI; luego auditar diálogos/modos existentes uno por uno para Cancelar/Cerrar/Volver/Escape y verificar que cancelar descarte previews sin dejar gestos/guías activos. La ley documentada no equivale a auditoría completa.
+- Pendiente prueba visual en emulador y prueba física Xiaomi `24116RACCG`; no declarar realizadas.
+- No fusionar PR #131 ni otras ramas sin autorización expresa.
