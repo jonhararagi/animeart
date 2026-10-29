@@ -92,3 +92,18 @@ Pendiente de aceptación final: Web CI debe completar el build/tests/benchmark/E
 - El PDF usa una resolución común que se reduce si el total excede el presupuesto de memoria; cada página conserva su proporción y su tamaño físico relativo en el PDF.
 - Se actualiza el shell offline a `animeart-web-shell-v76`, se incluye `web/domain/pdf-export.mjs` en recursos requeridos y se agregan pruebas unitarias del formato y E2E de exportación desde Chromium.
 - Aceptación pendiente de esta fase: Web CI y Android CI deben pasar sobre el mismo HEAD exacto, y debe existir artefacto APK de esa revisión. La prueba física en el Xiaomi `24116RACCG` sigue separada.
+
+
+## Fase de agrupación persistente de capas · 2026-10-29
+
+Esta fase añade agrupación/desagrupación real al modelo de capas existente:
+
+- El campo `groupId` se normaliza y valida en el modelo. Los documentos antiguos sin el campo siguen siendo válidos.
+- Agrupar requiere al menos dos capas desbloqueadas. Los fondos fijos y las selecciones incompletas se rechazan.
+- Los miembros conservan sus tipos, contenido, transformaciones e identificadores individuales; no se crea una imagen aplanada. Mover, escalar y rotar usa la selección múltiple existente.
+- Seleccionar un miembro selecciona el grupo completo. **Desagrupar** elimina la membresía y devuelve la edición independiente.
+- Duplicar una sola capa no la añade accidentalmente al grupo original. Si se elimina un miembro y queda solo uno, el grupo restante se disuelve para no mantener grupos inválidos.
+- La UI ofrece controles táctiles en el panel Capas y etiqueta los miembros con `[Grupo]`. La acción entra en el historial normal de undo/redo.
+- Hay pruebas de dominio y E2E Chromium para persistencia tras normalización, capas bloqueadas, duplicación, selección conjunta, agrupación y desagrupación. El shell offline se actualizó a `animeart-web-shell-v77` y Android CI comprueba el panel y el test dedicado.
+
+El estado final de esta fase debe documentar Web CI y Android CI sobre el mismo SHA. La validación física en el Xiaomi `24116RACCG` sigue pendiente.
