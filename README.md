@@ -66,3 +66,8 @@ GitHub Actions checks the Web build, real Chromium interactions, Android instrum
 The editor now includes an **Editar fácilmente** panel with shortcuts for cropping, background removal, erasing, censor light, drawing, text, color adjustments, layers, undo and export. Contextual help is optional and its preference is kept locally on the device. Less frequently used controls are grouped under **Más herramientas**.
 
 **Luz de censura** paints on a separate drawing layer, with white as the default color, a document-space diameter control, opacity, edge softness, optional glow and Punto / Normal / Grande / Línea presets. Undo/redo works through the existing document history. Raster exports are flattened images; when visible censor strokes exist, the editor requires the explicit **Censura permanente al exportar** confirmation. Keep the editable project separately if you need to revise the censor layer later. A glow effect is visual, not a guarantee that covered source information is removed from the editable project.
+
+
+### Layer groups
+
+Select two or more layers in the **Capas** panel and choose **Agrupar selección** to move, scale or rotate them as a single selection. The group stores a stable local ID in the editable document, so membership survives saving, reopening and undo/redo; each image, text layer or drawing remains independent rather than being flattened. Select a member to select the group, or choose **Desagrupar** to return to individual editing. Locked layers and fixed backgrounds cannot be added to a group. Duplicating one member creates an independent layer, not an accidental member of the original group.
