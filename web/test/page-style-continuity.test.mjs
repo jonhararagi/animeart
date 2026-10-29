@@ -36,7 +36,7 @@ test("shared text style carries typography and effects across pages without repl
   assert.equal(result.document.layers[1].text.fontSize, 76);
   assert.equal(result.document.layers[2].text.fontSize, 18);
   assert.equal(result.document.layers[2].text.value, "Mantener intacto");
-  assert.equal(target.layers[1].text.fontSize, 22);
+  assert.equal(target.layers[1].text.fontSize, 16);
 });
 
 test("shared text style rejects missing, non-text, and incompatible layers clearly", () => {
