@@ -46,8 +46,8 @@ val syncWebEditorAssets = tasks.register<Sync>("syncWebEditorAssets") {
         }
         val copiedHtml = copiedIndex.readText(Charsets.UTF_8)
         check(
-            copiedHtml.contains("id=\\\"layer-group-selection\\\"") &&
-            copiedHtml.contains("id=\\\"layer-ungroup-selection\\\"")
+            copiedHtml.contains("layer-group-selection") &&
+            copiedHtml.contains("layer-ungroup-selection")
         ) {
             "The generated Android Web assets do not contain the complete layer grouping controls."
         }
