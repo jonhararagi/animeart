@@ -135,7 +135,7 @@ function normalizeImage(image) {
   return { source: image.source, width, height, flipX: image.flipX === true, flipY: image.flipY === true, mask: masks.includes(image.mask) ? image.mask : "none", ...(typeof image.restoreSource === "string" && image.restoreSource.length <= 2_000_000 ? { restoreSource: image.restoreSource } : {}) };
 }
 
-const ANIME_CHARACTER_PARTS = new Set(["hairBack", "face", "hairFront", "eyes"]);
+const ANIME_CHARACTER_PARTS = new Set(["hairBack", "face", "hairFront", "eyes", "expression"]);
 const ANIME_CHARACTER_COMPONENT_KEYS = ["eyes", "hair", "face"];
 const ANIME_CHARACTER_COLOR_KEYS = ["hair", "eyes", "skin", "line"];
 
@@ -158,7 +158,14 @@ export function normalizeCharacterComposition(value) {
       !ANIME_CHARACTER_PARTS.has(value.part)) return null;
   const componentIds = value.componentIds;
   if (!componentIds || typeof componentIds !== "object" || Array.isArray(componentIds) ||
-      !ANIME_CHARACTER_COMPONENT_KEYS.every(key => isSafeCharacterId(componentIds[key]))) return null;
+      !ANIME_CHARACTER_COMPONENT_KEYS.every(key => isSafeCharacterId(componentIds[key])) ||
+      (componentIds.expression !== undefined && !isSafeCharacterId(componentIds.expression))) return null;
+  const normalizedComponentIds = {
+    eyes: componentIds.eyes,
+    hair: componentIds.hair,
+    face: componentIds.face
+  };
+  if (componentIds.expression !== undefined) normalizedComponentIds.expression = componentIds.expression;
   const colors = value.colors;
   if (!colors || typeof colors !== "object" || Array.isArray(colors) ||
       !ANIME_CHARACTER_COLOR_KEYS.every(key => typeof colors[key] === "string" && /^#[0-9a-f]{6}$/i.test(colors[key]))) return null;
@@ -167,11 +174,7 @@ export function normalizeCharacterComposition(value) {
     groupId: value.groupId,
     variantIndex: value.variantIndex,
     part: value.part,
-    componentIds: {
-      eyes: componentIds.eyes,
-      hair: componentIds.hair,
-      face: componentIds.face
-    },
+    componentIds: normalizedComponentIds,
     colors: {
       hair: colors.hair.toLowerCase(),
       eyes: colors.eyes.toLowerCase(),
