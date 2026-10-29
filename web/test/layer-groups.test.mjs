@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createDocument, createLayer, isValidDocument, restoreDocument } from "../domain/model.mjs";
-import { duplicateLayer, groupLayers, ungroupLayers } from "../domain/document-operations.mjs";
+import { deleteLayer, duplicateLayer, groupLayers, ungroupLayers } from "../domain/document-operations.mjs";
 
 function fixture() {
   const document = createDocument(800, 600);
@@ -38,6 +38,23 @@ test("grouping requires two distinct existing unlocked layers and leaves source 
   title.locked = true;
   assert.equal(groupLayers(document, [title.id, sticker.id]), null);
   assert.equal(document.layers.some(layer => layer.groupId), false);
+});
+
+test("deleting a grouped member dissolves a one-member remainder", () => {
+  const { document, title, sticker } = fixture();
+  const grouped = groupLayers(document, [title.id, sticker.id]);
+  const afterDelete = deleteLayer(grouped, sticker.id);
+  assert.ok(afterDelete);
+  const remaining = afterDelete.layers.find(layer => layer.id === title.id);
+  assert.ok(remaining);
+  assert.equal(remaining.groupId, undefined);
+  assert.equal(afterDelete.layers.length, 2);
+});
+
+test("regrouping part of an existing group is rejected to avoid orphan members", () => {
+  const { document, title, sticker, background } = fixture();
+  const grouped = groupLayers(document, [title.id, sticker.id]);
+  assert.equal(groupLayers(grouped, [title.id, background.id]), null);
 });
 
 test("ungrouping one member clears membership from every group member", () => {
