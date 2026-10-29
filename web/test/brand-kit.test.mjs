@@ -116,7 +116,7 @@ test("brand kit persists locally, reloads deterministically and fails safely on 
   assert.deepEqual(loadBrandKit(storage), saved);
   assert.equal(BRAND_KIT_MAX_SERIALIZED_CHARS, 1_500_000);
   assert.equal(loadBrandKit(memoryStorage({ [BRAND_KIT_STORAGE_KEY]: "{bad json" })).colors.length, 0);
-  assert.throws(() => renameBrandKit(saved, "   "), /name/i);
+  assert.throws(() => renameBrandKit(saved, "   "), /nombre/i);
   const brokenStorage = { getItem() { return null; }, setItem() { throw new Error("quota"); } };
   assert.throws(() => saveBrandKit(saved, brokenStorage), /could not be saved|No se pudo guardar/i);
 });
