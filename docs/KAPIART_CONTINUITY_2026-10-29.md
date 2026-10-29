@@ -30,10 +30,10 @@ Estado: PARTIAL · rama abierta, sin merge.
 
 ## Controles de uso móvil y modo libre (2026-10-29)
 - Añadido botón visible 🧲 **Imán: activado/apagado** en la barra de herramientas. El estado inicial es activado; al apagarlo, `snapMoveDelta` retorna el delta limitado sin ajuste ni guías, permitiendo movimiento libre. El botón actualiza `aria-pressed`, nombre accesible y mensaje de estado; el cambio de modo no entra al historial.
-- La bandeja ya disponía de `#mobile-tools-toggle`; se conserva como control persistente para ocultar/mostrar herramientas. Se amplió su objetivo a 48 px y se definió tamaño mínimo de 48 px para botones de barra, dock y capas en móvil.
-- Añadidas pruebas de contrato para el toggle magnético, movimiento libre y ocultar/mostrar herramientas. Documentadas reglas explícitas de cancelar/cerrar/volver/Escape, deshacer/rehacer y prioridad del lienzo en `docs/MOBILE_EDITOR_LAW.md`.
-- Commits de este bloque: `a7cb16d3f511b2c9646b11549c295b9297ef6dd3` (lógica del imán), `7a64ce0d64590ec36be86ef823e62b6d4f7d0d92` (botón), `463311f3f8b06cdaa4d4f55795419b5772d686c6` (controles táctiles), `9d0d5e717fdf92360a24f14e890ef078a15ac4de` (pruebas).
-- Pendiente: ejecutar tests/CI en el HEAD actualizado; comprobar visualmente el layout real en viewport Xiaomi, incluyendo bandeja oculta/restaurada y el botón magnético accesible cuando la bandeja está visible.
+- El control persistente `#mobile-tools-toggle` ahora activa en teléfono un modo de lienzo a pantalla completa: oculta barra superior, herramientas, paneles, capas y dock; deja un botón flotante de 48 px para restaurar todos los controles. En tablet conserva el plegado de bandeja. Ocultar/restaurar no toca documento ni historial. Se fijaron objetivos de 48 px para controles móviles.
+- Añadidas pruebas de contrato para el toggle magnético, movimiento libre, bandeja plegable y modo de lienzo a pantalla completa. Documentadas reglas explícitas de cancelar/cerrar/volver/Escape, deshacer/rehacer y prioridad del lienzo en `docs/MOBILE_EDITOR_LAW.md`.
+- Commits de este bloque: `a7cb16d3f511b2c9646b11549c295b9297ef6dd3` (lógica del imán), `7a64ce0d64590ec36be86ef823e62b6d4f7d0d92` (botón), `463311f3f8b06cdaa4d4f55795419b5772d686c6` (controles táctiles), `9d0d5e717fdf92360a24f14e890ef078a15ac4de` (pruebas iniciales), `96e75b09548b28d418ea0e0dd62c5b4cfbd0cd44` (modo foco en móvil), `0456cf8415fb04d30d86391a31c6ec17e6220403` (vista a pantalla completa), más commit de pruebas del modo foco pendiente de SHA final.
+- Pendiente: ejecutar tests/CI en el HEAD actualizado; comprobar visualmente el layout real en viewport Xiaomi, incluyendo modo lienzo completo y restauración. El botón magnético está en la barra de herramientas y se accede al restaurarla.
 
 ## Próximos pasos exactos
 1. Continuar en feature/kapiart-smart-snapping-001; no crear rama duplicada.
