@@ -2661,6 +2661,39 @@ try {
   assert(await evaluate('(/alinead|deshacer/i).test(document.querySelector("#layer-alignment-status")?.textContent||"")'),
     "the visible layer panel applies canvas alignment and reports a recoverable action");
 
+  const resizeToolboxOpen = await evaluate('document.querySelector("#toolbox-dialog")?.open === true');
+  if (!resizeToolboxOpen) {
+    const resizeMobileViewport = await evaluate('window.matchMedia("(max-width: 920px)").matches');
+    await click(resizeMobileViewport ? '.mobile-touch-dock [data-touch-action="more"]' : '#toolbox-open');
+    await waitFor('document.querySelector("#toolbox-dialog")?.open === true');
+  }
+  await click("#quick-open-design-resize");
+  await waitFor('document.querySelector("#design-resize-dialog")?.open === true');
+  const resizeBefore = await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return {width:d.width,height:d.height,ids:(d.layers||[]).map(layer=>layer.id),layers:d.layers||[]}; })()');
+  assert(resizeBefore.width > 0 && resizeBefore.height > 0 && resizeBefore.ids.length > 0,
+    "format adaptation starts from an existing editable composition");
+  await evaluate(`(() => {
+    document.querySelector("#design-resize-width").value="1080";
+    document.querySelector("#design-resize-height").value="1920";
+    const fit=document.querySelector('input[name="design-resize-mode"][value="fit"]');
+    fit.checked=true;
+    document.querySelector("#design-resize-preset").value="story";
+    document.querySelector("#design-resize-preset").dispatchEvent(new Event("change",{bubbles:true}));
+    return true;
+  })()`);
+  await click("#design-resize-apply");
+  await waitFor('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return d.width===1080 && d.height===1920; })()',10000);
+  const resizeAfter = await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return {width:d.width,height:d.height,ids:(d.layers||[]).map(layer=>layer.id),layers:d.layers||[]}; })()');
+  assert(resizeAfter.width===1080 && resizeAfter.height===1920 && resizeAfter.ids.length===resizeBefore.ids.length &&
+    resizeAfter.ids.every((id,index)=>id===resizeBefore.ids[index]),
+    "format adaptation preserves every layer ID and stack order without flattening");
+  assert(resizeAfter.layers.some(layer=>layer.contentType==="text"&&typeof layer.text?.value==="string") ||
+    resizeBefore.layers.every(layer=>layer.contentType!=="text"),
+    "editable text content is preserved when the canvas format changes");
+  await click("#undo");
+  await waitFor('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return d.width===' + resizeBefore.width + ' && d.height===' + resizeBefore.height + '; })()',10000);
+  assert(await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return d.width===' + resizeBefore.width + ' && d.height===' + resizeBefore.height + '; })()'),
+    "canvas format changes are undoable through the existing document history");
 
   await openMultiPageManager();
   await evaluate('document.querySelector("#multi-page-project-name").value="KapiArt Multi E2E"');
