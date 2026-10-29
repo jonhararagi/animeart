@@ -72,7 +72,7 @@ jobs:
             echo "Stable APK signing configured from GitHub Actions secrets." >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Build
-        run: gradle assembleDebug
+        run: gradle clean && gradle assembleDebug
       - name: Verify APK bundles the current image editor
         shell: bash
         run: |
