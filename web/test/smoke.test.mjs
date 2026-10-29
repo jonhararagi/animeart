@@ -1094,3 +1094,27 @@ test("AA-BRUSH-SYMMETRY-001 wires the vertical symmetry toggle into editable str
   assert.ok(pointerUp.includes("syncActiveMirrorStroke(finalStroke)"));
   assert.ok(pointerUp.includes("state.history.record(before, state.document)"));
 });
+
+
+test("KAPIART-DESIGN-RESIZE-001 exposes editable format adaptation with undo and offline assets", async () => {
+  const [html, app, worker, resize] = await Promise.all([
+    readFile("index.html", "utf8"),
+    readFile("app.js", "utf8"),
+    readFile("service-worker.js", "utf8"),
+    readFile("domain/design-resize.mjs", "utf8")
+  ]);
+  assert.match(html, /id="design-resize-dialog"/);
+  assert.match(html, /id="open-design-resize"/);
+  assert.match(html, /id="quick-open-design-resize"/);
+  assert.match(html, /value="fit"/);
+  assert.match(html, /value="fill"/);
+  assert.match(html, /value="reframe"/);
+  assert.match(app, /resizeDocumentForFormat\(state\.document,width,height,mode\)/);
+  assert.match(app, /state\.history\.record\(before,next\)/);
+  assert.match(app, /animeart-web-shell-v78/);
+  assert.match(app, /"\.\/domain\/design-resize\.mjs"/);
+  assert.match(worker, /animeart-web-shell-v78/);
+  assert.match(worker, /"\.\/domain\/design-resize\.mjs"/);
+  assert.match(resize, /MAX_DESIGN_RESIZE_PIXELS = 40_000_000/);
+  assert.match(resize, /export function resizeDocumentForFormat/);
+});
