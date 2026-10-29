@@ -2723,7 +2723,7 @@ try {
     if (buttons.length < 2) return false;
     buttons[0].click();
     buttons[1].dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true }));
-    return document.querySelectorAll("#layers li[data-selected="selected"]").length >= 2;
+    return document.querySelectorAll('#layers li[data-selected="true"]').length >= 2;
   })()`);
   assert(selectedTwoLayers, "the layer list supports selecting multiple editable objects");
   await waitFor('document.querySelector("#layer-group-selection")?.disabled === false');
