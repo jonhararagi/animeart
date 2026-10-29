@@ -112,3 +112,26 @@ test("real-browser E2E protects drag targeting for overlapping stickers", async 
   assert.ok(browserE2E.includes("dragging at an overlap moves the already selected sticker underneath"));
   assert.ok(browserE2E.includes("the upper overlapping sticker stays in place"));
 });
+
+
+test("magnetic snapping has a visible reversible toggle and free-move bypass", async () => {
+  const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(app, /magneticSnappingEnabled: true/);
+  assert.match(app, /if \(!state\.magneticSnappingEnabled\) \{ state\.snapGuides = \[\]; return constrained; \}/);
+  assert.match(app, /magnetic-snapping-toggle/);
+  assert.match(html, /id="magnetic-snapping-toggle"[^>]*aria-pressed="true"/);
+  assert.match(app, /Desactivar ajuste magnético y mover libremente/);
+  assert.match(app, /Activar ajuste magnético/);
+});
+
+test("mobile canvas tool tray can be hidden and restored with finger-sized controls", async () => {
+  const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const css = await readFile(new URL("../styles.css", import.meta.url), "utf8");
+  assert.match(html, /id="mobile-tools-toggle"/);
+  assert.match(app, /mobile-tools-collapsed/);
+  assert.match(app, /Mostrar herramientas/);
+  assert.match(css, /\.mobile-tools-toggle \{ min-height: 48px; max-height: 48px; \}/);
+  assert.match(css, /\.toolbar button, \.mobile-touch-dock button, \.layers button,[\s\S]*?min-height: 48px/);
+});
