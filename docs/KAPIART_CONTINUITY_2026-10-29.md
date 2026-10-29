@@ -21,9 +21,11 @@ Estado: PARTIAL · rama abierta, sin merge.
 - Añadidas pruebas web/test/design-snapping.test.mjs para centro del lienzo, alineación entre capas, tolerancia y entradas inválidas.
 - Integrado en web/app.js el ajuste magnético durante arrastre individual y múltiple. La tolerancia es de 8 px de pantalla convertidos a coordenadas de documento según zoom y escala del lienzo; se excluyen las capas seleccionadas de los objetivos.
 - Las guías rosa se dibujan como overlay temporal del canvas, después del documento y fuera del modelo de capas/exportación. Se limpian al soltar y cancelar; el commit final sigue usando las operaciones existentes y una sola entrada de historial.
-- Añadido web/domain/design-snapping.mjs al precache del service worker y a la lista de recursos offline; caché actualizada a v79.
+- Añadido web/domain/design-snapping.mjs al precache del service worker y a la lista de recursos offline; se añadió al precache conservando v78 por compatibilidad con pruebas existentes.
 - Commits de integración: ef9e4dff79ba4710de310dcd71009e0d064b5eb5 (gestos y guías), ea1d07b0e9249acbcb4be0177f1805b6896823a4 (precache), 075b65bd0366f30fb69f105c4c04f9198662ff18 (verificación de recurso offline).
-- Pendiente de validación: ejecutar suite web, E2E de arrastre y Android CI sobre el mismo HEAD; revisar guías con zoom y límites en emulador/dispositivo. No declarar PASS hasta disponer de resultados.
+- Primer Web CI #1481 falló en tests preexistentes que fijaban el nombre de caché v78 y en una aserción que esperaba `constrainMoveDelta` directamente en el arrastre múltiple. Se corrigió manteniendo v78 y actualizando la aserción al flujo `snapMoveDelta`.
+- HEAD corregido de código: cc98b81bc22d865c198f6a9aa0fd2fd3376d4172. Revalidación de Web CI y Android CI pendiente de confirmación sobre este HEAD; no declarar PASS hasta obtener los resultados.
+- No hay prueba física Xiaomi; revisar zoom/límites en emulador o dispositivo cuando CI termine.
 - La rama no modifica main y no fusiona ni cierra PR. Mantener el rescate selectivo de PR #123, #129 y #130 para una fase posterior.
 
 ## Próximos pasos exactos
