@@ -2806,6 +2806,55 @@ try {
   assert(ungroupedSnapshot.grouped === 0,
     "ungrouping removes persisted group membership while keeping every layer editable");
 
+  await evaluate('document.querySelector("#add-text-layer")?.click()');
+  await waitFor('document.querySelector("#text-edit-dialog")?.open === true',10000);
+  await click("#close-text-edit");
+  await waitFor('document.querySelector("#text-edit-dialog")?.open !== true');
+  const kitToolboxOpen = await evaluate('document.querySelector("#toolbox-dialog")?.open === true');
+  if (!kitToolboxOpen) {
+    const kitMobileViewport = await evaluate('window.matchMedia("(max-width: 920px)").matches');
+    await click(kitMobileViewport ? '.mobile-touch-dock [data-touch-action="more"]' : "#toolbox-open");
+    await waitFor('document.querySelector("#toolbox-dialog")?.open === true');
+  }
+  await click("#quick-open-brand-kit");
+  await waitFor('document.querySelector("#brand-kit-dialog")?.open === true');
+  await evaluate(`(() => {
+    document.querySelector("#brand-kit-name").value="KapiStudio E2E";
+    document.querySelector("#brand-kit-color-name").value="Coral Kapi";
+    document.querySelector("#brand-kit-color-value").value="#ff44aa";
+    document.querySelector("#brand-kit-color-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
+    return true;
+  })()`);
+  await waitFor('JSON.parse(localStorage.getItem("kapiart-brand-kit-v1")||"{}").colors?.length===1',10000);
+  await waitFor('document.querySelectorAll("#brand-kit-colors .brand-kit-color-card").length===1');
+  const brandTextId = await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); return d.layers?.findLast(layer=>layer.contentType==="text")?.id||null; })()');
+  assert(brandTextId, "the brand kit test has an editable text layer to receive brand styling");
+  const kitColorApplied = await evaluate('(() => { const text=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers?.find(layer=>layer.id===' + JSON.stringify(brandTextId) + '); return text?.contentType==="text"; })()');
+  assert(kitColorApplied, "brand styling targets a real editable text layer");
+  await click("#brand-kit-colors .brand-kit-color-copy");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers?.find(layer=>layer.id===' + JSON.stringify(brandTextId) + ')?.text?.color==="#ff44aa"',10000);
+  await evaluate(`(() => {
+    document.querySelector("#brand-kit-style-name").value="Título Kapi";
+    document.querySelector("#brand-kit-style-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
+    return true;
+  })()`);
+  await waitFor('JSON.parse(localStorage.getItem("kapiart-brand-kit-v1")||"{}").textStyles?.length===1',10000);
+  await evaluate(`(() => {
+    document.querySelector("#brand-kit-color-name").value="Cian Kapi";
+    document.querySelector("#brand-kit-color-value").value="#55ddee";
+    document.querySelector("#brand-kit-color-form").dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));
+    return true;
+  })()`);
+  await waitFor('JSON.parse(localStorage.getItem("kapiart-brand-kit-v1")||"{}").colors?.length===2',10000);
+  await click("#brand-kit-colors .brand-kit-color-card:nth-child(2) .brand-kit-color-copy");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers?.find(layer=>layer.id===' + JSON.stringify(brandTextId) + ')?.text?.color==="#55ddee"',10000);
+  await click("#brand-kit-styles .brand-kit-style-card .brand-kit-card-actions button:first-child");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers?.find(layer=>layer.id===' + JSON.stringify(brandTextId) + ')?.text?.color==="#ff44aa"',10000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("kapiart-brand-kit-v1")||"{}").name==="KapiStudio E2E" && JSON.parse(localStorage.getItem("kapiart-brand-kit-v1")||"{}").colors.length===2 && JSON.parse(localStorage.getItem("kapiart-brand-kit-v1")||"{}").textStyles.length===1'),
+    "the local brand kit persists its identity, two colors and reusable typography independently of the editable document");
+  await click("#brand-kit-close");
+  await waitFor('document.querySelector("#brand-kit-dialog")?.open !== true');
+
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {
   try { ws.close(); } catch {}
