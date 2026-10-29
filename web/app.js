@@ -7613,7 +7613,7 @@ function initializeBrandKitTools(){
   if(styleCount)styleCount.textContent=kit.textStyles.length+"/20";
   if(logoCount)logoCount.textContent=kit.logos.length+"/4";
   if(colorsEl){
-   colorsEl.replaceChildren();
+   while(colorsEl.firstChild)colorsEl.removeChild(colorsEl.firstChild);
    for(const item of kit.colors){
     const card=document.createElement("article");card.className="brand-kit-color-card";
     const apply=document.createElement("button");apply.type="button";apply.className="brand-kit-color-swatch";apply.style.setProperty("--brand-color",item.value);apply.title=item.name+" · "+item.value;apply.setAttribute("aria-label","Aplicar "+item.name+" "+item.value+" al texto seleccionado");
@@ -7627,7 +7627,7 @@ function initializeBrandKitTools(){
    if(!kit.colors.length){const empty=document.createElement("p");empty.className="brand-kit-empty";empty.textContent="Guarda tus colores principales, secundarios y de acento.";colorsEl.append(empty);}
   }
   if(stylesEl){
-   stylesEl.replaceChildren();
+   while(stylesEl.firstChild)stylesEl.removeChild(stylesEl.firstChild);
    for(const item of kit.textStyles){
     const card=document.createElement("article");card.className="brand-kit-style-card";
     const preview=document.createElement("div");preview.className="brand-kit-style-preview";preview.textContent=item.name;preview.style.color=item.style.color;preview.style.fontFamily=item.style.fontFamily;preview.style.fontSize=Math.min(24,Math.max(12,item.style.fontSize/3))+"px";preview.style.fontWeight=item.style.fontWeight;
@@ -7640,7 +7640,7 @@ function initializeBrandKitTools(){
    if(!kit.textStyles.length){const empty=document.createElement("p");empty.className="brand-kit-empty";empty.textContent="Selecciona una capa de texto con el estilo que quieras reutilizar y guárdalo aquí.";stylesEl.append(empty);}
   }
   if(logosEl){
-   logosEl.replaceChildren();
+   while(logosEl.firstChild)logosEl.removeChild(logosEl.firstChild);
    for(const item of kit.logos){
     const card=document.createElement("article");card.className="brand-kit-logo-card";
     const image=document.createElement("img");image.src=item.source;image.alt="Vista previa de "+item.name;image.loading="lazy";image.decoding="async";
