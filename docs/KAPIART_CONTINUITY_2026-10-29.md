@@ -19,8 +19,12 @@ Estado: PARTIAL · rama abierta, sin merge.
 - Rama: feature/kapiart-smart-snapping-001, creada desde main.
 - Añadido web/domain/design-snapping.mjs: calcula ajuste magnético a bordes/centros del lienzo y de otras capas. Devuelve correcciones y guías transitorias; no muta documentos ni capas.
 - Añadidas pruebas web/test/design-snapping.test.mjs para centro del lienzo, alineación entre capas, tolerancia y entradas inválidas.
-- Pendiente: conectar el cálculo al gesto real de arrastre de capa en web/app.js, dibujar guías temporales en canvas y limpiarlas al soltar/cancelar. Mantener undo/redo, selección múltiple, zoom/pan y coordenadas documento/pantalla correctas. Añadir E2E de arrastre y verificar en móvil.
-- Pendiente de esta rama: ejecutar suite web y Android CI en un mismo HEAD y abrir PR borrador si los resultados son PASS.
+- Integrado en web/app.js el ajuste magnético durante arrastre individual y múltiple. La tolerancia es de 8 px de pantalla convertidos a coordenadas de documento según zoom y escala del lienzo; se excluyen las capas seleccionadas de los objetivos.
+- Las guías rosa se dibujan como overlay temporal del canvas, después del documento y fuera del modelo de capas/exportación. Se limpian al soltar y cancelar; el commit final sigue usando las operaciones existentes y una sola entrada de historial.
+- Añadido web/domain/design-snapping.mjs al precache del service worker y a la lista de recursos offline; caché actualizada a v79.
+- Commits de integración: ef9e4dff79ba4710de310dcd71009e0d064b5eb5 (gestos y guías), ea1d07b0e9249acbcb4be0177f1805b6896823a4 (precache), 075b65bd0366f30fb69f105c4c04f9198662ff18 (verificación de recurso offline).
+- Pendiente de validación: ejecutar suite web, E2E de arrastre y Android CI sobre el mismo HEAD; revisar guías con zoom y límites en emulador/dispositivo. No declarar PASS hasta disponer de resultados.
+- La rama no modifica main y no fusiona ni cierra PR. Mantener el rescate selectivo de PR #123, #129 y #130 para una fase posterior.
 
 ## Próximos pasos exactos
 1. Continuar en feature/kapiart-smart-snapping-001; no crear rama duplicada.
