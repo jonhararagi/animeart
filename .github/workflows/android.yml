@@ -82,6 +82,21 @@ jobs:
           mkdir -p "$INSPECT"
           unzip -q "$APK" -d "$INSPECT"
           WEB="$INSPECT/assets/web"
+          echo "=== KapiArt HTML asset provenance ==="
+          for candidate in "web/index.html" "app/build/generated/animeartWebAssets/web/index.html" "$WEB/index.html"; do
+            if [[ -f "$candidate" ]]; then
+              echo "--- $candidate"
+              sha256sum "$candidate"
+              grep -oE "layer-(un)?group-selection" "$candidate" | sort -u || true
+            else
+              echo "--- missing: $candidate"
+            fi
+          done
+          while IFS= read -r candidate; do
+            echo "--- intermediate: $candidate"
+            sha256sum "$candidate"
+            grep -oE "layer-(un)?group-selection" "$candidate" | sort -u || true
+          done < <(find app/build/intermediates -type f -path "*/web/index.html" | sort)
           test -s app/src/main/res/drawable/ic_animeart_launcher.xml
           test -s app/src/main/res/xml/file_paths.xml
           test -s "$INSPECT/res/drawable/ic_animeart_launcher.xml"
