@@ -134,7 +134,7 @@ test("mobile canvas tool tray can be hidden and restored with finger-sized contr
   assert.match(app, /mobile-canvas-focus/);
   assert.match(css, /body\.mobile-canvas-focus > \.workspace/);
   assert.match(css, /body\.mobile-canvas-focus > \.mobile-touch-dock \{ display: none !important; \}/);
-  assert.match(app, /Mostrar herramientas/);
+  assert.match(app, /Mostrar controles/);
   assert.match(css, /\.mobile-tools-toggle \{ min-height: 48px; max-height: 48px; \}/);
   assert.match(css, /\.toolbar button, \.mobile-touch-dock button, \.layers button,[\s\S]*?min-height: 48px/);
 });
