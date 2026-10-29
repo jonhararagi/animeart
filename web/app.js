@@ -7512,15 +7512,21 @@ async function copySelectedLayerToAnotherPage() {
 }
 
 
+function setLayerGroupingStatus(message, kind = "info") {
+  const node = document.querySelector("#layer-grouping-status");
+  if (node) { node.textContent = String(message || ""); node.dataset.kind = kind; }
+}
 function applyGroupSelection() {
   const selectedIds = [...state.selectedLayerIds];
   if (selectedIds.length < 2) {
+    setLayerGroupingStatus("Seleccioná al menos dos capas para agrupar.", "error");
     showMobileFeedback("Seleccioná al menos dos capas para agrupar.", "error");
     return false;
   }
   const before = cloneDocument(state.document);
   const next = groupLayers(state.document, selectedIds);
   if (!next) {
+    setLayerGroupingStatus("No se pudo agrupar. Comprobá que las capas existan y estén desbloqueadas.", "error");
     showMobileFeedback("No se pudo agrupar. Comprobá que las capas existan y estén desbloqueadas.", "error");
     return false;
   }
@@ -7529,6 +7535,7 @@ function applyGroupSelection() {
   setSelection(selectedIds, state.selectedLayerId);
   refreshDocument("Grupo creado. Las capas siguen siendo independientes y puedes desagruparlas.");
   persistDocument();
+  setLayerGroupingStatus("Grupo creado. Las capas seleccionadas se moverán como una unidad.", "success");
   showMobileFeedback("Grupo creado. Moverás sus capas como una unidad.", "success");
   return true;
 }
@@ -7537,6 +7544,7 @@ function applyUngroupSelection() {
   const before = cloneDocument(state.document);
   const next = ungroupLayers(state.document, selectedIds);
   if (!next) {
+    setLayerGroupingStatus("Seleccioná una capa agrupada para desagruparla.", "error");
     showMobileFeedback("Seleccioná una capa agrupada para desagruparla.", "error");
     return false;
   }
@@ -7545,6 +7553,7 @@ function applyUngroupSelection() {
   setSelection(selectedIds, state.selectedLayerId);
   refreshDocument("Grupo separado. Cada capa conserva su contenido y transformación.");
   persistDocument();
+  setLayerGroupingStatus("Grupo separado. Cada capa vuelve a editarse por separado.", "success");
   showMobileFeedback("Grupo separado. Cada capa vuelve a editarse por separado.", "success");
   return true;
 }
