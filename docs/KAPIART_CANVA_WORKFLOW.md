@@ -107,3 +107,16 @@ Esta fase añade agrupación/desagrupación real al modelo de capas existente:
 - Hay pruebas de dominio y E2E Chromium para persistencia tras normalización, capas bloqueadas, duplicación, selección conjunta, agrupación y desagrupación. El shell offline se actualizó a `animeart-web-shell-v77` y Android CI comprueba el panel y el test dedicado.
 
 El estado final de esta fase debe documentar Web CI y Android CI sobre el mismo SHA. La validación física en el Xiaomi `24116RACCG` sigue pendiente.
+
+## Complemento de expresiones anime · 2026-10-29
+
+Se incorpora a esta rama el trabajo funcional de la PR #123 para no dejar el compositor de personajes en una rama paralela:
+
+- Cuatro expresiones SVG originales con estructura diferenciada: sonrisa suave, sonrisa abierta con dientes, sonrisa ladeada y sorpresa.
+- El filtro **Expresión** del catálogo permite encontrarlas por nombre o búsqueda.
+- El personaje mantiene cabello base, rostro, flequillo y ojos como capas editables, y añade la expresión como quinta capa independiente. La sonrisa suave se usa por defecto cuando no se selecciona una variante.
+- Los conjuntos de personaje guardan el identificador de expresión; los conjuntos anteriores sin ese campo siguen siendo válidos.
+- Se amplían las pruebas de metadatos, selección, catálogo y composición; Android CI comprueba que la biblioteca SVG que contiene las expresiones se haya empaquetado.
+- Se conserva la versión de caché offline v77: no se retrocede la caché por traer cambios de la antigua rama de expresiones.
+
+La integración de código está preparada en esta rama. La aceptación de Web CI, Android CI y el artefacto APK se registra solo cuando los checks del HEAD final terminen. La prueba física en el Xiaomi 24116RACCG continúa siendo independiente.
