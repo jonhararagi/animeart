@@ -7826,7 +7826,7 @@ if (typeof ResizeObserver === "function") {
 
 
 // Multipage PDF export stays local and caps raster work to protect mobile memory.
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v78";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v79";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -7836,7 +7836,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/asset-library.mjs",
   "./domain/asset-deduplication.mjs",
   "./domain/asset-library-pagination.mjs",
-  "./domain/creative-catalog.mjs", "./domain/design-alignment.mjs", "./domain/design-resize.mjs", "./domain/design-library.mjs", "./domain/multi-page-project.mjs", "./domain/element-library.mjs",
+  "./domain/creative-catalog.mjs", "./domain/design-alignment.mjs", "./domain/design-snapping.mjs", "./domain/design-resize.mjs", "./domain/design-library.mjs", "./domain/multi-page-project.mjs", "./domain/element-library.mjs",
   "./domain/anime-style-library.mjs",
   "./domain/anime-character-presets.mjs",
   "./manifest.webmanifest",
