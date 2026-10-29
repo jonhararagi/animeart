@@ -1,5 +1,6 @@
 import { DOCUMENT_VERSION, createId, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
-import { createLayerAlignmentTransforms } from "./domain/design-alignment.mjs";
+import { createLayerAlignmentTransforms, getLayerAlignmentBounds } from "./domain/design-alignment.mjs";
+import { getSmartSnapAdjustment } from "./domain/design-snapping.mjs";
 import { resizeDocumentForFormat } from "./domain/design-resize.mjs";
 import { deleteDesign, duplicateDesign, listDesigns, loadDesign, renameDesign, saveDesign } from "./domain/design-library.mjs";
 import { addMultiPagePage, copyLayerToPage, createMultiPageProject, deleteMultiPagePage, deleteMultiPageProject, listMultiPageProjects, loadMultiPagePage, renameMultiPagePage, renameMultiPageProject, reorderMultiPagePage, saveMultiPagePage, setActiveMultiPagePage } from "./domain/multi-page-project.mjs";
@@ -243,6 +244,7 @@ const state = {
   magicEraseInteraction: null,
   transformInteraction: null,
   multiTransformInteraction: null,
+  snapGuides: [],
   adjustmentPreview: null,
   textPreview: null,
   viewport: createViewport(),
@@ -899,6 +901,25 @@ function drawOffDocumentVeil(rect, dpr) {
   }
 }
 
+function drawSmartSnapGuides() {
+  if (!Array.isArray(state.snapGuides) || state.snapGuides.length === 0) return;
+  const width = state.document.width, height = state.document.height;
+  ctx.save();
+  ctx.setLineDash([5, 4]);
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "rgba(255, 91, 210, 0.95)";
+  for (const guide of state.snapGuides) {
+    const start = guide.axis === "vertical"
+      ? documentToScreenPoint({ x: guide.coordinate, y: 0 }, state.document, state.viewport, canvasSize())
+      : documentToScreenPoint({ x: 0, y: guide.coordinate }, state.document, state.viewport, canvasSize());
+    const end = guide.axis === "vertical"
+      ? documentToScreenPoint({ x: guide.coordinate, y: height }, state.document, state.viewport, canvasSize())
+      : documentToScreenPoint({ x: width, y: guide.coordinate }, state.document, state.viewport, canvasSize());
+    ctx.beginPath(); ctx.moveTo(start.x, start.y); ctx.lineTo(end.x, end.y); ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawNow() {
   const rect = canvas.getBoundingClientRect();
   const dpr = canvasRenderDpr(rect);
@@ -926,6 +947,7 @@ function drawNow() {
   drawOffDocumentVeil(rect, dpr);
   if (!transparencyPreview) drawSelectionOverlay();
   drawPixelEditPreview();
+  drawSmartSnapGuides();
   updateRemoveImageControl();
   if (!transparencyPreview && ["censor-light", "brush", "eraser"].includes(state.tool) && state.censorCursorPoint) {
     const point = documentToScreenPoint(state.censorCursorPoint, state.document, state.viewport, canvasSize());
@@ -2881,7 +2903,35 @@ function interactionLayers(interaction) {
   return ids.map(id => byId.get(id)).filter(Boolean);
 }
 
+function snapMoveDelta(layers, desiredX, desiredY) {
+  const constrained = constrainMoveDelta(layers, desiredX, desiredY);
+  const bounds = layers.map(layer => getLayerAlignmentBounds(layer, state.document)).filter(Boolean);
+  if (!bounds.length) { state.snapGuides = []; return constrained; }
+  const movingBounds = {
+    left: Math.min(...bounds.map(item => item.left)) + constrained.x,
+    right: Math.max(...bounds.map(item => item.right)) + constrained.x,
+    top: Math.min(...bounds.map(item => item.top)) + constrained.y,
+    bottom: Math.max(...bounds.map(item => item.bottom)) + constrained.y
+  };
+  const movingIds = new Set(layers.map(layer => layer.id));
+  const otherBounds = state.document.layers
+    .filter(layer => layer.visible && !layer.locked && !movingIds.has(layer.id))
+    .map(layer => ({ id: layer.id, bounds: getLayerAlignmentBounds(layer, state.document) }))
+    .filter(item => item.bounds);
+  const screenScale = Math.max(Number.EPSILON, documentFitScale(state.document, canvasSize()) * state.viewport.zoom);
+  const snap = getSmartSnapAdjustment({
+    movingBounds, otherBounds,
+    canvasWidth: state.document.width, canvasHeight: state.document.height,
+    threshold: 8 / screenScale
+  });
+  const adjusted = constrainMoveDelta(layers, constrained.x + snap.dx, constrained.y + snap.dy);
+  state.snapGuides = snap.guides.length && Math.abs(adjusted.x - constrained.x - snap.dx) < 0.001 &&
+    Math.abs(adjusted.y - constrained.y - snap.dy) < 0.001 ? snap.guides : [];
+  return adjusted;
+}
+
 function applyMultiLayerMove(deltaX, deltaY, message = "Layers moved", layerIds = state.selectedLayerIds) {
+
   const ids = Array.isArray(layerIds) ? [...new Set(layerIds)] : [];
   const layers = interactionLayers({ layerIds: ids });
   if (ids.length < 2 || layers.length !== ids.length || layers.some(layer => layer.locked)) return false;
@@ -2927,6 +2977,7 @@ function finishTransformInteraction(cancelled = false, finalEvent = null) {
   const pointerId = interaction.pointerId;
   state.transformInteraction = null;
   state.transformPointerId = null;
+  state.snapGuides = [];
   if (cancelled) {
     if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
     redraw();
@@ -3013,7 +3064,7 @@ function updateTransformPreview(event) {
     const desiredX = currentDocument.x - interaction.startDocument.x;
     const desiredY = currentDocument.y - interaction.startDocument.y;
     const layer = state.document.layers.find(item => item.id === interaction.layerId);
-    const delta = constrainMoveDelta(layer ? [layer] : [], desiredX, desiredY);
+    const delta = snapMoveDelta(layer ? [layer] : [], desiredX, desiredY);
     preview.x = interaction.beforeTransform.x + delta.x;
     preview.y = interaction.beforeTransform.y + delta.y;
   } else if (interaction.type === "scale") {
@@ -3750,7 +3801,7 @@ canvas.addEventListener("pointermove", event => {
     const layers = interactionLayers(interaction);
     if (interaction.type === "move") {
       const start = interaction.startDocument;
-      interaction.previewDelta = constrainMoveDelta(layers, current.x - start.x, current.y - start.y);
+      interaction.previewDelta = snapMoveDelta(layers, current.x - start.x, current.y - start.y);
       if (window.__ANIMEART_E2E_DIAGNOSTICS__) console.error("AA_MULTI_POINTERMOVE", JSON.stringify({current, start, delta: interaction.previewDelta, pointerId: event.pointerId}));
     } else if (interaction.type === "scale") {
       const transforms = groupScaleTransforms(layers, documentCenter(state.document), interaction.handle, current);
@@ -3830,7 +3881,7 @@ canvas.addEventListener("pointerup", event => {
       : screenToDocumentPoint(targetScreen, state.document, state.viewport, canvasSize());
     const layers = interactionLayers(interaction);
     if (interaction.type === "move") {
-      interaction.previewDelta = constrainMoveDelta(layers, current.x - interaction.startDocument.x, current.y - interaction.startDocument.y);
+      interaction.previewDelta = snapMoveDelta(layers, current.x - interaction.startDocument.x, current.y - interaction.startDocument.y);
     } else if (interaction.type === "scale") {
       const transforms = groupScaleTransforms(layers, documentCenter(state.document), interaction.handle, current);
       if (transforms) interaction.previewTransforms = new Map(transforms.map(item => [item.id, item.transform]));
@@ -3842,6 +3893,7 @@ canvas.addEventListener("pointerup", event => {
   if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
     const interaction = state.multiTransformInteraction;
     state.multiTransformInteraction = null;
+    state.snapGuides = [];
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     if (interaction.type === "move") {
       const delta = interaction.previewDelta || { x: 0, y: 0 };
@@ -3963,6 +4015,7 @@ canvas.addEventListener("pointercancel", event => {
   }
   if (state.multiTransformInteraction?.pointerId === event.pointerId) {
     state.multiTransformInteraction = null;
+    state.snapGuides = [];
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     redraw();
     return;
