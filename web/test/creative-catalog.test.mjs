@@ -137,7 +137,7 @@ test("creative studio UI is discoverable, searchable, offline-ready and packaged
   assert.match(app,/groupLayers, transformLayers/);
   assert.match(app,/layer\.groupId \? " \[Grupo\]"/);
   assert.match(css,/KAPIART-LAYER-GROUPS-001/);
-  assert.ok(android.includes('test -s "$WEB/test/layer-groups.test.mjs"'));
+  assert.ok(android.includes('test -s "web/test/layer-groups.test.mjs"'));
   assert.match(app,/function initializeCanvaWorkflowTools\(/);
   assert.match(app,/animeart-web-shell-v77/);
   assert.match(css,/KAPIART-CANVA-WORKFLOW-001/);
