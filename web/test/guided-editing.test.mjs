@@ -125,7 +125,7 @@ test("AA-TYPOGRAPHY-CANVA-001 keeps the text modal reachable on mobile and suppo
  assert.match(app, /text: \(\) => selectedLayerExact\(\)\?\.contentType === "text"/);
  assert.match(app, /function canvasRenderDpr\(rect\)/);
  assert.doesNotMatch(app, /function keepImageTransformVisible\(layer, transform\)/);
- assert.match(app, /const delta = constrainMoveDelta\(layer \? \[layer\] : \[\], desiredX, desiredY\)/);
+ assert.match(app, /const delta = snapMoveDelta\(layer \? \[layer\] : \[\], desiredX, desiredY\)/);
  assert.match(app, /preview\.y = interaction\.beforeTransform\.y \+ delta\.y/);
  for (const preset of ["title", "subtitle", "body", "quote", "label", "elegant"]) {
   assert.ok(html.includes('data-text-style-preset="' + preset + '"'), "missing typography preset: " + preset);
