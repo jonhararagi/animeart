@@ -266,6 +266,8 @@ export function groupLayers(document, layerIds) {
   const next = cloneDocument(document);
   const selected = next.layers.filter(layer => ids.includes(layer.id));
   if (selected.length !== ids.length || selected.some(layer => layer.locked || layer.isBackground)) return null;
+  const existingGroups = new Set(selected.map(layer => layer.groupId).filter(Boolean));
+  if (next.layers.some(layer => existingGroups.has(layer.groupId) && !ids.includes(layer.id))) return null;
   const groupId = createId();
   for (const layer of selected) layer.groupId = groupId;
   return next;
@@ -307,6 +309,13 @@ export function deleteLayer(document, layerId) {
   const index = next.layers.findIndex(item => item.id === layerId);
   if (index < 0) return null;
   next.layers.splice(index, 1);
+  const groupCounts = new Map();
+  for (const layer of next.layers) {
+    if (layer.groupId) groupCounts.set(layer.groupId, (groupCounts.get(layer.groupId) || 0) + 1);
+  }
+  for (const layer of next.layers) {
+    if (layer.groupId && groupCounts.get(layer.groupId) < 2) delete layer.groupId;
+  }
   return next;
 }
 
