@@ -4287,3 +4287,18 @@ Los commits de implementación en la rama son reales, pero todavía no se declar
 - Conserva las capas editables y sus IDs, orden, contenido de texto e imagen, grupos, máscaras, opacidad y rotaciones; usa el historial existente para Deshacer.
 - Límites seguros de 8192 px por lado y 40 megapíxeles, sin ampliar el límite heredado de 2,5 MB del proyecto portable.
 - Accesible desde escritorio y desde «Más herramientas» en móvil. El módulo está incluido en el shell offline y las verificaciones del paquete Android.
+
+
+## KapiArt · Kit de marca local reutilizable · 2026-10-29
+
+- Rama de trabajo: `feature/kapiart-brand-kit-001`, creada desde `main`; no cambiar `main` directamente.
+- Módulo `web/domain/brand-kit.mjs`: perfil local, colores, estilos de texto y logos raster. Guarda en localStorage con una clave/versionado propio; no sube recursos a ningún servidor.
+- Capacidad: máximo 12 colores, 20 estilos tipográficos, 4 logos/firma y 1,5 MB serializados en total. Cada logo está limitado a 300 KB, PNG/JPEG/WebP y dimensiones seguras. Se rechazan SVG arbitrarios y fuentes no soportadas.
+- UI: lanzador de escritorio y acceso desde «Más herramientas» en móvil. Colores aplicables al texto seleccionado; estilos guardados desde una capa de texto y aplicables sin sustituir el contenido/posición; logos insertados como capas de imagen independientes y editables.
+- Offline: caché sube a `animeart-web-shell-v79`; se incluye `brand-kit.mjs` en Service Worker y en los recursos requeridos por el shell.
+- Pruebas: `web/test/brand-kit.test.mjs`, test de contrato en `web/test/smoke.test.mjs`, E2E Chromium para guardar/usar colores y estilos en un texto real; Android CI comprueba el módulo, la ventana y los controles.
+- Docs: README y `docs/KAPIART_CANVA_WORKFLOW.md` actualizados.
+
+### Estado de aceptación
+
+La implementación está en la rama de trabajo; no se considera aceptada hasta que Web CI y Android CI terminen en PASS sobre un mismo SHA final y la APK resultante esté publicada con checksum. La aceptación táctil física en Xiaomi `24116RACCG` permanece separada.
