@@ -81,7 +81,7 @@ function safeTimestamp(value, fallback = 0) {
 function componentMap(components = ANIME_STYLE_COMPONENTS) {
   return new Map((Array.isArray(components) ? components : ANIME_STYLE_COMPONENTS)
     .filter(item => item && typeof item.id === "string" && COMPONENT_ID.test(item.id) &&
-      ["eyes", "hair", "face"].includes(item.part))
+      ["eyes", "hair", "face", "expression"].includes(item.part))
     .map(item => [item.id, item]));
 }
 
@@ -93,6 +93,11 @@ function normalizeComponentIds(value, components = ANIME_STYLE_COMPONENTS) {
     const id = value[part];
     if (typeof id !== "string" || !COMPONENT_ID.test(id) || byId.get(id)?.part !== part) return null;
     result[part] = id;
+  }
+  if (value.expression !== undefined) {
+    const id = value.expression;
+    if (typeof id !== "string" || !COMPONENT_ID.test(id) || byId.get(id)?.part !== "expression") return null;
+    result.expression = id;
   }
   return result;
 }

@@ -72,7 +72,7 @@ jobs:
             echo "Stable APK signing configured from GitHub Actions secrets." >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Build
-        run: gradle assembleDebug
+        run: gradle clean && gradle assembleDebug
       - name: Verify APK bundles the current image editor
         shell: bash
         run: |
@@ -82,6 +82,21 @@ jobs:
           mkdir -p "$INSPECT"
           unzip -q "$APK" -d "$INSPECT"
           WEB="$INSPECT/assets/web"
+          echo "=== KapiArt HTML asset provenance ==="
+          for candidate in "web/index.html" "app/build/generated/animeartWebAssets/web/index.html" "$WEB/index.html"; do
+            if [[ -f "$candidate" ]]; then
+              echo "--- $candidate"
+              sha256sum "$candidate"
+              grep -oE "layer-(un)?group-selection" "$candidate" | sort -u || true
+            else
+              echo "--- missing: $candidate"
+            fi
+          done
+          while IFS= read -r candidate; do
+            echo "--- intermediate: $candidate"
+            sha256sum "$candidate"
+            grep -oE "layer-(un)?group-selection" "$candidate" | sort -u || true
+          done < <(find app/build/intermediates -type f -path "*/web/index.html" | sort)
           test -s app/src/main/res/drawable/ic_animeart_launcher.xml
           test -s app/src/main/res/xml/file_paths.xml
           test -s "$INSPECT/res/drawable/ic_animeart_launcher.xml"
@@ -89,7 +104,13 @@ jobs:
           test -s "$WEB/icons/animeart-mark.svg"
           test -s "$WEB/domain/image-processing.mjs"
           test -s "$WEB/domain/creative-catalog.mjs"
+          test -s "$WEB/domain/design-alignment.mjs"
+          test -s "$WEB/domain/design-library.mjs"
+          test -s "$WEB/domain/multi-page-project.mjs"
+          test -s "$WEB/domain/pdf-export.mjs"
+          test -s "$WEB/domain/element-library.mjs"
           test -s "$WEB/domain/anime-style-library.mjs"
+          grep -q 'expression-soft-smile' "$WEB/domain/anime-style-library.mjs"
           test -s "$WEB/domain/anime-character-presets.mjs"
           test -s "$WEB/domain/canvas-rendering.mjs"
           test -s "$WEB/domain/stroke-smoothing.mjs"
@@ -104,7 +125,32 @@ jobs:
           grep -q 'id="erase-color-effect"' "$WEB/index.html"
           grep -q 'id="recolor-temperature"' "$WEB/index.html"
           grep -q 'id="recolor-darkness"' "$WEB/index.html"
-          grep -q "animeart-web-shell-v71" "$WEB/service-worker.js"
+          grep -q "animeart-web-shell-v77" "$WEB/service-worker.js"
+          grep -q 'id="design-library-dialog"' "$WEB/index.html"
+          grep -q 'id="multi-page-dialog"' "$WEB/index.html"
+          grep -q 'id="multi-page-export-pdf"' "$WEB/index.html"
+          grep -q 'id="quick-open-page-manager"' "$WEB/index.html"
+          grep -q 'id="multi-page-copy-layer"' "$WEB/index.html"
+          grep -Fn 'id="layer-ungroup-selection"' "$WEB/index.html" || true
+          python3 - "$WEB/index.html" <<'PY'
+          from pathlib import Path
+          import sys
+          html = Path(sys.argv[1]).read_text(encoding="utf-8")
+          required = ('id="layer-group-selection"', 'id="layer-ungroup-selection"')
+          missing = [marker for marker in required if marker not in html]
+          if missing:
+              raise SystemExit(f"APK editor HTML is missing required layer controls: {missing}")
+          print("PASS: both layer grouping controls are present in the APK editor HTML")
+          PY
+          test -s "web/test/layer-groups.test.mjs"
+          grep -q 'data-creative-tab="elements"' "$WEB/index.html"
+          grep -q 'id="creative-element-category"' "$WEB/index.html"
+          grep -q 'id="creative-element-favorites-only"' "$WEB/index.html"
+          grep -q 'id="text-letter-spacing"' "$WEB/index.html"
+          grep -q 'id="text-line-height"' "$WEB/index.html"
+          grep -q 'id="saved-text-styles"' "$WEB/index.html"
+          grep -q 'id="quick-open-design-library"' "$WEB/index.html"
+          grep -q 'data-layer-align="distribute-horizontal"' "$WEB/index.html"
           test -s "$WEB/workers/image-processing-worker.mjs"
           grep -q 'id="creative-studio-dialog"' "$WEB/index.html"
           grep -q 'id="creative-trait-create-character"' "$WEB/index.html"

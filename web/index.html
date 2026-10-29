@@ -41,7 +41,11 @@
           <span><b>Compartir diseño</b><small>Canva u otra app, solo si tú la eliges</small></span>
         </button>
         <p class="brand-share-note">Se comparte una imagen terminada. Tu proyecto y sus capas se quedan en KapiArt.</p>
-        <button type="button" id="open-apk-installer" class="brand-apk-action">
+        <button type="button" id="design-library-open" class="brand-share-action">
+          <svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 7h8M8 11h8M8 15h5"/></svg>
+          <span><b>Mis diseños</b><small>Guardar, abrir, duplicar y organizar tus proyectos locales</small></span>
+        </button>
+        <button type="button" id="multi-page-open" class="brand-share-action"> <svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/><path d="M2 7v13a2 2 0 0 0 2 2h12"/></svg> <span><b>Proyectos multipágina</b><small>Cómics, carruseles y documentos por páginas</small></span> </button> <button type="button" id="open-apk-installer" class="brand-apk-action">
           <svg class="aa-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h4"/><path d="m16 15 2 2 3-4"/></svg>
           <span><b>Abrir APK con Android</b><small>Elegí un APK y confirmá la instalación en el sistema</small></span>
         </button>
@@ -225,6 +229,30 @@
     <aside class="layers" aria-label="Capas">
       <h2>Capas</h2>
       <ol id="layers"></ol>
+        <section class="layer-grouping-panel" aria-labelledby="layer-grouping-title">
+          <h3 id="layer-grouping-title">Agrupar capas</h3>
+          <p>Seleccioná varias capas. Agrupar conserva cada elemento editable y permite moverlos juntos; desagrupar devuelve el control individual.</p>
+          <div class="layer-grouping-actions">
+            <button type="button" id="layer-group-selection" disabled>Agrupar selección</button>
+            <button type="button" id="layer-ungroup-selection" disabled>Desagrupar</button>
+          </div>
+          <p id="layer-grouping-status" role="status" aria-live="polite">Elegí dos o más capas para crear un grupo.</p>
+        </section>
+        <section class="layer-alignment-panel" aria-labelledby="layer-alignment-title">
+          <h3 id="layer-alignment-title">Alinear y distribuir</h3>
+          <p>Selecciona varias capas para alinearlas entre sí. Con una sola, se alineará con el lienzo.</p>
+          <div class="layer-alignment-grid" role="group" aria-label="Herramientas de alineación">
+            <button type="button" data-layer-align="left" title="Alinear por la izquierda">Izquierda</button>
+            <button type="button" data-layer-align="center-x" title="Alinear centros horizontales">Centro H</button>
+            <button type="button" data-layer-align="right" title="Alinear por la derecha">Derecha</button>
+            <button type="button" data-layer-align="top" title="Alinear por arriba">Arriba</button>
+            <button type="button" data-layer-align="center-y" title="Alinear centros verticales">Centro V</button>
+            <button type="button" data-layer-align="bottom" title="Alinear por abajo">Abajo</button>
+            <button type="button" data-layer-align="distribute-horizontal" title="Distribuir espacios horizontales">Distribuir H</button>
+            <button type="button" data-layer-align="distribute-vertical" title="Distribuir espacios verticales">Distribuir V</button>
+          </div>
+          <p id="layer-alignment-status" role="status" aria-live="polite"></p>
+        </section>
       <section id="image-mask-panel" class="image-mask-panel" aria-labelledby="image-mask-title" hidden><div class="panel-heading"><div><p class="eyebrow">NO DESTRUCTIVO</p><h3 id="image-mask-title">Recorte por forma</h3></div></div><label class="text-field" for="image-mask">Forma de recorte<select id="image-mask"><option value="none">Rectángulo original</option><option value="circle">Círculo / avatar</option><option value="rounded">Tarjeta redondeada</option><option value="star">Estrella</option><option value="heart">Corazón</option><option value="hexagon">Hexágono</option></select></label><p class="adjustment-note">La máscara se puede editar y no borra los píxeles originales.</p></section>
       <section class="adjustment-panel" aria-labelledby="adjustments-title">
         <div class="panel-heading">
@@ -288,6 +316,15 @@
             <button type="button" data-text-style-preset="manga"><span aria-hidden="true">▤</span><span>Manga</span></button>
           </div>
 
+
+          <section class="saved-text-styles-section" aria-labelledby="saved-text-styles-title">
+            <div class="saved-text-styles-heading">
+              <h3 id="saved-text-styles-title">Mis estilos</h3>
+              <button type="button" id="save-text-style">Guardar estilo actual</button>
+            </div>
+            <div id="saved-text-styles" class="saved-text-styles-list" aria-label="Estilos de texto guardados"></div>
+          </section>
+
           <div class="text-simple-controls">
             <label class="text-field" for="text-font-family">Tipo de letra
               <select id="text-font-family">
@@ -323,6 +360,19 @@
                 <label class="text-field" for="text-align">Alineación
                   <select id="text-align"><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select>
                 </label>
+              </div>
+
+              <div class="text-style-section typography-spacing-section">
+                <h3>Espaciado y lectura</h3>
+                <div class="text-inline-controls">
+                  <label class="text-field" for="text-letter-spacing">Espacio entre letras <output id="text-letter-spacing-value">0 px</output>
+                    <input id="text-letter-spacing" type="range" min="-8" max="24" step="0.5" value="0">
+                  </label>
+                  <label class="text-field" for="text-line-height">Interlineado <output id="text-line-height-value">1.20×</output>
+                    <input id="text-line-height" type="range" min="0.8" max="2.5" step="0.05" value="1.2">
+                  </label>
+                </div>
+                <p>El espaciado también sirve para títulos de manga, rótulos compactos y letras con aire cinematográfico.</p>
               </div>
               <div class="text-style-section">
                 <h3>Contorno</h3>
@@ -385,6 +435,7 @@
           <button type="button" id="quick-import-images"><span aria-hidden="true">＋</span><b>Importar imágenes</b><small>Desde tu dispositivo</small></button>
           <button type="button" id="quick-open-asset-library"><span aria-hidden="true">▦</span><b>Mis imágenes</b><small>Biblioteca reutilizable</small></button>
           <button type="button" id="quick-open-creative-studio"><span aria-hidden="true">✦</span><b>Stickers y portadas</b><small>Diseños anime listos para usar</small></button>
+          <button type="button" id="quick-open-design-library"><span aria-hidden="true">▤</span><b>Mis diseños</b><small>Guardar y continuar proyectos</small></button> <button type="button" id="quick-open-page-manager"><span aria-hidden="true">▤</span><b>Páginas</b><small>Crear y organizar cómics o carruseles</small></button>
         </div>
         <button type="button" id="guided-editing-open-mobile" class="guided-editing-mobile-launcher"><span aria-hidden="true">🧭</span> Edición guiada en 3 pasos</button>
         <div class="mobile-output-options" role="group" aria-label="Formato y tamaño de exportación">
@@ -468,6 +519,7 @@
       <nav class="creative-studio-tabs" role="tablist" aria-label="Catálogo creativo">
         <button type="button" data-creative-tab="covers" role="tab" aria-selected="true">🖼 Portadas</button>
         <button type="button" data-creative-tab="stickers" role="tab" aria-selected="false">✨ Stickers</button>
+        <button type="button" data-creative-tab="elements" role="tab" aria-selected="false">◇ Elementos</button>
         <button type="button" data-creative-tab="words" role="tab" aria-selected="false">🔤 Palabras</button>
         <button type="button" data-creative-tab="packs" role="tab" aria-selected="false">🎨 Conjuntos</button>
         <button type="button" data-creative-tab="traits" role="tab" aria-selected="false">🧩 Rasgos anime</button>
@@ -476,6 +528,27 @@
         <label for="creative-catalog-search">Buscar en el catálogo<input id="creative-catalog-search" type="search" placeholder="Anime, galaxia, sakura, neón…"></label>
         <label id="creative-word-field" for="creative-custom-word" hidden>Tu palabra o frase<input id="creative-custom-word" maxlength="180" type="text" placeholder="Escribe algo para tu título…"></label>
       </div>
+      <section id="creative-elements-controls" class="creative-elements-controls" aria-label="Filtrar elementos de diseño" hidden>
+        <label for="creative-element-category">Colección
+          <select id="creative-element-category">
+            <option value="all">Todos los elementos</option>
+            <option value="Globos y diálogo">Globos y diálogo</option>
+            <option value="Manga">Manga</option>
+            <option value="Marcos">Marcos</option>
+            <option value="Texturas">Texturas</option>
+            <option value="Flores y naturaleza">Flores y naturaleza</option>
+            <option value="Brillos">Brillos</option>
+            <option value="Decoración">Decoración</option>
+            <option value="Formas y flechas">Formas y flechas</option>
+            <option value="Kawaii y reacciones">Kawaii y reacciones</option>
+          </select>
+        </label>
+        <label class="creative-element-favorites-toggle" for="creative-element-favorites-only">
+          <input id="creative-element-favorites-only" type="checkbox">
+          <span>Mostrar solo favoritos</span>
+        </label>
+        <p>Elementos SVG originales, locales y editables como capas independientes. Los favoritos se conservan en este dispositivo.</p>
+      </section>
       <section id="creative-template-settings" class="creative-template-settings" aria-label="Personalizar portada seleccionada">
         <label for="creative-cover-title">Título<input id="creative-cover-title" maxlength="180" value="NUEVO DESPERTAR"></label>
         <label for="creative-cover-subtitle">Subtítulo<input id="creative-cover-subtitle" maxlength="240" value="UN NUEVO ARCO COMIENZA"></label>
@@ -491,6 +564,7 @@
               <option value="eyes">Ojos</option>
               <option value="hair">Cabello</option>
               <option value="face">Rostro y mandíbula</option>
+              <option value="expression">Expresión</option>
             </select>
           </label>
           <div class="creative-trait-selection-actions">
@@ -500,15 +574,15 @@
         </div>
         <div id="creative-character-composer" class="creative-character-composer" aria-label="Crear un personaje anime por capas">
           <h3>Crear personaje por capas</h3>
-          <p class="creative-character-intro">Selecciona un ojo, un peinado y un rostro. Se combinarán como cuatro capas independientes, listas para mover, ocultar, recolorear o corregir.</p>
+          <p class="creative-character-intro">Selecciona un ojo, un peinado y un rostro; la expresión es opcional. Se combinarán como cinco capas independientes, listas para mover, ocultar, recolorear o corregir.</p>
           <div class="creative-character-colors">
             <label for="creative-trait-hair-color">Cabello<input id="creative-trait-hair-color" type="color" value="#3A2B45"></label>
             <label for="creative-trait-eye-color">Ojos<input id="creative-trait-eye-color" type="color" value="#6DD6E8"></label>
             <label for="creative-trait-skin-color">Piel<input id="creative-trait-skin-color" type="color" value="#F4C7B7"></label>
             <label for="creative-trait-line-color">Línea<input id="creative-trait-line-color" type="color" value="#2B2035"></label>
           </div>
-          <button type="button" id="creative-trait-create-character" class="creative-primary" disabled>Crear personaje en 4 capas</button>
-          <p id="creative-character-status" role="status" aria-live="polite">Selecciona exactamente un rasgo de Ojos, uno de Cabello y uno de Rostro.</p>
+          <button type="button" id="creative-trait-create-character" class="creative-primary" disabled>Crear personaje en 5 capas</button>
+          <p id="creative-character-status" role="status" aria-live="polite">Selecciona un rasgo de Ojos, uno de Cabello y uno de Rostro; puedes añadir una expresión.</p>
         </div>
         <details id="creative-character-presets" class="creative-character-presets">
           <summary>Favoritos, conjuntos y paletas guardadas</summary>
@@ -1011,7 +1085,54 @@
     </form>
   </dialog>
 
-  <dialog id="project-dialog" aria-labelledby="project-dialog-title">
+  
+<dialog id="design-library-dialog" class="design-library-dialog" aria-labelledby="design-library-title">
+  <section class="design-library-shell">
+    <header class="design-library-header">
+      <div><p class="eyebrow">KAPIART · TUS PROYECTOS</p><h2 id="design-library-title">Mis diseños</h2><p>Una biblioteca local para seguir editando tus trabajos. Las capas se conservan por separado.</p></div>
+      <button type="button" id="design-library-close" class="mini-dialog-close" aria-label="Cerrar Mis diseños">✕</button>
+    </header>
+    <form id="design-library-save-form" class="design-library-save-form">
+      <label for="design-library-name">Nombre del diseño<input id="design-library-name" maxlength="90" required value="Mi diseño" placeholder="Ej. Portada de mi manga"></label>
+      <button type="submit" id="design-library-save-current">Guardar diseño actual</button>
+      <button type="button" id="design-library-refresh">Actualizar lista</button>
+    </form>
+    <p id="design-library-status" class="design-library-status" role="status" aria-live="polite"></p>
+    <div id="design-library-list" class="design-library-list" aria-label="Diseños guardados"></div>
+    <footer class="design-library-footer"><p>Los diseños se almacenan en este dispositivo, sin subirlos a una nube. Exporta también un archivo de proyecto para tener una copia externa.</p></footer>
+  </section>
+</dialog>
+<dialog id="multi-page-dialog" class="multi-page-dialog" aria-labelledby="multi-page-title">
+  <section class="multi-page-shell">
+    <header class="multi-page-header">
+      <div><p class="eyebrow">KAPIART · DOCUMENTOS</p><h2 id="multi-page-title">Proyectos multipágina</h2><p>Crea varias páginas editables dentro de un proyecto. Cada página mantiene sus propias capas y su límite de 2,5 MB.</p></div>
+      <button type="button" id="multi-page-close" class="mini-dialog-close" aria-label="Cerrar proyectos multipágina">✕</button>
+    </header>
+    <form id="multi-page-create-form" class="multi-page-create-form">
+      <label for="multi-page-project-name">Nombre del proyecto<input id="multi-page-project-name" maxlength="90" required value="Mi cómic" placeholder="Ej. Mi primer manga"></label>
+      <button type="submit" id="multi-page-create-project">Crear desde el lienzo actual</button>
+    </form>
+    <p id="multi-page-status" class="multi-page-status" role="status" aria-live="polite"></p>
+    <section id="multi-page-active" class="multi-page-active" hidden>
+      <div class="multi-page-active-heading"><div><p class="eyebrow">PROYECTO ABIERTO</p><h3 id="multi-page-active-name"></h3><p id="multi-page-active-page"></p></div><button type="button" id="multi-page-save-page">Guardar página</button></div>
+      <div class="multi-page-actions">
+        <button type="button" id="multi-page-add-blank">+ Página en blanco</button>
+        <button type="button" id="multi-page-duplicate-page">Duplicar página actual</button>
+        <label for="multi-page-copy-target">Copiar capa seleccionada a<select id="multi-page-copy-target"></select></label>
+        <button type="button" id="multi-page-copy-layer">Copiar capa</button>
+        <button type="button" id="multi-page-export-pdf">Exportar todas las páginas a PDF</button>
+      </div>
+      <h4>Páginas del proyecto</h4>
+      <div id="multi-page-page-list" class="multi-page-page-list" aria-label="Páginas editables"></div>
+    </section>
+    <section class="multi-page-saved-projects">
+      <h3>Proyectos guardados en este dispositivo</h3>
+      <div id="multi-page-project-list" class="multi-page-project-list" aria-label="Proyectos multipágina guardados"></div>
+    </section>
+    <footer class="multi-page-footer"><p>Los proyectos se guardan en IndexedDB en este dispositivo, sin nube. Máximo 10 proyectos y 10 páginas por proyecto; no se borran proyectos antiguos automáticamente. Exporta todas las páginas como un único PDF, manteniendo la proporción de cada lienzo.</p></footer>
+  </section>
+</dialog>
+<dialog id="project-dialog" aria-labelledby="project-dialog-title">
     <form id="project-form" method="dialog">
       <h2 id="project-dialog-title">New document</h2>
       <label>

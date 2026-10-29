@@ -4107,3 +4107,122 @@ La comparación de nombre de rama o cantidad de commits no basta para decidir un
 - La biblioteca visual puede ampliarse con materiales del usuario y recursos originales/licencias comprobadas; no afirmar que se ha reunido o catalogado una colección externa si no se hizo.
 
 ---
+
+
+---
+
+## KapiArt · flujo de diseño tipo Canva, primera fase · 2026-10-27
+
+**PR de trabajo:** [#124 · plantillas, alineación y Mis diseños](https://github.com/jonhararagi/animeart/pull/124)  
+**Rama:** `feature/kapiart-canva-workflow-001`  
+**Regla de integración:** no modificar `main` directamente ni fusionar sin autorización expresa. La validación debe corresponder al mismo HEAD final de Web CI y Android CI; E2E Chromium no sustituye una prueba física del teléfono.
+
+### Entrega de esta fase
+
+- Biblioteca de plantillas ampliada con 18 diseños locales nuevos para publicaciones, historias, miniaturas, banners, fondos de pantalla, personajes, manga, libros, eventos, invitaciones, frases, música, educación y comunidad. Cada ficha propone el formato inicial y mantiene editables las capas de arte, título y subtítulo existentes.
+- Herramientas de alineación izquierda/centro/derecha y arriba/centro/abajo, además de distribución horizontal/vertical. Una capa se alinea contra el lienzo; varias capas usan el área total de la selección. La operación conserva escala y rotación, se registra en el historial y rechaza capas bloqueadas. Los límites de los trazos se calculan mediante un recorrido lineal para evitar desbordamientos con dibujos largos.
+- Biblioteca **Mis diseños** local mediante IndexedDB, con miniaturas, dimensiones, número de capas y acciones para guardar, abrir, duplicar, renombrar y eliminar proyectos editables. Máximo 40 proyectos, sin expulsar automáticamente los antiguos. Se mantiene el límite actual de 2,5 MB por documento hasta diseñar y validar una migración de almacenamiento más grande.
+- Acceso móvil a Mis diseños desde el panel «Más herramientas», además del acceso de escritorio. Interfaz y tarjetas adaptables al teléfono, sin colocar paneles nuevos encima del lienzo de forma permanente.
+- Caché offline actualizada a `animeart-web-shell-v72`; la verificación Android comprueba que los módulos y controles nuevos se incluyan en el paquete. Pruebas nuevas para geometría, distribución, trazos extensos, límites de la biblioteca y metadatos; el recorrido E2E incluye plantilla, flujo de proyectos y alineación contextual.
+- Documentación de alcance en `docs/KAPIART_CANVA_WORKFLOW.md` y actualización de capacidades en `README.md`.
+
+### Pendientes y seguridad
+
+- Los documentos de varias páginas, exportación PDF/SVG, fuentes instalables, agrupación persistente de objetos y redimensionado inteligente entre formatos se reservan para fases posteriores; no se declaran implementados.
+- Los tests de dominio y el build no bastan para cerrar esta entrega: hacen falta el recorrido real de Chromium y Android CI sobre un mismo SHA final.
+- La aceptación física en el Xiaomi `24116RACCG` no se ha realizado y no puede inferirse de CI/emulador.
+- La biblioteca de diseños es local al dispositivo/perfil de navegador. No sincroniza con la nube ni con otros dispositivos.
+
+
+---
+
+## KapiArt · fase multipágina local · 2026-10-27
+
+**Trabajo incluido en PR #124:** [plantillas, alineación, Mis diseños y multipágina](https://github.com/jonhararagi/animeart/pull/124)  
+**Rama de implementación:** `feature/kapiart-canva-workflow-001`. `main` debe permanecer sin cambios funcionales hasta una autorización expresa de integración.
+
+### Alcance implementado en esta rama, pendiente de CI final
+
+- Modelo de proyecto multipágina local con almacenamiento IndexedDB separado: cada página conserva su propio documento/lienzo y sus propias capas, no se aplana el proyecto a una sola imagen.
+- Crear proyecto desde el lienzo actual; agregar una página en blanco; duplicar, abrir, renombrar, reordenar y eliminar páginas; no se permite borrar la última página.
+- Copiar la capa seleccionada a otra página asignando un identificador nuevo y manteniendo su tipo y contenido editables.
+- La página activa se guarda al confirmar operaciones de edición y también antes de cambiar de página. La UI ofrece guardar explícitamente y muestra miniaturas, dimensiones, cantidad de capas y estado.
+- Límites conservadores: 10 proyectos multipágina, 10 páginas por proyecto, 200 capas y 2,5 MB serializados por página. No se aumenta el límite de portabilidad heredado ni se expulsan proyectos automáticamente; IndexedDB debe poder rechazar una escritura si el navegador alcanza su cuota.
+- Acceso desde el panel de escritorio y desde «Más herramientas» en móvil; caché offline v73 incluye `web/domain/multi-page-project.mjs`.
+- Tests nuevos para copia de capas, límites y almacenamiento no disponible; Chromium E2E ampliado para la creación, duplicado, copia, alta, renombrado, reordenación, cambio, guardado y eliminación de páginas.
+
+### Validación y límites restantes
+
+- Los cambios de esta fase deben validarse con Web CI, incluido E2E real de Chromium, y Android CI sobre el mismo SHA final. La aceptación física del Xiaomi `24116RACCG` sigue pendiente.
+- La exportación PDF multipágina, exportación SVG, redimensionado inteligente, fuentes instalables y agrupación persistente de objetos siguen pendientes.
+- El gestor multipágina es local al perfil/dispositivo. No sincroniza en nube ni entre dispositivos.
+
+
+---
+
+## KapiArt · tipografía y estilos reutilizables · 2026-10-27
+
+**PR abierta de trabajo:** [#124](https://github.com/jonhararagi/animeart/pull/124) · rama `feature/kapiart-canva-workflow-001`.
+
+- Añade espaciado de letras e interlineado a la estructura de cada capa de texto; el renderizado usa el valor tanto en vista previa como en las exportaciones que dibujan el documento.
+- El cálculo geométrico de límites se actualiza para que alineación/selección reflejen el tracking y el interlineado.
+- El modal de texto ahora permite guardar hasta 20 estilos reutilizables locales, aplicar sus propiedades tipográficas a otras capas y eliminarlos. Los estilos no contienen el texto ni posición del objeto, para no reemplazar accidentalmente el contenido al aplicarlos.
+- Compatibilidad retroactiva: documentos que no tienen estos dos campos permanecen válidos y reciben defaults durante la normalización.
+- Shell offline v74, pruebas unitarias y E2E ampliado para revisar el control de texto, estilos guardados y aplicación. La validación final debe comprobar Web CI y Android CI sobre el mismo SHA.
+- No se cambia `main` ni se fusiona la PR. La prueba física en Xiaomi `24116RACCG` sigue pendiente.
+
+
+---
+
+## KapiArt · biblioteca de elementos SVG locales · 2026-10-28
+
+**Trabajo dentro de PR #124:** [flujo de diseño y biblioteca creativa](https://github.com/jonhararagi/animeart/pull/124) · rama `feature/kapiart-canva-workflow-001`.
+
+- Módulo nuevo `web/domain/element-library.mjs` con 16 recursos SVG originales sin dependencias remotas: globos de pensamiento/grito/diálogo, cartela de narración, marcos manga/neón, trama halftone, pétalos sakura, destellos, washi tape, flecha neón, speedlines cian, gota anime, rubor kawaii, estrella cómic y nube.
+- Nueva pestaña «Elementos» dentro del estudio creativo con búsqueda, selector de colección y filtro «Solo favoritos». Cada tarjeta incluye estrella accesible para guardar/quitar favoritos sin activar por accidente la acción de añadir.
+- Los favoritos se guardan en localStorage del dispositivo bajo `kapiart-creative-element-favorites-v1`. Los SVG se insertan como capas de imagen independientes con fuente `data:image/svg+xml`; pueden moverse, escalarse, girarse, ocultarse o eliminarse sin aplanar el documento.
+- Se agregan tests del catálogo y E2E Chromium para filtro por colección, persistencia del favorito y creación de una capa editable.
+- Shell offline v75 incluye el módulo de elementos y también lo exige la lista offline explícita. Android CI comprueba que el módulo y sus controles formen parte del paquete.
+- La validación final de esta fase debe corresponder al mismo SHA en Web CI y Android CI. No se ha fusionado la PR ni modificado `main`; la prueba física en el Xiaomi `24116RACCG` permanece pendiente.
+- Las carpetas de colecciones personalizadas y la carga de archivos de fuentes se mantienen como trabajo posterior. Los filtros existentes son colecciones predefinidas, no carpetas de usuario.
+
+
+---
+
+## KapiArt · exportación PDF multipágina · 2026-10-28
+
+**Rama:** `feature/kapiart-canva-workflow-001` · **PR:** [#124](https://github.com/jonhararagi/animeart/pull/124)  
+**Estado:** implementación añadida; pendiente de Web CI y Android CI sobre el HEAD final posterior a esta modificación.
+
+- Se incorpora `web/domain/pdf-export.mjs`, generador PDF local sin dependencias remotas. Cada página se convierte en un JPEG temporal incrustado en su propio objeto PDF; las capas del proyecto guardado siguen intactas y editables.
+- El gestor incluye **Exportar todas las páginas a PDF**. Guarda antes la página activa, abre las páginas desde IndexedDB en su orden, precarga imágenes y renderiza una tras otra en lugar de mantener todos los lienzos vivos al mismo tiempo.
+- Se desactivan las previsualizaciones transitorias de edición durante la exportación para que los ajustes o cambios no confirmados de una interacción no se filtren en el resultado.
+- Límites de seguridad: 10 páginas por documento; 16 MP como máximo por imagen incrustada; 48 MP agregados por exportación; 45 MB de PDF final. La resolución se reduce de manera uniforme dentro del presupuesto, manteniendo proporciones y dimensiones relativas de página.
+- El shell offline cambia de v75 a `animeart-web-shell-v76`; se añade el módulo al Service Worker, a los recursos obligatorios del editor, al chequeo Android y a las pruebas de contrato. Hay pruebas de estructura PDF, tabla xref, tamaños mixtos, preservación de los bytes JPEG y límites.
+- El E2E Chromium exporta el proyecto multipágina creado durante la prueba y verifica el mensaje de resultado. CI debe confirmar el flujo completo y publicar la APK del mismo SHA.
+- La prueba física en Xiaomi `24116RACCG` sigue pendiente. No se declara compatibilidad táctil por haber pasado CI/emulador.
+
+
+---
+
+## KapiArt · fase de grupos persistentes de capas · 2026-10-29
+
+**Rama:** `feature/kapiart-canva-workflow-001` · **PR:** [#124](https://github.com/jonhararagi/animeart/pull/124)  
+**Estado:** implementación añadida; pendiente de CI Web + Android sobre el mismo HEAD final. No se debe anunciar PASS hasta verificar la ejecución.
+
+### Alcance
+
+- Cada capa puede conservar un `groupId` seguro dentro del documento serializado; documentos anteriores sin ese campo siguen siendo válidos.
+- `groupLayers` agrupa dos o más capas desbloqueadas y rechaza fondos fijos, identificadores ausentes y selecciones insuficientes.
+- `ungroupLayers` elimina la pertenencia de todas las capas del grupo, incluso si se invoca desde un solo miembro.
+- Seleccionar una capa agrupada expande la selección a todo el grupo, de modo que el sistema de transformación múltiple existente mueve, escala y rota el conjunto sin aplanarlo.
+- Los botones **Agrupar selección** y **Desagrupar** viven en el panel de capas y respetan el diseño táctil móvil. La lista identifica los miembros con la etiqueta `[Grupo]`.
+- Deshacer/rehacer registra el cambio en el historial existente. Duplicar una única capa agrupada produce una capa independiente.
+- Pruebas de dominio cubren persistencia tras normalización, validación de ID, bloqueo, desagrupado y duplicación; Chromium E2E recorre selección múltiple, agrupar, seleccionar el grupo y desagrupar.
+- Caché offline actualizada a v77; CI Android verifica los controles y el archivo de pruebas.
+
+### Aceptación pendiente
+
+- Web CI debe pasar build, tests y E2E real de Chromium.
+- Android CI debe pasar build, unit tests, lint, instrumentación y arranque offline, con APK verificada del mismo SHA.
+- La aceptación física en Xiaomi `24116RACCG` es una etapa separada; no se presume por los tests automatizados.

@@ -1,4 +1,4 @@
-const PARTS = Object.freeze(["eyes", "hair", "face"]);
+const PARTS = Object.freeze(["eyes", "hair", "face", "expression"]);
 const COLOR_RE = /^#[0-9a-f]{6}$/i;
 
 function freezeComponent(component) {
@@ -25,7 +25,11 @@ export const ANIME_STYLE_COMPONENTS = Object.freeze([
   freezeComponent({ id:"face-round-soft", part:"face", label:"Rostro redondeado suave", description:"Mejillas anchas y mentón corto para una proporción amable.", tags:["rostro","cara","redondo","mejillas","suave","kawaii"], visualTraits:["mejillas anchas","mentón corto","mandíbula curva"], defaultColors:{primary:"#35263b",eye:"#604060",skin:"#f4c7b7"} }),
   freezeComponent({ id:"face-oval-balanced", part:"face", label:"Rostro ovalado equilibrado", description:"Frente media y mandíbula gradual para una base facial versátil.", tags:["rostro","cara","ovalado","equilibrado","base","proporciones"], visualTraits:["óvalo vertical","mandíbula gradual","mentón medio"], defaultColors:{primary:"#35263b",eye:"#604060",skin:"#f2c4b4"} }),
   freezeComponent({ id:"face-angular-defined", part:"face", label:"Rostro anguloso definido", description:"Pómulos marcados y mandíbula geométrica para un diseño más adulto.", tags:["rostro","cara","anguloso","mandíbula","pómulos","adulto"], visualTraits:["pómulos marcados","mandíbula definida","mentón anguloso"], defaultColors:{primary:"#282437",eye:"#604060",skin:"#eebaa9"} }),
-  freezeComponent({ id:"face-long-oval", part:"face", label:"Rostro ovalado alargado", description:"Mayor longitud vertical y mentón fino, con rasgos más espaciados.", tags:["rostro","cara","alargado","ovalado","mentón fino","proporciones"], visualTraits:["longitud vertical","mentón fino","rasgos espaciados"], defaultColors:{primary:"#35263b",eye:"#604060",skin:"#f2c4b4"} })
+  freezeComponent({ id:"face-long-oval", part:"face", label:"Rostro ovalado alargado", description:"Mayor longitud vertical y mentón fino, con rasgos más espaciados.", tags:["rostro","cara","alargado","ovalado","mentón fino","proporciones"], visualTraits:["longitud vertical","mentón fino","rasgos espaciados"], defaultColors:{primary:"#35263b",eye:"#604060",skin:"#f2c4b4"} }),
+  freezeComponent({ id:"expression-soft-smile", part:"expression", label:"Sonrisa suave", description:"Boca curvada y rubor ligero para una expresión amable y tranquila.", tags:["expresión","sonrisa","amable","suave","feliz","boca"], visualTraits:["curva ascendente","boca cerrada","rubor discreto"], defaultColors:{primary:"#e89a9c",eye:"#604060",skin:"#f4c7b7"} }),
+  freezeComponent({ id:"expression-open-happy", part:"expression", label:"Sonrisa abierta", description:"Boca abierta con dientes visibles para una expresión alegre y enérgica.", tags:["expresión","sonrisa abierta","feliz","alegre","dientes","boca"], visualTraits:["boca abierta","dientes visibles","comisuras elevadas"], defaultColors:{primary:"#e89a9c",eye:"#604060",skin:"#f4c7b7"} }),
+  freezeComponent({ id:"expression-confident-smirk", part:"expression", label:"Sonrisa ladeada", description:"Comisura asimétrica para una actitud segura o pícara, sin cambiar los ojos.", tags:["expresión","sonrisa ladeada","segura","pícara","asimétrica","boca"], visualTraits:["comisura asimétrica","boca estrecha","gesto lateral"], defaultColors:{primary:"#d78a95",eye:"#604060",skin:"#f2c4b4"} }),
+  freezeComponent({ id:"expression-surprised", part:"expression", label:"Sorpresa", description:"Boca pequeña y abierta para sorpresa, asombro o una reacción inesperada.", tags:["expresión","sorpresa","asombro","boca abierta","reacción","anime"], visualTraits:["boca ovalada","apertura vertical","gesto sorprendido"], defaultColors:{primary:"#e89a9c",eye:"#604060",skin:"#f4c7b7"} })
 ]);
 
 function normalizeSearch(value) {
@@ -97,10 +101,19 @@ function faceBaseArtwork(id, skin, dark) {
     "face-angular-defined": '<path d="M51 96 Q55 48 92 34 Q128 18 164 34 Q201 48 205 96 L190 153 L162 190 L128 220 L94 190 L66 153Z" fill="' + skin + '" stroke="' + dark + '" stroke-width="5" stroke-linejoin="round"/><path d="M51 96 L66 153 L94 190 M205 96 L190 153 L162 190" fill="none" stroke="' + dark + '" stroke-width="3" stroke-opacity=".42"/>',
     "face-long-oval": '<path d="M67 109 Q61 58 93 38 Q128 16 163 38 Q195 58 189 109 L177 172 Q158 213 128 229 Q98 213 79 172Z" fill="' + skin + '" stroke="' + dark + '" stroke-width="5" stroke-linejoin="round"/><path d="M67 105 Q52 108 58 130 Q63 142 73 129 M189 105 Q204 108 198 130 Q193 142 183 129" fill="' + skin + '" stroke="' + dark + '" stroke-width="4"/>'
   };
-  return shapes[id] +
-    '<path d="M128 137 L123 156 L132 157" fill="none" stroke="' + dark + '" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>' +
-    '<path d="M109 179 Q128 190 147 179" fill="none" stroke="' + dark + '" stroke-width="3.5" stroke-linecap="round"/>' +
-    '<path d="M63 156 Q76 165 91 156 M165 156 Q180 165 193 156" fill="none" stroke="#e89a9c" stroke-opacity=".72" stroke-width="5" stroke-linecap="round"/>';
+  return shapes[id];
+}
+
+function expressionArtwork(id, dark, accent) {
+  const nose = '<path d="M128 143 L123 151 Q128 155 133 151" fill="none" stroke="' + dark + '" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>';
+  const cheeks = '<path d="M65 156 Q77 163 91 156 M165 156 Q179 163 191 156" fill="none" stroke="' + accent + '" stroke-opacity=".78" stroke-width="5.5" stroke-linecap="round"/>';
+  const shapes = {
+    "expression-soft-smile": '<path d="M109 173 Q128 186 147 173" fill="none" stroke="' + dark + '" stroke-width="4" stroke-linecap="round"/>',
+    "expression-open-happy": '<path d="M110 168 Q128 158 146 168 Q144 190 128 191 Q112 190 110 168Z" fill="#5b243f" stroke="' + dark + '" stroke-width="3.8" stroke-linejoin="round"/><path d="M116 168 Q128 164 140 168 L137 174 L119 174Z" fill="#fffaf7" stroke="' + dark + '" stroke-width="1.8" stroke-linejoin="round"/>',
+    "expression-confident-smirk": '<path d="M105 174 Q122 180 137 173 Q145 168 152 164" fill="none" stroke="' + dark + '" stroke-width="4.2" stroke-linecap="round"/><path d="M143 166 L151 164" fill="none" stroke="' + dark + '" stroke-width="2.5" stroke-linecap="round"/>',
+    "expression-surprised": '<ellipse cx="128" cy="176" rx="8.5" ry="12" fill="#5b243f" stroke="' + dark + '" stroke-width="3.5"/><ellipse cx="128" cy="174" rx="3.6" ry="4.2" fill="#fffaf7"/>'
+  };
+  return nose + cheeks + shapes[id];
 }
 
 function hairFrontArtwork(id, hair, dark) {
@@ -114,13 +127,14 @@ function hairFrontArtwork(id, hair, dark) {
 }
 
 /**
- * Creates a character composition as four aligned, editable SVG image layers.
+ * Creates a character composition as five aligned, editable SVG image layers.
  * The parts share a viewBox but stay independent in the editor and history.
  */
 export function createAnimeCharacterParts({
   eyesId,
   hairId,
   faceId,
+  expressionId = "expression-soft-smile",
   hairColor,
   eyeColor,
   skinColor,
@@ -129,8 +143,10 @@ export function createAnimeCharacterParts({
   const eyes = getAnimeStyleComponent(eyesId);
   const hair = getAnimeStyleComponent(hairId);
   const face = getAnimeStyleComponent(faceId);
-  if (!eyes || eyes.part !== "eyes" || !hair || hair.part !== "hair" || !face || face.part !== "face") {
-    throw new TypeError("A character needs one valid eyes, hair and face component");
+  const expression = getAnimeStyleComponent(expressionId);
+  if (!eyes || eyes.part !== "eyes" || !hair || hair.part !== "hair" || !face || face.part !== "face" ||
+      !expression || expression.part !== "expression") {
+    throw new TypeError("A character needs valid eyes, hair, face and expression components");
   }
 
   const safeHair = safeColor(hairColor, hair.defaultColors.primary);
@@ -145,7 +161,8 @@ export function createAnimeCharacterParts({
     face: svgRoot("Rostro: " + face.label, faceBaseArtwork(face.id, safeSkin, safeLine)),
     hairFront: svgRoot("Flequillo: " + hair.label, hairFrontArtwork(hair.id, safeHair, safeLine)),
     eyes: svgRoot("Ojos: " + eyes.label, eyesArtwork(eyes.id, safeLine, safeEyes)),
-    componentIds: Object.freeze({ eyes: eyes.id, hair: hair.id, face: face.id }),
+    expression: svgRoot("Expresión: " + expression.label, expressionArtwork(expression.id, safeLine, safeColor(expression.defaultColors.primary, "#e89a9c"))),
+    componentIds: Object.freeze({ eyes: eyes.id, hair: hair.id, face: face.id, expression: expression.id }),
     colors: Object.freeze({ hair: safeHair, eyes: safeEyes, skin: safeSkin, line: safeLine })
   });
 }
@@ -161,6 +178,7 @@ export function createAnimeStyleComponentSvg(id, options = {}) {
   let body;
   if (component.part === "eyes") body = eyesArtwork(id, dark, iris);
   else if (component.part === "hair") body = hairArtwork(id, primary, skin, dark, iris).replace(HAIR_FACE_MARKER, "");
-  else body = faceArtwork(id, skin, dark, iris);
+  else if (component.part === "face") body = faceArtwork(id, skin, dark, iris);
+  else body = expressionArtwork(id, dark, safeColor(primary, colors.primary));
   return svgRoot(component.label, body);
 }

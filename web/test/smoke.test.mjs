@@ -451,13 +451,20 @@ test("T064 persistence writer inventory keeps the project key behind the existin
     [...source.matchAll(/localStorage\s*\.\s*setItem\s*\(/g)].map(() => path)
   );
   assert.deepEqual(
-    directWriters.filter(path => !path.endsWith(join("web", "appearance-settings.js"))),
+    directWriters.filter(path => !path.endsWith(join("web", "appearance-settings.js")) && !path.endsWith(join("web", "app.js"))),
     [],
     "the project key remains behind the shared snapshot boundary; appearance settings may use their own isolated key"
   );
   const appearanceModule = sources.find(([path]) => path.endsWith(join("web", "appearance-settings.js")));
   assert.ok(appearanceModule, "editor appearance settings are isolated from project document persistence");
   assert.match(appearanceModule[1], /const STORAGE_KEY = "animeart-editor-appearance-v1"/);
+  const editorDirectWriters = directWriters.filter(path => path.endsWith(join("web", "app.js")));
+  assert.equal(editorDirectWriters.length, 1, "the editor only writes one separate local preference key outside project persistence");
+  const editorSource = sources.find(([path]) => path.endsWith("app.js"));
+  assert.ok(editorSource, "editor source is included in the writer inventory");
+  assert.match(editorSource[1], /const SAVED_TEXT_STYLE_KEY = "kapiart-saved-text-styles-v1"/);
+  assert.match(editorSource[1], /localStorage\.setItem\(SAVED_TEXT_STYLE_KEY,/);
+  assert.doesNotMatch(editorSource[1], /localStorage\.setItem\(\s*["']animeart-web-document["']/);
   const snapshotModule = sources.find(([path]) => path.endsWith(join("domain", "image-import.mjs")));
   assert.ok(snapshotModule, "existing image-import domain module is included in the writer inventory");
   assert.match(snapshotModule[1], /storage\.setItem\(key, serialized\)/, "the shared snapshot boundary owns the delegated storage write");
@@ -544,8 +551,8 @@ test("editor appearance supports custom accent, workspace color and local wallpa
   assert.match(html, /id="appearance-wallpaper-file"/);
   assert.match(html, /id="appearance-open"/);
   assert.match(app, /initializeAppearanceSettings\(\)/);
-  assert.match(app, /animeart-web-shell-v71/);
-  assert.match(worker, /animeart-web-shell-v71/);
+  assert.match(app, /animeart-web-shell-v77/);
+  assert.match(worker, /animeart-web-shell-v77/);
   assert.match(worker, /\.\/appearance-settings\.js/);
   assert.match(appearance, /animeart-editor-appearance-v1/);
   assert.match(appearance, /MAX_WALLPAPER_BYTES = 2 \* 1024 \* 1024/);
@@ -613,7 +620,7 @@ test("Android native export bridge and browser fallback are wired to the canonic
   assert.ok(activity.includes("NativeExportBridge"));
   assert.ok(activity.includes("Intent.ACTION_CREATE_DOCUMENT"));
   assert.match(worker, /\.\/domain\/background-removal-profiles\.mjs/);
-  assert.match(worker, /animeart-web-shell-v71/);
+  assert.match(worker, /animeart-web-shell-v77/);
 });
 
 test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size layer thumbnails", async () => {
@@ -633,7 +640,7 @@ test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size la
   assert.match(css, /\.layer-thumbnail \{ flex: 0 0 56px; width: 56px; height: 56px/);
   assert.match(css, /\.layers #layers \.layer-select \{ min-height: 60px/);
   assert.match(removal, /seedPoints=\[\]/);
-  assert.match(worker, /animeart-web-shell-v71/);
+  assert.match(worker, /animeart-web-shell-v77/);
 });
 
 
@@ -658,8 +665,8 @@ test("AA-PICSART-UX-001 defaults to direct layer selection and exposes simple an
   assert.match(html, /data-editor-mode="interactive"/);
   assert.match(html, /data-tool="select" aria-pressed="true">🖐️ Seleccionar \/ mover/);
   assert.match(css, /\.editor-mode-switch button\.active/);
-  assert.match(worker, /animeart-web-shell-v71/);
-  assert.match(app, /animeart-web-shell-v71/);
+  assert.match(worker, /animeart-web-shell-v77/);
+  assert.match(app, /animeart-web-shell-v77/);
 });
 
 test("Magic Eraser tolerance is user-adjustable instead of hardcoded", async () => {
@@ -812,8 +819,8 @@ test("AA-TEXT-EDITOR-001 opens a dedicated text dialog with typography, outline,
   for (const preset of ["comic", "poster", "manga", "neon"]) assert.match(html, new RegExp('data-text-style-preset="' + preset + '"'));
   assert.match(js, /textEditDialog\.showModal\(\)/);
   assert.match(css, /#text-edit-dialog/);
-  assert.match(app, /animeart-web-shell-v71/);
-  assert.match(worker, /animeart-web-shell-v71/);
+  assert.match(app, /animeart-web-shell-v77/);
+  assert.match(worker, /animeart-web-shell-v77/);
   assert.match(html, /¿Qué quieres escribir\?/);
   assert.match(html, /class="text-simple-controls"/);
   assert.match(html, /<details class="text-advanced-options">/);
@@ -860,7 +867,7 @@ test("AA-EDITOR-UX-002 surfaces image import/library, compact view options, laye
   assert.ok(css.includes(".canvas-view-menu[open] .canvas-view-actions"));
   assert.ok(css.includes(".selection-mini-panel"));
   assert.ok(css.includes(".crop-reset-selection"));
-  assert.match(worker, /animeart-web-shell-v71/);
+  assert.match(worker, /animeart-web-shell-v77/);
 });
 
 
@@ -878,7 +885,7 @@ test("AA-MOBILE-SIMPLE-001 keeps the mobile canvas primary and reveals tools on 
   assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(html, /class="mobile-touch-dock"/);
   assert.match(html, /data-touch-action="more"/);
-  assert.match(worker, /animeart-web-shell-v71/);
+  assert.match(worker, /animeart-web-shell-v77/);
 });
 
 
@@ -915,7 +922,7 @@ test("AA-PICSART-CONTEXT-OBJECT-001 provides closable style and shape windows wi
   assert.match(app,/function openSelectedObjectStyle\(/);
   assert.match(app,/shapeMakerDialog\.close\(\)/);
   assert.match(css,/AA-PICSART-CONTEXT-OBJECT-001/);
-  assert.match(worker,/animeart-web-shell-v71/);
+  assert.match(worker,/animeart-web-shell-v77/);
 });
 
 test("T_TEXT_EDITOR outline controls register only one input handler each", async () => {
@@ -990,7 +997,7 @@ test("AA-TOOLBOX-WORKSPACE-001 keeps the mobile main surface compact and opens a
   assert.match(css, /AA-TOOLBOX-WORKSPACE-001/);
   assert.match(css, /#censor-light-dialog\[open\][\s\S]*?height: 100dvh/);
   assert.match(css, /#canvas-crop-dialog\[open\][\s\S]*?height: 100dvh/);
-  assert.match(worker, /animeart-web-shell-v71/);
+  assert.match(worker, /animeart-web-shell-v77/);
 });
 
 
@@ -1043,7 +1050,7 @@ test("AA-IMAGE-X-DELETE-AND-TOUCH-ANCHOR-001 removes the image with X and anchor
   assert.match(app, /startClient: \{ x: event\.clientX, y: event\.clientY \}/);
   assert.match(app, /interaction\.startDocument\.y \+ \(Number\(event\.clientY\) - interaction\.startClient\.y\) \/ interaction\.screenScaleAtStart/);
   assert.match(app, /A stationary tap selects the object only/);
-  assert.match(worker, /animeart-web-shell-v71/);
+  assert.match(worker, /animeart-web-shell-v77/);
   assert.match(browserE2E, /the canvas X removes the selected mobile image/);
   assert.match(browserE2E, /canvas layout shifts during a stationary touch without changing the image transform/);
   assert.match(browserE2E, /stationary multi-selection gesture does not move selected layers when the canvas rectangle changes/);

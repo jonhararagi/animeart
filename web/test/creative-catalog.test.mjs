@@ -9,7 +9,9 @@ import {
 import { ANIME_STYLE_COMPONENTS, searchAnimeStyleComponents, createAnimeStyleComponentSvg, createAnimeCharacterParts } from "../domain/anime-style-library.mjs";
 
 test("original cover catalog provides anime, galaxy, manga, romance and cyberpunk themes",()=>{
-  assert.ok(CREATIVE_TEMPLATES.length>=10);
+  assert.ok(CREATIVE_TEMPLATES.length>=25,"template library has grown beyond the starter cover set");
+  assert.equal(new Set(CREATIVE_TEMPLATES.map(item=>item.id)).size,CREATIVE_TEMPLATES.length,"template IDs remain unique");
+  for(const template of CREATIVE_TEMPLATES)if(template.defaultFormat)assert.ok(["portrait","square","story","banner"].includes(template.defaultFormat),template.id+" has a supported default format");
   for(const category of ["Anime","Galaxia","Manga","Romance","Cyberpunk"])assert.ok(CREATIVE_TEMPLATES.some(item=>item.category===category),"catalog includes "+category);
   for(const template of CREATIVE_TEMPLATES){
     assert.match(template.background,/^#[0-9a-f]{6}$/i);
@@ -66,6 +68,12 @@ test("word-art presets have real typography settings and style packs reference e
     assert.equal(pack.colors.length,3);
   }
   assert.equal(getCreativeTemplate("galactic-dream").label,"Sueño galáctico");
+  for(const [id,format] of [["social-square-kawaii","square"],["story-heroine","story"],["youtube-anime-thumb","banner"],["manga-page","portrait"],["phone-wallpaper","story"]]){
+    assert.equal(getCreativeTemplate(id)?.defaultFormat,format,id+" chooses its intended canvas format");
+  }
+  for(const category of ["Redes sociales","Historias","Miniaturas","Fondos","Personajes","Libros","Eventos","Invitaciones","Frases","Música","Educación","Comunidad"]){
+    assert.ok(CREATIVE_TEMPLATES.some(item=>item.category===category),"template library includes "+category);
+  }
 });
 
 test("creative studio UI is discoverable, searchable, offline-ready and packaged in Android",async()=>{
@@ -84,16 +92,61 @@ test("creative studio UI is discoverable, searchable, offline-ready and packaged
   assert.match(app,/createAnimeCharacterParts\(/);
   assert.match(app,/layer\.isReference=false/);
   assert.match(css,/creative-character-composer/);
-  assert.equal(Object.keys(createAnimeCharacterParts({eyesId:"eyes-round-glossy",hairId:"hair-twin-tails",faceId:"face-round-soft"})).filter(key=>["hairBack","face","hairFront","eyes"].includes(key)).length,4);
+  assert.equal(Object.keys(createAnimeCharacterParts({eyesId:"eyes-round-glossy",hairId:"hair-twin-tails",faceId:"face-round-soft"})).filter(key=>["hairBack","face","hairFront","eyes","expression"].includes(key)).length,5);
   assert.match(app,/createAnimeStyleComponentSvg\(/);
   assert.match(app,/searchAnimeStyleComponents\(/);
   assert.match(worker,/anime-style-library\.mjs/);
   assert.ok(android.includes('test -s "$WEB/domain/anime-style-library.mjs"'));
-  assert.equal(ANIME_STYLE_COMPONENTS.length,12);
+  assert.ok(android.includes('test -s "$WEB/domain/design-alignment.mjs"'));
+  assert.ok(android.includes('test -s "$WEB/domain/design-library.mjs"'));
+  assert.ok(android.includes('test -s "$WEB/domain/multi-page-project.mjs"'));
+  assert.ok(android.includes('test -s "$WEB/domain/element-library.mjs"'));
+  assert.match(html,/data-creative-tab="elements"/);
+  assert.match(html,/id="creative-element-category"/);
+  assert.match(html,/id="creative-element-favorites-only"/);
+  assert.match(app,/function addCreativeElementLayer\(/);
+  assert.match(app,/toggleCreativeElementFavorite\(/);
+  assert.match(css,/KAPIART-ELEMENT-LIBRARY-001/);
+  assert.match(html,/id="multi-page-dialog"/);
+  assert.match(html,/id="quick-open-page-manager"/);
+  assert.match(html,/id="multi-page-copy-layer"/);
+  assert.match(html,/id="multi-page-export-pdf"/);
+  assert.match(app,/async function exportActiveMultiPagePdf\(/);
+  assert.match(app,/buildMultiPagePdf\(pdfPages\)/);
+  assert.match(app,/from "\.\/domain\/pdf-export\.mjs"/);
+  assert.match(app,/"\.\/domain\/pdf-export\.mjs"/);
+  assert.match(worker,/animeart-web-shell-v77/);
+  assert.match(worker,/\.\/domain\/pdf-export\.mjs/);
+  assert.match(app,/function activateMultiPagePage\(/);
+  assert.match(app,/function copySelectedLayerToAnotherPage\(/);
+  assert.match(css,/KAPIART-MULTIPAGE-001/);
+  assert.match(html,/id="text-letter-spacing"/);
+  assert.match(html,/id="text-line-height"/);
+  assert.match(html,/id="saved-text-styles"/);
+  assert.match(app,/function drawTextWithLetterSpacing\(/);
+  assert.match(app,/function saveSelectedTextStyle\(/);
+  assert.match(css,/KAPIART-TYPOGRAPHY-001/);
+  assert.match(html,/id="design-library-dialog"/);
+  assert.match(html,/id="quick-open-design-library"/);
+  assert.match(html,/data-layer-align="distribute-horizontal"/);
+  assert.match(html,/id="layer-group-selection"/);
+  assert.match(html,/id="layer-ungroup-selection"/);
+  assert.match(html,/id="layer-grouping-status"/);
+  assert.match(app,/function applyGroupSelection\(/);
+  assert.match(app,/function applyUngroupSelection\(/);
+  assert.match(app,/groupLayers, transformLayers/);
+  assert.match(app,/layer\.groupId \? " \[Grupo\]"/);
+  assert.match(css,/KAPIART-LAYER-GROUPS-001/);
+  assert.ok(android.includes('test -s "web/test/layer-groups.test.mjs"'));
+  assert.match(app,/function initializeCanvaWorkflowTools\(/);
+  assert.match(app,/animeart-web-shell-v77/);
+  assert.match(css,/KAPIART-CANVA-WORKFLOW-001/);
+  assert.equal(ANIME_STYLE_COMPONENTS.length,16);
   assert.equal(searchAnimeStyleComponents("coletas","hair").length,1);
+  assert.equal(searchAnimeStyleComponents("expresión","expression").length,4);
   assert.match(createAnimeStyleComponentSvg("hair-twin-tails"),/<path/);
   assert.match(css,/AA-CREATIVE-STUDIO-001/);
-  assert.match(worker,/animeart-web-shell-v71/);
+  assert.match(worker,/animeart-web-shell-v77/);
   assert.match(worker,/\.\/domain\/creative-catalog\.mjs/);
   assert.match(android, /test -s "\$WEB\/domain\/creative-catalog\.mjs"/);
   assert.match(android, /test -s "\$WEB\/domain\/canvas-rendering\.mjs"/);

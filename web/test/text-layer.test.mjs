@@ -25,6 +25,8 @@ test("text layer normalizes bounded typography and rejects unsafe font or color 
     fontWeight: "bold",
     color: "#172335",
     align: "left",
+    letterSpacing: 0,
+    lineHeight: 1.2,
     outlineColor: "#ffffff",
     outlineWidth: 0,
     shadowColor: "#000000",
@@ -60,6 +62,20 @@ test("text layers survive document normalization and strict validation", () => {
   assert.equal(isValidDocument(cloneDocument(restored)), true);
 });
 
+test("legacy saved text layers without typography v2 fields remain valid and normalize to defaults", () => {
+  const document = createDocument(320, 240);
+  const text = createTextLayer("Legacy", { value: "Old project", fontSize: 28 });
+  document.layers.push(text);
+  const legacy = JSON.parse(JSON.stringify(document));
+  delete legacy.layers[1].text.letterSpacing;
+  delete legacy.layers[1].text.lineHeight;
+  assert.equal(isValidDocument(legacy), true);
+  const restored = normalizeDocument(legacy);
+  assert.equal(restored.layers[1].text.letterSpacing, 0);
+  assert.equal(restored.layers[1].text.lineHeight, 1.2);
+  assert.equal(isValidDocument(restored), true);
+});
+
 test("setLayerText is immutable, preserves layer identity and clamps text properties", () => {
   const document = createDocument(640, 480);
   const textLayer = createTextLayer("Caption", { value: "Before", fontSize: 40 });
@@ -91,7 +107,8 @@ test("text edits participate in History and use the existing non-destructive PNG
   const app = await readFile("app.js", "utf8");
   const exporter = await readFile("domain/png-export.mjs", "utf8");
   assert.match(app, /layer\.contentType === "text"/);
-  assert.match(app, /context\.fillText\(line,\s*x,\s*y\)/);
+  assert.match(app, /function drawTextWithLetterSpacing\(/);
+  assert.match(app, /drawTextWithLetterSpacing\(context, line, x, y, previewText\.letterSpacing, false\)/);
   assert.match(app, /state\.history\.record\(before, next\)/);
   assert.match(app, /persistDocument\(\)/);
   assert.match(app, /renderDocumentToCanvas\(state\.document, exportCanvas/);
@@ -105,6 +122,20 @@ test("text edits participate in History and use the existing non-destructive PNG
   history.record(cloneDocument(withText), changed);
   assert.equal(history.undo(changed).layers[1].text.value, "Before");
   assert.equal(history.redo(withText).layers[1].text.value, "After");
+});
+
+
+test("letter spacing and line height are clamped, validated, and included in text bounds", () => {
+  assert.equal(normalizeTextLayer({ letterSpacing: 100, lineHeight: 0.1 }).letterSpacing, 24);
+  assert.equal(normalizeTextLayer({ letterSpacing: -100, lineHeight: 8 }).letterSpacing, -8);
+  assert.equal(normalizeTextLayer({ letterSpacing: 0, lineHeight: 0.1 }).lineHeight, 0.8);
+  assert.equal(normalizeTextLayer({ lineHeight: 8 }).lineHeight, 2.5);
+  const base = estimateTextLayerBounds({ value: "AB\nCD", fontSize: 20, x: 30, y: 40, letterSpacing: 0, lineHeight: 1.2 });
+  const expanded = estimateTextLayerBounds({ value: "AB\nCD", fontSize: 20, x: 30, y: 40, letterSpacing: 8, lineHeight: 2 });
+  assert.ok(expanded.maxX - expanded.minX > base.maxX - base.minX);
+  assert.ok(expanded.maxY > base.maxY);
+  assert.equal(isValidTextLayer({ ...normalizeTextLayer(), letterSpacing: 25 }), false);
+  assert.equal(isValidTextLayer({ ...normalizeTextLayer(), lineHeight: 0.4 }), false);
 });
 
 test("outlined and shadowed typography is normalized and validated", () => {

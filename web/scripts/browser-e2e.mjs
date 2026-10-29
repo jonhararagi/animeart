@@ -243,6 +243,28 @@ const clickMoreGoal = async goal => {
   await click('[data-edit-goal="' + goal + '"]');
 };
 
+const openDesignLibrary = async () => {
+  const open = await evaluate('document.querySelector("#toolbox-dialog")?.open === true');
+  if (!open) {
+    const mobile = await evaluate('window.matchMedia("(max-width: 920px)").matches');
+    await click(mobile ? '.mobile-touch-dock [data-touch-action="more"]' : '#toolbox-open');
+    await waitFor('document.querySelector("#toolbox-dialog")?.open === true');
+  }
+  await click("#quick-open-design-library");
+  await waitFor('document.querySelector("#design-library-dialog")?.open === true');
+};
+
+const openMultiPageManager = async () => {
+  const open = await evaluate('document.querySelector("#toolbox-dialog")?.open === true');
+  if (!open) {
+    const mobile = await evaluate('window.matchMedia("(max-width: 920px)").matches');
+    await click(mobile ? '.mobile-touch-dock [data-touch-action="more"]' : '#toolbox-open');
+    await waitFor('document.querySelector("#toolbox-dialog")?.open === true');
+  }
+  await click("#quick-open-page-manager");
+  await waitFor('document.querySelector("#multi-page-dialog")?.open === true');
+};
+
 const mouseDrag = async (start, end, modifiers = 0) => {
   await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: start.x, y: start.y });
   await cdp("Input.dispatchMouseEvent", { type: "mousePressed", x: start.x, y: start.y, button: "left", buttons: 1, clickCount: 1, modifiers });
@@ -870,6 +892,23 @@ try {
   await click("#apply-text-layer");
   await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
 
+  // Typography v2: letter spacing and line height persist, and custom styles are reusable.
+  await evaluate('window.prompt=()=> "E2E Manga Tracking"');
+  await evaluate('document.querySelector("#selection-mini-edit-text").click()');
+  await waitFor('document.querySelector("#text-edit-dialog").open === true', 10000);
+  await evaluate('(() => { const track=document.querySelector("#text-letter-spacing"); track.value="4"; track.dispatchEvent(new Event("input",{bubbles:true})); track.dispatchEvent(new Event("change",{bubbles:true})); const leading=document.querySelector("#text-line-height"); leading.value="1.65"; leading.dispatchEvent(new Event("input",{bubbles:true})); leading.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.letterSpacing===4 && JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.lineHeight===1.65', 10000);
+  await click("#save-text-style");
+  await waitFor('document.querySelector("#saved-text-styles [data-saved-text-style-apply]")?.textContent==="E2E Manga Tracking"', 10000);
+  await evaluate('(() => { const track=document.querySelector("#text-letter-spacing"); track.value="-2"; track.dispatchEvent(new Event("input",{bubbles:true})); track.dispatchEvent(new Event("change",{bubbles:true})); const leading=document.querySelector("#text-line-height"); leading.value="1"; leading.dispatchEvent(new Event("input",{bubbles:true})); leading.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.letterSpacing===-2 && JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.lineHeight===1', 10000);
+  await click('#saved-text-styles [data-saved-text-style-apply]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.letterSpacing===4 && JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.lineHeight===1.65', 10000);
+  assert(await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + '); return layer?.text?.value==="AnimeArt Studio" && layer.text.letterSpacing===4 && layer.text.lineHeight===1.65; })()'),
+    "reusable text styles restore tracking and line height without replacing text content");
+  await click("#apply-text-layer");
+  await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
+
   await click("#add-text-layer");
   const disposableText = (await readDocument()).layers.at(-1);
   assert(disposableText?.contentType === "text", "temporary text fixture is a normal editable layer");
@@ -895,30 +934,33 @@ try {
   await click('[data-creative-tab="traits"]');
   await click('[data-creative-action="select-trait"][data-item-id="eyes-round-glossy"]');
   await click('[data-creative-action="select-trait"][data-item-id="hair-twin-tails"]');
-  await click('[data-creative-action="select-trait"][data-item-id="face-angular-defined"]');
+  await click('[data-creative-action="select-trait"][data-item-id="face-angular-defined"]');  await evaluate('(() => { const filter=document.querySelector("#creative-trait-part"); filter.value="expression"; filter.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await click('[data-creative-action="select-trait"][data-item-id="expression-surprised"]');
+  await evaluate('(() => { const filter=document.querySelector("#creative-trait-part"); filter.value="all"; filter.dispatchEvent(new Event("change",{bubbles:true})); })()');
   await waitFor('document.querySelector("#creative-trait-create-character")?.disabled === false');
   await evaluate('(() => { for (const [id,value] of [["creative-trait-hair-color","#bb5533"],["creative-trait-eye-color","#0099cc"],["creative-trait-skin-color","#f0c2b0"],["creative-trait-line-color","#332211"]]) { const input=document.querySelector("#"+id); input.value=value; input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); } })()');
   await click("#creative-trait-create-character");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (characterVariantsBefore + 4), 10000);
-  const composedCharacterLayers = (await readDocument()).layers.filter(layer => layer.name.startsWith("Personaje anime V")).slice(-4);
-  assert(composedCharacterLayers.length === 4 && composedCharacterLayers.every(layer => layer.contentType === "image" && layer.isReference !== true && layer.image?.source?.startsWith("data:image/svg+xml")), "character composer creates four actual SVG image layers rather than a flattened preview");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (characterVariantsBefore + 5), 10000);
+  const composedCharacterLayers = (await readDocument()).layers.filter(layer => layer.name.startsWith("Personaje anime V")).slice(-5);
+  assert(composedCharacterLayers.length === 5 && composedCharacterLayers.every(layer => layer.contentType === "image" && layer.isReference !== true && layer.image?.source?.startsWith("data:image/svg+xml")), "character composer creates five actual SVG image layers including a separate expression layer rather than a flattened preview");
   assert(new Set(composedCharacterLayers.map(layer => JSON.stringify(layer.transform))).size === 1, "character parts begin aligned with the same transform and remain independently editable");
-  assert(composedCharacterLayers.some(layer => layer.name.includes("Cabello base")) && composedCharacterLayers.some(layer => layer.name.includes("Rostro")) && composedCharacterLayers.some(layer => layer.name.includes("Flequillo")) && composedCharacterLayers.some(layer => layer.name.includes("Ojos")), "the four layers preserve the selected character parts by name");
-  assert(await evaluate('document.querySelector("#creative-character-status").textContent.includes("creado en cuatro capas")'), "character composer reports a successful editable character");
+  assert(composedCharacterLayers.some(layer => layer.name.includes("Cabello base")) && composedCharacterLayers.some(layer => layer.name.includes("Rostro")) && composedCharacterLayers.some(layer => layer.name.includes("Flequillo")) && composedCharacterLayers.some(layer => layer.name.includes("Ojos")) && composedCharacterLayers.some(layer => layer.name.includes("Expresión")), "the five layers preserve all character parts, including the expression, by name");
+  assert(composedCharacterLayers.every(layer => layer.characterComposition?.componentIds?.expression === "expression-surprised"), "the selected expression ID is saved in every editable character-part record");
+  assert(await evaluate('document.querySelector("#creative-character-status").textContent.includes("creado en cinco capas")'), "character composer reports a successful five-layer editable character");
   await evaluate('(() => { const input=document.querySelector("#creative-trait-hair-color"); input.value="#4D2E5F"; input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); })()');
   await click("#creative-trait-create-character");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (characterVariantsBefore + 8), 10000);
-  const secondVariantLayers = (await readDocument()).layers.filter(layer => layer.name.startsWith("Personaje anime V")).slice(-4);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (characterVariantsBefore + 10), 10000);
+  const secondVariantLayers = (await readDocument()).layers.filter(layer => layer.name.startsWith("Personaje anime V")).slice(-5);
   assert(secondVariantLayers.every(layer => layer.name.startsWith("Personaje anime V2 ·") && layer.contentType === "image"), "the selected traits can generate a second separately named character variant");
   assert(new Set(secondVariantLayers.map(layer => JSON.stringify(layer.transform))).size === 1 && JSON.stringify(secondVariantLayers[0].transform) !== JSON.stringify(composedCharacterLayers[0].transform), "the second character variant occupies a different comparison slot");
-  assert(await evaluate('document.querySelector("#creative-character-status").textContent.includes("V2 creado en cuatro capas")'), "second variant reports its own version status");
+  assert(await evaluate('document.querySelector("#creative-character-status").textContent.includes("V2 creado en cinco capas")'), "second variant reports its own version status");
   await click("#creative-studio-close");
   await waitFor('document.querySelector("#creative-studio-dialog")?.open === false');
   await click("#undo");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (characterVariantsBefore + 4), 10000);
-  assert((await readDocument()).layers.filter(layer => layer.name.startsWith("Personaje anime V1 ·")).length === 4, "undo removes only the newest character variant and preserves its predecessor");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (characterVariantsBefore + 5), 10000);
+  assert((await readDocument()).layers.filter(layer => layer.name.startsWith("Personaje anime V1 ·" )).length === 5, "undo removes only the newest character variant and preserves its predecessor");
   await click("#redo");
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (characterVariantsBefore + 8), 10000);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name.startsWith("Personaje anime V")).length === ' + (characterVariantsBefore + 10), 10000);
   await evaluate('window.__animeArtStrokeTextCount = 0; const originalStrokeText = CanvasRenderingContext2D.prototype.strokeText; CanvasRenderingContext2D.prototype.strokeText = function(...args) { window.__animeArtStrokeTextCount += 1; return originalStrokeText.apply(this, args); };');
   await click("#add-meme-text");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.filter(layer => layer.name === "Meme Top" || layer.name === "Meme Bottom").length === 2', 10000);
@@ -1055,7 +1097,7 @@ try {
   const creativeBaselineIds = (await readDocument()).layers.map(layer => layer.id);
   await clickMoreGoal("creative-studio");
   await waitFor('document.querySelector("#creative-studio-dialog")?.open === true');
-  assert(await evaluate('document.querySelectorAll("[data-creative-tab]").length === 5'), "creative studio exposes Covers, Stickers, Words, Style Packs and Anime Traits tabs");
+  assert(await evaluate('document.querySelectorAll("[data-creative-tab]").length === 6'), "creative studio exposes Covers, Stickers, Words, Style Packs and Anime Traits tabs");
   await click('[data-creative-tab="stickers"]');
   await click('[data-creative-action="add-sticker"][data-item-id="sakura-bloom"]');
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Sticker · Flor de sakura"&&layer.contentType==="image")');
@@ -2542,6 +2584,192 @@ try {
   const completedStickerGuide = await evaluate('JSON.parse(localStorage.getItem("kapiart-guided-editing-progress-v1")||"{}").progressByFlow?.["sticker-anime"]||null');
   assert(completedStickerGuide?.completedStepIds?.length === 3,
     "the guide records all three confirmed steps after the real import, cutout, and PNG export");
+
+
+  await evaluate('document.querySelectorAll("dialog[open]").forEach(dialog=>dialog.close())');
+  await clickMoreGoal("creative-studio");
+  await waitFor('document.querySelector("#creative-studio-dialog")?.open === true');
+  await click('[data-creative-action="select-template"][data-item-id="youtube-anime-thumb"]');
+  await waitFor('document.querySelector("#creative-cover-size")?.value === "banner"');
+  assert(await evaluate('document.querySelector("#creative-cover-size")?.value === "banner"'),
+    "selecting a widescreen template also chooses its suggested banner format");
+  await click("#creative-studio-x");
+
+  await evaluate('window.confirm=()=>true; window.prompt=(message,defaultValue)=>message.startsWith("Nombre de la copia")?(defaultValue||"Copia E2E"):"Nombre renombrado E2E";');
+  await openDesignLibrary();
+  await evaluate('document.querySelector("#design-library-name").value="KapiArt E2E workflow"');
+  await click("#design-library-save-current");
+  await waitFor('document.querySelector("#design-library-status")?.textContent.includes("Diseño guardado localmente")',15000);
+  await waitFor('document.querySelectorAll("#design-library-list .design-library-card").length===1',10000);
+  const savedDesignCard = await evaluate('(() => { const card=document.querySelector("#design-library-list .design-library-card"); return {name:card?.querySelector(".design-library-copy strong")?.textContent,meta:card?.querySelector(".design-library-copy small")?.textContent,hasPreview:Boolean(card?.querySelector(".design-library-visual img"))}; })()');
+  assert(savedDesignCard.name==="KapiArt E2E workflow" && /px/.test(savedDesignCard.meta||""),
+    "Mis diseños saves an editable project and shows its dimensions");
+  assert(savedDesignCard.hasPreview,
+    "Mis diseños stores and displays a locally rendered thumbnail when canvas encoding is available");
+
+  await click("#design-library-list button[data-design-action=\"duplicate\"]");
+  await waitFor('document.querySelectorAll("#design-library-list .design-library-card").length===2',10000);
+  await click("#design-library-list button[data-design-action=\"rename\"]");
+  await waitFor('Array.from(document.querySelectorAll("#design-library-list .design-library-copy strong")).some(node=>node.textContent==="Nombre renombrado E2E")');
+  await click("#design-library-list button[data-design-action=\"open\"]");
+  await waitFor('document.querySelector("#design-library-dialog")?.open !== true');
+  assert(await evaluate('document.querySelector("#status")?.textContent.startsWith("Diseño abierto:")'),
+    "opening a library entry restores the editable project and closes the dialog");
+
+  await openDesignLibrary();
+  await click("#design-library-list button[data-design-action=\"delete\"]");
+  await waitFor('document.querySelectorAll("#design-library-list .design-library-card").length===1',10000);
+  assert(await evaluate('document.querySelectorAll("#design-library-list .design-library-card").length===1'),
+    "deleting a library entry keeps the other project intact");
+  await click("#design-library-close");
+  await waitFor('document.querySelector("#design-library-dialog")?.open !== true');
+
+  await clickMoreGoal("creative-studio");
+  await waitFor('document.querySelector("#creative-studio-dialog")?.open === true');
+  assert(await evaluate('document.querySelectorAll("[data-creative-tab]").length===6'),
+    "creative studio exposes a dedicated Elements library tab");
+  await click('[data-creative-tab="elements"]');
+  await evaluate('(() => { const q=document.querySelector("#creative-catalog-search"); q.value=""; q.dispatchEvent(new Event("input",{bubbles:true})); const category=document.querySelector("#creative-element-category"); category.value="Globos y diálogo"; category.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  await waitFor('document.querySelectorAll("#creative-catalog-grid [data-creative-action=\\\"add-element\\\"]").length===3');
+  assert(await evaluate('Array.from(document.querySelectorAll("#creative-catalog-grid [data-creative-action=\\\"add-element\\\"]")).some(button=>button.dataset.itemId==="bubble-rounded")'),
+    "element library filters original speech bubbles by collection");
+  await click('#creative-catalog-grid [data-element-favorite="bubble-rounded"]');
+  await waitFor('JSON.parse(localStorage.getItem("kapiart-creative-element-favorites-v1")||"[]").includes("bubble-rounded")');
+  await click("#creative-element-favorites-only");
+  await waitFor('document.querySelectorAll("#creative-catalog-grid [data-creative-action=\\\"add-element\\\"]").length===1');
+  assert(await evaluate('document.querySelector("#creative-catalog-grid [data-creative-action=\\\"add-element\\\"]")?.dataset.itemId==="bubble-rounded"'),
+    "the favorites-only filter keeps the saved element and hides other elements");
+  await click('#creative-catalog-grid [data-creative-action="add-element"][data-item-id="bubble-rounded"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.name==="Elemento · Globo suave"&&layer.contentType==="image"&&layer.image?.source.startsWith("data:image/svg+xml"))',10000);
+  const addedElement = await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(item=>item.name==="Elemento · Globo suave"); return {type:layer?.contentType,source:layer?.image?.source,scale:layer?.transform?.scale}; })()');
+  assert(addedElement.type==="image" && addedElement.source.startsWith("data:image/svg+xml") && addedElement.scale>0,
+    "adding an element creates its own movable local SVG layer instead of flattening it");
+  await click("#creative-studio-close");
+  await waitFor('document.querySelector("#creative-studio-dialog")?.open === false');
+
+  const mobileViewport = await evaluate('window.matchMedia("(max-width: 920px)").matches');
+  if (mobileViewport) {
+    const mobileLayersOpen = await evaluate('document.body.classList.contains("mobile-layers-open")');
+    if (!mobileLayersOpen) await clickMoreGoal("layers");
+    await waitFor('document.body.classList.contains("mobile-layers-open")');
+  }
+  const alignLayerId = await evaluate('(() => { const d=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const layer=(d.layers||[]).find(item=>!item.locked); return layer?.id||null; })()');
+  assert(alignLayerId, "a mutable layer is available to the alignment controls");
+  await click('#layers li[data-layer-id="' + alignLayerId + '"] .layer-select');
+  await click('[data-layer-align="center-x"]');
+  await waitFor('(/alinead|deshacer/i).test(document.querySelector("#layer-alignment-status")?.textContent||"")');
+  assert(await evaluate('(/alinead|deshacer/i).test(document.querySelector("#layer-alignment-status")?.textContent||"")'),
+    "the visible layer panel applies canvas alignment and reports a recoverable action");
+
+
+  await openMultiPageManager();
+  await evaluate('document.querySelector("#multi-page-project-name").value="KapiArt Multi E2E"');
+  await click("#multi-page-create-project");
+  await waitFor('document.querySelector("#multi-page-active-name")?.textContent==="KapiArt Multi E2E"',15000);
+  await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===1');
+  assert(await evaluate('document.querySelector("#multi-page-active-name")?.textContent==="KapiArt Multi E2E"'),
+    "a multipage project starts from the current editable canvas");
+
+  await click("#multi-page-duplicate-page");
+  await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===2',10000);
+  const duplicatePageInfo = await evaluate('(() => ({active:document.querySelector("#multi-page-active-page")?.textContent,options:document.querySelectorAll("#multi-page-copy-target option").length}))()');
+  assert(/Página 2 de 2/.test(duplicatePageInfo.active||"") && duplicatePageInfo.options===1,
+    "duplicating a page keeps two independently addressable pages");
+
+  const layerCountBeforeCopy = await evaluate('Number(document.querySelector("#multi-page-page-list .multi-page-page-info small")?.textContent.match(/(\\d+) capas/)?.[1]||0)');
+  await click("#multi-page-copy-layer");
+  await waitFor('document.querySelector("#multi-page-status")?.textContent.includes("Capa copiada a")',10000);
+  const copyFeedback = await evaluate('document.querySelector("#multi-page-status")?.textContent||""');
+  assert(copyFeedback.includes("Se conservó editable"),
+    "copying a layer between pages preserves independent editable content");
+  const layerCountAfterCopy = await evaluate('Number(document.querySelector("#multi-page-page-list .multi-page-page-info small")?.textContent.match(/(\\d+) capas/)?.[1]||0)');
+  assert(layerCountAfterCopy===layerCountBeforeCopy+1,
+    "copying a layer adds one independent editable layer to the target page");
+
+
+  await click("#multi-page-add-blank");
+  await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===3',10000);
+  await click('#multi-page-page-list .multi-page-page-card:last-child button[data-multi-page-action="rename"]');
+  await waitFor('Array.from(document.querySelectorAll("#multi-page-page-list .multi-page-page-info strong")).some(node=>node.textContent==="Nombre renombrado E2E")');
+  await click('#multi-page-page-list .multi-page-page-card:last-child button[data-multi-page-action="up"]');
+  await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===3');
+  const activeAfterReorder = await evaluate('document.querySelector("#multi-page-active-page")?.textContent||""');
+  assert(/2 de 3/.test(activeAfterReorder),
+    "pages can be renamed and reordered without losing the active page");
+
+  await click("#multi-page-export-pdf");
+  await waitFor('document.querySelector("#multi-page-status")?.textContent.includes("PDF exportado correctamente")',30000);
+  assert(await evaluate('document.querySelector("#multi-page-status")?.textContent.includes("PDF exportado correctamente")'),
+    "the multipage project exports all rendered pages into a single PDF");
+  await click('#multi-page-page-list button[data-multi-page-action="open"][data-page-id]:not(:disabled)');
+  await waitFor('document.querySelector("#multi-page-status")?.textContent.startsWith("Página abierta:")',10000);
+  await click("#multi-page-save-page");
+  await waitFor('document.querySelector("#multi-page-status")?.textContent.includes("Página guardada")',10000);
+  const pageCountBeforeDelete = await evaluate('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length');
+  await click('#multi-page-page-list button[data-multi-page-action="delete"][data-page-id]');
+  await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===2',10000);
+  const pageCountAfterDelete = await evaluate('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length');
+  assert(pageCountBeforeDelete===3 && pageCountAfterDelete===2,
+    "the project supports deleting one page while preserving the other editable pages");
+  await click("#multi-page-close");
+  await waitFor('document.querySelector("#multi-page-dialog")?.open !== true');
+
+
+  const groupingMobileViewport = await evaluate('window.matchMedia("(max-width: 920px)").matches');
+  if (groupingMobileViewport && !(await evaluate('document.body.classList.contains("mobile-layers-open")'))) {
+    await clickMoreGoal("layers");
+    await waitFor('document.body.classList.contains("mobile-layers-open")');
+  }
+  await evaluate(`(() => {
+    const documentModel = JSON.parse(localStorage.getItem("animeart-web-document") || "{}");
+    const current = documentModel.layers?.length || 0;
+    if (current < 2) document.querySelector("#add-layer")?.click();
+    return true;
+  })()`);
+  await waitFor('document.querySelectorAll("#layers .layer-select").length >= 2',10000);
+  const selectedTwoLayers = await evaluate(`(() => {
+    const buttons = [...document.querySelectorAll("#layers .layer-select")];
+    if (buttons.length < 2) return false;
+    buttons[0].click();
+    buttons[1].dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true }));
+    return document.querySelectorAll('#layers li[data-selected="true"]').length >= 2;
+  })()`);
+  assert(selectedTwoLayers, "the layer list supports selecting multiple editable objects");
+  await waitFor('document.querySelector("#layer-group-selection")?.disabled === false');
+  await click("#layer-group-selection");
+  await waitFor(`(() => {
+    const doc = JSON.parse(localStorage.getItem("animeart-web-document") || "{}");
+    const grouped = (doc.layers || []).filter(layer => layer.groupId);
+    return grouped.length >= 2 && new Set(grouped.map(layer => layer.groupId)).size === 1;
+  })()`,10000);
+  const groupSnapshot = await evaluate(`(() => {
+    const doc = JSON.parse(localStorage.getItem("animeart-web-document") || "{}");
+    const grouped = (doc.layers || []).filter(layer => layer.groupId);
+    return { count: grouped.length, groupId: grouped[0]?.groupId, editable: grouped.every(layer => ["drawing","image","text"].includes(layer.contentType)) };
+  })()`);
+  assert(groupSnapshot.count >= 2 && Boolean(groupSnapshot.groupId) && groupSnapshot.editable,
+    "grouping persists membership metadata without flattening the layers");
+
+  await evaluate(`(() => {
+    const first = document.querySelector("#layers .layer-select");
+    first?.click();
+    return true;
+  })()`);
+  await waitFor('document.querySelectorAll("#layers li[data-selected]").length >= 2');
+  const allGroupMembersSelected = await evaluate('document.querySelectorAll("#layers li[data-selected]").length === ' + groupSnapshot.count);
+  assert(allGroupMembersSelected, "selecting one grouped object selects the group as a unit");
+
+  await click("#layer-ungroup-selection");
+  await waitFor(`(() => {
+    const doc = JSON.parse(localStorage.getItem("animeart-web-document") || "{}");
+    return !(doc.layers || []).some(layer => layer.groupId);
+  })()`,10000);
+  const ungroupedSnapshot = await evaluate(`(() => {
+    const doc = JSON.parse(localStorage.getItem("animeart-web-document") || "{}");
+    return { total: doc.layers?.length || 0, grouped: (doc.layers || []).filter(layer => layer.groupId).length };
+  })()`);
+  assert(ungroupedSnapshot.grouped === 0,
+    "ungrouping removes persisted group membership while keeping every layer editable");
 
   console.log("ANIMEART_REAL_WEB_E2E: PASS");
 } finally {

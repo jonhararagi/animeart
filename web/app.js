@@ -1,4 +1,8 @@
 import { DOCUMENT_VERSION, createId, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
+import { createLayerAlignmentTransforms } from "./domain/design-alignment.mjs";
+import { deleteDesign, duplicateDesign, listDesigns, loadDesign, renameDesign, saveDesign } from "./domain/design-library.mjs";
+import { addMultiPagePage, copyLayerToPage, createMultiPageProject, deleteMultiPagePage, deleteMultiPageProject, listMultiPageProjects, loadMultiPagePage, renameMultiPagePage, renameMultiPageProject, reorderMultiPagePage, saveMultiPagePage, setActiveMultiPagePage } from "./domain/multi-page-project.mjs";
+import { buildMultiPagePdf } from "./domain/pdf-export.mjs";
 import { initializeAssetLibrary } from "./asset-library.js";
 import { getEditingHelpPreference, initializeAppearanceSettings, setEditingHelpPreference } from "./appearance-settings.js";
 import { cropImageSource, resizeImageSource } from "./domain/image-processing.mjs";
@@ -15,7 +19,7 @@ import { appendInterpolatedStrokePoint } from "./domain/stroke-smoothing.mjs";
 import { ANIME_COLOR_PRESETS, combineAnimeSelections, countAnimeSelection, generateAnimePalette, searchAnimeColors, selectAnimeRectangle, selectAnimeRegion } from "./domain/anime-color-studio.mjs";
 import { mirrorFreehandPoints, traceSmoothStrokePath } from "./domain/freehand-rendering.mjs";
 import { clearCanvasBackingStore } from "./domain/canvas-rendering.mjs";
-import { addLayer, clearLayer, cropDocumentCanvas, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, transformLayers, translateLayer, translateLayers, updateLayerTransform } from "./domain/document-operations.mjs";
+import { addLayer, clearLayer, cropDocumentCanvas, deleteLayer, duplicateLayer, renameLayer, reorderLayer, rotateLayer, scaleLayer, setLayerAdjustments, setLayerLocked, setLayerOpacity, setLayerReference, setLayerText, setLayerVisibility, setLayerBackground, flipImageLayer, replaceImageLayer, setImageMask, groupLayers, transformLayers, translateLayer, translateLayers, ungroupLayers, updateLayerTransform } from "./domain/document-operations.mjs";
 import { LAYER_ADJUSTMENT_PRESETS, areLayerAdjustmentsEqual, layerAdjustmentsToCanvasFilter, normalizeLayerAdjustments } from "./domain/layer-adjustments.mjs";
 import { applyQuickEditRecipe, QUICK_EDIT_RECIPES } from "./domain/quick-edit-recipes.mjs";
 import { GUIDED_EDITING_FLOWS, canCompleteGuidedStep, completeGuidedStep, createGuidedProgress, getGuidedFlow, getGuidedStep, goToPreviousGuidedStep, hasGuidedImage, isGuidedFlowComplete, persistGuidedEditingProgress, recordGuidedActionLaunched } from "./domain/guided-editing.mjs";
@@ -29,6 +33,7 @@ import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mj
 import { clampSelectionHandles, constrainTranslationToDocument, groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, layerCorners, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, exportScaleForResolution, renderDocumentToCanvas } from "./domain/png-export.mjs";
 import { CREATIVE_TEMPLATES, STICKER_CATALOG, WORD_ART_PRESETS, STYLE_PACKS, createStickerSvg, createPosterSvg, svgDataUrl, getCreativeTemplate, getSticker, getWordArtPreset, getStylePack } from "./domain/creative-catalog.mjs";
+import { ELEMENT_CATALOG, createDesignElementSvg, getDesignElement, searchDesignElements } from "./domain/element-library.mjs";
 import { ANIME_STYLE_COMPONENTS, getAnimeStyleComponent, searchAnimeStyleComponents, createAnimeStyleComponentSvg, createAnimeCharacterParts } from "./domain/anime-style-library.mjs";
 import { loadAnimeCharacterSets, saveAnimeCharacterSet, deleteAnimeCharacterSet, loadAnimeColorPalettes, saveAnimeColorPalette, deleteAnimeColorPalette, loadAnimeTraitFavorites, updateAnimeTraitFavorites } from "./domain/anime-character-presets.mjs";
 
@@ -95,6 +100,15 @@ const shapeMakerDialog = document.querySelector("#shape-maker-dialog");
 const shapeMakerPreview = document.querySelector("#shape-maker-preview");
 let shapeEditingLayerId = null;
 const textAlignInput = document.querySelector("#text-align");
+const textLetterSpacingInput = document.querySelector("#text-letter-spacing");
+const textLetterSpacingValue = document.querySelector("#text-letter-spacing-value");
+const textLineHeightInput = document.querySelector("#text-line-height");
+const textLineHeightValue = document.querySelector("#text-line-height-value");
+const saveTextStyleButton = document.querySelector("#save-text-style");
+const savedTextStylesContainer = document.querySelector("#saved-text-styles");
+const SAVED_TEXT_STYLE_KEY = "kapiart-saved-text-styles-v1";
+const MAX_SAVED_TEXT_STYLES = 20;
+const TEXT_STYLE_FIELDS = ["fontFamily","fontWeight","fontSize","color","align","letterSpacing","lineHeight","outlineColor","outlineWidth","shadowColor","shadowBlur","shadowOffsetX","shadowOffsetY"];
 const textLayerName = document.querySelector("#text-layer-name");
 const undoButton = document.querySelector("#undo");
 const redoButton = document.querySelector("#redo");
@@ -239,6 +253,8 @@ const state = {
 };
 
 state.history = new DocumentHistory(state.document);
+let activeMultiPageSession = null;
+let multiPagePersistenceQueue = Promise.resolve();
 
 function selectedLayer() {
   return state.document.layers.find(layer => layer.id === state.selectedLayerId) || state.document.layers[0];
@@ -254,7 +270,14 @@ function selectedLayersExact() {
 }
 
 function setSelection(layerIds, anchorId = null) {
-  const normalized = normalizeLayerSelection(layerIds, state.document);
+  const base = normalizeLayerSelection(layerIds, state.document);
+  const groupIds = new Set(state.document.layers
+    .filter(layer => base.includes(layer.id) && layer.groupId)
+    .map(layer => layer.groupId));
+  const expanded = groupIds.size
+    ? [...base, ...state.document.layers.filter(layer => groupIds.has(layer.groupId)).map(layer => layer.id)]
+    : base;
+  const normalized = normalizeLayerSelection(expanded, state.document);
   state.selectedLayerIds = normalized;
   state.selectedLayerId = anchorId && normalized.includes(anchorId)
     ? anchorId
@@ -326,6 +349,21 @@ function updateSelectionMiniPanel(layer = selectedLayerExact()) {
 
 function updateSelectionIndicator() {
   const layer = selectedLayerExact();
+  const groupButton = document.querySelector("#layer-group-selection");
+  const ungroupButton = document.querySelector("#layer-ungroup-selection");
+  const selected = selectedLayersExact();
+  if (groupButton) {
+    groupButton.disabled = selected.length < 2 || selected.some(item => item.locked || item.isBackground);
+    groupButton.title = groupButton.disabled
+      ? "Seleccioná al menos dos capas desbloqueadas para agrupar"
+      : "Agrupar las capas seleccionadas y moverlas como una unidad";
+  }
+  if (ungroupButton) {
+    ungroupButton.disabled = !selected.some(item => item.groupId);
+    ungroupButton.title = ungroupButton.disabled
+      ? "Seleccioná una capa que pertenezca a un grupo"
+      : "Separar el grupo; cada capa conservará su contenido y posición";
+  }
   updateSelectionMiniPanel(layer);
   const indicator = document.querySelector("#selection-indicator");
   if (!indicator) return;
@@ -547,7 +585,31 @@ function drawDrawingLayer(layer, context, documentModel) {
   context.drawImage(raster, 0, 0, width, height);
 }
 
-function drawDocument({ context = ctx, document = state.document, center = documentCenter(document), transformForLayer = layerTransformForRender, allowOffDocumentPreview = false } = {}) {
+function drawTextWithLetterSpacing(context, text, x, y, letterSpacing, outline = false) {
+ const paint = outline ? context.strokeText.bind(context) : context.fillText.bind(context);
+ const spacing = Number(letterSpacing) || 0;
+ if (Math.abs(spacing) < 0.001 || Array.from(text).length < 2) { paint(text, x, y); return; }
+ if ("letterSpacing" in context && typeof context.letterSpacing === "string") {
+  const previous = context.letterSpacing;
+  let renderedNatively = false;
+  try {
+   context.letterSpacing = spacing + "px";
+   if (context.letterSpacing === spacing + "px") { paint(text, x, y); renderedNatively = true; }
+  } catch { /* Some WebViews expose the property without a writable implementation. */ }
+  finally { try { context.letterSpacing = previous; } catch {} }
+  if (renderedNatively) return;
+ }
+ const segments = typeof Intl.Segmenter === "function"
+  ? [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text)].map(part => part.segment)
+  : Array.from(text);
+ const totalWidth = context.measureText(text).width + Math.max(0, segments.length - 1) * spacing;
+ const originalAlign = context.textAlign;
+ let cursor = originalAlign === "center" ? x - totalWidth / 2 : originalAlign === "right" ? x - totalWidth : x;
+ context.textAlign = "left";
+ try { for (const segment of segments) { paint(segment, cursor, y); cursor += context.measureText(segment).width + spacing; } }
+ finally { context.textAlign = originalAlign; }
+}
+function drawDocument({ context = ctx, document = state.document, center = documentCenter(document), transformForLayer = layerTransformForRender, allowOffDocumentPreview = false, includeLivePreviews = true } = {}) {
   const layersInRenderOrder = [...document.layers].sort((a, b) => Number(Boolean(b.isBackground)) - Number(Boolean(a.isBackground)));
   for (const layer of layersInRenderOrder) {
     if (!layer.visible) continue;
@@ -564,10 +626,10 @@ function drawDocument({ context = ctx, document = state.document, center = docum
       context.rect(0, 0, Number(document.width) || 0, Number(document.height) || 0);
       context.clip();
     }
-    const previewAdjustments = state.adjustmentPreview?.layerId === layer.id
+    const previewAdjustments = includeLivePreviews && state.adjustmentPreview?.layerId === layer.id
       ? state.adjustmentPreview.values
       : layer.adjustments;
-    const previewText = state.textPreview?.layerId === layer.id
+    const previewText = includeLivePreviews && state.textPreview?.layerId === layer.id
       ? state.textPreview.values
       : layer.text;
     context.filter = layerAdjustmentsToCanvasFilter(previewAdjustments);
@@ -588,7 +650,7 @@ function drawDocument({ context = ctx, document = state.document, center = docum
       const genericFamily = ["sans-serif", "serif", "monospace"].includes(safeFamily);
       const fontFamily = genericFamily ? safeFamily : '"' + safeFamily.replace(/["\\]/g, "") + '"';
       context.font = `${previewText.fontWeight} ${previewText.fontSize}px ${fontFamily}`;
-      const lineHeight = previewText.fontSize * 1.2;
+      const lineHeight = previewText.fontSize * (previewText.lineHeight || 1.2);
       context.shadowColor = previewText.shadowBlur > 0 ? previewText.shadowColor : "transparent";
       context.shadowBlur = previewText.shadowBlur;
       context.shadowOffsetX = previewText.shadowOffsetX;
@@ -600,9 +662,9 @@ function drawDocument({ context = ctx, document = state.document, center = docum
           context.strokeStyle = previewText.outlineColor;
           context.lineWidth = previewText.outlineWidth;
           context.lineJoin = "round";
-          context.strokeText(line, x, y);
+          drawTextWithLetterSpacing(context, line, x, y, previewText.letterSpacing, true);
         }
-        context.fillText(line, x, y);
+        drawTextWithLetterSpacing(context, line, x, y, previewText.letterSpacing, false);
       });
     } else {
       drawDrawingLayer(layer, context, document);
@@ -970,7 +1032,7 @@ function renderLayers() {
     selectButton.className = "layer-select";
     const layerName = document.createElement("span");
     layerName.className = "layer-name";
-    layerName.textContent = layer.name + (layer.isBackground ? " [Fondo fijo]" : layer.contentType === "image" ? (layer.isReference ? " [Referencia]" : " [Imagen]") : layer.contentType === "text" ? " [Texto]" : "");
+    layerName.textContent = layer.name + (layer.groupId ? " [Grupo]" : "") + (layer.isBackground ? " [Fondo fijo]" : layer.contentType === "image" ? (layer.isReference ? " [Referencia]" : " [Imagen]") : layer.contentType === "text" ? " [Texto]" : "");
     selectButton.append(createLayerThumbnail(layer), layerName);
     selectButton.setAttribute("aria-label", "Seleccionar capa " + layer.name);
     selectButton.addEventListener("click", event => {
@@ -2183,6 +2245,12 @@ function renderLayerText() {
   textShadowYInput.value = String(values.shadowOffsetY);
   textShadowYValue.textContent = values.shadowOffsetY + " px";
   textAlignInput.value = values.align;
+textLetterSpacingInput.value = String(values.letterSpacing);
+textLetterSpacingValue.textContent = values.letterSpacing + " px";
+textLineHeightInput.value = String(values.lineHeight);
+textLineHeightValue.textContent = values.lineHeight.toFixed(2) + "×";
+if (saveTextStyleButton) saveTextStyleButton.disabled = disabled;
+renderSavedTextStyles();
   for (const input of [textContentInput, textFontSizeInput, textFontFamilyInput, textFontWeightInput, textColorInput, textOutlineColorInput, textOutlineWidthInput, textAlignInput, textShadowColorInput, textShadowBlurInput, textShadowXInput, textShadowYInput]) {
     input.disabled = disabled;
   }
@@ -2258,6 +2326,10 @@ textAlignInput.addEventListener("change", () => {
   updateTextPreview({ align: textAlignInput.value });
   commitTextPreview("Text alignment updated");
 });
+textLetterSpacingInput?.addEventListener("input", () => { textLetterSpacingValue.textContent = Number(textLetterSpacingInput.value).toFixed(1) + " px"; updateTextPreview({ letterSpacing: Number(textLetterSpacingInput.value) }); });
+textLetterSpacingInput?.addEventListener("change", () => commitTextPreview("Text letter spacing updated"));
+textLineHeightInput?.addEventListener("input", () => { textLineHeightValue.textContent = Number(textLineHeightInput.value).toFixed(2) + "×"; updateTextPreview({ lineHeight: Number(textLineHeightInput.value) }); });
+textLineHeightInput?.addEventListener("change", () => commitTextPreview("Text line height updated"));
 textShadowColorInput.addEventListener("input",()=>updateTextPreview({shadowColor:textShadowColorInput.value}));textShadowColorInput.addEventListener("change",()=>commitTextPreview("Text shadow color updated"));
 textShadowBlurInput.addEventListener("input",()=>{const v=Number(textShadowBlurInput.value);textShadowBlurValue.textContent=v+" px";updateTextPreview({shadowBlur:v});});textShadowBlurInput.addEventListener("change",()=>commitTextPreview("Text shadow updated"));
 textShadowXInput.addEventListener("input", () => { const v = Number(textShadowXInput.value); textShadowXValue.textContent = v + " px"; updateTextPreview({ shadowOffsetX: v }); });
@@ -2322,22 +2394,94 @@ textStylePresetButtons.forEach(button => button.addEventListener("click", () => 
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "text" || layer.locked) return;
   const presets = {
-    title: { fontFamily: "Arial Black", fontWeight: "bold", fontSize: 76, color: "#ffffff", outlineWidth: 0, shadowColor: "#10131a", shadowBlur: 5, shadowOffsetX: 0, shadowOffsetY: 3, align: "center" },
-    subtitle: { fontFamily: "Georgia", fontWeight: "bold", fontSize: 44, color: "#f4f3ff", outlineWidth: 0, shadowColor: "#171323", shadowBlur: 2, shadowOffsetX: 0, shadowOffsetY: 2, align: "center" },
-    body: { fontFamily: "Arial", fontWeight: "normal", fontSize: 30, color: "#f4f5f7", outlineWidth: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0, align: "left" },
-    quote: { fontFamily: "Palatino Linotype", fontWeight: "normal", fontSize: 50, color: "#fff4dd", outlineWidth: 0, shadowColor: "#20180f", shadowBlur: 3, shadowOffsetX: 0, shadowOffsetY: 2, align: "center" },
-    label: { fontFamily: "Arial Black", fontWeight: "bold", fontSize: 26, color: "#ffe08a", outlineWidth: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0, align: "left" },
-    elegant: { fontFamily: "Georgia", fontWeight: "normal", fontSize: 62, color: "#f5e7d5", outlineWidth: 0, shadowColor: "#30201c", shadowBlur: 2, shadowOffsetX: 0, shadowOffsetY: 2, align: "center" },
-    comic: { fontFamily: "Impact", fontWeight: "bold", color: "#fff200", outlineColor: "#171717", outlineWidth: 5, shadowColor: "#171717", shadowBlur: 0, shadowOffsetX: 5, shadowOffsetY: 6 },
-    poster: { fontFamily: "Arial Black", fontWeight: "bold", color: "#ffffff", outlineColor: "#101014", outlineWidth: 2, shadowColor: "#000000", shadowBlur: 8, shadowOffsetX: 2, shadowOffsetY: 4 },
-    manga: { fontFamily: "Georgia", fontWeight: "bold", color: "#111111", outlineColor: "#ffffff", outlineWidth: 0, shadowColor: "#777777", shadowBlur: 1, shadowOffsetX: 1, shadowOffsetY: 2 },
-    neon: { fontFamily: "Arial Black", fontWeight: "bold", color: "#ffffff", outlineColor: "#f000c8", outlineWidth: 3, shadowColor: "#00dfff", shadowBlur: 18, shadowOffsetX: 0, shadowOffsetY: 0 }
+    title: { fontFamily: "Arial Black", fontWeight: "bold", fontSize: 76, color: "#ffffff", outlineWidth: 0, shadowColor: "#10131a", shadowBlur: 5, shadowOffsetX: 0, shadowOffsetY: 3, align: "center", letterSpacing: -0.5, lineHeight: 1.0 },
+    subtitle: { fontFamily: "Georgia", fontWeight: "bold", fontSize: 44, color: "#f4f3ff", outlineWidth: 0, shadowColor: "#171323", shadowBlur: 2, shadowOffsetX: 0, shadowOffsetY: 2, align: "center", letterSpacing: 0.25, lineHeight: 1.15 },
+    body: { fontFamily: "Arial", fontWeight: "normal", fontSize: 30, color: "#f4f5f7", outlineWidth: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0, align: "left", letterSpacing: 0, lineHeight: 1.5 },
+    quote: { fontFamily: "Palatino Linotype", fontWeight: "normal", fontSize: 50, color: "#fff4dd", outlineWidth: 0, shadowColor: "#20180f", shadowBlur: 3, shadowOffsetX: 0, shadowOffsetY: 2, align: "center", letterSpacing: 0.3, lineHeight: 1.35 },
+    label: { fontFamily: "Arial Black", fontWeight: "bold", fontSize: 26, color: "#ffe08a", outlineWidth: 0, shadowBlur: 0, shadowOffsetX: 0, shadowOffsetY: 0, align: "left", letterSpacing: 1.5, lineHeight: 1.05 },
+    elegant: { fontFamily: "Georgia", fontWeight: "normal", fontSize: 62, color: "#f5e7d5", outlineWidth: 0, shadowColor: "#30201c", shadowBlur: 2, shadowOffsetX: 0, shadowOffsetY: 2, align: "center", letterSpacing: 0.8, lineHeight: 1.15 },
+    comic: { fontFamily: "Impact", fontWeight: "bold", color: "#fff200", outlineColor: "#171717", outlineWidth: 5, shadowColor: "#171717", shadowBlur: 0, shadowOffsetX: 5, shadowOffsetY: 6, letterSpacing: 0.5, lineHeight: 0.95 },
+    poster: { fontFamily: "Arial Black", fontWeight: "bold", color: "#ffffff", outlineColor: "#101014", outlineWidth: 2, shadowColor: "#000000", shadowBlur: 8, shadowOffsetX: 2, shadowOffsetY: 4, letterSpacing: 0.8, lineHeight: 1.0 },
+    manga: { fontFamily: "Georgia", fontWeight: "bold", color: "#111111", outlineColor: "#ffffff", outlineWidth: 0, shadowColor: "#777777", shadowBlur: 1, shadowOffsetX: 1, shadowOffsetY: 2, letterSpacing: 0, lineHeight: 1.1 },
+    neon: { fontFamily: "Arial Black", fontWeight: "bold", color: "#ffffff", outlineColor: "#f000c8", outlineWidth: 3, shadowColor: "#00dfff", shadowBlur: 18, shadowOffsetX: 0, shadowOffsetY: 0, letterSpacing: 1.2, lineHeight: 0.95 }
   }[button.dataset.textStylePreset];
   if (presets) {
     updateTextPreview(presets);
     commitTextPreview(button.dataset.textStylePreset + " text style applied");
   }
 }));
+
+function extractReusableTextStyle(values) {
+ const normalized = normalizeTextLayer(values || {});
+ return Object.fromEntries(TEXT_STYLE_FIELDS.map(key => [key, normalized[key]]));
+}
+function readSavedTextStyles() {
+ try {
+  const parsed = JSON.parse(localStorage.getItem(SAVED_TEXT_STYLE_KEY) || "[]");
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter(item => item && typeof item.id === "string" && typeof item.name === "string" && item.name.trim())
+   .slice(0, MAX_SAVED_TEXT_STYLES)
+   .map(item => ({ id: item.id.slice(0, 80), name: item.name.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 48), style: extractReusableTextStyle(item.style) }))
+   .filter(item => item.name);
+ } catch { return []; }
+}
+function writeSavedTextStyles(styles) {
+ try { localStorage.setItem(SAVED_TEXT_STYLE_KEY, JSON.stringify(styles.slice(0, MAX_SAVED_TEXT_STYLES))); return true; }
+ catch { setTextStyleStatus("No se pudieron guardar los estilos en este dispositivo. Comprueba el almacenamiento local.", "error"); return false; }
+}
+function setTextStyleStatus(message, kind = "info") {
+ let statusNode = document.querySelector("#saved-text-styles-status");
+ if (!statusNode && savedTextStylesContainer?.parentElement) {
+  statusNode = document.createElement("p"); statusNode.id = "saved-text-styles-status"; statusNode.className = "saved-text-styles-status"; statusNode.setAttribute("role", "status"); statusNode.setAttribute("aria-live", "polite"); savedTextStylesContainer.after(statusNode);
+ }
+ if (statusNode) { statusNode.textContent = String(message || ""); statusNode.dataset.kind = kind; }
+}
+function renderSavedTextStyles() {
+ if (!savedTextStylesContainer) return;
+ savedTextStylesContainer.replaceChildren();
+ const styles = readSavedTextStyles();
+ if (!styles.length) {
+  const empty = document.createElement("p"); empty.className = "saved-text-styles-empty"; empty.textContent = "Tus estilos guardados aparecerán aquí. Se conservan en este dispositivo."; savedTextStylesContainer.append(empty); return;
+ }
+ for (const preset of styles) {
+  const card = document.createElement("div"); card.className = "saved-text-style-card";
+  const apply = document.createElement("button"); apply.type = "button"; apply.className = "saved-text-style-apply"; apply.dataset.savedTextStyleApply = preset.id; apply.textContent = preset.name;
+  const detail = document.createElement("small"); detail.textContent = preset.style.fontFamily + " · " + preset.style.fontSize + " px · " + preset.style.letterSpacing + " px";
+  const remove = document.createElement("button"); remove.type = "button"; remove.className = "saved-text-style-remove"; remove.dataset.savedTextStyleRemove = preset.id; remove.textContent = "Quitar"; remove.setAttribute("aria-label", "Eliminar estilo " + preset.name);
+  card.append(apply, detail, remove); savedTextStylesContainer.append(card);
+ }
+}
+function saveSelectedTextStyle() {
+ const layer = selectedLayerExact();
+ if (!layer || layer.contentType !== "text" || layer.locked) { setTextStyleStatus("Selecciona una capa de texto desbloqueada para guardar su estilo.", "error"); return; }
+ const nameInput = window.prompt("Nombre para este estilo reutilizable:", "Mi estilo");
+ if (nameInput === null) return;
+ const name = String(nameInput).replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 48);
+ if (!name) { setTextStyleStatus("Escribe un nombre para guardar el estilo.", "error"); return; }
+ const styles = readSavedTextStyles();
+ if (styles.length >= MAX_SAVED_TEXT_STYLES) { setTextStyleStatus("Llegaste al máximo de 20 estilos. Elimina uno antes de guardar otro.", "error"); return; }
+ if (styles.some(item => item.name.toLocaleLowerCase() === name.toLocaleLowerCase()) && !window.confirm("Ya existe un estilo con ese nombre. ¿Guardar otra copia con el mismo nombre?")) return;
+ styles.unshift({ id: createId(), name, style: extractReusableTextStyle(getWorkingLayerText(layer)) });
+ if (writeSavedTextStyles(styles)) { renderSavedTextStyles(); setTextStyleStatus("Estilo guardado: " + name, "success"); }
+}
+function handleSavedTextStyleClick(event) {
+ const button = event.target.closest("button[data-saved-text-style-apply],button[data-saved-text-style-remove]");
+ if (!button) return;
+ const styles = readSavedTextStyles();
+ if (button.dataset.savedTextStyleApply) {
+  const item = styles.find(style => style.id === button.dataset.savedTextStyleApply);
+  const layer = selectedLayerExact();
+  if (!item) { setTextStyleStatus("Ese estilo ya no existe.", "error"); renderSavedTextStyles(); return; }
+  if (!layer || layer.contentType !== "text" || layer.locked) { setTextStyleStatus("Selecciona una capa de texto desbloqueada.", "error"); return; }
+  updateTextPreview(item.style); commitTextPreview("Saved text style applied"); setTextStyleStatus("Estilo aplicado: " + item.name, "success"); return;
+ }
+ const id = button.dataset.savedTextStyleRemove;
+ const item = styles.find(style => style.id === id);
+ if (!item || !window.confirm("¿Eliminar el estilo guardado «" + item.name + "»?")) return;
+ if (writeSavedTextStyles(styles.filter(style => style.id !== id))) { renderSavedTextStyles(); setTextStyleStatus("Estilo eliminado.", "success"); }
+}
+saveTextStyleButton?.addEventListener("click", saveSelectedTextStyle);
+savedTextStylesContainer?.addEventListener("click", handleSavedTextStyleClick);
 
 function renderImageMask(){if(!imageMaskPanel||!imageMaskInput)return;const layer=selectedLayerExact(),isImage=layer?.contentType==="image"&&Boolean(layer.image);imageMaskPanel.hidden=!isImage;imageMaskInput.disabled=!isImage||layer.locked;imageMaskInput.value=isImage?(layer.image.mask||"none"):"none";}
 imageMaskInput.addEventListener("change",()=>{const layer=selectedLayerExact();if(!layer||layer.contentType!=="image"||!layer.image||layer.locked)return;const before=cloneDocument(state.document),next=setImageMask(state.document,layer.id,imageMaskInput.value);if(!next)return;state.document=next;state.history.record(before,next);refreshDocument("Image mask updated");persistDocument();});
@@ -2585,6 +2729,7 @@ function persistDocument({ markSaved = false } = {}) {
   }
   state.dirty = !markSaved;
   if (markSaved) setStorageRecoveryPending(false);
+  if (activeMultiPageSession && !state.storageRecoveryPending) void queueActiveMultiPagePageSave();
   status.textContent = markSaved ? "Guardado localmente" : "Copia local actualizada";
   return true;
 }
@@ -5972,6 +6117,7 @@ function restoreStoredProject({ confirmDiscard = true } = {}) {
     const saved = JSON.parse(raw);
     const restored = restoreStoredDocument(saved);
     if (!restored) throw new Error("Stored project is invalid");
+    if (!detachActiveMultiPageSessionForReplacement("el proyecto recuperado")) return false;
     state.document = restored;
     state.history.reset(restored);
     setSelection(restored.layers.at(-1)?.id ? [restored.layers.at(-1).id] : [], restored.layers.at(-1)?.id || null);
@@ -5993,6 +6139,31 @@ function restoreStoredProject({ confirmDiscard = true } = {}) {
 
 
 function posterSvgSource(width,height,background,accent,style){return svgDataUrl(createPosterSvg(width,height,background,accent,style));}
+const CREATIVE_ELEMENT_FAVORITES_KEY = "kapiart-creative-element-favorites-v1";
+function loadCreativeElementFavorites() {
+  const storage = animePresetStorage();
+  if (!storage) return new Set();
+  try {
+    const value = JSON.parse(storage.getItem(CREATIVE_ELEMENT_FAVORITES_KEY) || "[]");
+    return new Set((Array.isArray(value) ? value : []).filter(id => Boolean(getDesignElement(id))).slice(0, ELEMENT_CATALOG.length));
+  } catch { return new Set(); }
+}
+let creativeElementFavoriteIds = loadCreativeElementFavorites();
+function toggleCreativeElementFavorite(id) {
+  if (!getDesignElement(id)) return false;
+  if (creativeElementFavoriteIds.has(id)) creativeElementFavoriteIds.delete(id);
+  else creativeElementFavoriteIds.add(id);
+  const storage = animePresetStorage();
+  let persisted = false;
+  try {
+    if (storage) { storage.setItem(CREATIVE_ELEMENT_FAVORITES_KEY, JSON.stringify([...creativeElementFavoriteIds])); persisted = true; }
+  } catch {}
+  const message = creativeElementFavoriteIds.has(id) ? "Elemento guardado en favoritos." : "Elemento quitado de favoritos.";
+  const statusNode = document.querySelector("#creative-studio-status");
+  if (statusNode) statusNode.textContent = message + (persisted ? " Se conserva en este dispositivo." : " El navegador no permitió guardar el cambio de forma permanente.");
+  renderCreativeCatalog();
+  return true;
+}
 let activeCreativeTab="covers";
 let selectedCreativeTemplateId="anime-awakening";
 const selectedAnimeTraitIds = new Set();
@@ -6040,14 +6211,15 @@ function refreshAnimeCharacterPresetControls(message=""){
 }
 function selectedAnimeCharacterComponents(){
  const components=[...selectedAnimeTraitIds].map(getAnimeStyleComponent).filter(Boolean);
- const eyes=components.filter(item=>item.part==="eyes"),hair=components.filter(item=>item.part==="hair"),face=components.filter(item=>item.part==="face");
- return components.length===3&&eyes.length===1&&hair.length===1&&face.length===1?{eyes:eyes[0],hair:hair[0],face:face[0]}:null;
+ const eyes=components.filter(item=>item.part==="eyes"),hair=components.filter(item=>item.part==="hair"),face=components.filter(item=>item.part==="face"),expression=components.filter(item=>item.part==="expression");
+ const valid=eyes.length===1&&hair.length===1&&face.length===1&&expression.length<=1&&components.length===3+expression.length&&new Set(components.map(item=>item.part)).size===components.length;
+ return valid?{eyes:eyes[0],hair:hair[0],face:face[0],...(expression.length?{expression:expression[0]}:{})}:null;
 }
 function saveCurrentAnimeCharacterSet(){
  const selected=selectedAnimeCharacterComponents();
  if(!selected){setAnimeCharacterPresetStatus("Selecciona exactamente un rasgo de ojos, cabello y rostro antes de guardar el conjunto.");return false;}
  try{
-  const record=saveAnimeCharacterSet(animePresetStorage(),{name:document.querySelector("#creative-character-set-name").value,componentIds:{eyes:selected.eyes.id,hair:selected.hair.id,face:selected.face.id},colors:currentAnimeCharacterColors()},ANIME_STYLE_COMPONENTS);
+  const record=saveAnimeCharacterSet(animePresetStorage(),{name:document.querySelector("#creative-character-set-name").value,componentIds:{eyes:selected.eyes.id,hair:selected.hair.id,face:selected.face.id,...(selected.expression?{expression:selected.expression.id}:{})},colors:currentAnimeCharacterColors()},ANIME_STYLE_COMPONENTS);
   activeAnimeCharacterPresetId=record.id;refreshAnimeCharacterPresetControls('Conjunto "'+record.name+'" guardado en este dispositivo.');
   document.querySelector("#creative-character-set-select").value=record.id;return true;
  }catch(error){setAnimeCharacterPresetStatus(error?.message||"No se pudo guardar el conjunto.");return false;}
@@ -6055,7 +6227,7 @@ function saveCurrentAnimeCharacterSet(){
 function loadSelectedAnimeCharacterSet(){
  const record=savedAnimeCharacterSets.find(item=>item.id===document.querySelector("#creative-character-set-select").value);
  if(!record){setAnimeCharacterPresetStatus("Elige un conjunto guardado para cargarlo.");return false;}
- selectedAnimeTraitIds.clear();for(const part of ["eyes","hair","face"])selectedAnimeTraitIds.add(record.componentIds[part]);
+ selectedAnimeTraitIds.clear();for(const part of ["eyes","hair","face"])selectedAnimeTraitIds.add(record.componentIds[part]);if(record.componentIds.expression)selectedAnimeTraitIds.add(record.componentIds.expression);
  document.querySelector("#creative-trait-hair-color").value=record.colors.hair;
  document.querySelector("#creative-trait-eye-color").value=record.colors.eyes;
  document.querySelector("#creative-trait-skin-color").value=record.colors.skin;
@@ -6107,7 +6279,7 @@ function openCreativeStudio(){
   renderCreativeCatalog();
 }
 function setCreativeTab(tab){
-  activeCreativeTab=["covers","stickers","words","packs","traits"].includes(tab)?tab:"covers";
+  activeCreativeTab=["covers","stickers","words","packs","traits","elements"].includes(tab)?tab:"covers";
   document.querySelectorAll("[data-creative-tab]").forEach(button=>{
     const active=button.dataset.creativeTab===activeCreativeTab;
     button.setAttribute("aria-selected",String(active));
@@ -6119,8 +6291,15 @@ function setCreativeTab(tab){
   document.querySelector("#creative-customize-template").hidden=activeCreativeTab!=="covers";
   const traitControls=document.querySelector("#creative-traits-controls");
   if(traitControls)traitControls.hidden=activeCreativeTab!=="traits";
+  const elementControls=document.querySelector("#creative-elements-controls");
+  if(elementControls)elementControls.hidden=activeCreativeTab!=="elements";
   const search=document.querySelector("#creative-catalog-search");
-  search.placeholder=activeCreativeTab==="covers"?"Buscar anime, galaxia, sakura…":activeCreativeTab==="stickers"?"Buscar flor, planeta, brillo…":activeCreativeTab==="words"?"Buscar estilo de letra…":activeCreativeTab==="traits"?"Buscar ojos, coletas, mandíbula…":"Buscar conjunto de estilo…";
+  search.placeholder=activeCreativeTab==="covers"?"Buscar anime, galaxia, sakura…"
+    :activeCreativeTab==="stickers"?"Buscar flor, planeta, brillo…"
+    :activeCreativeTab==="words"?"Buscar estilo de letra…"
+    :activeCreativeTab==="traits"?"Buscar ojos, coletas, mandíbula…"
+    :activeCreativeTab==="elements"?"Buscar globos, marcos, texturas, flechas…"
+    :"Buscar conjunto de estilo…";
   updateAnimeTraitSelectionUi();
 }
 function selectCreativeTemplate(id,refresh=true){
@@ -6131,6 +6310,8 @@ function selectCreativeTemplate(id,refresh=true){
   document.querySelector("#creative-cover-subtitle").value=template.defaultSubtitle;
   document.querySelector("#creative-cover-background").value=template.background;
   document.querySelector("#creative-cover-accent").value=template.accent;
+  const formatControl=document.querySelector("#creative-cover-size");
+  if(formatControl&&["portrait","square","story","banner"].includes(template.defaultFormat))formatControl.value=template.defaultFormat;
   document.querySelector("#creative-studio-status").textContent="Seleccionada: "+template.label+". Cambia el título, los colores o el formato y crea la portada.";
   if(refresh)renderCreativeCatalog();
   return true;
@@ -6146,7 +6327,7 @@ function createCreativeCardPreview(tab,item){
   }else if(tab==="stickers"){
     const checker=document.createElement("span");checker.className="creative-sticker-checker";
     const image=document.createElement("img");image.alt="";image.loading="lazy";image.src=svgDataUrl(createStickerSvg(item.id));checker.append(image);preview.append(checker);
-  }else if(tab==="words"){
+  }else if(tab==="elements"){ const checker=document.createElement("span");checker.className="creative-sticker-checker";const image=document.createElement("img");image.alt="";image.loading="lazy";image.src=svgDataUrl(createDesignElementSvg(item.id));checker.append(image);preview.append(checker); }else if(tab==="words"){
     const style=item.style,sample=document.createElement("span");sample.className="creative-word-sample";sample.textContent=item.sample;
     sample.style.color=style.color;sample.style.fontFamily=style.fontFamily;
     sample.style.webkitTextStroke=Math.max(1,Math.min(4,style.outlineWidth/2))+"px "+style.outlineColor;
@@ -6185,11 +6366,12 @@ function updateAnimeCharacterComposerUi(){
   if(!button)return;
   const selected=[...selectedAnimeTraitIds].map(getAnimeStyleComponent).filter(Boolean);
   const parts=["eyes","hair","face"];
-  const valid=selected.length===3&&parts.every(part=>selected.filter(component=>component.part===part).length===1);
+  const expressionCount=selected.filter(component=>component.part==="expression").length;
+  const valid=parts.every(part=>selected.filter(component=>component.part===part).length===1)&&expressionCount<=1&&selected.length===3+expressionCount&&new Set(selected.map(component=>component.part)).size===selected.length;
   button.disabled=!valid;
   if(statusMessage)statusMessage.textContent=valid
-    ?"Listo: se crearán cuatro capas alineadas y editables. Puedes generar otra variación sin reemplazar esta."
-    :"Selecciona exactamente un rasgo de Ojos, uno de Cabello y uno de Rostro.";
+    ?"Listo: se crearán cinco capas alineadas y editables, incluida la expresión. Puedes generar otra variación sin reemplazar esta."
+    :"Selecciona un rasgo de Ojos, uno de Cabello y uno de Rostro. La expresión es opcional.";
 }
 function toggleAnimeTraitSelection(id){
   if(!getAnimeStyleComponent(id))return false;
@@ -6206,8 +6388,9 @@ function createAnimeCharacterFromSelectedTraits(){
   const eyes=selected.filter(component=>component.part==="eyes");
   const hair=selected.filter(component=>component.part==="hair");
   const face=selected.filter(component=>component.part==="face");
-  if(selected.length!==3||eyes.length!==1||hair.length!==1||face.length!==1){
-    const message="Selecciona exactamente un rasgo de Ojos, uno de Cabello y uno de Rostro.";
+  const expression=selected.filter(component=>component.part==="expression");
+  if(selected.length!==3+expression.length||expression.length>1||eyes.length!==1||hair.length!==1||face.length!==1||new Set(selected.map(component=>component.part)).size!==selected.length){
+    const message="Selecciona un rasgo de Ojos, uno de Cabello y uno de Rostro; la expresión es opcional.";
     document.querySelector("#creative-character-status").textContent=message;
     document.querySelector("#creative-studio-status").textContent=message;
     return false;
@@ -6222,6 +6405,7 @@ function createAnimeCharacterFromSelectedTraits(){
     eyesId:eyes[0].id,
     hairId:hair[0].id,
     faceId:face[0].id,
+    expressionId:expression[0]?.id,
     hairColor:document.querySelector("#creative-trait-hair-color").value,
     eyeColor:document.querySelector("#creative-trait-eye-color").value,
     skinColor:document.querySelector("#creative-trait-skin-color").value,
@@ -6257,7 +6441,8 @@ function createAnimeCharacterFromSelectedTraits(){
     ["hairBack","Cabello base · "+hair[0].label],
     ["face","Rostro · "+face[0].label],
     ["hairFront","Flequillo · "+hair[0].label],
-    ["eyes","Ojos · "+eyes[0].label]
+    ["eyes","Ojos · "+eyes[0].label],
+    ["expression","Expresión · "+(expression[0]?.label||"Sonrisa suave")]
   ];
   const characterGroupId=createId();
   const compositionBase={groupId:characterGroupId,variantIndex:variant,componentIds:{...parts.componentIds},colors:{...parts.colors},presetId:activeAnimeCharacterPresetId};
@@ -6265,7 +6450,8 @@ function createAnimeCharacterFromSelectedTraits(){
     const layer=createImageLayer("Personaje anime V"+variant+" · "+label,256,256,svgDataUrl(parts[part]));
     layer.isReference=false;layer.transform={...transform};layer.characterComposition={...compositionBase,part};return layer;
   });
-  const message="Personaje anime V"+variant+" creado en cuatro capas editables: cabello base, rostro, flequillo y ojos. Cambia los colores o selecciona otros rasgos para crear variantes sin reemplazar el original.";
+  const expressionLabel=expression[0]?.label||"Sonrisa suave";
+  const message="Personaje anime V"+variant+" creado en cinco capas editables: cabello base, rostro, flequillo, ojos y expresión ("+expressionLabel+"). Cambia los colores o selecciona otros rasgos para crear variantes sin reemplazar el original.";
   if(!commitCreativeLayers(layers,message))return false;
   document.querySelector("#creative-studio-status").textContent=message;
   updateAnimeCharacterComposerUi();
@@ -6299,27 +6485,38 @@ function addSelectedAnimeStyleReferences(){
   return true;
 }
 function renderCreativeCatalog(){
-  const grid=document.querySelector("#creative-catalog-grid");if(!grid)return;grid.replaceChildren();
+  const grid=document.querySelector("#creative-catalog-grid");
+  if(!grid)return;
+  grid.replaceChildren();
   const query=document.querySelector("#creative-catalog-search").value.trim();
-  const data={covers:CREATIVE_TEMPLATES,stickers:STICKER_CATALOG,words:WORD_ART_PRESETS,packs:STYLE_PACKS};
+  const data={covers:CREATIVE_TEMPLATES,stickers:STICKER_CATALOG,words:WORD_ART_PRESETS,packs:STYLE_PACKS,elements:ELEMENT_CATALOG};
   const part=document.querySelector("#creative-trait-part")?.value||"all";
+  const category=document.querySelector("#creative-element-category")?.value||"all";
   let items=activeCreativeTab==="traits"
     ?searchAnimeStyleComponents(query,part)
-    :(data[activeCreativeTab]||[]).filter(item=>{
-      const haystack=[item.label,item.category,item.description,item.keywords,item.sample,item.title,item.subtitle].filter(Boolean).join(" ").toLocaleLowerCase();
-      return !query||haystack.includes(query.toLocaleLowerCase());
-    });
+    :activeCreativeTab==="elements"
+      ?searchDesignElements(query,category)
+      :(data[activeCreativeTab]||[]).filter(item=>{
+        const haystack=[item.label,item.category,item.description,item.keywords,item.sample,item.title,item.subtitle].filter(Boolean).join(" ").toLocaleLowerCase();
+        return !query||haystack.includes(query.toLocaleLowerCase());
+      });
   if(activeCreativeTab==="traits"&&document.querySelector("#creative-trait-favorites-only")?.checked)items=items.filter(item=>animeTraitFavoriteIds.has(item.id));
-  const actionName={covers:"select-template",stickers:"add-sticker",words:"add-word",packs:"apply-pack",traits:"select-trait"}[activeCreativeTab];
+  if(activeCreativeTab==="elements"&&document.querySelector("#creative-element-favorites-only")?.checked)items=items.filter(item=>creativeElementFavoriteIds.has(item.id));
+  const actionName={covers:"select-template",stickers:"add-sticker",words:"add-word",packs:"apply-pack",traits:"select-trait",elements:"add-element"}[activeCreativeTab];
   items.forEach(item=>{
-    const card=document.createElement("button");card.type="button";card.className="creative-card creative-card-"+activeCreativeTab;
+    const wrapper=activeCreativeTab==="elements"?document.createElement("article"):null;
+    if(wrapper)wrapper.className="creative-card-wrap-elements";
+    const card=document.createElement("button");
+    card.type="button";card.className="creative-card creative-card-"+activeCreativeTab;
     card.dataset.creativeAction=actionName;card.dataset.itemId=item.id;
-    const actionLabel={covers:"Seleccionar portada",stickers:"Añadir sticker como capa",words:"Añadir palabra decorativa editable",packs:"Aplicar conjunto de capas",traits:"Seleccionar referencia anime"}[activeCreativeTab];
-    card.setAttribute("aria-label",item.label+" · "+actionLabel);
+    const actionLabel={covers:"Seleccionar portada",stickers:"Añadir sticker como capa",words:"Añadir palabra decorativa editable",packs:"Aplicar conjunto de capas",traits:"Seleccionar referencia anime",elements:"Añadir elemento como capa editable"}[activeCreativeTab];
     const selected=(activeCreativeTab==="covers"&&item.id===selectedCreativeTemplateId)||(activeCreativeTab==="traits"&&selectedAnimeTraitIds.has(item.id));
-    const isFavorite=activeCreativeTab==="traits"&&animeTraitFavoriteIds.has(item.id);
-    card.setAttribute("aria-label",item.label+" · "+actionLabel+(isFavorite?" · Favorito":""));card.title=isFavorite?"Favorito guardado en este dispositivo":"";
-    card.setAttribute("aria-pressed",String(Boolean(selected)));card.classList.toggle("is-selected",Boolean(selected));card.classList.toggle("is-favorite",Boolean(isFavorite));
+    const isFavorite=(activeCreativeTab==="traits"&&animeTraitFavoriteIds.has(item.id))||(activeCreativeTab==="elements"&&creativeElementFavoriteIds.has(item.id));
+    card.setAttribute("aria-label",item.label+" · "+actionLabel+(isFavorite?" · Favorito":""));
+    card.title=isFavorite?"Favorito guardado en este dispositivo":"";
+    card.setAttribute("aria-pressed",String(Boolean(selected)));
+    card.classList.toggle("is-selected",Boolean(selected));
+    card.classList.toggle("is-favorite",Boolean(isFavorite));
     card.append(createCreativeCardPreview(activeCreativeTab,item));
     const caption=document.createElement("span");caption.className="creative-card-caption";
     const heading=document.createElement("strong");heading.textContent=item.label;
@@ -6327,18 +6524,38 @@ function renderCreativeCatalog(){
     const action=document.createElement("span");action.className="creative-card-action-label";
     action.textContent=activeCreativeTab==="traits"
       ?(selected?"✓ Seleccionado":"＋ Seleccionar rasgo")+(isFavorite?" · ★ Favorito":"")
-      :{covers:selected?"✓ Seleccionada":"Usar portada",stickers:"＋ Añadir sticker",words:"＋ Añadir título editable",packs:"＋ Añadir conjunto"}[activeCreativeTab];
+      :{covers:selected?"✓ Seleccionada":"Usar portada",stickers:"＋ Añadir sticker",words:"＋ Añadir título editable",packs:"＋ Añadir conjunto",elements:"＋ Añadir elemento"}[activeCreativeTab];
     caption.append(heading,description,action);card.append(caption);
     card.addEventListener("click",()=>{
       if(activeCreativeTab==="covers")selectCreativeTemplate(item.id);
       else if(activeCreativeTab==="stickers")addCreativeStickerLayer(item.id);
       else if(activeCreativeTab==="words")addCreativeWordArt(item.id);
       else if(activeCreativeTab==="traits")toggleAnimeTraitSelection(item.id);
+      else if(activeCreativeTab==="elements")addCreativeElementLayer(item.id);
       else applyCreativeStylePack(item.id);
     });
-    grid.append(card);
+    if(activeCreativeTab==="elements"){
+      const favorite=document.createElement("button");
+      favorite.type="button";favorite.className="creative-card-favorite";
+      favorite.dataset.elementFavorite=item.id;
+      favorite.setAttribute("aria-pressed",String(isFavorite));
+      favorite.setAttribute("aria-label",(isFavorite?"Quitar de favoritos: ":"Guardar en favoritos: ")+item.label);
+      favorite.title=isFavorite?"Quitar de favoritos":"Guardar en favoritos";
+      favorite.textContent=isFavorite?"★":"☆";
+      favorite.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();toggleCreativeElementFavorite(item.id);});
+      wrapper.append(card,favorite);grid.append(wrapper);
+    }else grid.append(card);
   });
-  if(!items.length){const empty=document.createElement("p");empty.className="creative-catalog-empty";empty.textContent=activeCreativeTab==="traits"&&document.querySelector("#creative-trait-favorites-only")?.checked?"Todavía no hay favoritos que coincidan. Selecciona rasgos y pulsa Guardar favoritos.":activeCreativeTab==="traits"?"No hay rasgos para este filtro. Prueba otra categoría o búsqueda.":"No encontramos diseños con esa búsqueda. Prueba otra palabra.";grid.append(empty);}
+  if(!items.length){
+    const empty=document.createElement("p");empty.className="creative-catalog-empty";
+    empty.textContent=activeCreativeTab==="traits"&&document.querySelector("#creative-trait-favorites-only")?.checked
+      ?"Todavía no hay favoritos que coincidan. Selecciona rasgos y pulsa Guardar favoritos."
+      :activeCreativeTab==="elements"&&document.querySelector("#creative-element-favorites-only")?.checked
+        ?"Todavía no guardaste elementos favoritos que coincidan con este filtro."
+        :activeCreativeTab==="traits"?"No hay rasgos para este filtro. Prueba otra categoría o búsqueda."
+          :"No encontramos diseños con esa búsqueda. Prueba otra palabra.";
+    grid.append(empty);
+  }
   updateAnimeTraitSelectionUi();
 }
 function commitCreativeLayers(layers,message){
@@ -6369,6 +6586,22 @@ function addCreativeStickerLayer(id){
   if(!sticker||!layer)return false;
   return commitCreativeLayers([layer],"Sticker añadido como una capa independiente. Puedes moverlo, girarlo, cambiar su tamaño o eliminarlo.");
 }
+function createCreativeElementLayer(id){
+  const element=getDesignElement(id);
+  if(!element)return null;
+  const width=Math.max(320,Number(state.document.width)||canvas.width||640);
+  const height=Math.max(240,Number(state.document.height)||canvas.height||480);
+  const size=Math.max(88,Math.min(320,Math.round(Math.min(width,height)*.34)));
+  const scale=size/256;
+  const layer=createImageLayer("Elemento · "+element.label,256,256,svgDataUrl(createDesignElementSvg(id)));
+  layer.transform={x:scale*(width/2-128),y:scale*(height/2-128),scale,rotation:0};
+  return layer;
+}
+function addCreativeElementLayer(id){
+  const element=getDesignElement(id),layer=createCreativeElementLayer(id);
+  if(!element||!layer)return false;
+  return commitCreativeLayers([layer],"Elemento añadido como una capa SVG editable: "+element.label+". Puedes moverlo, girarlo, cambiar su tamaño o eliminarlo.");
+}
 function addCreativeWordArt(id){
   const preset=getWordArtPreset(id);if(!preset)return false;
   const width=Math.max(320,Number(state.document.width)||canvas.width||640),height=Math.max(240,Number(state.document.height)||canvas.height||480);
@@ -6391,6 +6624,7 @@ function createPosterTemplate(id,background,accent,title,subtitle,dimensions){
   const width=dimensions==="square"?1080:dimensions==="banner"?1920:1080,height=dimensions==="square"?1080:dimensions==="banner"?1080:dimensions==="story"?1920:1350;
   if(state.storageRecoveryPending){status.textContent="El proyecto guardado está protegido. Pulsa Guardar antes de reemplazarlo con una portada.";return false;}
   if(state.dirty&&!window.confirm("¿Reemplazar el lienzo actual por una portada nueva? Guarda o exporta tu trabajo antes si lo necesitas."))return false;
+  if(!detachActiveMultiPageSessionForReplacement("una portada nueva"))return false;
   const next=createDocument(width,height),legacy=["poster","comic","manga"].includes(template.id);
   const bg=createImageLayer(legacy?"Poster background":"Fondo · "+template.label,width,height,posterSvgSource(width,height,safeBackground,safeAccent,template.id));
   const heading=createTextLayer(legacy?"Poster title":"Título · "+template.label,{value:String(title||template.defaultTitle).slice(0,180),x:width*.5,y:height*.34,fontSize:Math.round(height*.085),...template.titleStyle,align:"center",fontWeight:"bold"});
@@ -6401,6 +6635,9 @@ function createPosterTemplate(id,background,accent,title,subtitle,dimensions){
   document.querySelector("#poster-template-dialog")?.close();document.querySelector("#creative-studio-dialog")?.close();return true;
 }
 document.querySelectorAll("[data-creative-tab]").forEach(button=>button.addEventListener("click",()=>{setCreativeTab(button.dataset.creativeTab);renderCreativeCatalog();}));
+document.querySelector("#creative-element-category")?.addEventListener("change",renderCreativeCatalog);
+document.querySelector("#creative-element-favorites-only")?.addEventListener("change",renderCreativeCatalog);
+
 document.querySelector("#creative-catalog-search")?.addEventListener("input",renderCreativeCatalog);
 document.querySelector("#creative-trait-part")?.addEventListener("change",renderCreativeCatalog);
 document.querySelector("#creative-trait-add-selected")?.addEventListener("click",addSelectedAnimeStyleReferences);
@@ -6446,6 +6683,7 @@ function createNewDocumentFromForm() {
     return false;
   }
   if (state.dirty && !window.confirm("Discard changes since the last explicit save?")) return false;
+  if (!detachActiveMultiPageSessionForReplacement("un documento nuevo")) return false;
   const next = createDocument(width, height);
   state.document = next;
   state.history.reset(next);
@@ -6563,6 +6801,8 @@ projectFileInput.addEventListener("change", async () => {
   }
   try {
     const imported = parseProjectFile(await file.text());
+    if (!detachActiveMultiPageSessionForReplacement("el archivo de proyecto importado")) return;
+    await multiPagePersistenceQueue.catch(() => null);
     persistDocumentSnapshot(localStorage, "animeart-web-document", imported);
     state.document = imported;
     state.history.reset(imported);
@@ -6876,6 +7116,533 @@ function load() {
   }
 }
 
+
+function applySelectedLayerAlignment(mode){
+ const ids=[...state.selectedLayerIds],result=createLayerAlignmentTransforms(state.document,ids,mode),feedback=document.querySelector("#layer-alignment-status");
+ if(!result.ok){if(feedback)feedback.textContent=result.error;status.textContent=result.error;return false;}
+ if(!result.transforms.length){if(feedback)feedback.textContent="Las capas ya están alineadas.";return true;}
+ const before=cloneDocument(state.document),next=transformLayers(state.document,result.transforms);
+ if(!next){if(feedback)feedback.textContent="No se pudo alinear la selección.";return false;}
+ state.document=next;state.history.record(before,next);refreshDocument("Alineación aplicada.");persistDocument();
+ if(feedback)feedback.textContent="Listo. Puedes deshacer la alineación.";return true;
+}
+function setDesignLibraryStatus(message,kind="info"){const node=document.querySelector("#design-library-status");if(node){node.textContent=String(message||"");node.dataset.kind=kind;}}
+
+async function createDesignThumbnail(documentModel){
+ const imageLayers=(documentModel.layers||[]).filter(layer=>layer.visible&&layer.contentType==="image"&&layer.image?.source);
+ await Promise.all(imageLayers.map(layer=>new Promise(resolve=>{
+  const source=layer.image.source,existing=imageCache.get(source);
+  if(existing?.complete){resolve();return;}
+  const image=existing||new Image();
+  image.onload=()=>{imageCache.set(source,image);resolve();};
+  image.onerror=()=>resolve();
+  if(!existing){imageCache.set(source,image);image.src=source;}
+ })));
+ try{
+  const scale=Math.min(1,240/Math.max(1,documentModel.width),200/Math.max(1,documentModel.height));
+  const preview=document.createElement("canvas");
+  preview.width=Math.max(1,Math.round(documentModel.width*scale));
+  preview.height=Math.max(1,Math.round(documentModel.height*scale));
+  const context=preview.getContext("2d",{alpha:true});
+  if(!context)return "";
+  context.scale(scale,scale);
+  drawDocument({context,document:documentModel,center:documentCenter(documentModel),transformForLayer:layer=>layer.transform,allowOffDocumentPreview:false});
+  const thumbnail=preview.toDataURL("image/webp",0.7);
+  return thumbnail.length<=280000?thumbnail:"";
+ }catch{return "";}
+}
+function renderDesignLibrary(){
+ const grid=document.querySelector("#design-library-list");if(!grid)return Promise.resolve();
+ grid.replaceChildren();const loading=document.createElement("p");loading.className="design-library-empty";loading.textContent="Cargando tus diseños…";grid.append(loading);
+ return listDesigns().then(records=>{
+  grid.replaceChildren();
+  if(!records.length){const empty=document.createElement("p");empty.className="design-library-empty";empty.textContent="Todavía no guardaste diseños. Escribe un nombre y pulsa «Guardar diseño actual».";grid.append(empty);return;}
+  for(const record of records){
+   const card=document.createElement("article");card.className="design-library-card";
+   const preview=document.createElement("div");preview.className="design-library-visual";
+   if(record.thumbnail){const img=document.createElement("img");img.src=record.thumbnail;img.alt="Vista previa de "+record.name;preview.append(img);}
+   else{const mock=document.createElement("div");mock.className="design-library-placeholder";mock.textContent="KapiArt";mock.setAttribute("aria-hidden","true");preview.append(mock);}
+   const details=document.createElement("div");details.className="design-library-copy";
+   const name=document.createElement("strong");name.textContent=record.name;
+   const meta=document.createElement("small");meta.textContent=record.width+" × "+record.height+" px · "+record.layerCount+" capas";
+   const updated=document.createElement("small");updated.textContent="Actualizado "+new Date(record.updatedAt).toLocaleString("es-AR",{dateStyle:"short",timeStyle:"short"});
+   details.append(name,meta,updated);
+   const actions=document.createElement("div");actions.className="design-library-card-actions";
+   for(const [action,label] of [["open","Abrir"],["duplicate","Duplicar"],["rename","Renombrar"],["delete","Eliminar"]]){
+    const button=document.createElement("button");button.type="button";button.dataset.designAction=action;button.dataset.designId=record.id;button.textContent=label;if(action==="delete")button.className="design-library-delete";actions.append(button);
+   }
+   card.append(preview,details,actions);grid.append(card);
+  }
+ }).catch(error=>{grid.replaceChildren();const msg=document.createElement("p");msg.className="design-library-empty";msg.textContent=error?.message||"No se pudo abrir la biblioteca local.";grid.append(msg);setDesignLibraryStatus(msg.textContent,"error");});
+}
+function showDesignLibraryDialog(){
+ const dialog=document.querySelector("#design-library-dialog");if(!dialog)return;
+ if(!dialog.open){try{dialog.showModal();}catch{dialog.setAttribute("open","");}}
+ const name=document.querySelector("#design-library-name");if(name&&!name.value)name.value="Mi diseño";
+ renderDesignLibrary();
+}
+
+function setMultiPageStatus(message, kind = "info") {
+ const node = document.querySelector("#multi-page-status");
+ if (node) { node.textContent = String(message || ""); node.dataset.kind = kind; }
+}
+function detachActiveMultiPageSessionForReplacement(replacementLabel = "un documento independiente") {
+ if (!activeMultiPageSession) return true;
+ const name = activeMultiPageSession.name || "este proyecto";
+ const approved = window.confirm("La página actual pertenece a «" + name + "». KapiArt conservará la página guardada y abrirá " + replacementLabel + " fuera del proyecto multipágina. ¿Continuar?");
+ if (!approved) return false;
+ const finalPageSave = queueActiveMultiPagePageSave();
+ activeMultiPageSession = null;
+ void finalPageSave.catch(() => null);
+ setMultiPageStatus("Página anterior conservada en «" + name + "». El nuevo lienzo queda fuera del proyecto.", "success");
+ return true;
+}
+function queueActiveMultiPagePageSave() {
+ if (!activeMultiPageSession || state.storageRecoveryPending) return Promise.resolve(null);
+ const projectId = activeMultiPageSession.id, pageId = activeMultiPageSession.activePageId;
+ const snapshot = cloneDocument(state.document);
+ multiPagePersistenceQueue = multiPagePersistenceQueue.catch(() => null).then(async () => {
+  const result = await saveMultiPagePage(projectId, pageId, snapshot);
+  if (activeMultiPageSession?.id === projectId && activeMultiPageSession?.activePageId === pageId) activeMultiPageSession = { ...result.project, activePageId: pageId };
+  return result;
+ }).catch(error => { setMultiPageStatus(error?.message || "No se pudo guardar la página.", "error"); return null; });
+ return multiPagePersistenceQueue;
+}
+async function saveActiveMultiPagePage({ withThumbnail = true, announce = true } = {}) {
+ if (!activeMultiPageSession) return null;
+ if (state.storageRecoveryPending) throw new Error("Resuelve primero el aviso de recuperación del almacenamiento.");
+ await multiPagePersistenceQueue.catch(() => null);
+ const session = activeMultiPageSession, pageId = session.activePageId, projectId = session.id;
+ const snapshot = cloneDocument(state.document);
+ const options = withThumbnail ? { thumbnail: await createDesignThumbnail(snapshot) } : {};
+ const result = await saveMultiPagePage(projectId, pageId, snapshot, options);
+ if (activeMultiPageSession?.id === projectId && activeMultiPageSession?.activePageId === pageId) activeMultiPageSession = { ...result.project, activePageId: pageId };
+ state.dirty = false;
+ if (announce) setMultiPageStatus("Página guardada: " + (result.page?.name || "Página actual"), "success");
+ return result;
+}
+function installMultiPageDocument(project, pageId, documentModel, message) {
+ activeMultiPageSession = { ...project, activePageId: pageId };
+ persistDocumentSnapshot(localStorage, "animeart-web-document", documentModel);
+ state.document = documentModel;
+ state.history.reset(documentModel);
+ const last = documentModel.layers.at(-1)?.id || null;
+ setSelection(last ? [last] : [], last);
+ state.viewport = createViewport();
+ state.transformInteraction = null; state.multiTransformInteraction = null; state.adjustmentPreview = null;
+ state.imageEraseInteraction = null; state.imageRestoreInteraction = null; state.magicEraseInteraction = null;
+ state.drawing = false; state.strokeBefore = null; state.textPreview = null; state.dirty = false;
+ setStorageRecoveryPending(false);
+ refreshDocument(message);
+ state.dirty = false;
+ status.textContent = message;
+ setMultiPageStatus(message, "success");
+}
+function showMultiPageDialog() {
+ const dialog = document.querySelector("#multi-page-dialog");
+ if (!dialog) return;
+ if (!dialog.open) { try { dialog.showModal(); } catch { dialog.setAttribute("open", ""); } }
+ const input = document.querySelector("#multi-page-project-name");
+ if (input && !input.value.trim()) input.value = activeMultiPageSession?.name || "Mi cómic";
+ void renderMultiPageDialog();
+}
+async function renderMultiPageDialog() {
+ const pageList = document.querySelector("#multi-page-page-list"), projectList = document.querySelector("#multi-page-project-list");
+ const activePanel = document.querySelector("#multi-page-active");
+ if (!pageList || !projectList || !activePanel) return;
+ pageList.replaceChildren(); projectList.replaceChildren();
+ try {
+  if (activeMultiPageSession) await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+  const records = await listMultiPageProjects();
+  if (activeMultiPageSession) {
+   const fresh = records.find(project => project.id === activeMultiPageSession.id);
+   if (fresh) activeMultiPageSession = { ...fresh, activePageId: activeMultiPageSession.activePageId };
+  }
+  const session = activeMultiPageSession;
+  activePanel.hidden = !session;
+  if (session) {
+   const currentPage = session.pages.find(page => page.id === session.activePageId);
+   document.querySelector("#multi-page-active-name").textContent = session.name;
+   document.querySelector("#multi-page-active-page").textContent = currentPage
+    ? currentPage.name + " · Página " + (session.pages.findIndex(page => page.id === currentPage.id) + 1) + " de " + session.pages.length
+    : "No hay una página activa";
+   const copyTarget = document.querySelector("#multi-page-copy-target");
+   copyTarget.replaceChildren();
+   const alternatives = session.pages.filter(page => page.id !== session.activePageId);
+   if (!alternatives.length) {
+    const option = document.createElement("option"); option.value = ""; option.textContent = "Crea otra página primero"; copyTarget.append(option);
+   } else {
+    for (const page of alternatives) { const option = document.createElement("option"); option.value = page.id; option.textContent = page.name; copyTarget.append(option); }
+   }
+   document.querySelector("#multi-page-copy-layer").disabled = !alternatives.length || !state.selectedLayerId;
+   for (let index = 0; index < session.pages.length; index++) {
+    const page = session.pages[index], card = document.createElement("article");
+    card.className = "multi-page-page-card" + (page.id === session.activePageId ? " is-active" : "");
+    const preview = document.createElement("div"); preview.className = "multi-page-page-preview";
+    if (page.thumbnail) { const image = document.createElement("img"); image.src = page.thumbnail; image.alt = "Vista previa de " + page.name; image.loading = "lazy"; preview.append(image); }
+    else { const placeholder = document.createElement("span"); placeholder.textContent = "P" + (index + 1); placeholder.setAttribute("aria-hidden", "true"); preview.append(placeholder); }
+    const info = document.createElement("div"); info.className = "multi-page-page-info";
+    const name = document.createElement("strong"); name.textContent = page.name;
+    const meta = document.createElement("small"); meta.textContent = page.width + " × " + page.height + " px · " + page.layerCount + " capas";
+    info.append(name, meta);
+    const actions = document.createElement("div"); actions.className = "multi-page-card-actions";
+    const defs = [["open","Editar",page.id === session.activePageId],["duplicate","Duplicar",session.pages.length >= 10],["rename","Renombrar",false],["up","↑",index === 0],["down","↓",index === session.pages.length - 1],["delete","Eliminar",session.pages.length <= 1]];
+    for (const [action,label,disabled] of defs) {
+     const button = document.createElement("button"); button.type = "button"; button.dataset.multiPageAction = action;
+     button.dataset.projectId = session.id; button.dataset.pageId = page.id; button.textContent = label; button.disabled = disabled;
+     if (action === "delete") button.className = "multi-page-delete";
+     if (action === "open" && disabled) button.textContent = "Actual";
+     actions.append(button);
+    }
+    card.append(preview, info, actions); pageList.append(card);
+   }
+  } else {
+   const empty = document.createElement("p"); empty.className = "multi-page-empty";
+   empty.textContent = "Crea un proyecto desde el lienzo actual para empezar a añadir páginas. Cada página conserva sus capas editables.";
+   pageList.append(empty);
+  }
+  if (!records.length) {
+   const empty = document.createElement("p"); empty.className = "multi-page-empty"; empty.textContent = "Todavía no tienes proyectos multipágina guardados."; projectList.append(empty);
+  } else {
+   for (const project of records) {
+    const card = document.createElement("article"); card.className = "multi-page-project-card";
+    const copy = document.createElement("div"); copy.className = "multi-page-project-copy";
+    const name = document.createElement("strong"); name.textContent = project.name;
+    const meta = document.createElement("small"); meta.textContent = project.pageCount + " páginas · actualizado " + new Date(project.updatedAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
+    copy.append(name, meta);
+    const actions = document.createElement("div"); actions.className = "multi-page-card-actions";
+    for (const [action,label] of [["open","Abrir"],["rename","Renombrar"],["delete","Eliminar"]]) {
+     const button = document.createElement("button"); button.type = "button"; button.dataset.multiProjectAction = action; button.dataset.projectId = project.id; button.textContent = label;
+     if (action === "delete") button.className = "multi-page-delete";
+     actions.append(button);
+    }
+    card.append(copy, actions); projectList.append(card);
+   }
+  }
+ } catch (error) { setMultiPageStatus(error?.message || "No se pudo leer la biblioteca multipágina.", "error"); }
+}
+async function activateMultiPagePage(projectId, pageId, { skipConfirm = false } = {}) {
+ if (state.storageRecoveryPending) throw new Error("Resuelve primero el aviso de recuperación del almacenamiento.");
+ if (!activeMultiPageSession && state.dirty && !skipConfirm && !window.confirm("¿Abrir un proyecto multipágina? Tu documento actual conserva su copia local, pero dejará de ser el lienzo activo.")) return false;
+ if (activeMultiPageSession) await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+ const records = await listMultiPageProjects(), found = records.find(project => project.id === projectId);
+ if (!found) throw new Error("No se encontró el proyecto multipágina.");
+ const page = found.pages.find(item => item.id === pageId);
+ if (!page) throw new Error("No se encontró la página seleccionada.");
+ const next = await loadMultiPagePage(projectId, pageId);
+ if (!next) throw new Error("La página no contiene un documento válido.");
+ const updated = await setActiveMultiPagePage(projectId, pageId);
+ installMultiPageDocument(updated || found, pageId, next, "Página abierta: " + page.name);
+ await renderMultiPageDialog();
+ return true;
+}
+async function createMultiPageFromCurrentCanvas(name) {
+ if (state.storageRecoveryPending) throw new Error("Resuelve primero el aviso de recuperación del almacenamiento.");
+ if (state.document.width <= 0 || state.document.height <= 0) throw new Error("Crea primero un lienzo con ancho y alto definidos.");
+ if (activeMultiPageSession) await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+ const snapshot = cloneDocument(state.document), thumbnail = await createDesignThumbnail(snapshot);
+ const project = await createMultiPageProject({ name, document: snapshot, thumbnail });
+ activeMultiPageSession = { ...project, activePageId: project.pages[0].id };
+ state.dirty = false;
+ setMultiPageStatus("Proyecto creado: " + project.name, "success");
+ await renderMultiPageDialog();
+}
+async function addBlankMultiPagePage() {
+ if (!activeMultiPageSession) throw new Error("Crea o abre primero un proyecto multipágina.");
+ await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+ const name = "Página " + (activeMultiPageSession.pages.length + 1), projectId = activeMultiPageSession.id;
+ const blank = createDocument(state.document.width, state.document.height);
+ const added = await addMultiPagePage(projectId, { name, document: blank });
+ await activateMultiPagePage(projectId, added.page.id, { skipConfirm: true });
+ setMultiPageStatus("Se creó " + added.page.name + ".", "success");
+}
+async function duplicateMultiPagePageFrom(pageId) {
+ if (!activeMultiPageSession) throw new Error("Crea o abre primero un proyecto multipágina.");
+ const session = activeMultiPageSession;
+ if (session.pages.length >= 10) throw new Error("Este proyecto llegó al máximo de 10 páginas.");
+ await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+ const sourcePage = session.pages.find(page => page.id === pageId);
+ if (!sourcePage) throw new Error("No se encontró la página que quieres duplicar.");
+ const source = await loadMultiPagePage(session.id, pageId);
+ if (!source) throw new Error("No se pudo leer la página que quieres duplicar.");
+ const added = await addMultiPagePage(session.id, { name: sourcePage.name + " (copia)", document: source, thumbnail: sourcePage.thumbnail });
+ await activateMultiPagePage(session.id, added.page.id, { skipConfirm: true });
+ setMultiPageStatus("Página duplicada: " + added.page.name, "success");
+}
+async function handleMultiPageItemAction(button) {
+ const action = button.dataset.multiPageAction, projectId = button.dataset.projectId, pageId = button.dataset.pageId;
+ const records = await listMultiPageProjects(), project = records.find(item => item.id === projectId);
+ if (!project) throw new Error("No se encontró el proyecto multipágina.");
+ const page = project.pages.find(item => item.id === pageId);
+ if (!page) throw new Error("No se encontró la página.");
+ if (action === "open") { await activateMultiPagePage(projectId, pageId); return; }
+ if (action === "duplicate") { if (activeMultiPageSession?.id !== projectId) await activateMultiPagePage(projectId, pageId); await duplicateMultiPagePageFrom(pageId); return; }
+ if (action === "rename") {
+  const name = window.prompt("Nombre de la página:", page.name); if (name === null) return;
+  const updated = await renameMultiPagePage(projectId, pageId, name);
+  if (activeMultiPageSession?.id === projectId) activeMultiPageSession = { ...updated, activePageId: activeMultiPageSession.activePageId };
+  setMultiPageStatus("Nombre de página actualizado.", "success"); await renderMultiPageDialog(); return;
+ }
+ if (action === "up" || action === "down") {
+  if (activeMultiPageSession?.id === projectId) await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+  const index = project.pages.findIndex(item => item.id === pageId);
+  const updated = await reorderMultiPagePage(projectId, pageId, index + (action === "up" ? -1 : 1));
+  if (activeMultiPageSession?.id === projectId) activeMultiPageSession = { ...updated, activePageId: activeMultiPageSession.activePageId };
+  setMultiPageStatus("Orden de páginas actualizado.", "success"); await renderMultiPageDialog(); return;
+ }
+ if (action === "delete") {
+  if (!window.confirm("¿Eliminar «" + page.name + "»? Esta acción no se puede deshacer.")) return;
+  const wasActive = activeMultiPageSession?.id === projectId && activeMultiPageSession?.activePageId === pageId;
+  if (activeMultiPageSession?.id === projectId) await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+  const updated = await deleteMultiPagePage(projectId, pageId);
+  if (activeMultiPageSession?.id === projectId) {
+   activeMultiPageSession = { ...updated, activePageId: updated.activePageId };
+   if (wasActive) {
+    const nextPage = updated.pages.find(item => item.id === updated.activePageId) || updated.pages[0];
+    const next = await loadMultiPagePage(projectId, nextPage.id);
+    installMultiPageDocument(updated, nextPage.id, next, "Página eliminada. Abriendo " + nextPage.name + ".");
+   }
+  }
+  setMultiPageStatus("Página eliminada.", "success"); await renderMultiPageDialog();
+ }
+}
+async function handleMultiProjectAction(button) {
+ const action = button.dataset.multiProjectAction, id = button.dataset.projectId;
+ const projects = await listMultiPageProjects(), project = projects.find(item => item.id === id);
+ if (!project) throw new Error("No se encontró el proyecto.");
+ if (action === "open") { const target = project.pages.find(page => page.id === project.activePageId) || project.pages[0]; await activateMultiPagePage(id, target.id); return; }
+ if (action === "rename") {
+  const name = window.prompt("Nombre del proyecto:", project.name); if (name === null) return;
+  const updated = await renameMultiPageProject(id, name);
+  if (activeMultiPageSession?.id === id) activeMultiPageSession = { ...updated, activePageId: activeMultiPageSession.activePageId };
+  setMultiPageStatus("Proyecto renombrado.", "success"); await renderMultiPageDialog(); return;
+ }
+ if (action === "delete") {
+  if (!window.confirm("¿Eliminar el proyecto «" + project.name + "» con todas sus páginas? Esta acción no se puede deshacer.")) return;
+  if (activeMultiPageSession?.id === id) { await saveActiveMultiPagePage({ withThumbnail: true, announce: false }); activeMultiPageSession = null; }
+  await deleteMultiPageProject(id);
+  setMultiPageStatus("Proyecto eliminado de este dispositivo.", "success"); await renderMultiPageDialog();
+ }
+}
+
+async function awaitDocumentImage(source) {
+ const cached = imageCache.get(source);
+ const image = cached || new Image();
+ if (!cached) imageCache.set(source, image);
+ if (image.complete) {
+  if (image.naturalWidth > 0) return image;
+  throw new Error("No se pudo cargar una imagen necesaria para exportar el PDF.");
+ }
+ await new Promise((resolve, reject) => {
+  const cleanup = () => { image.removeEventListener("load", loaded); image.removeEventListener("error", failed); };
+  const loaded = () => { cleanup(); resolve(); };
+  const failed = () => { cleanup(); reject(new Error("Una imagen de una de las páginas no se pudo cargar. Revisa el proyecto y vuelve a intentarlo.")); };
+  image.addEventListener("load", loaded, { once: true });
+  image.addEventListener("error", failed, { once: true });
+  if (!cached) image.src = source;
+  if (image.complete) { if (image.naturalWidth > 0) loaded(); else failed(); }
+ });
+ if (!image.complete || image.naturalWidth < 1) throw new Error("Una imagen de una página no está disponible para exportar.");
+ return image;
+}
+async function renderMultiPagePdfImage(documentModel, scale) {
+ const sources = [...new Set((documentModel.layers || []).filter(layer => layer.visible && layer.contentType === "image" && layer.image?.source).map(layer => layer.image.source))];
+ await Promise.all(sources.map(awaitDocumentImage));
+ const width = Math.max(1, Math.round(documentModel.width * scale)), height = Math.max(1, Math.round(documentModel.height * scale));
+ const canvas = createPngExportCanvas({ width, height });
+ renderDocumentToCanvas(documentModel, canvas, ({ context, document: exportDocument }) => {
+  context.fillStyle = "#ffffff"; context.fillRect(0, 0, canvas.width, canvas.height);
+  context.save(); context.scale(canvas.width / exportDocument.width, canvas.height / exportDocument.height);
+  drawDocument({ context, document: exportDocument, center: { x: exportDocument.width / 2, y: exportDocument.height / 2 },
+   transformForLayer: layer => layer.transform, allowOffDocumentPreview: false, includeLivePreviews: false });
+  context.restore();
+ });
+ const blob = await canvasToImageBlob(canvas, "jpeg", 0.88);
+ if (blob.size < 4) throw new Error("El navegador no pudo renderizar una página para el PDF.");
+ return { width, height, jpegBytes: new Uint8Array(await blob.arrayBuffer()), blobSize: blob.size };
+}
+async function exportActiveMultiPagePdf() {
+ if (!activeMultiPageSession) throw new Error("Abre o crea primero un proyecto multipágina.");
+ if (state.storageRecoveryPending) throw new Error("Resuelve primero el aviso de recuperación del almacenamiento.");
+ const button = document.querySelector("#multi-page-export-pdf");
+ if (button) button.disabled = true;
+ try {
+  await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+  await multiPagePersistenceQueue.catch(() => null);
+  const records = await listMultiPageProjects(), project = records.find(item => item.id === activeMultiPageSession?.id);
+  if (!project || !project.pages.length) throw new Error("El proyecto no contiene páginas para exportar.");
+  const documents = [];
+  for (const page of project.pages) {
+   const documentModel = await loadMultiPagePage(project.id, page.id);
+   if (!documentModel) throw new Error("No se pudo abrir la página «" + page.name + "» para exportar.");
+   documents.push({ page, document: documentModel });
+  }
+  const totalPixels = documents.reduce((sum, item) => sum + item.document.width * item.document.height, 0);
+  const largestPagePixels = Math.max(...documents.map(item => item.document.width * item.document.height));
+  const scale = Math.min(1, Math.sqrt(16_000_000 / largestPagePixels), Math.sqrt(48_000_000 / totalPixels));
+  const pdfPages = []; let totalJpegBytes = 0;
+  for (let index = 0; index < documents.length; index++) {
+   const item = documents[index];
+   setMultiPageStatus("Renderizando página " + (index + 1) + " de " + documents.length + "…", "info");
+   const rendered = await renderMultiPagePdfImage(item.document, scale);
+   totalJpegBytes += rendered.blobSize;
+   if (totalJpegBytes > 44 * 1024 * 1024) throw new Error("El PDF supera el límite seguro de exportación de 45 MB. Reduce la resolución o exporta menos páginas por proyecto.");
+   pdfPages.push({ width: item.document.width, height: item.document.height, imageWidth: rendered.width, imageHeight: rendered.height, jpegBytes: rendered.jpegBytes });
+  }
+  const pdf = buildMultiPagePdf(pdfPages), blob = new Blob([pdf], { type: "application/pdf" });
+  const baseName = String(project.name || "kapiart").normalize("NFKD").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60).toLowerCase() || "kapiart";
+  await saveBlobToDevice(blob, baseName + ".pdf");
+  setMultiPageStatus("PDF exportado correctamente: " + project.name + " · " + project.pages.length + " páginas.", "success");
+ } catch (error) {
+  setMultiPageStatus(error?.message || "No se pudo exportar el PDF.", "error");
+ } finally { if (button) button.disabled = false; }
+}
+
+async function copySelectedLayerToAnotherPage() {
+ if (!activeMultiPageSession) throw new Error("Abre primero un proyecto multipágina.");
+ if (!state.selectedLayerId) throw new Error("Selecciona una capa para copiar.");
+ const targetId = document.querySelector("#multi-page-copy-target")?.value;
+ if (!targetId) throw new Error("Elige otra página de destino.");
+ await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
+ const session = activeMultiPageSession, target = session.pages.find(page => page.id === targetId);
+ if (!target) throw new Error("No se encontró la página de destino.");
+ const targetDocument = await loadMultiPagePage(session.id, targetId);
+ if (!targetDocument) throw new Error("No se pudo abrir la página de destino.");
+ const copied = copyLayerToPage(state.document, targetDocument, state.selectedLayerId);
+ if (!copied.ok) throw new Error(copied.error);
+ const thumbnail = await createDesignThumbnail(copied.document);
+ const saved = await saveMultiPagePage(session.id, targetId, copied.document, { thumbnail });
+ activeMultiPageSession = { ...saved.project, activePageId: session.activePageId };
+ setMultiPageStatus("Capa copiada a «" + target.name + "». Se conservó editable.", "success");
+ await renderMultiPageDialog();
+}
+
+
+function setLayerGroupingStatus(message, kind = "info") {
+  const node = document.querySelector("#layer-grouping-status");
+  if (node) { node.textContent = String(message || ""); node.dataset.kind = kind; }
+}
+function applyGroupSelection() {
+  const selectedIds = [...state.selectedLayerIds];
+  if (selectedIds.length < 2) {
+    setLayerGroupingStatus("Seleccioná al menos dos capas para agrupar.", "error");
+    showMobileFeedback("Seleccioná al menos dos capas para agrupar.", "error");
+    return false;
+  }
+  const before = cloneDocument(state.document);
+  const next = groupLayers(state.document, selectedIds);
+  if (!next) {
+    setLayerGroupingStatus("No se pudo agrupar. Comprobá que las capas existan y estén desbloqueadas.", "error");
+    showMobileFeedback("No se pudo agrupar. Comprobá que las capas existan y estén desbloqueadas.", "error");
+    return false;
+  }
+  state.document = next;
+  state.history.record(before, next);
+  setSelection(selectedIds, state.selectedLayerId);
+  refreshDocument("Grupo creado. Las capas siguen siendo independientes y puedes desagruparlas.");
+  persistDocument();
+  setLayerGroupingStatus("Grupo creado. Las capas seleccionadas se moverán como una unidad.", "success");
+  showMobileFeedback("Grupo creado. Moverás sus capas como una unidad.", "success");
+  return true;
+}
+function applyUngroupSelection() {
+  const selectedIds = [...state.selectedLayerIds];
+  const before = cloneDocument(state.document);
+  const next = ungroupLayers(state.document, selectedIds);
+  if (!next) {
+    setLayerGroupingStatus("Seleccioná una capa agrupada para desagruparla.", "error");
+    showMobileFeedback("Seleccioná una capa agrupada para desagruparla.", "error");
+    return false;
+  }
+  state.document = next;
+  state.history.record(before, next);
+  setSelection(selectedIds, state.selectedLayerId);
+  refreshDocument("Grupo separado. Cada capa conserva su contenido y transformación.");
+  persistDocument();
+  setLayerGroupingStatus("Grupo separado. Cada capa vuelve a editarse por separado.", "success");
+  showMobileFeedback("Grupo separado. Cada capa vuelve a editarse por separado.", "success");
+  return true;
+}
+
+function initializeCanvaWorkflowTools(){
+ document.querySelectorAll("[data-layer-align]").forEach(button=>button.addEventListener("click",()=>applySelectedLayerAlignment(button.dataset.layerAlign)));
+ document.querySelector("#layer-group-selection")?.addEventListener("click",applyGroupSelection);
+ document.querySelector("#layer-ungroup-selection")?.addEventListener("click",applyUngroupSelection);
+ const dialog=document.querySelector("#design-library-dialog"),input=document.querySelector("#design-library-name"),list=document.querySelector("#design-library-list");
+ document.querySelector("#design-library-open")?.addEventListener("click",showDesignLibraryDialog);
+ document.querySelector("#quick-open-design-library")?.addEventListener("click",()=>{if(toolboxDialog?.open)toolboxDialog.close();showDesignLibraryDialog();});
+ document.querySelector("#design-library-close")?.addEventListener("click",()=>{if(dialog?.open)dialog.close();else dialog?.removeAttribute("open");});
+ document.querySelector("#design-library-refresh")?.addEventListener("click",renderDesignLibrary);
+ document.querySelector("#design-library-save-form")?.addEventListener("submit",async event=>{
+  event.preventDefault();
+  if(state.storageRecoveryPending){setDesignLibraryStatus("El guardado actual está protegido. Recupera o exporta sus datos antes de guardar este estado.","error");return;}
+  const button=document.querySelector("#design-library-save-current");button.disabled=true;
+  try{const documentCopy=cloneDocument(state.document);const thumbnail=await createDesignThumbnail(documentCopy);const record=await saveDesign({name:input?.value,document:documentCopy,thumbnail});input.value=record.name;setDesignLibraryStatus("Diseño guardado localmente: "+record.name,"success");await renderDesignLibrary();}
+  catch(error){setDesignLibraryStatus(error?.message||"No se pudo guardar el diseño.","error");}finally{button.disabled=false;}
+ });
+ list?.addEventListener("click",async event=>{
+  const button=event.target.closest("button[data-design-action]");if(!button)return;const action=button.dataset.designAction,id=button.dataset.designId;button.disabled=true;
+  try{
+   const records=await listDesigns(),record=records.find(item=>item.id===id);if(!record)throw new Error("Ese diseño ya no está en la biblioteca.");
+   if(action==="open"){
+    if(state.storageRecoveryPending)throw new Error("El almacenamiento actual está protegido. Recupera o exporta sus datos antes de abrir otro proyecto.");
+    if(state.dirty&&!window.confirm("¿Descartar los cambios no guardados y abrir «"+record.name+"»? Guarda primero una copia en Mis diseños si necesitas conservarlos."))return;
+    if(activeMultiPageSession){await saveActiveMultiPagePage({withThumbnail:true,announce:false});activeMultiPageSession=null;await multiPagePersistenceQueue.catch(()=>null);}
+    const next=await loadDesign(id);if(!next)throw new Error("El diseño no se encontró o no es válido.");
+    persistDocumentSnapshot(localStorage,"animeart-web-document",next);
+    state.document=next;state.history.reset(next);const last=next.layers.at(-1)?.id||null;setSelection(last?[last]:[],last);
+    state.viewport=createViewport();state.transformInteraction=null;state.multiTransformInteraction=null;state.drawing=false;state.strokeBefore=null;state.textPreview=null;state.dirty=false;setStorageRecoveryPending(false);
+    refreshDocument("Diseño abierto: "+record.name);state.dirty=false;if(dialog?.open)dialog.close();else dialog?.removeAttribute("open");status.textContent="Diseño abierto: "+record.name;return;
+   }
+   if(action==="duplicate"){const name=window.prompt("Nombre de la copia:",record.name+" (copia)");if(name===null)return;const copied=await duplicateDesign(id,name);setDesignLibraryStatus("Copia creada: "+copied.name,"success");}
+   else if(action==="rename"){const name=window.prompt("Nuevo nombre:",record.name);if(name===null)return;await renameDesign(id,name);setDesignLibraryStatus("Nombre actualizado.","success");}
+   else if(action==="delete"){if(!window.confirm("¿Eliminar «"+record.name+"» de Mis diseños? Esta acción no se puede deshacer."))return;await deleteDesign(id);setDesignLibraryStatus("Diseño eliminado de la biblioteca local.","success");}
+   await renderDesignLibrary();
+  }catch(error){setDesignLibraryStatus(error?.message||"La operación no se pudo completar.","error");}finally{button.disabled=false;}
+ });
+
+ const multiDialog=document.querySelector("#multi-page-dialog");
+ const projectName=document.querySelector("#multi-page-project-name");
+ document.querySelector("#multi-page-open")?.addEventListener("click",showMultiPageDialog);
+ document.querySelector("#quick-open-page-manager")?.addEventListener("click",()=>{if(toolboxDialog?.open)toolboxDialog.close();showMultiPageDialog();});
+ document.querySelector("#multi-page-close")?.addEventListener("click",()=>{if(multiDialog?.open)multiDialog.close();else multiDialog?.removeAttribute("open");});
+ document.querySelector("#multi-page-create-form")?.addEventListener("submit",async event=>{
+  event.preventDefault();const button=document.querySelector("#multi-page-create-project");button.disabled=true;
+  try{await createMultiPageFromCurrentCanvas(projectName?.value);if(projectName)projectName.value=activeMultiPageSession?.name||projectName.value;}
+  catch(error){setMultiPageStatus(error?.message||"No se pudo crear el proyecto multipágina.","error");}
+  finally{button.disabled=false;}
+ });
+ document.querySelector("#multi-page-save-page")?.addEventListener("click",async()=>{
+  try{await saveActiveMultiPagePage({withThumbnail:true});await renderMultiPageDialog();}
+  catch(error){setMultiPageStatus(error?.message||"No se pudo guardar la página.","error");}
+ });
+ document.querySelector("#multi-page-add-blank")?.addEventListener("click",async()=>{
+  try{await addBlankMultiPagePage();}
+  catch(error){setMultiPageStatus(error?.message||"No se pudo crear la página.","error");}
+ });
+ document.querySelector("#multi-page-duplicate-page")?.addEventListener("click",async()=>{
+  try{if(!activeMultiPageSession)throw new Error("Abre primero un proyecto multipágina.");await duplicateMultiPagePageFrom(activeMultiPageSession.activePageId);}
+  catch(error){setMultiPageStatus(error?.message||"No se pudo duplicar la página.","error");}
+ });
+ document.querySelector("#multi-page-export-pdf")?.addEventListener("click",()=>{void exportActiveMultiPagePdf();});
+ document.querySelector("#multi-page-copy-layer")?.addEventListener("click",async()=>{
+  try{await copySelectedLayerToAnotherPage();}
+  catch(error){setMultiPageStatus(error?.message||"No se pudo copiar la capa.","error");}
+ });
+ document.querySelector("#multi-page-page-list")?.addEventListener("click",async event=>{
+  const button=event.target.closest("button[data-multi-page-action]");if(!button)return;button.disabled=true;
+  try{await handleMultiPageItemAction(button);}
+  catch(error){setMultiPageStatus(error?.message||"No se pudo completar la acción de página.","error");}
+  finally{button.disabled=false;}
+ });
+ document.querySelector("#multi-page-project-list")?.addEventListener("click",async event=>{
+  const button=event.target.closest("button[data-multi-project-action]");if(!button)return;button.disabled=true;
+  try{await handleMultiProjectAction(button);}
+  catch(error){setMultiPageStatus(error?.message||"No se pudo completar la acción de proyecto.","error");}
+  finally{button.disabled=false;}
+ });
+}
+
 function initializeBrandLaunchpad() {
   document.querySelector("#home-create-cover")?.addEventListener("click", () => {
     document.querySelector("#creative-studio-open")?.click();
@@ -6902,9 +7669,7 @@ function initializeBrandLaunchpad() {
     );
   });
 }
-initializeBrandLaunchpad();
-
-initializeAssetLibrary({ onImportImage: importImageIntoEditor, onStatus: message => { status.textContent = message; } });
+initializeBrandLaunchpad(); initializeCanvaWorkflowTools(); initializeAssetLibrary({ onImportImage: importImageIntoEditor, onStatus: message => { status.textContent = message; } });
 initializeAppearanceSettings();
 setSelection([state.document.layers[0].id], state.document.layers[0].id);
 load();
@@ -6928,7 +7693,8 @@ if (typeof ResizeObserver === "function") {
 }
 
 
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v71";
+// Multipage PDF export stays local and caps raster work to protect mobile memory.
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v77";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -6938,7 +7704,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/asset-library.mjs",
   "./domain/asset-deduplication.mjs",
   "./domain/asset-library-pagination.mjs",
-  "./domain/creative-catalog.mjs",
+  "./domain/creative-catalog.mjs", "./domain/design-alignment.mjs", "./domain/design-library.mjs", "./domain/multi-page-project.mjs", "./domain/element-library.mjs",
   "./domain/anime-style-library.mjs",
   "./domain/anime-character-presets.mjs",
   "./manifest.webmanifest",
