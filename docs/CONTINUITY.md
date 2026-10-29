@@ -4201,3 +4201,28 @@ La comparación de nombre de rama o cantidad de commits no basta para decidir un
 - El shell offline cambia de v75 a `animeart-web-shell-v76`; se añade el módulo al Service Worker, a los recursos obligatorios del editor, al chequeo Android y a las pruebas de contrato. Hay pruebas de estructura PDF, tabla xref, tamaños mixtos, preservación de los bytes JPEG y límites.
 - El E2E Chromium exporta el proyecto multipágina creado durante la prueba y verifica el mensaje de resultado. CI debe confirmar el flujo completo y publicar la APK del mismo SHA.
 - La prueba física en Xiaomi `24116RACCG` sigue pendiente. No se declara compatibilidad táctil por haber pasado CI/emulador.
+
+
+---
+
+## KapiArt · fase de grupos persistentes de capas · 2026-10-29
+
+**Rama:** `feature/kapiart-canva-workflow-001` · **PR:** [#124](https://github.com/jonhararagi/animeart/pull/124)  
+**Estado:** implementación añadida; pendiente de CI Web + Android sobre el mismo HEAD final. No se debe anunciar PASS hasta verificar la ejecución.
+
+### Alcance
+
+- Cada capa puede conservar un `groupId` seguro dentro del documento serializado; documentos anteriores sin ese campo siguen siendo válidos.
+- `groupLayers` agrupa dos o más capas desbloqueadas y rechaza fondos fijos, identificadores ausentes y selecciones insuficientes.
+- `ungroupLayers` elimina la pertenencia de todas las capas del grupo, incluso si se invoca desde un solo miembro.
+- Seleccionar una capa agrupada expande la selección a todo el grupo, de modo que el sistema de transformación múltiple existente mueve, escala y rota el conjunto sin aplanarlo.
+- Los botones **Agrupar selección** y **Desagrupar** viven en el panel de capas y respetan el diseño táctil móvil. La lista identifica los miembros con la etiqueta `[Grupo]`.
+- Deshacer/rehacer registra el cambio en el historial existente. Duplicar una única capa agrupada produce una capa independiente.
+- Pruebas de dominio cubren persistencia tras normalización, validación de ID, bloqueo, desagrupado y duplicación; Chromium E2E recorre selección múltiple, agrupar, seleccionar el grupo y desagrupar.
+- Caché offline actualizada a v77; CI Android verifica los controles y el archivo de pruebas.
+
+### Aceptación pendiente
+
+- Web CI debe pasar build, tests y E2E real de Chromium.
+- Android CI debe pasar build, unit tests, lint, instrumentación y arranque offline, con APK verificada del mismo SHA.
+- La aceptación física en Xiaomi `24116RACCG` es una etapa separada; no se presume por los tests automatizados.
