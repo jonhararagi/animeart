@@ -126,3 +126,24 @@ Se incorpora a esta rama el trabajo funcional de la PR #123 para no dejar el com
 - Se conserva la versión de caché offline v77: no se retrocede la caché por traer cambios de la antigua rama de expresiones.
 
 El complemento de expresiones anime de la PR #123 está integrado en `main` dentro de la PR #124 y la PR #123 se cerró para evitar una rama complementaria redundante. El E2E real de Chromium verificó la creación de cinco capas editables y undo/redo. Web CI #1445 y Android CI #1544 finalizaron en PASS; el APK v0.3.7 con checksum está publicado en https://github.com/jonhararagi/animeart/actions/runs/40843352526/artifacts/12883264410. La aceptación física en el Xiaomi 24116RACCG sigue siendo independiente y pendiente.
+
+## Fase de redimensionado inteligente del lienzo · 2026-10-29
+
+Esta fase añade una herramienta para adaptar una composición ya creada a otro formato sin convertir el documento en una imagen única.
+
+- **Ajustar todo (`fit`)** escala la composición uniformemente hasta encajarla en el nuevo formato.
+- **Cubrir el lienzo (`fill`)** escala los objetos uniformemente para cubrir el marco; las capas siguen siendo editables, incluido el contenido que queda fuera del área visible.
+- **Cambiar solo el marco (`reframe`)** modifica las dimensiones del lienzo sin escalar el tamaño de los objetos.
+- Conserva las identidades y el orden de capas, texto editable, fuentes de imagen, máscaras, ajustes, grupos, visibilidad, opacidad y rotaciones. La operación se registra en el historial para que **Deshacer** recupere el formato anterior.
+- Ofrece tamaños sugeridos para post cuadrado (1080 × 1080), post vertical (1080 × 1350), historia/short (1080 × 1920), vídeo horizontal (1920 × 1080), wallpaper móvil (1440 × 3200) y A4 (2480 × 3508), más dimensiones personalizadas.
+- La interfaz tiene lanzadores tanto en la barra de escritorio como en «Más herramientas» en móvil, mantiene botones y controles numéricos táctiles, y comunica los errores dentro del cuadro de diálogo.
+- Límites preventivos: 8192 px por lado y 40 megapíxeles por lienzo. No se elevan los límites heredados del archivo JSON del proyecto; si la serialización supera el tamaño permitido, la exportación de proyecto sigue aplicando su protección actual.
+- La operación no usa APIs remotas ni consume servicios de IA. El módulo se incorpora al Service Worker y el shell offline sube a v78.
+
+### Validación exigida antes de integrar
+
+- Web CI: `npm run build`, todas las pruebas Node, benchmark y E2E real de Chromium, incluido cambio de formato y Deshacer.
+- Android CI: empaquetado del módulo y los controles, tests/lint/instrumentación y smoke de arranque sin conexión sobre el mismo SHA.
+- La prueba física en Xiaomi `24116RACCG` sigue siendo una aceptación separada; los tests de Chromium/emulador no la sustituyen.
+
+Estado al redactar esta sección: cambios preparados en `feature/kapiart-smart-resize-001`; pendiente ejecutar CI sobre el HEAD final. `main` no se modifica directamente.

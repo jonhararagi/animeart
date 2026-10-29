@@ -22,6 +22,7 @@ AnimeArt is a local-first **image editor and compositor**, inspired by everyday 
 - Undo/redo, recover projects locally, import/export portable JSON projects and export the composite as PNG, JPEG or WebP. Android uses the native Save As picker for images and project files; desktop browsers keep the standard download path.
 - Create from an expanded local library of editable anime-oriented templates for social posts, stories, video thumbnails, banners, wallpapers, character sheets, manga, books, events, invitations and more; suggested canvas formats are preselected but remain editable.
 - Align single layers to the canvas or multiple selected layers to each other; distribute three or more layers evenly, preserving each layer's scale/rotation and supporting undo/redo.
+- Adapt an existing composition to square posts, portrait posts, stories, video, mobile wallpapers or A4 with **Cambiar formato**. Fit, fill and reframe modes transform the existing editable layers without flattening them; the operation is undoable and validates the canvas against 8192 px per side and 40 MP.
 - Keep a local **Mis diseños** library in IndexedDB with thumbnails and editable projects: save, open, duplicate, rename and delete. It is capped at 40 entries and refuses new saves at capacity instead of silently deleting older designs. The current 2.5 MB document-storage limit still applies.
 - Install as a PWA with an offline application shell.
 

@@ -137,6 +137,7 @@
       <a class="asset-source-link" href="./assets/ASSET_SOURCES.md" target="_blank" rel="noopener">Sample art source &amp; license</a>
       <input id="image-file-input" type="file" accept="image/*" multiple hidden>
       <button id="new-document">Nuevo</button>
+      <button id="open-design-resize" type="button" title="Adaptar el lienzo a otro formato manteniendo las capas editables">Cambiar formato</button>
       <button id="recover-project">Recuperar proyecto local</button>
       <button id="save">Guardar localmente</button>
       <button id="export-project">Exportar proyecto</button>
@@ -435,7 +436,7 @@
           <button type="button" id="quick-import-images"><span aria-hidden="true">＋</span><b>Importar imágenes</b><small>Desde tu dispositivo</small></button>
           <button type="button" id="quick-open-asset-library"><span aria-hidden="true">▦</span><b>Mis imágenes</b><small>Biblioteca reutilizable</small></button>
           <button type="button" id="quick-open-creative-studio"><span aria-hidden="true">✦</span><b>Stickers y portadas</b><small>Diseños anime listos para usar</small></button>
-          <button type="button" id="quick-open-design-library"><span aria-hidden="true">▤</span><b>Mis diseños</b><small>Guardar y continuar proyectos</small></button> <button type="button" id="quick-open-page-manager"><span aria-hidden="true">▤</span><b>Páginas</b><small>Crear y organizar cómics o carruseles</small></button>
+          <button type="button" id="quick-open-design-library"><span aria-hidden="true">▤</span><b>Mis diseños</b><small>Guardar y continuar proyectos</small></button><button type="button" id="quick-open-design-resize"><span aria-hidden="true">↔</span><b>Cambiar formato</b><small>Conservar las capas editables</small></button> <button type="button" id="quick-open-page-manager"><span aria-hidden="true">▤</span><b>Páginas</b><small>Crear y organizar cómics o carruseles</small></button>
         </div>
         <button type="button" id="guided-editing-open-mobile" class="guided-editing-mobile-launcher"><span aria-hidden="true">🧭</span> Edición guiada en 3 pasos</button>
         <div class="mobile-output-options" role="group" aria-label="Formato y tamaño de exportación">
@@ -674,6 +675,44 @@
         <button type="button" id="cancel-canvas-crop">✕ Cancelar</button>
         <button type="button" id="apply-canvas-crop" disabled>✂️ Aplicar recorte a todas las capas</button>
       </div>
+    </section>
+</dialog>
+  <dialog id="design-resize-dialog" class="workflow-dialog" aria-labelledby="design-resize-title">
+    <section class="canvas-crop-shell design-resize-shell">
+      <header class="workflow-dialog-header">
+        <div><p class="eyebrow">COMPOSICIÓN EDITABLE</p><h2 id="design-resize-title">Cambiar formato</h2><p>Adapta el lienzo para redes, historias, vídeo o impresión. El diseño conserva sus capas independientes.</p></div>
+        <button type="button" id="design-resize-close" class="mini-dialog-close" aria-label="Cerrar cambio de formato">✕</button>
+      </header>
+      <p id="design-resize-current" class="design-resize-current" role="status" aria-live="polite">Comprueba el tamaño del lienzo actual.</p>
+      <form id="design-resize-form">
+        <label for="design-resize-preset">Formato sugerido
+          <select id="design-resize-preset">
+            <option value="custom">Personalizado / tamaño actual</option>
+            <option value="square">Post cuadrado · 1080 × 1080</option>
+            <option value="post">Post vertical · 1080 × 1350</option>
+            <option value="story">Historia / short · 1080 × 1920</option>
+            <option value="video">Vídeo horizontal · 1920 × 1080</option>
+            <option value="wallpaper">Wallpaper móvil · 1440 × 3200</option>
+            <option value="a4">Página A4 · 2480 × 3508</option>
+          </select>
+        </label>
+        <div class="image-edit-grid design-resize-dimensions">
+          <label for="design-resize-width">Ancho (px)<input id="design-resize-width" type="number" min="1" max="8192" step="1" required value="800"></label>
+          <label for="design-resize-height">Alto (px)<input id="design-resize-height" type="number" min="1" max="8192" step="1" required value="600"></label>
+        </div>
+        <fieldset class="design-resize-modes">
+          <legend>Cómo adaptar la composición</legend>
+          <label><input type="radio" name="design-resize-mode" value="fit" checked> <span><strong>Ajustar todo</strong><small>Reduce o amplía los elementos juntos para conservar el diseño completo.</small></span></label>
+          <label><input type="radio" name="design-resize-mode" value="fill"> <span><strong>Cubrir el lienzo</strong><small>Escala la composición hasta cubrir el nuevo marco. El contenido que sobresalga sigue editable.</small></span></label>
+          <label><input type="radio" name="design-resize-mode" value="reframe"> <span><strong>Cambiar solo el marco</strong><small>No escala los elementos; cambia el área visible y mantiene su tamaño.</small></span></label>
+        </fieldset>
+        <p class="workflow-dialog-note">Límite seguro: 8192 px por lado y 40 megapíxeles. Deshacer revierte el cambio y no se aplana ninguna capa.</p>
+        <p id="design-resize-status" role="status" aria-live="polite">Las capas seguirán separadas.</p>
+        <div class="dialog-actions">
+          <button type="button" id="design-resize-cancel">Cancelar</button>
+          <button type="submit" id="design-resize-apply">Aplicar formato</button>
+        </div>
+      </form>
     </section>
   </dialog>
   <dialog id="object-style-dialog" aria-labelledby="object-style-title">

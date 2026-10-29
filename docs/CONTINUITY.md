@@ -4231,3 +4231,19 @@ El código está consolidado en `main` por la PR #124: commit squash `2a2847be9f
 - **Artefacto APK:** https://github.com/jonhararagi/animeart/actions/runs/40843352526/artifacts/12883264410. `KapiArt-Android-v0.3.7-1e22ffdd42bce53b8490c1d0eca9fc1ed466354b.apk`, `versionCode=10`, `versionName=0.3.7`; incluye checksum `.sha256` y reporte de firma. El SHA-256 del ZIP del artefacto es `bbebbfaed66adaa4a4d417fe86ed6d0489ef17f02c76992cd936f744287da34f`.
 - **Límite de distribución:** las claves estables no están configuradas; la APK de CI usa certificado debug efímero y no se garantiza que pueda instalarse como actualización de otra firma.
 - **Pendiente real:** aceptación táctil en el Xiaomi `24116RACCG`. El emulador/CI pasó, pero no equivale a probar el APK en el teléfono físico.
+
+
+## KapiArt · redimensionado editable de composición · 2026-10-29
+
+- Rama de trabajo: `feature/kapiart-smart-resize-001`, creada desde `main`; no cambiar `main` directamente.
+- Módulo añadido: `web/domain/design-resize.mjs`. Modos `fit`, `fill` y `reframe`; conserva capas, IDs, grupos, texto, imágenes, máscaras, opacidad y rotación, sin aplanar el proyecto.
+- Controles: botón **Cambiar formato** en escritorio y lanzador desde «Más herramientas» en móvil. Presets: post cuadrado, post vertical, historia/short, vídeo horizontal, wallpaper móvil y A4, además de tamaño personalizado.
+- Historial: la acción usa `state.history.record`, por tanto Deshacer revierte las dimensiones y transformaciones de la composición.
+- Seguridad: 8192 px máximo por lado y 40 MP por lienzo. No se modifica el límite de 2,5 MB del archivo JSON heredado.
+- Offline: shell actualizado a `animeart-web-shell-v78`, con `design-resize.mjs` añadido al Service Worker y al conjunto explícito de recursos requeridos.
+- Cobertura añadida: `web/test/design-resize.test.mjs` (transformaciones fit/fill/reframe, preservación de contenido y límites), test de contrato en `web/test/smoke.test.mjs`, E2E Chromium de la interfaz, preservación de IDs y Deshacer. Android CI verifica que módulo, diálogo y test estén presentes en el paquete/fuente.
+- Documentación: README y `docs/KAPIART_CANVA_WORKFLOW.md` actualizados.
+
+### Estado de aceptación
+
+Los commits de implementación en la rama son reales, pero todavía no se declara PASS de compilación/tests/E2E ni APK porque debe ejecutarse CI en el HEAD final. Ejecutar Web CI y Android CI sobre el mismo SHA; revisar resultados y artefacto APK antes de integrar. La aceptación táctil en Xiaomi `24116RACCG` permanece pendiente y no se presume por CI/emulador.
