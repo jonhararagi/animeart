@@ -152,3 +152,33 @@ test("creative studio UI is discoverable, searchable, offline-ready and packaged
   assert.match(android, /test -s "\$WEB\/domain\/canvas-rendering\.mjs"/);
   assert.match(android, /AA-CYBERPUNK-UI-003/);
 });
+
+
+test("expanded KapiArt template library covers practical creator workflows with supported formats", () => {
+  const additions = [
+    ["stream-overlay-kawaii", "square"],
+    ["character-dossier", "portrait"],
+    ["study-notes", "story"],
+    ["novel-volume", "portrait"],
+    ["manga-chapter-opener", "portrait"],
+    ["event-poster-pastel", "portrait"],
+    ["creator-banner", "banner"],
+    ["character-relationship", "banner"],
+    ["phone-wallpaper-neon", "story"],
+    ["product-promo-kawaii", "square"]
+  ];
+  for (const [id, format] of additions) {
+    const template = getCreativeTemplate(id);
+    assert.ok(template, "missing new template " + id);
+    assert.equal(template.defaultFormat, format, id + " uses a supported default format");
+    assert.ok(template.label && template.description && template.keywords, id + " is searchable and described");
+    assert.ok(template.defaultTitle && template.defaultSubtitle, id + " starts with editable copy");
+    assert.match(template.background, /^#[0-9a-f]{6}$/i);
+    assert.match(template.accent, /^#[0-9a-f]{6}$/i);
+    assert.ok(template.titleStyle && template.subtitleStyle, id + " defines typography");
+  }
+  assert.equal(new Set(CREATIVE_TEMPLATES.map(item => item.id)).size, CREATIVE_TEMPLATES.length);
+  for (const category of ["Creadores", "Personajes", "Educación", "Libros", "Manga", "Eventos", "Fondos de pantalla", "Tiendas"]) {
+    assert.ok(CREATIVE_TEMPLATES.some(item => item.category === category), "missing category " + category);
+  }
+});
