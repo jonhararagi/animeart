@@ -44,3 +44,13 @@ En teléfonos, la franja superior que puede quedar debajo del recorte del sistem
 - Las pruebas deben cubrir las zonas seguras, el acierto de ambos manejadores y la accesibilidad de Exportar desde el dock. La comprobación de CI no se confunde con una prueba física en el Xiaomi 24116RACCG.
 
 **Criterio de aceptación:** el área superior táctil queda libre, ambos manejadores realizan acciones distintas y previsibles, cerrar no borra contenido y el código actualizado invalida la caché de la PWA para evitar que el teléfono siga cargando la interfaz anterior.
+
+
+## Controles reversibles, movimiento libre y lienzo limpio
+
+- Toda herramienta o modo temporal debe mostrar una salida clara: **Cancelar**, **Cerrar (X)**, **Volver** o **Escape**, según corresponda. Cancelar descarta únicamente la previsualización o los cambios aún no confirmados; nunca debe dejar un gesto activo ni una guía residual.
+- Las operaciones ya confirmadas se revierten con **Deshacer** y pueden recuperarse con **Rehacer**. No se deben descartar cambios confirmados al cerrar paneles ni al ocultar controles.
+- El ajuste magnético tiene un botón visible con símbolo de imán y estado accesible. Activado alinea y muestra guías; apagado permite mover libremente, sin corrección ni guías. El estado del modo no crea operaciones en el historial.
+- En teléfono, los controles de uso frecuente deben medir al menos **48 × 48 CSS px** (nunca menos de 46 px), con separación suficiente para evitar toques accidentales.
+- La bandeja de herramientas debe poder ocultarse para inspeccionar el arte y restaurarse con un control persistente y accesible. Ocultar/mostrar controles no altera el documento, selección, zoom ni historial.
+- El lienzo tiene prioridad visual. Los controles pueden desaparecer temporalmente, pero la acción para recuperarlos debe seguir visible y operable.
