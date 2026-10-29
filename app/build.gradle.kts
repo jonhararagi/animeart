@@ -21,6 +21,7 @@ val hasStableSigning = listOf(
 ).all { !it.isNullOrBlank() }
 val syncWebEditorAssets = tasks.register<Sync>("syncWebEditorAssets") {
     from(rootProject.file("web")) {
+        into("web")
         exclude(
             "dist/**",
             "node_modules/**",
@@ -33,23 +34,25 @@ val syncWebEditorAssets = tasks.register<Sync>("syncWebEditorAssets") {
             ".gitignore"
         )
     }
-    into(generatedWebAssets.map { it.dir("web") })
+    into(generatedWebAssets)
 
-    // Never reuse a stale cache entry for the editor sources that are embedded in the APK.
+    // The APK must always be rebuilt from the canonical web tree, never a cached editor shell.
     outputs.cacheIf("Always sync the canonical Web editor into Android assets") { false }
     outputs.upToDateWhen { false }
 
     doLast {
-        val copiedIndex = destinationDir.resolve("index.html")
-        check(copiedIndex.isFile) {
-            "The canonical Web editor was not copied to ${copiedIndex.absolutePath}"
+        val sourceIndex = rootProject.file("web/index.html")
+        val copiedIndex = generatedWebAssets.get().file("web/index.html").asFile
+        check(sourceIndex.isFile && copiedIndex.isFile) {
+            "Expected the canonical and generated Web index files. source=${sourceIndex.absolutePath}, generated=${copiedIndex.absolutePath}"
         }
+        val sourceHtml = sourceIndex.readText(Charsets.UTF_8)
         val copiedHtml = copiedIndex.readText(Charsets.UTF_8)
         check(
-            copiedHtml.contains("layer-group-selection") &&
-            copiedHtml.contains("layer-ungroup-selection")
+            sourceHtml.contains("layer-group-selection") && sourceHtml.contains("layer-ungroup-selection") &&
+            copiedHtml.contains("layer-group-selection") && copiedHtml.contains("layer-ungroup-selection")
         ) {
-            "The generated Android Web assets do not contain the complete layer grouping controls."
+            "The generated Android Web assets differ from the canonical editor or omit layer grouping controls."
         }
     }
 }
@@ -132,7 +135,7 @@ tasks.named("preBuild").configure {
 }
 
 // Asset merging must consume the just-synced editor, not a cached intermediate copy.
-tasks.matching { it.name == "mergeDebugAssets" || it.name == "mergeReleaseAssets" }.configureEach {
+tasks.matching { it.name in setOf("mergeDebugAssets", "mergeReleaseAssets", "compressDebugAssets", "compressReleaseAssets", "packageDebug", "packageRelease") }.configureEach {
     dependsOn(syncWebEditorAssets)
     outputs.cacheIf("Merge freshly synchronized editor assets") { false }
     outputs.upToDateWhen { false }
