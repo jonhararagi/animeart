@@ -2808,6 +2808,8 @@ try {
 
   await evaluate('document.querySelector("#add-text-layer")?.click()');
   await waitFor('document.querySelector("#text-edit-dialog")?.open === true',10000);
+  await evaluate(`(() => { const input=document.querySelector("#text-content"); input.value="Título de marca Kapi"; input.dispatchEvent(new Event("input",{bubbles:true})); input.dispatchEvent(new Event("change",{bubbles:true})); return true; })()`);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers?.some(layer=>layer.contentType==="text"&&layer.text?.value==="Título de marca Kapi")',10000);
   await click("#close-text-edit");
   await waitFor('document.querySelector("#text-edit-dialog")?.open !== true');
   const kitToolboxOpen = await evaluate('document.querySelector("#toolbox-dialog")?.open === true');
