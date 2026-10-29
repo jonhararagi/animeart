@@ -142,7 +142,7 @@ jobs:
               raise SystemExit(f"APK editor HTML is missing required layer controls: {missing}")
           print("PASS: both layer grouping controls are present in the APK editor HTML")
           PY
-          test -s "$WEB/test/layer-groups.test.mjs"
+          test -s "web/test/layer-groups.test.mjs"
           grep -q 'data-creative-tab="elements"' "$WEB/index.html"
           grep -q 'id="creative-element-category"' "$WEB/index.html"
           grep -q 'id="creative-element-favorites-only"' "$WEB/index.html"
