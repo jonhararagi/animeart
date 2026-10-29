@@ -1133,6 +1133,9 @@ test("KAPIART-BRAND-KIT-001 wires a local brand identity to text layers, logos a
   assert.match(html, /id="quick-open-brand-kit"/);
   assert.match(html, /id="brand-kit-logo-file" type="file" accept="image\/png,image\/jpeg,image\/webp"/);
   assert.match(app, /initializeBrandKitTools\(\)/);
+  const brandKitRuntime = app.match(/function initializeBrandKitTools\(\)\{[\s\S]*?\n\}\n\nfunction initializeCanvaWorkflowTools\(\)/)?.[0] || "";
+  assert.ok(brandKitRuntime.length > 0, "brand kit runtime initializer is isolated and discoverable");
+  assert.doesNotMatch(brandKitRuntime, /replaceChildren/, "brand kit lists avoid replaceChildren for older Android WebView compatibility");
   assert.match(app, /addBrandColor\(kit/);
   assert.match(app, /addBrandTextStyle\(kit/);
   assert.match(app, /addBrandLogo\(kit/);
