@@ -28,6 +28,13 @@ Estado: PARTIAL · rama abierta, sin merge.
 - No hay prueba física Xiaomi; revisar zoom/límites en emulador o dispositivo cuando CI termine.
 - La rama no modifica main y no fusiona ni cierra PR. Mantener el rescate selectivo de PR #123, #129 y #130 para una fase posterior.
 
+## Controles de uso móvil y modo libre (2026-10-29)
+- Añadido botón visible 🧲 **Imán: activado/apagado** en la barra de herramientas. El estado inicial es activado; al apagarlo, `snapMoveDelta` retorna el delta limitado sin ajuste ni guías, permitiendo movimiento libre. El botón actualiza `aria-pressed`, nombre accesible y mensaje de estado; el cambio de modo no entra al historial.
+- La bandeja ya disponía de `#mobile-tools-toggle`; se conserva como control persistente para ocultar/mostrar herramientas. Se amplió su objetivo a 48 px y se definió tamaño mínimo de 48 px para botones de barra, dock y capas en móvil.
+- Añadidas pruebas de contrato para el toggle magnético, movimiento libre y ocultar/mostrar herramientas. Documentadas reglas explícitas de cancelar/cerrar/volver/Escape, deshacer/rehacer y prioridad del lienzo en `docs/MOBILE_EDITOR_LAW.md`.
+- Commits de este bloque: `a7cb16d3f511b2c9646b11549c295b9297ef6dd3` (lógica del imán), `7a64ce0d64590ec36be86ef823e62b6d4f7d0d92` (botón), `463311f3f8b06cdaa4d4f55795419b5772d686c6` (controles táctiles), `9d0d5e717fdf92360a24f14e890ef078a15ac4de` (pruebas).
+- Pendiente: ejecutar tests/CI en el HEAD actualizado; comprobar visualmente el layout real en viewport Xiaomi, incluyendo bandeja oculta/restaurada y el botón magnético accesible cuando la bandeja está visible.
+
 ## Próximos pasos exactos
 1. Continuar en feature/kapiart-smart-snapping-001; no crear rama duplicada.
 2. Localizar el flujo pointer/touch que actualiza transformaciones durante arrastre; aplicar snap solo al movimiento interactivo.
