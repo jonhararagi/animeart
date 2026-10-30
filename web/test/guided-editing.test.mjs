@@ -106,7 +106,7 @@ test("canceling the new-text dialog removes the provisional text layer and its U
 test("closing an existing text editor discards pending previews while Apply commits them", async () => {
  const app = await readFile("app.js","utf8");
  const start = app.indexOf('textEditDialog?.addEventListener("close", () => {');
- const end = app.indexOf("\\ntextStylePresetButtons.forEach", start);
+ const end = app.indexOf("textStylePresetButtons.forEach", start);
  assert.ok(start >= 0 && end > start, "text editor close handler is present");
  const closeHandler = app.slice(start, end);
  assert.ok(closeHandler.includes("state.textPreview = null"));
