@@ -1451,7 +1451,13 @@ cropResizeButton.addEventListener("click", () => {
 document.querySelector("#cancel-image-edit").addEventListener("click", () => imageEditDialog.close());
 document.querySelector("#close-image-edit")?.addEventListener("click", () => imageEditDialog.close());
 imageEditDialog.addEventListener("close", () => {
+  const pointerId = cropPreviewDrag?.pointerId;
   cropPreviewDrag = null;
+  if (Number.isInteger(pointerId)) {
+    try {
+      if (cropPreviewCanvas?.hasPointerCapture(pointerId)) cropPreviewCanvas.releasePointerCapture(pointerId);
+    } catch {}
+  }
   if (imageEditPreviewImage) {
     imageEditPreviewImage.onload = null;
     imageEditPreviewImage.onerror = null;
@@ -1987,7 +1993,13 @@ document.querySelector("#canvas-crop-reset")?.addEventListener("click", () => {
 document.querySelector("#close-canvas-crop")?.addEventListener("click", () => canvasCropDialog?.close());
 document.querySelector("#cancel-canvas-crop")?.addEventListener("click", () => canvasCropDialog?.close());
 canvasCropDialog?.addEventListener("close", () => {
+  const pointerId = canvasCropDrag?.pointerId;
   canvasCropDrag = null;
+  if (Number.isInteger(pointerId)) {
+    try {
+      if (canvasCropPreview?.hasPointerCapture(pointerId)) canvasCropPreview.releasePointerCapture(pointerId);
+    } catch {}
+  }
   canvasCropDocument = null;
   canvasCropRectangle = null;
 });
