@@ -2127,6 +2127,15 @@ try {
   assert(await evaluate('document.querySelector("[data-frame-boundary-mode=free]").getAttribute("aria-pressed") === "true"'),
     "Ver margen explicitly enables free movement");
 
+  // Free-movement boundary checks require deterministic, unsnapped deltas.
+  // Keep the magnet contract separate: snapping is covered by its own tests.
+  assert(await evaluate('document.querySelector("#magnetic-snapping-toggle")?.getAttribute("aria-pressed") === "true"'),
+    "magnetic snapping starts enabled before the isolated free-movement scenario");
+  await evaluate('document.querySelector("#magnetic-snapping-toggle")?.click()');
+  await waitFor('document.querySelector("#magnetic-snapping-toggle")?.getAttribute("aria-pressed") === "false"');
+  assert(await evaluate('document.querySelector("#magnetic-snapping-toggle")?.getAttribute("aria-pressed") === "false"'),
+    "free-movement E2E disables magnetic corrections explicitly");
+
   // AA-CANVAS-FREE-MOVE-001: layer content may cross all four document edges.
   // Each move is reversed from the transformed object's actual center, so the
   // test verifies the boundary crossing without polluting the following steps.
@@ -2202,6 +2211,10 @@ try {
   await clickMoreGoal("undo");
   // Retain the pre-test transform after backing out the recovery and off-screen move.
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) === ' + JSON.stringify(transformBeforeOffscreenRecovery), 10000);
+  await evaluate('document.querySelector("#magnetic-snapping-toggle")?.click()');
+  await waitFor('document.querySelector("#magnetic-snapping-toggle")?.getAttribute("aria-pressed") === "true"');
+  assert(await evaluate('document.querySelector("#magnetic-snapping-toggle")?.getAttribute("aria-pressed") === "true'),
+    "magnetic snapping is restored after the isolated free-movement scenario");
 
   // AA-MOBILE-REDESIGN-004: verify that mobile rotation and flip controls mutate the selected image and can be restored.
   await clickMoreGoal("layers");
