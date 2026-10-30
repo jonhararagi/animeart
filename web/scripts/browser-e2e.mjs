@@ -779,8 +779,6 @@ try {
   await cdp("Input.dispatchMouseEvent", { type: "mouseReleased", x: imageCropPointer.x + 14, y: imageCropPointer.y + 12, button: "left", buttons: 0, clickCount: 1 });
   await waitFor('!document.querySelector("#crop-preview").hasPointerCapture(1)');
   assert(JSON.stringify(await readDocument()) === JSON.stringify(imageCropCancelBaseline),
-    "finishing the cancelled image-crop gesture leaves no pointer capture and no document mutation");
-  assert(JSON.stringify(await readDocument()) === JSON.stringify(imageCropCancelBaseline),
     "Escape discards the manipulated image-crop frame without persisting any image edit");
   await click("#crop-resize-image");
   await waitFor('document.querySelector("#image-edit-dialog").open === true');
