@@ -2502,17 +2502,45 @@ function renderSavedTextStyles() {
   card.append(apply, detail, remove); savedTextStylesContainer.append(card);
  }
 }
+function readTextEditorValues(layer) {
+ const base = getWorkingLayerText(layer);
+ if (!textEditDialog?.open) return base;
+ const number = (input, fallback) => {
+  const value = Number(input?.value);
+  return Number.isFinite(value) ? value : fallback;
+ };
+ return normalizeTextLayer({
+  ...base,
+  value: textContentInput?.value ?? base.value,
+  fontSize: number(textFontSizeInput, base.fontSize),
+  fontFamily: textFontFamilyInput?.value || base.fontFamily,
+  fontWeight: textFontWeightInput?.value || base.fontWeight,
+  color: textColorInput?.value || base.color,
+  outlineColor: textOutlineColorInput?.value || base.outlineColor,
+  outlineWidth: number(textOutlineWidthInput, base.outlineWidth),
+  align: textAlignInput?.value || base.align,
+  letterSpacing: number(textLetterSpacingInput, base.letterSpacing),
+  lineHeight: number(textLineHeightInput, base.lineHeight),
+  shadowColor: textShadowColorInput?.value || base.shadowColor,
+  shadowBlur: number(textShadowBlurInput, base.shadowBlur),
+  shadowOffsetX: number(textShadowXInput, base.shadowOffsetX),
+  shadowOffsetY: number(textShadowYInput, base.shadowOffsetY)
+ });
+}
 function saveSelectedTextStyle() {
  const layer = selectedLayerExact();
  if (!layer || layer.contentType !== "text" || layer.locked) { setTextStyleStatus("Selecciona una capa de texto desbloqueada para guardar su estilo.", "error"); return; }
  const nameInput = window.prompt("Nombre para este estilo reutilizable:", "Mi estilo");
  if (nameInput === null) return;
- const name = String(nameInput).replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 48);
+ const name = String(nameInput).replace(/[\\u0000-\\u001f\\u007f]/g, "").trim().slice(0, 48);
  if (!name) { setTextStyleStatus("Escribe un nombre para guardar el estilo.", "error"); return; }
  const styles = readSavedTextStyles();
  if (styles.length >= MAX_SAVED_TEXT_STYLES) { setTextStyleStatus("Llegaste al máximo de 20 estilos. Elimina uno antes de guardar otro.", "error"); return; }
  if (styles.some(item => item.name.toLocaleLowerCase() === name.toLocaleLowerCase()) && !window.confirm("Ya existe un estilo con ese nombre. ¿Guardar otra copia con el mismo nombre?")) return;
- styles.unshift({ id: createId(), name, style: extractReusableTextStyle(getWorkingLayerText(layer)) });
+ const previewValues = readTextEditorValues(layer);
+ state.textPreview = { layerId: layer.id, values: previewValues };
+ redraw();
+ styles.unshift({ id: createId(), name, style: extractReusableTextStyle(previewValues) });
  if (writeSavedTextStyles(styles)) { renderSavedTextStyles(); setTextStyleStatus("Estilo guardado: " + name, "success"); }
 }
 function handleSavedTextStyleClick(event) {
