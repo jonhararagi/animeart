@@ -77,6 +77,7 @@ const textEditDialog = document.querySelector("#text-edit-dialog");
 // .layers is hidden in the mobile workspace. Keep this modal at the document root so Android WebView can always display it.
 if (textEditDialog && textEditDialog.parentElement !== document.body) document.body.append(textEditDialog);
 let newlyCreatedTextLayerId = null;
+let newlyCreatedTextHistorySize = null;
 const closeTextEditButton = document.querySelector("#close-text-edit");
 const textContentInput = document.querySelector("#text-content");
 const textFontSizeInput = document.querySelector("#text-font-size");
@@ -2218,6 +2219,7 @@ function openTextEditorForLayer(layerId = selectedLayerExact()?.id) {
   }
   activateSelectionToolForText();
   newlyCreatedTextLayerId = null;
+  newlyCreatedTextHistorySize = null;
   state.textPreview = null;
   setSelection([layer.id], layer.id);
   renderLayerText();
@@ -2322,64 +2324,83 @@ function commitTextPreview(message = "Text style updated") {
 }
 
 textContentInput.addEventListener("input", () => updateTextPreview({ value: textContentInput.value }));
-textContentInput.addEventListener("change", () => commitTextPreview("Text content updated"));
+
 textFontSizeInput.addEventListener("input", () => {
   const fontSize = Number(textFontSizeInput.value);
   textFontSizeValue.textContent = fontSize + " px";
   updateTextPreview({ fontSize });
 });
-textFontSizeInput.addEventListener("change", () => commitTextPreview("Text size updated"));
+
 textFontFamilyInput.addEventListener("change", () => {
   updateTextPreview({ fontFamily: textFontFamilyInput.value });
-  commitTextPreview("Text font updated");
 });
 textFontWeightInput.addEventListener("change", () => {
   updateTextPreview({ fontWeight: textFontWeightInput.value });
-  commitTextPreview("Text weight updated");
 });
 textColorInput.addEventListener("input", () => updateTextPreview({ color: textColorInput.value }));
-textColorInput.addEventListener("change", () => commitTextPreview("Text color updated"));
+
 textOutlineColorInput.addEventListener("input", () => updateTextPreview({ outlineColor: textOutlineColorInput.value }));
-textOutlineColorInput.addEventListener("change", () => commitTextPreview("Text outline color updated"));
+
 textOutlineWidthInput.addEventListener("input", () => {
   textOutlineWidthValue.textContent = textOutlineWidthInput.value + " px";
   updateTextPreview({ outlineWidth: Number(textOutlineWidthInput.value) });
 });
-textOutlineWidthInput.addEventListener("change", () => commitTextPreview("Text outline updated"));
+
 textAlignInput.addEventListener("change", () => {
   updateTextPreview({ align: textAlignInput.value });
-  commitTextPreview("Text alignment updated");
 });
 textLetterSpacingInput?.addEventListener("input", () => { textLetterSpacingValue.textContent = Number(textLetterSpacingInput.value).toFixed(1) + " px"; updateTextPreview({ letterSpacing: Number(textLetterSpacingInput.value) }); });
-textLetterSpacingInput?.addEventListener("change", () => commitTextPreview("Text letter spacing updated"));
+
 textLineHeightInput?.addEventListener("input", () => { textLineHeightValue.textContent = Number(textLineHeightInput.value).toFixed(2) + "×"; updateTextPreview({ lineHeight: Number(textLineHeightInput.value) }); });
-textLineHeightInput?.addEventListener("change", () => commitTextPreview("Text line height updated"));
-textShadowColorInput.addEventListener("input",()=>updateTextPreview({shadowColor:textShadowColorInput.value}));textShadowColorInput.addEventListener("change",()=>commitTextPreview("Text shadow color updated"));
-textShadowBlurInput.addEventListener("input",()=>{const v=Number(textShadowBlurInput.value);textShadowBlurValue.textContent=v+" px";updateTextPreview({shadowBlur:v});});textShadowBlurInput.addEventListener("change",()=>commitTextPreview("Text shadow updated"));
+
+textShadowColorInput.addEventListener("input",()=>updateTextPreview({shadowColor:textShadowColorInput.value}));
+textShadowBlurInput.addEventListener("input",()=>{const v=Number(textShadowBlurInput.value);textShadowBlurValue.textContent=v+" px";updateTextPreview({shadowBlur:v});});
 textShadowXInput.addEventListener("input", () => { const v = Number(textShadowXInput.value); textShadowXValue.textContent = v + " px"; updateTextPreview({ shadowOffsetX: v }); });
-textShadowXInput.addEventListener("change", () => commitTextPreview("Text shadow horizontal offset updated"));
+
 textShadowYInput.addEventListener("input", () => { const v = Number(textShadowYInput.value); textShadowYValue.textContent = v + " px"; updateTextPreview({ shadowOffsetY: v }); });
-textShadowYInput.addEventListener("change", () => commitTextPreview("Text shadow vertical offset updated"));
+
 function cancelNewlyCreatedTextLayer() {
   const id = newlyCreatedTextLayerId;
-  newlyCreatedTextLayerId = null;
   if (!id) return false;
   const layer = state.document.layers.find(item => item.id === id && item.contentType === "text");
   if (!layer) return false;
-  setSelection([layer.id], layer.id);
-  const removed = removeSelectedLayer();
+
+  const before = cloneDocument(state.document);
+  const next = deleteLayer(state.document, id);
+  if (!next) return false;
+  state.document = next;
+  state.textPreview = null;
+  const nextSelection = [...next.layers].reverse().find(item => item.contentType === "image") || next.layers.at(-1) || null;
+  setSelection(nextSelection ? [nextSelection.id] : [], nextSelection?.id || null);
+
+  // The provisional layer was recorded when its editor opened. Remove that
+  // creation entry as part of cancellation so Undo cannot resurrect canceled text.
+  const canDiscardCreation = Number.isInteger(newlyCreatedTextHistorySize) &&
+    state.history.size() === newlyCreatedTextHistorySize + 1;
+  const discardedCreation = canDiscardCreation && state.history.discardLastRecord();
+  if (!discardedCreation) state.history.record(before, next);
+
+  newlyCreatedTextLayerId = null;
+  newlyCreatedTextHistorySize = null;
+  refreshDocument("Creación de texto cancelada");
+  persistDocument();
   if (textEditDialog?.open) textEditDialog.close();
-  return removed;
+  return true;
 }
-closeTextEditButton?.addEventListener("click", () => {
-  if (newlyCreatedTextLayerId) { cancelNewlyCreatedTextLayer(); return; }
-  textEditDialog?.close();
-});
+function cancelTextEditing() {
+  if (newlyCreatedTextLayerId) return cancelNewlyCreatedTextLayer();
+  if (textEditDialog?.open) textEditDialog.close();
+  return true;
+}
+closeTextEditButton?.addEventListener("click", cancelTextEditing);
+document.querySelector("#cancel-text-layer")?.addEventListener("click", cancelTextEditing);
 textEditDialog?.addEventListener("cancel", event => {
   if (newlyCreatedTextLayerId) {
     event.preventDefault();
     cancelNewlyCreatedTextLayer();
   }
+  // For an existing layer, the native dialog closes and the close handler
+  // discards its unconfirmed preview.
 });
 document.querySelector("#apply-text-layer")?.addEventListener("click", () => {
   const layer = selectedLayerExact();
@@ -2389,6 +2410,7 @@ document.querySelector("#apply-text-layer")?.addEventListener("click", () => {
   }
   commitTextPreview("Texto aplicado al lienzo");
   newlyCreatedTextLayerId = null;
+  newlyCreatedTextHistorySize = null;
   textEditDialog?.close();
   status.textContent = "Texto aplicado al lienzo. Podés moverlo o eliminarlo desde la barra inferior.";
 });
@@ -2396,24 +2418,18 @@ document.querySelector("#delete-text-layer")?.addEventListener("click", () => {
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "text") return;
   newlyCreatedTextLayerId = null;
+  newlyCreatedTextHistorySize = null;
   if (removeSelectedLayer()) textEditDialog?.close();
 });
 textEditDialog?.addEventListener("close", () => {
   delete textEditDialog.dataset.openFallback;
-  // Keep edits to an existing text layer when the user closes the editor with X or Escape.
-  // Canceling a newly created provisional layer removes it before this close event, so its
-  // pending preview has no layer to commit and is safely discarded.
-  if (state.textPreview) {
-    const preview = state.textPreview;
-    const layer = state.document.layers.find(item => item.id === preview.layerId && item.contentType === "text");
-    state.textPreview = null;
-    if (layer) {
-      commitLayerText(preview.layerId, preview.values, "Cambios de texto guardados al cerrar el editor");
-    }
-  }
+  // Closing without Apply is cancellation: drop the live preview and redraw
+  // the last committed text. Confirmed operations remain in history.
+  state.textPreview = null;
   redraw();
   renderLayerText();
 });
+
 textStylePresetButtons.forEach(button => button.addEventListener("click", () => {
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "text" || layer.locked) return;
@@ -5151,6 +5167,7 @@ document.querySelector("#add-text-layer").addEventListener("click", () => {
   state.document = next;
   state.textPreview = null;
   newlyCreatedTextLayerId = layer.id;
+  newlyCreatedTextHistorySize = state.history.size();
   setSelection([layer.id], layer.id);
   state.history.record(before, next);
   refreshDocument("Text layer added");
