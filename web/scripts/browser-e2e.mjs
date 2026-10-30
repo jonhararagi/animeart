@@ -741,6 +741,41 @@ try {
   assert(await evaluate('document.querySelector("#image-crop-width").value === "755" && document.querySelector("#image-crop-height").value === "944" && document.querySelector("#image-crop-x").value === "94"'), "4:5 aspect preset computes a centered crop within image bounds");
   await evaluate('(() => { const ratio = document.querySelector("#image-crop-aspect"); ratio.value = ""; ratio.dispatchEvent(new Event("change", { bubbles: true })); })()');
   await saveScreenshot("animeart-studio-crop-preview.png");
+
+  // Every exit path discards a manipulated pixel-crop preview without touching the document.
+  const imageCropCancelBaseline = await readDocument();
+  const editPixelCropFrame = async () => evaluate('(() => { for (const [id,value] of [["#image-crop-x","5"],["#image-crop-y","7"],["#image-crop-width","400"],["#image-crop-height","500"]]) { const input=document.querySelector(id); input.value=value; input.dispatchEvent(new Event("input",{bubbles:true})); } return {x:document.querySelector("#image-crop-x").value,y:document.querySelector("#image-crop-y").value,width:document.querySelector("#image-crop-width").value,height:document.querySelector("#image-crop-height").value}; })()');
+  const assertPixelCropReset = async (reason) => {
+    const reset = await evaluate('(() => ({x:document.querySelector("#image-crop-x").value,y:document.querySelector("#image-crop-y").value,width:document.querySelector("#image-crop-width").value,height:document.querySelector("#image-crop-height").value,shape:document.querySelector("#image-crop-shape").value}))()');
+    assert(reset.x === "0" && reset.y === "0" && reset.width === "944" && reset.height === "944" && reset.shape === "rectangle",
+      reason + " reopens from the unchanged source image, not the discarded crop: " + JSON.stringify(reset));
+  };
+  await editPixelCropFrame();
+  await click("#cancel-image-edit");
+  await waitFor('document.querySelector("#image-edit-dialog").open === false');
+  assert(JSON.stringify(await readDocument()) === JSON.stringify(imageCropCancelBaseline),
+    "Cancel discards the manipulated image-crop frame without changing document pixels, layer data, or transform");
+  await click("#crop-resize-image");
+  await waitFor('document.querySelector("#image-edit-dialog").open === true');
+  await assertPixelCropReset("Cancel");
+  await editPixelCropFrame();
+  await click("#close-image-edit");
+  await waitFor('document.querySelector("#image-edit-dialog").open === false');
+  assert(JSON.stringify(await readDocument()) === JSON.stringify(imageCropCancelBaseline),
+    "X discards the manipulated image-crop frame without persisting any image edit");
+  await click("#crop-resize-image");
+  await waitFor('document.querySelector("#image-edit-dialog").open === true');
+  await assertPixelCropReset("X");
+  await editPixelCropFrame();
+  await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await cdp("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await waitFor('document.querySelector("#image-edit-dialog").open === false');
+  assert(JSON.stringify(await readDocument()) === JSON.stringify(imageCropCancelBaseline),
+    "Escape discards the manipulated image-crop frame without persisting any image edit");
+  await click("#crop-resize-image");
+  await waitFor('document.querySelector("#image-edit-dialog").open === true');
+  await assertPixelCropReset("Escape");
+
   await evaluate('(() => { for (const [id,value] of [["#image-crop-x","5"],["#image-crop-y","7"],["#image-crop-width","400"],["#image-crop-height","500"]]) { const input=document.querySelector(id); input.value=value; input.dispatchEvent(new Event("input",{bubbles:true})); } })()');
   await click("#apply-image-edit");
   await waitFor('document.querySelector("#status").textContent === "Image cropped"', 15000);
@@ -2430,8 +2465,44 @@ try {
     width: beforeCompositionCrop.width - 20,
     height: beforeCompositionCrop.height - 20
   };
-  await evaluate('(() => { const values=' + JSON.stringify(requestedCompositionCrop) + '; for (const [key,value] of Object.entries(values)) { const input=document.querySelector("#canvas-crop-"+key); input.value=String(value); input.dispatchEvent(new Event("change",{bubbles:true})); } })()');
-  assert(await evaluate('document.querySelector("#apply-canvas-crop").disabled === false'), "numeric crop fields enable Apply for a valid smaller composition frame");
+  const setCompositionCropPreview = async () => {
+    await evaluate('(() => { const values=' + JSON.stringify(requestedCompositionCrop) + '; for (const [key,value] of Object.entries(values)) { const input=document.querySelector("#canvas-crop-"+key); input.value=String(value); input.dispatchEvent(new Event("change",{bubbles:true})); } })()');
+    assert(await evaluate('document.querySelector("#apply-canvas-crop").disabled === false'), "numeric crop fields enable Apply for a valid smaller composition frame");
+  };
+  const assertCompositionCropDiscarded = async (reason) => {
+    assert(JSON.stringify(await readDocument()) === JSON.stringify(beforeCompositionCrop),
+      reason + " discards the composition frame without changing document dimensions, layers, or transforms");
+  };
+  const reopenCompositionCrop = async () => {
+    await click('.mobile-touch-dock [data-touch-action="more"]');
+    await waitFor('document.body.classList.contains("mobile-tools-open")');
+    await click('[data-edit-goal="crop"]');
+    await waitFor('document.querySelector("#crop-mode-dialog")?.open === true');
+    await click("#crop-whole-canvas");
+    await waitFor('document.querySelector("#canvas-crop-dialog")?.open === true', 15000);
+  };
+
+  await setCompositionCropPreview();
+  await click("#cancel-canvas-crop");
+  await waitFor('document.querySelector("#canvas-crop-dialog").open === false');
+  await assertCompositionCropDiscarded("Cancel");
+  await reopenCompositionCrop();
+  const compositionFrameAfterCancel = await evaluate('(() => ({x:Number(document.querySelector("#canvas-crop-x").value),y:Number(document.querySelector("#canvas-crop-y").value),width:Number(document.querySelector("#canvas-crop-width").value),height:Number(document.querySelector("#canvas-crop-height").value)}))()');
+  assert(compositionFrameAfterCancel.x === Math.round(beforeCompositionCrop.width * 0.06) &&
+    compositionFrameAfterCancel.y === Math.round(beforeCompositionCrop.height * 0.06),
+    "reopening after Cancel restores the fresh default composition frame instead of the discarded preview");
+  await setCompositionCropPreview();
+  await click("#close-canvas-crop");
+  await waitFor('document.querySelector("#canvas-crop-dialog").open === false');
+  await assertCompositionCropDiscarded("X");
+  await reopenCompositionCrop();
+  await setCompositionCropPreview();
+  await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await cdp("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await waitFor('document.querySelector("#canvas-crop-dialog").open === false');
+  await assertCompositionCropDiscarded("Escape");
+  await reopenCompositionCrop();
+  await setCompositionCropPreview();
   await click("#apply-canvas-crop");
   await waitFor('document.querySelector("#canvas-crop-dialog").open === false');
   const afterCompositionCrop = await readDocument();
