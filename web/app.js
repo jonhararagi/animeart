@@ -2447,7 +2447,6 @@ textStylePresetButtons.forEach(button => button.addEventListener("click", () => 
   }[button.dataset.textStylePreset];
   if (presets) {
     updateTextPreview(presets);
-    commitTextPreview(button.dataset.textStylePreset + " text style applied");
   }
 }));
 
@@ -2513,7 +2512,7 @@ function handleSavedTextStyleClick(event) {
   const layer = selectedLayerExact();
   if (!item) { setTextStyleStatus("Ese estilo ya no existe.", "error"); renderSavedTextStyles(); return; }
   if (!layer || layer.contentType !== "text" || layer.locked) { setTextStyleStatus("Selecciona una capa de texto desbloqueada.", "error"); return; }
-  updateTextPreview(item.style); commitTextPreview("Saved text style applied"); setTextStyleStatus("Estilo aplicado: " + item.name, "success"); return;
+  updateTextPreview(item.style); setTextStyleStatus("Estilo preparado: " + item.name + ". Pulsa Aplicar para confirmar.", "success"); return;
  }
  const id = button.dataset.savedTextStyleRemove;
  const item = styles.find(style => style.id === id);
