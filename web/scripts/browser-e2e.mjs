@@ -958,12 +958,12 @@ try {
 
   // Typography v2: letter spacing and line height persist, and custom styles are reusable.
   await evaluate('window.prompt=()=> "E2E Manga Tracking"; window.confirm=()=>true');
-  const typographyControlSnapshot = await evaluate('(() => ({dialogOpen:document.querySelector("#text-edit-dialog").open,letterSpacing:document.querySelector("#text-letter-spacing")?.value,lineHeight:document.querySelector("#text-line-height")?.value,letterSpacingLabel:document.querySelector("#text-letter-spacing-value")?.textContent,lineHeightLabel:document.querySelector("#text-line-height-value")?.textContent,saveDisabled:document.querySelector("#save-text-style")?.disabled,selectedText:document.querySelector("#text-content")?.value}))()');
-  assert(typographyControlSnapshot.dialogOpen && typographyControlSnapshot.letterSpacing==="4" && typographyControlSnapshot.lineHeight==="1.65",
-    "reusable typography controls retain the requested preview values before saving: " + JSON.stringify(typographyControlSnapshot));
   await evaluate('document.querySelector("#selection-mini-edit-text").click()');
   await waitFor('document.querySelector("#text-edit-dialog").open === true', 10000);
   await evaluate('(() => { const track=document.querySelector("#text-letter-spacing"); track.value="4"; track.dispatchEvent(new Event("input",{bubbles:true})); track.dispatchEvent(new Event("change",{bubbles:true})); const leading=document.querySelector("#text-line-height"); leading.value="1.65"; leading.dispatchEvent(new Event("input",{bubbles:true})); leading.dispatchEvent(new Event("change",{bubbles:true})); })()');
+  const typographyControlSnapshot = await evaluate('(() => ({dialogOpen:document.querySelector("#text-edit-dialog").open,letterSpacing:document.querySelector("#text-letter-spacing")?.value,lineHeight:document.querySelector("#text-line-height")?.value,letterSpacingLabel:document.querySelector("#text-letter-spacing-value")?.textContent,lineHeightLabel:document.querySelector("#text-line-height-value")?.textContent,saveDisabled:document.querySelector("#save-text-style")?.disabled,selectedText:document.querySelector("#text-content")?.value}))()');
+  assert(typographyControlSnapshot.dialogOpen && typographyControlSnapshot.letterSpacing==="4" && typographyControlSnapshot.lineHeight==="1.65",
+    "reusable typography controls retain the requested preview values before saving: " + JSON.stringify(typographyControlSnapshot));
   assert(await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + '); return layer?.text?.letterSpacing===0 && layer?.text?.lineHeight===1.2; })()'),
     "tracking and line-height controls remain previews before Apply");
   await click("#save-text-style");
