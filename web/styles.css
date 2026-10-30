@@ -1867,6 +1867,8 @@ button:focus-visible, input:focus-visible { outline-color: var(--accent); }
 .selection-mini-actions { grid-template-columns:repeat(5,minmax(0,1fr)); }
 .selection-mini-actions #selection-mini-delete, #text-edit-dialog .text-danger { border-color:#9a3c53; background:linear-gradient(140deg,#4b1f2c,#321821); color:#ffe8ed; font-weight:800; }
 #text-edit-dialog .text-primary { border-color:#45bfd6; background:linear-gradient(140deg,#155e75,#29264e); color:#f0fdff; font-weight:850; }
+#text-edit-dialog .text-cancel { border-color:#74677e; background:#292431; color:#f5edf9; font-weight:800; }
+#text-edit-dialog #apply-text-layer { grid-column:1 / -1; }
 #text-edit-dialog .text-dialog-actions { display:grid; grid-template-columns:minmax(0,.95fr) minmax(0,1.2fr); gap:8px; }
 #text-edit-dialog .text-dialog-actions button { min-height:46px; font-weight:800; }
 
