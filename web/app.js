@@ -1,5 +1,6 @@
 import { DOCUMENT_VERSION, createId, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
-import { createLayerAlignmentTransforms } from "./domain/design-alignment.mjs";
+import { createLayerAlignmentTransforms, getLayerAlignmentBounds } from "./domain/design-alignment.mjs";
+import { getSmartSnapAdjustment } from "./domain/design-snapping.mjs";
 import { resizeDocumentForFormat } from "./domain/design-resize.mjs";
 import { deleteDesign, duplicateDesign, listDesigns, loadDesign, renameDesign, saveDesign } from "./domain/design-library.mjs";
 import { addMultiPagePage, copyLayerToPage, createMultiPageProject, deleteMultiPagePage, deleteMultiPageProject, listMultiPageProjects, loadMultiPagePage, renameMultiPagePage, renameMultiPageProject, reorderMultiPagePage, saveMultiPagePage, setActiveMultiPagePage } from "./domain/multi-page-project.mjs";
@@ -76,6 +77,7 @@ const textEditDialog = document.querySelector("#text-edit-dialog");
 // .layers is hidden in the mobile workspace. Keep this modal at the document root so Android WebView can always display it.
 if (textEditDialog && textEditDialog.parentElement !== document.body) document.body.append(textEditDialog);
 let newlyCreatedTextLayerId = null;
+let newlyCreatedTextHistorySize = null;
 const closeTextEditButton = document.querySelector("#close-text-edit");
 const textContentInput = document.querySelector("#text-content");
 const textFontSizeInput = document.querySelector("#text-font-size");
@@ -243,6 +245,8 @@ const state = {
   magicEraseInteraction: null,
   transformInteraction: null,
   multiTransformInteraction: null,
+  snapGuides: [],
+  magneticSnappingEnabled: true,
   adjustmentPreview: null,
   textPreview: null,
   viewport: createViewport(),
@@ -899,6 +903,25 @@ function drawOffDocumentVeil(rect, dpr) {
   }
 }
 
+function drawSmartSnapGuides() {
+  if (!Array.isArray(state.snapGuides) || state.snapGuides.length === 0) return;
+  const width = state.document.width, height = state.document.height;
+  ctx.save();
+  ctx.setLineDash([5, 4]);
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "rgba(255, 91, 210, 0.95)";
+  for (const guide of state.snapGuides) {
+    const start = guide.axis === "vertical"
+      ? documentToScreenPoint({ x: guide.coordinate, y: 0 }, state.document, state.viewport, canvasSize())
+      : documentToScreenPoint({ x: 0, y: guide.coordinate }, state.document, state.viewport, canvasSize());
+    const end = guide.axis === "vertical"
+      ? documentToScreenPoint({ x: guide.coordinate, y: height }, state.document, state.viewport, canvasSize())
+      : documentToScreenPoint({ x: width, y: guide.coordinate }, state.document, state.viewport, canvasSize());
+    ctx.beginPath(); ctx.moveTo(start.x, start.y); ctx.lineTo(end.x, end.y); ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawNow() {
   const rect = canvas.getBoundingClientRect();
   const dpr = canvasRenderDpr(rect);
@@ -926,6 +949,7 @@ function drawNow() {
   drawOffDocumentVeil(rect, dpr);
   if (!transparencyPreview) drawSelectionOverlay();
   drawPixelEditPreview();
+  drawSmartSnapGuides();
   updateRemoveImageControl();
   if (!transparencyPreview && ["censor-light", "brush", "eraser"].includes(state.tool) && state.censorCursorPoint) {
     const point = documentToScreenPoint(state.censorCursorPoint, state.document, state.viewport, canvasSize());
@@ -1427,7 +1451,13 @@ cropResizeButton.addEventListener("click", () => {
 document.querySelector("#cancel-image-edit").addEventListener("click", () => imageEditDialog.close());
 document.querySelector("#close-image-edit")?.addEventListener("click", () => imageEditDialog.close());
 imageEditDialog.addEventListener("close", () => {
+  const pointerId = cropPreviewDrag?.pointerId;
   cropPreviewDrag = null;
+  if (Number.isInteger(pointerId)) {
+    try {
+      if (cropPreviewCanvas?.hasPointerCapture(pointerId)) cropPreviewCanvas.releasePointerCapture(pointerId);
+    } catch {}
+  }
   if (imageEditPreviewImage) {
     imageEditPreviewImage.onload = null;
     imageEditPreviewImage.onerror = null;
@@ -1669,7 +1699,7 @@ imageEditForm.addEventListener("submit", async event => {
 
 function hideMobileToolSheets() {
   closeMobileContextPanel();
-  document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open");
+  document.body.classList.remove("mobile-tools-open", "mobile-tools-collapsed", "mobile-layers-open", "mobile-canvas-focus");
   mobileDock?.querySelector('[data-touch-action="more"]')?.setAttribute("aria-expanded", "false");
   mobileDock?.querySelector('[data-touch-action="layers"]')?.setAttribute("aria-expanded", "false");
 }
@@ -1963,7 +1993,13 @@ document.querySelector("#canvas-crop-reset")?.addEventListener("click", () => {
 document.querySelector("#close-canvas-crop")?.addEventListener("click", () => canvasCropDialog?.close());
 document.querySelector("#cancel-canvas-crop")?.addEventListener("click", () => canvasCropDialog?.close());
 canvasCropDialog?.addEventListener("close", () => {
+  const pointerId = canvasCropDrag?.pointerId;
   canvasCropDrag = null;
+  if (Number.isInteger(pointerId)) {
+    try {
+      if (canvasCropPreview?.hasPointerCapture(pointerId)) canvasCropPreview.releasePointerCapture(pointerId);
+    } catch {}
+  }
   canvasCropDocument = null;
   canvasCropRectangle = null;
 });
@@ -2195,6 +2231,7 @@ function openTextEditorForLayer(layerId = selectedLayerExact()?.id) {
   }
   activateSelectionToolForText();
   newlyCreatedTextLayerId = null;
+  newlyCreatedTextHistorySize = null;
   state.textPreview = null;
   setSelection([layer.id], layer.id);
   renderLayerText();
@@ -2299,64 +2336,83 @@ function commitTextPreview(message = "Text style updated") {
 }
 
 textContentInput.addEventListener("input", () => updateTextPreview({ value: textContentInput.value }));
-textContentInput.addEventListener("change", () => commitTextPreview("Text content updated"));
+
 textFontSizeInput.addEventListener("input", () => {
   const fontSize = Number(textFontSizeInput.value);
   textFontSizeValue.textContent = fontSize + " px";
   updateTextPreview({ fontSize });
 });
-textFontSizeInput.addEventListener("change", () => commitTextPreview("Text size updated"));
+
 textFontFamilyInput.addEventListener("change", () => {
   updateTextPreview({ fontFamily: textFontFamilyInput.value });
-  commitTextPreview("Text font updated");
 });
 textFontWeightInput.addEventListener("change", () => {
   updateTextPreview({ fontWeight: textFontWeightInput.value });
-  commitTextPreview("Text weight updated");
 });
 textColorInput.addEventListener("input", () => updateTextPreview({ color: textColorInput.value }));
-textColorInput.addEventListener("change", () => commitTextPreview("Text color updated"));
+
 textOutlineColorInput.addEventListener("input", () => updateTextPreview({ outlineColor: textOutlineColorInput.value }));
-textOutlineColorInput.addEventListener("change", () => commitTextPreview("Text outline color updated"));
+
 textOutlineWidthInput.addEventListener("input", () => {
   textOutlineWidthValue.textContent = textOutlineWidthInput.value + " px";
   updateTextPreview({ outlineWidth: Number(textOutlineWidthInput.value) });
 });
-textOutlineWidthInput.addEventListener("change", () => commitTextPreview("Text outline updated"));
+
 textAlignInput.addEventListener("change", () => {
   updateTextPreview({ align: textAlignInput.value });
-  commitTextPreview("Text alignment updated");
 });
 textLetterSpacingInput?.addEventListener("input", () => { textLetterSpacingValue.textContent = Number(textLetterSpacingInput.value).toFixed(1) + " px"; updateTextPreview({ letterSpacing: Number(textLetterSpacingInput.value) }); });
-textLetterSpacingInput?.addEventListener("change", () => commitTextPreview("Text letter spacing updated"));
+
 textLineHeightInput?.addEventListener("input", () => { textLineHeightValue.textContent = Number(textLineHeightInput.value).toFixed(2) + "×"; updateTextPreview({ lineHeight: Number(textLineHeightInput.value) }); });
-textLineHeightInput?.addEventListener("change", () => commitTextPreview("Text line height updated"));
-textShadowColorInput.addEventListener("input",()=>updateTextPreview({shadowColor:textShadowColorInput.value}));textShadowColorInput.addEventListener("change",()=>commitTextPreview("Text shadow color updated"));
-textShadowBlurInput.addEventListener("input",()=>{const v=Number(textShadowBlurInput.value);textShadowBlurValue.textContent=v+" px";updateTextPreview({shadowBlur:v});});textShadowBlurInput.addEventListener("change",()=>commitTextPreview("Text shadow updated"));
+
+textShadowColorInput.addEventListener("input",()=>updateTextPreview({shadowColor:textShadowColorInput.value}));
+textShadowBlurInput.addEventListener("input",()=>{const v=Number(textShadowBlurInput.value);textShadowBlurValue.textContent=v+" px";updateTextPreview({shadowBlur:v});});
 textShadowXInput.addEventListener("input", () => { const v = Number(textShadowXInput.value); textShadowXValue.textContent = v + " px"; updateTextPreview({ shadowOffsetX: v }); });
-textShadowXInput.addEventListener("change", () => commitTextPreview("Text shadow horizontal offset updated"));
+
 textShadowYInput.addEventListener("input", () => { const v = Number(textShadowYInput.value); textShadowYValue.textContent = v + " px"; updateTextPreview({ shadowOffsetY: v }); });
-textShadowYInput.addEventListener("change", () => commitTextPreview("Text shadow vertical offset updated"));
+
 function cancelNewlyCreatedTextLayer() {
   const id = newlyCreatedTextLayerId;
-  newlyCreatedTextLayerId = null;
   if (!id) return false;
   const layer = state.document.layers.find(item => item.id === id && item.contentType === "text");
   if (!layer) return false;
-  setSelection([layer.id], layer.id);
-  const removed = removeSelectedLayer();
+
+  const before = cloneDocument(state.document);
+  const next = deleteLayer(state.document, id);
+  if (!next) return false;
+  state.document = next;
+  state.textPreview = null;
+  const nextSelection = [...next.layers].reverse().find(item => item.contentType === "image") || next.layers.at(-1) || null;
+  setSelection(nextSelection ? [nextSelection.id] : [], nextSelection?.id || null);
+
+  // The provisional layer was recorded when its editor opened. Remove that
+  // creation entry as part of cancellation so Undo cannot resurrect canceled text.
+  const canDiscardCreation = Number.isInteger(newlyCreatedTextHistorySize) &&
+    state.history.size() === newlyCreatedTextHistorySize + 1;
+  const discardedCreation = canDiscardCreation && state.history.discardLastRecord();
+  if (!discardedCreation) state.history.record(before, next);
+
+  newlyCreatedTextLayerId = null;
+  newlyCreatedTextHistorySize = null;
+  refreshDocument("Creación de texto cancelada");
+  persistDocument();
   if (textEditDialog?.open) textEditDialog.close();
-  return removed;
+  return true;
 }
-closeTextEditButton?.addEventListener("click", () => {
-  if (newlyCreatedTextLayerId) { cancelNewlyCreatedTextLayer(); return; }
-  textEditDialog?.close();
-});
+function cancelTextEditing() {
+  if (newlyCreatedTextLayerId) return cancelNewlyCreatedTextLayer();
+  if (textEditDialog?.open) textEditDialog.close();
+  return true;
+}
+closeTextEditButton?.addEventListener("click", cancelTextEditing);
+document.querySelector("#cancel-text-layer")?.addEventListener("click", cancelTextEditing);
 textEditDialog?.addEventListener("cancel", event => {
   if (newlyCreatedTextLayerId) {
     event.preventDefault();
     cancelNewlyCreatedTextLayer();
   }
+  // For an existing layer, the native dialog closes and the close handler
+  // discards its unconfirmed preview.
 });
 document.querySelector("#apply-text-layer")?.addEventListener("click", () => {
   const layer = selectedLayerExact();
@@ -2366,6 +2422,7 @@ document.querySelector("#apply-text-layer")?.addEventListener("click", () => {
   }
   commitTextPreview("Texto aplicado al lienzo");
   newlyCreatedTextLayerId = null;
+  newlyCreatedTextHistorySize = null;
   textEditDialog?.close();
   status.textContent = "Texto aplicado al lienzo. Podés moverlo o eliminarlo desde la barra inferior.";
 });
@@ -2373,24 +2430,18 @@ document.querySelector("#delete-text-layer")?.addEventListener("click", () => {
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "text") return;
   newlyCreatedTextLayerId = null;
+  newlyCreatedTextHistorySize = null;
   if (removeSelectedLayer()) textEditDialog?.close();
 });
 textEditDialog?.addEventListener("close", () => {
   delete textEditDialog.dataset.openFallback;
-  // Keep edits to an existing text layer when the user closes the editor with X or Escape.
-  // Canceling a newly created provisional layer removes it before this close event, so its
-  // pending preview has no layer to commit and is safely discarded.
-  if (state.textPreview) {
-    const preview = state.textPreview;
-    const layer = state.document.layers.find(item => item.id === preview.layerId && item.contentType === "text");
-    state.textPreview = null;
-    if (layer) {
-      commitLayerText(preview.layerId, preview.values, "Cambios de texto guardados al cerrar el editor");
-    }
-  }
+  // Closing without Apply is cancellation: drop the live preview and redraw
+  // the last committed text. Confirmed operations remain in history.
+  state.textPreview = null;
   redraw();
   renderLayerText();
 });
+
 textStylePresetButtons.forEach(button => button.addEventListener("click", () => {
   const layer = selectedLayerExact();
   if (!layer || layer.contentType !== "text" || layer.locked) return;
@@ -2408,7 +2459,6 @@ textStylePresetButtons.forEach(button => button.addEventListener("click", () => 
   }[button.dataset.textStylePreset];
   if (presets) {
     updateTextPreview(presets);
-    commitTextPreview(button.dataset.textStylePreset + " text style applied");
   }
 }));
 
@@ -2452,17 +2502,48 @@ function renderSavedTextStyles() {
   card.append(apply, detail, remove); savedTextStylesContainer.append(card);
  }
 }
+function readTextEditorValues(layer) {
+ const base = getWorkingLayerText(layer);
+ if (!textEditDialog?.open) return base;
+ const number = (input, fallback) => {
+  const value = Number(input?.value);
+  return Number.isFinite(value) ? value : fallback;
+ };
+ return normalizeTextLayer({
+  ...base,
+  value: textContentInput?.value ?? base.value,
+  fontSize: number(textFontSizeInput, base.fontSize),
+  fontFamily: textFontFamilyInput?.value || base.fontFamily,
+  fontWeight: textFontWeightInput?.value || base.fontWeight,
+  color: textColorInput?.value || base.color,
+  outlineColor: textOutlineColorInput?.value || base.outlineColor,
+  outlineWidth: number(textOutlineWidthInput, base.outlineWidth),
+  align: textAlignInput?.value || base.align,
+  letterSpacing: number(textLetterSpacingInput, base.letterSpacing),
+  lineHeight: number(textLineHeightInput, base.lineHeight),
+  shadowColor: textShadowColorInput?.value || base.shadowColor,
+  shadowBlur: number(textShadowBlurInput, base.shadowBlur),
+  shadowOffsetX: number(textShadowXInput, base.shadowOffsetX),
+  shadowOffsetY: number(textShadowYInput, base.shadowOffsetY)
+ });
+}
 function saveSelectedTextStyle() {
  const layer = selectedLayerExact();
  if (!layer || layer.contentType !== "text" || layer.locked) { setTextStyleStatus("Selecciona una capa de texto desbloqueada para guardar su estilo.", "error"); return; }
+ // Snapshot the live editor controls before opening native prompt/confirm dialogs.
+ // Browser dialogs can blur or reset the open editor, so reading the controls
+ // after prompt() may capture defaults instead of the user's pending typography.
+ const previewValues = readTextEditorValues(layer);
  const nameInput = window.prompt("Nombre para este estilo reutilizable:", "Mi estilo");
  if (nameInput === null) return;
- const name = String(nameInput).replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 48);
+ const name = String(nameInput).replace(/[\\u0000-\\u001f\\u007f]/g, "").trim().slice(0, 48);
  if (!name) { setTextStyleStatus("Escribe un nombre para guardar el estilo.", "error"); return; }
  const styles = readSavedTextStyles();
  if (styles.length >= MAX_SAVED_TEXT_STYLES) { setTextStyleStatus("Llegaste al máximo de 20 estilos. Elimina uno antes de guardar otro.", "error"); return; }
  if (styles.some(item => item.name.toLocaleLowerCase() === name.toLocaleLowerCase()) && !window.confirm("Ya existe un estilo con ese nombre. ¿Guardar otra copia con el mismo nombre?")) return;
- styles.unshift({ id: createId(), name, style: extractReusableTextStyle(getWorkingLayerText(layer)) });
+ state.textPreview = { layerId: layer.id, values: previewValues };
+ redraw();
+ styles.unshift({ id: createId(), name, style: extractReusableTextStyle(previewValues) });
  if (writeSavedTextStyles(styles)) { renderSavedTextStyles(); setTextStyleStatus("Estilo guardado: " + name, "success"); }
 }
 function handleSavedTextStyleClick(event) {
@@ -2474,7 +2555,7 @@ function handleSavedTextStyleClick(event) {
   const layer = selectedLayerExact();
   if (!item) { setTextStyleStatus("Ese estilo ya no existe.", "error"); renderSavedTextStyles(); return; }
   if (!layer || layer.contentType !== "text" || layer.locked) { setTextStyleStatus("Selecciona una capa de texto desbloqueada.", "error"); return; }
-  updateTextPreview(item.style); commitTextPreview("Saved text style applied"); setTextStyleStatus("Estilo aplicado: " + item.name, "success"); return;
+  updateTextPreview(item.style); setTextStyleStatus("Estilo preparado: " + item.name + ". Pulsa Aplicar para confirmar.", "success"); return;
  }
  const id = button.dataset.savedTextStyleRemove;
  const item = styles.find(style => style.id === id);
@@ -2881,7 +2962,36 @@ function interactionLayers(interaction) {
   return ids.map(id => byId.get(id)).filter(Boolean);
 }
 
+function snapMoveDelta(layers, desiredX, desiredY) {
+  const constrained = constrainMoveDelta(layers, desiredX, desiredY);
+  if (!state.magneticSnappingEnabled) { state.snapGuides = []; return constrained; }
+  const bounds = layers.map(layer => getLayerAlignmentBounds(layer, state.document)).filter(Boolean);
+  if (!bounds.length) { state.snapGuides = []; return constrained; }
+  const movingBounds = {
+    left: Math.min(...bounds.map(item => item.left)) + constrained.x,
+    right: Math.max(...bounds.map(item => item.right)) + constrained.x,
+    top: Math.min(...bounds.map(item => item.top)) + constrained.y,
+    bottom: Math.max(...bounds.map(item => item.bottom)) + constrained.y
+  };
+  const movingIds = new Set(layers.map(layer => layer.id));
+  const otherBounds = state.document.layers
+    .filter(layer => layer.visible && !layer.locked && !movingIds.has(layer.id))
+    .map(layer => ({ id: layer.id, bounds: getLayerAlignmentBounds(layer, state.document) }))
+    .filter(item => item.bounds);
+  const screenScale = Math.max(Number.EPSILON, documentFitScale(state.document, canvasSize()) * state.viewport.zoom);
+  const snap = getSmartSnapAdjustment({
+    movingBounds, otherBounds,
+    canvasWidth: state.document.width, canvasHeight: state.document.height,
+    threshold: 8 / screenScale
+  });
+  const adjusted = constrainMoveDelta(layers, constrained.x + snap.dx, constrained.y + snap.dy);
+  state.snapGuides = snap.guides.length && Math.abs(adjusted.x - constrained.x - snap.dx) < 0.001 &&
+    Math.abs(adjusted.y - constrained.y - snap.dy) < 0.001 ? snap.guides : [];
+  return adjusted;
+}
+
 function applyMultiLayerMove(deltaX, deltaY, message = "Layers moved", layerIds = state.selectedLayerIds) {
+
   const ids = Array.isArray(layerIds) ? [...new Set(layerIds)] : [];
   const layers = interactionLayers({ layerIds: ids });
   if (ids.length < 2 || layers.length !== ids.length || layers.some(layer => layer.locked)) return false;
@@ -2927,6 +3037,7 @@ function finishTransformInteraction(cancelled = false, finalEvent = null) {
   const pointerId = interaction.pointerId;
   state.transformInteraction = null;
   state.transformPointerId = null;
+  state.snapGuides = [];
   if (cancelled) {
     if (canvas.hasPointerCapture(pointerId)) canvas.releasePointerCapture(pointerId);
     redraw();
@@ -3013,7 +3124,7 @@ function updateTransformPreview(event) {
     const desiredX = currentDocument.x - interaction.startDocument.x;
     const desiredY = currentDocument.y - interaction.startDocument.y;
     const layer = state.document.layers.find(item => item.id === interaction.layerId);
-    const delta = constrainMoveDelta(layer ? [layer] : [], desiredX, desiredY);
+    const delta = snapMoveDelta(layer ? [layer] : [], desiredX, desiredY);
     preview.x = interaction.beforeTransform.x + delta.x;
     preview.y = interaction.beforeTransform.y + delta.y;
   } else if (interaction.type === "scale") {
@@ -3750,7 +3861,7 @@ canvas.addEventListener("pointermove", event => {
     const layers = interactionLayers(interaction);
     if (interaction.type === "move") {
       const start = interaction.startDocument;
-      interaction.previewDelta = constrainMoveDelta(layers, current.x - start.x, current.y - start.y);
+      interaction.previewDelta = snapMoveDelta(layers, current.x - start.x, current.y - start.y);
       if (window.__ANIMEART_E2E_DIAGNOSTICS__) console.error("AA_MULTI_POINTERMOVE", JSON.stringify({current, start, delta: interaction.previewDelta, pointerId: event.pointerId}));
     } else if (interaction.type === "scale") {
       const transforms = groupScaleTransforms(layers, documentCenter(state.document), interaction.handle, current);
@@ -3830,7 +3941,7 @@ canvas.addEventListener("pointerup", event => {
       : screenToDocumentPoint(targetScreen, state.document, state.viewport, canvasSize());
     const layers = interactionLayers(interaction);
     if (interaction.type === "move") {
-      interaction.previewDelta = constrainMoveDelta(layers, current.x - interaction.startDocument.x, current.y - interaction.startDocument.y);
+      interaction.previewDelta = snapMoveDelta(layers, current.x - interaction.startDocument.x, current.y - interaction.startDocument.y);
     } else if (interaction.type === "scale") {
       const transforms = groupScaleTransforms(layers, documentCenter(state.document), interaction.handle, current);
       if (transforms) interaction.previewTransforms = new Map(transforms.map(item => [item.id, item.transform]));
@@ -3842,6 +3953,7 @@ canvas.addEventListener("pointerup", event => {
   if (state.multiTransformInteraction && event.pointerId === state.multiTransformInteraction.pointerId) {
     const interaction = state.multiTransformInteraction;
     state.multiTransformInteraction = null;
+    state.snapGuides = [];
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     if (interaction.type === "move") {
       const delta = interaction.previewDelta || { x: 0, y: 0 };
@@ -3963,6 +4075,7 @@ canvas.addEventListener("pointercancel", event => {
   }
   if (state.multiTransformInteraction?.pointerId === event.pointerId) {
     state.multiTransformInteraction = null;
+    state.snapGuides = [];
     if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
     redraw();
     return;
@@ -4378,17 +4491,44 @@ document.querySelectorAll("[data-brush-color]").forEach(button => {
 });
 
 // This control sits outside the canvas event surface: toggling the tools must never paint or erase.
+const magneticSnappingToggle = document.querySelector("#magnetic-snapping-toggle");
+function syncMagneticSnappingToggle() {
+  if (!magneticSnappingToggle) return;
+  magneticSnappingToggle.setAttribute("aria-pressed", String(state.magneticSnappingEnabled));
+  magneticSnappingToggle.dataset.active = String(state.magneticSnappingEnabled);
+  magneticSnappingToggle.title = state.magneticSnappingEnabled
+    ? "Ajuste magnético activado. Toca para permitir movimiento libre"
+    : "Movimiento libre activado. Toca para alinear automáticamente";
+  magneticSnappingToggle.setAttribute("aria-label", state.magneticSnappingEnabled
+    ? "Desactivar ajuste magnético y mover libremente"
+    : "Activar ajuste magnético");
+  magneticSnappingToggle.querySelector(".magnet-label").textContent = state.magneticSnappingEnabled ? "Imán: activado" : "Imán: apagado";
+}
+magneticSnappingToggle?.addEventListener("click", () => {
+  state.magneticSnappingEnabled = !state.magneticSnappingEnabled;
+  state.snapGuides = [];
+  syncMagneticSnappingToggle();
+  redraw();
+  status.textContent = state.magneticSnappingEnabled
+    ? "Ajuste magnético activado"
+    : "Movimiento libre: ajuste magnético desactivado";
+});
+syncMagneticSnappingToggle();
+
 const mobileToolsToggle = document.querySelector("#mobile-tools-toggle");
 mobileToolsToggle?.addEventListener("click", event => {
   event.preventDefault();
   event.stopPropagation();
   document.body.classList.remove("mobile-tools-open", "mobile-layers-open");
   document.querySelectorAll('.mobile-touch-dock [data-touch-action="more"], .mobile-touch-dock [data-touch-action="layers"]').forEach(item => item.setAttribute("aria-expanded", "false"));
-  const collapsed = document.body.classList.toggle("mobile-tools-collapsed");
+  const isPhoneLayout = window.matchMedia("(max-width: 620px)").matches;
+  const focusClass = isPhoneLayout ? "mobile-canvas-focus" : "mobile-tools-collapsed";
+  const collapsed = document.body.classList.toggle(focusClass);
   mobileToolsToggle.setAttribute("aria-expanded", String(!collapsed));
-  mobileToolsToggle.setAttribute("aria-label", collapsed ? "Mostrar herramientas" : "Ocultar herramientas");
-  mobileToolsToggle.title = collapsed ? "Mostrar herramientas para elegir una acción" : "Ocultar herramientas para ampliar el lienzo";
-  mobileToolsToggle.querySelector("span").textContent = collapsed ? "⌃" : "⌄";
+  mobileToolsToggle.setAttribute("aria-label", collapsed ? "Mostrar controles" : "Ocultar controles y ampliar el lienzo");
+  mobileToolsToggle.title = collapsed ? "Volver a mostrar las herramientas" : "Ocultar los controles para apreciar el arte";
+  mobileToolsToggle.querySelector("span").textContent = collapsed ? "＋" : "−";
+  mobileToolsToggle.querySelector("span").setAttribute("aria-hidden", "true");
 });
 
 const mobileDock = document.querySelector(".mobile-touch-dock");
@@ -5069,6 +5209,7 @@ document.querySelector("#add-text-layer").addEventListener("click", () => {
   state.document = next;
   state.textPreview = null;
   newlyCreatedTextLayerId = layer.id;
+  newlyCreatedTextHistorySize = state.history.size();
   setSelection([layer.id], layer.id);
   state.history.record(before, next);
   refreshDocument("Text layer added");
@@ -7783,7 +7924,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/asset-library.mjs",
   "./domain/asset-deduplication.mjs",
   "./domain/asset-library-pagination.mjs",
-  "./domain/creative-catalog.mjs", "./domain/design-alignment.mjs", "./domain/design-resize.mjs", "./domain/design-library.mjs", "./domain/multi-page-project.mjs", "./domain/element-library.mjs",
+  "./domain/creative-catalog.mjs", "./domain/design-alignment.mjs", "./domain/design-snapping.mjs", "./domain/design-resize.mjs", "./domain/design-library.mjs", "./domain/multi-page-project.mjs", "./domain/element-library.mjs",
   "./domain/anime-style-library.mjs",
   "./domain/anime-character-presets.mjs",
   "./manifest.webmanifest",

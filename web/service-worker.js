@@ -10,6 +10,7 @@ const APP_SHELL = [
   "./domain/asset-library-pagination.mjs",
   "./domain/creative-catalog.mjs",
   "./domain/design-alignment.mjs",
+  "./domain/design-snapping.mjs",
   "./domain/design-resize.mjs",
   "./domain/design-library.mjs",
   "./domain/multi-page-project.mjs",

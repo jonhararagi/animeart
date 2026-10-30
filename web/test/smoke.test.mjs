@@ -595,7 +595,7 @@ test("selected images can cross canvas edges and transparent new documents do no
     readFile("domain/selection.mjs", "utf8")
   ]);
   assert.doesNotMatch(app, /function keepImageTransformVisible/);
-  assert.match(app, /const delta = constrainMoveDelta\(layer \? \[layer\] : \[\], desiredX, desiredY\)/);
+  assert.match(app, /const delta = snapMoveDelta\(layer \? \[layer\] : \[\], desiredX, desiredY\)/);
   assert.match(app, /drawObjectSelectionHandle\(visibleHandles\.moveHandle, "move"\)/);
   assert.match(selection, /const moveHandle = centerOutsideViewport \? clampPoint\(center\) : null/);
   assert.match(html, /data-canvas-background="checkerboard"/);
@@ -740,7 +740,7 @@ test("touch tools toggle collapses without activating the canvas tool and remain
   ]);
   assert.match(html, /id="mobile-tools-toggle"/);
   assert.match(html, /aria-expanded="true" aria-label="Ocultar herramientas"/);
-  assert.match(app, /mobileToolsToggle\?\.addEventListener\("click", event => \{[\s\S]*?event\.preventDefault\(\);[\s\S]*?event\.stopPropagation\(\);[\s\S]*?classList\.toggle\("mobile-tools-collapsed"\)/);
+  assert.match(app, /mobileToolsToggle\?\.addEventListener\("click", event => \{[\s\S]*?event\.preventDefault\(\);[\s\S]*?event\.stopPropagation\(\);[\s\S]*?const focusClass = isPhoneLayout \? "mobile-canvas-focus" : "mobile-tools-collapsed";[\s\S]*?classList\.toggle\(focusClass\)/);
   assert.match(css, /\.mobile-tools-toggle\s*\{[\s\S]*?touch-action:\s*manipulation/);
   assert.match(css, /body\.mobile-tools-collapsed \.toolbar\s*\{[\s\S]*?display:\s*none !important/);
 });
