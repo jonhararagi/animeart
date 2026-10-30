@@ -298,7 +298,7 @@
       <dialog id="text-edit-dialog" aria-labelledby="text-dialog-title">
         <div class="text-dialog-topbar">
           <div><p class="eyebrow">TIPOGRAFÍA Y TÍTULOS</p><h2 id="text-dialog-title">Diseña tu texto</h2><p>Crea títulos, subtítulos, citas y etiquetas. Ajusta la letra a tu diseño.</p></div>
-          <button type="button" id="close-text-edit" aria-label="Cerrar edición de texto">✕</button>
+          <button type="button" id="close-text-edit" aria-label="Cancelar edición de texto y cerrar">✕</button>
         </div>
         <section id="text-panel" class="text-panel" aria-labelledby="text-dialog-title" hidden>
           <p id="text-layer-name" class="adjustment-layer-name">Elige una capa de texto para editarla</p>
@@ -410,8 +410,9 @@
               </div>
             </div>
           </details>
-          <p class="text-live-hint" role="note">Los cambios se ven en el lienzo. Pulsa Aplicar para terminar o Eliminar texto si no quieres conservarlo.</p>
+          <p class="text-live-hint" role="note">Los cambios se previsualizan en el lienzo. Aplicar los guarda; Cancelar, X o Escape descartan lo pendiente.</p>
           <div class="text-dialog-actions" role="group" aria-label="Acciones del texto">
+            <button id="cancel-text-layer" type="button" class="text-cancel">Cancelar</button>
             <button id="delete-text-layer" type="button" class="text-danger">🗑 Eliminar texto</button>
             <button id="apply-text-layer" type="button" class="text-primary">✓ Aplicar al lienzo</button>
           </div>
