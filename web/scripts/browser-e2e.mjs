@@ -957,13 +957,18 @@ try {
     "Escape discards the pending font-size preview");
 
   // Typography v2: letter spacing and line height persist, and custom styles are reusable.
-  await evaluate('window.prompt=()=> "E2E Manga Tracking"');
+  await evaluate('window.prompt=()=> "E2E Manga Tracking"; window.confirm=()=>true');
+  const typographyControlSnapshot = await evaluate('(() => ({dialogOpen:document.querySelector("#text-edit-dialog").open,letterSpacing:document.querySelector("#text-letter-spacing")?.value,lineHeight:document.querySelector("#text-line-height")?.value,letterSpacingLabel:document.querySelector("#text-letter-spacing-value")?.textContent,lineHeightLabel:document.querySelector("#text-line-height-value")?.textContent,saveDisabled:document.querySelector("#save-text-style")?.disabled,selectedText:document.querySelector("#text-content")?.value}))()');
+  assert(typographyControlSnapshot.dialogOpen && typographyControlSnapshot.letterSpacing==="4" && typographyControlSnapshot.lineHeight==="1.65",
+    "reusable typography controls retain the requested preview values before saving: " + JSON.stringify(typographyControlSnapshot));
   await evaluate('document.querySelector("#selection-mini-edit-text").click()');
   await waitFor('document.querySelector("#text-edit-dialog").open === true', 10000);
   await evaluate('(() => { const track=document.querySelector("#text-letter-spacing"); track.value="4"; track.dispatchEvent(new Event("input",{bubbles:true})); track.dispatchEvent(new Event("change",{bubbles:true})); const leading=document.querySelector("#text-line-height"); leading.value="1.65"; leading.dispatchEvent(new Event("input",{bubbles:true})); leading.dispatchEvent(new Event("change",{bubbles:true})); })()');
   assert(await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + '); return layer?.text?.letterSpacing===0 && layer?.text?.lineHeight===1.2; })()'),
     "tracking and line-height controls remain previews before Apply");
   await click("#save-text-style");
+  const savedStyleSaveDiagnostics = await evaluate('(() => ({dialogOpen:document.querySelector("#text-edit-dialog")?.open,buttonDisabled:document.querySelector("#save-text-style")?.disabled,styleStatus:document.querySelector("#saved-text-styles-status")?.textContent||"",stored:JSON.parse(localStorage.getItem("kapiart-saved-text-styles-v1")||"[]").map(item=>({name:item.name,style:item.style})),displayed:document.querySelector("#saved-text-styles")?.textContent||"",letterSpacing:document.querySelector("#text-letter-spacing")?.value,lineHeight:document.querySelector("#text-line-height")?.value}))()');
+  console.log("AA_TEXT_STYLE_SAVE_DIAGNOSTICS", JSON.stringify(savedStyleSaveDiagnostics));
   await waitFor('document.querySelector("#saved-text-styles [data-saved-text-style-apply]")?.textContent==="E2E Manga Tracking"', 10000);
   const savedReusableTextStyle = await evaluate('JSON.parse(localStorage.getItem("kapiart-saved-text-styles-v1")||"[]")[0]?.style');
   assert(savedReusableTextStyle?.letterSpacing===4 && savedReusableTextStyle?.lineHeight===1.65,
