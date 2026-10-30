@@ -37,7 +37,7 @@ No se debe evitar una ventana contextual solo por miedo a ocupar espacio. El lie
 En teléfonos, la franja superior que puede quedar debajo del recorte del sistema debe permanecer libre de controles del editor. La barra de herramientas, las acciones contextuales y las acciones frecuentes se ubican abajo, respetando la zona segura inferior y manteniendo el lienzo como protagonista.
 
 - Un objeto seleccionado presenta un marco claro, una **X en la esquina superior derecha** y un **tirador de redimensionado en la esquina inferior derecha**.
-- La X cierra la selección, pero **no elimina el objeto**. Eliminar sigue siendo una acción separada, con posibilidad de deshacer.
+- En una imagen seleccionada, la **X del manejador quita la imagen** y deja la operación en el historial para poder deshacerla. En texto, formas y selección múltiple, la X cierra el marco de selección sin borrar; para eliminar esos elementos se usa la acción **Eliminar**. Las ventanas modales tienen su propia X, que cancela la operación pendiente.
 - El tirador inferior cambia el tamaño mediante gesto táctil. Se retiran los cuatro manejadores pequeños y el mando de rotación superior para reducir los puntos que el usuario debe acertar.
 - Rotar sigue disponible como herramienta explícita. Los elementos PNG, imágenes y formas conservan su selección, movimiento, orden de capas y bloqueo.
 - La barra inferior ofrece Exportar junto con Añadir, Galería, Mover, Dibujar, Texto, Deshacer, Rehacer, Eliminar, Capas y Más.
