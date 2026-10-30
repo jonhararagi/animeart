@@ -56,3 +56,13 @@ Estado: PARTIAL · rama abierta, sin merge.
 - Pendiente: confirmar nueva ejecución Web CI y final Android CI; luego auditar diálogos/modos existentes uno por uno para Cancelar/Cerrar/Volver/Escape y verificar que cancelar descarte previews sin dejar gestos/guías activos. La ley documentada no equivale a auditoría completa.
 - Pendiente prueba visual en emulador y prueba física Xiaomi `24116RACCG`; no declarar realizadas.
 - No fusionar PR #131 ni otras ramas sin autorización expresa.
+
+## 2026-10-30 · Seguimiento de validación PR #131
+
+- HEAD observado antes de este ajuste: `6af7419d0e23ae55a7e54212126b37e2b43f526b`; PR #131 abierta, en borrador y dirigida a `main`. Sin cambios en `main`.
+- Web CI run `40974465461` sobre ese HEAD: build PASS, tests PASS, benchmark PASS y publicación del build web PASS; falla solamente el job `Real browser E2E` (run #1496).
+- Diagnóstico E2E: el escenario `AA-CANVAS-FREE-MOVE-001` exigía restaurar exactamente el transform tras mover la capa fuera de cada borde, pero el ajuste magnético permanecía activado. El imán puede corregir deliberadamente el delta de retorno. Se separó el contrato: desactivar el imán explícitamente durante los checks de movimiento libre y reactivarlo al terminar.
+- Cambio aplicado en `web/scripts/browser-e2e.mjs`; commit: `62359b637d7515fc75c56698b60097d06e19dc33`. La reejecución Web CI de este nuevo HEAD sigue pendiente.
+- Android CI run `40974465468` sobre `6af7419d0e23ae55a7e54212126b37e2b43f526b`: build, verificación del editor, unit tests, lint, instrumentación/startup smoke tests y preparación/verificación/checksum del APK PASS. Artefacto publicado: `kapiart-android-debug-v0.3.7-d2fdbe6745af7d470c0031188aa47c50dc0a8393`, SHA-256 `cd594edae70d9f8de66bf30d470c6b131184e53ad3bc23d1eae0353f8b7a0b5c`.
+- Pendiente: Web CI completo PASS sobre el nuevo HEAD; auditoría real de cancelación en diálogos de edición, recorte, borrado y selección (Cancelar/Cerrar/Volver/Escape y descarte de preview/gestos/guías); prueba visual en emulador y prueba física Xiaomi `24116RACCG`.
+- No declarar aprobada la PR, no fusionar ni cerrar PR #131, y no tocar `main` sin autorización expresa.
