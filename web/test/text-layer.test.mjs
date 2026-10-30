@@ -145,3 +145,20 @@ test("outlined and shadowed typography is normalized and validated", () => {
   assert.equal(layer.text.shadowBlur, 14);
   assert.equal(isValidTextLayer({ ...layer.text, outlineWidth: 99 }), false);
 });
+
+
+test("text editor keeps all typography changes provisional until Apply and discards on close or Escape", async () => {
+  const app = await readFile("app.js", "utf8");
+  const closeStart = app.indexOf('textEditDialog?.addEventListener("close", () => {');
+  const closeEnd = app.indexOf("\\ntextStylePresetButtons.forEach", closeStart);
+  assert.ok(closeStart >= 0 && closeEnd > closeStart, "text dialog has a dedicated close transaction handler");
+  const closeHandler = app.slice(closeStart, closeEnd);
+  assert.match(closeHandler, /state\\.textPreview = null/);
+  assert.doesNotMatch(closeHandler, /commitLayerText|commitTextPreview/);
+  assert.equal((app.match(/commitTextPreview\\(/g) || []).length, 2,
+    "the only commit call sites are the helper declaration and explicit Apply action");
+  assert.match(app, /document\\.querySelector\\("#cancel-text-layer"\\)\\?\\.addEventListener\\("click", cancelTextEditing\\)/);
+  assert.match(app, /textEditDialog\\?\\.addEventListener\\("cancel", event =>/);
+  assert.match(app, /state\\.history\\.discardLastRecord\\(\\)/,
+    "canceling a provisional text layer removes its creation transaction from Undo");
+});
