@@ -2530,6 +2530,10 @@ function readTextEditorValues(layer) {
 function saveSelectedTextStyle() {
  const layer = selectedLayerExact();
  if (!layer || layer.contentType !== "text" || layer.locked) { setTextStyleStatus("Selecciona una capa de texto desbloqueada para guardar su estilo.", "error"); return; }
+ // Snapshot the live editor controls before opening native prompt/confirm dialogs.
+ // Browser dialogs can blur or reset the open editor, so reading the controls
+ // after prompt() may capture defaults instead of the user's pending typography.
+ const previewValues = readTextEditorValues(layer);
  const nameInput = window.prompt("Nombre para este estilo reutilizable:", "Mi estilo");
  if (nameInput === null) return;
  const name = String(nameInput).replace(/[\\u0000-\\u001f\\u007f]/g, "").trim().slice(0, 48);
@@ -2537,7 +2541,6 @@ function saveSelectedTextStyle() {
  const styles = readSavedTextStyles();
  if (styles.length >= MAX_SAVED_TEXT_STYLES) { setTextStyleStatus("Llegaste al máximo de 20 estilos. Elimina uno antes de guardar otro.", "error"); return; }
  if (styles.some(item => item.name.toLocaleLowerCase() === name.toLocaleLowerCase()) && !window.confirm("Ya existe un estilo con ese nombre. ¿Guardar otra copia con el mismo nombre?")) return;
- const previewValues = readTextEditorValues(layer);
  state.textPreview = { layerId: layer.id, values: previewValues };
  redraw();
  styles.unshift({ id: createId(), name, style: extractReusableTextStyle(previewValues) });
