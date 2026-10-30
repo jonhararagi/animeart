@@ -66,3 +66,12 @@ Estado: PARTIAL · rama abierta, sin merge.
 - Android CI run `40974465468` sobre `6af7419d0e23ae55a7e54212126b37e2b43f526b`: build, verificación del editor, unit tests, lint, instrumentación/startup smoke tests y preparación/verificación/checksum del APK PASS. Artefacto publicado: `kapiart-android-debug-v0.3.7-d2fdbe6745af7d470c0031188aa47c50dc0a8393`, SHA-256 `cd594edae70d9f8de66bf30d470c6b131184e53ad3bc23d1eae0353f8b7a0b5c`.
 - Pendiente: Web CI completo PASS sobre el nuevo HEAD; auditoría real de cancelación en diálogos de edición, recorte, borrado y selección (Cancelar/Cerrar/Volver/Escape y descarte de preview/gestos/guías); prueba visual en emulador y prueba física Xiaomi `24116RACCG`.
 - No declarar aprobada la PR, no fusionar ni cerrar PR #131, y no tocar `main` sin autorización expresa.
+
+## 2026-10-30 · Primera auditoría de cancelación
+
+- **Recorte de imagen (`image-edit-dialog`):** el documento no cambia hasta `submit`; X/Cancelar cierran y limpian el gesto de preview y sus callbacks de imagen. PASS en inspección estática; falta E2E específico de cancelar tras mover/redimensionar el marco.
+- **Recorte de composición (`canvas-crop-dialog`):** el marco/modelo de preview viven en estado temporal y el evento `close` limpia `canvasCropDrag`, `canvasCropDocument` y `canvasCropRectangle`. PASS en inspección estática; falta E2E específico de Escape/X/Cancelar.
+- **Texto (`text-edit-dialog`):** hallazgo BLOCKED/PARTIAL. El evento `close` confirma `state.textPreview` y varios manejadores `change` ejecutan `commitTextPreview` antes de que el usuario pulse Aplicar. Para cumplir cancelación real hace falta tratar la edición como transacción: mantener baseline, no persistir hasta Aplicar y descartar/restaurar en X/Escape/Cancelar. No está corregido todavía.
+- **Eliminar/selección:** eliminar por botón/dock elimina de inmediato y registra historial, con Deshacer disponible. La X del manejador de imagen elimina la imagen mediante `removeSelectedImage`; en texto y selección múltiple cierra el marco. Esto contradecía el texto de la ley, por lo que se precisó la regla en `docs/MOBILE_EDITOR_LAW.md` para describir la interacción diferenciada.
+- Estado de la prueba de cancelación: inspección estática, no prueba automatizada ni prueba física. Próxima tarea exacta: convertir el editor de texto en una transacción y añadir pruebas X/Escape/Cancelar antes de continuar con Estilo, recoloración, borrado mágico y selección.
+- No modificar `main`, no fusionar PR y no declarar la auditoría completa.
