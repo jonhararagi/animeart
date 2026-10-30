@@ -767,9 +767,18 @@ try {
   await waitFor('document.querySelector("#image-edit-dialog").open === true');
   await assertPixelCropReset("X");
   await editPixelCropFrame();
+  const imageCropPointer = await selectorCenter("#crop-preview");
+  await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: imageCropPointer.x, y: imageCropPointer.y });
+  await cdp("Input.dispatchMouseEvent", { type: "mousePressed", x: imageCropPointer.x, y: imageCropPointer.y, button: "left", buttons: 1, clickCount: 1 });
+  await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: imageCropPointer.x + 14, y: imageCropPointer.y + 12, button: "left", buttons: 1 });
+  assert(await evaluate('document.querySelector("#crop-preview").hasPointerCapture(1)'),
+    "image crop owns the active pointer while its frame is being dragged");
   await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
   await cdp("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
   await waitFor('document.querySelector("#image-edit-dialog").open === false');
+  assert(await evaluate('!document.querySelector("#crop-preview").hasPointerCapture(1)'),
+    "closing image crop during a drag explicitly releases pointer capture");
+  await cdp("Input.dispatchMouseEvent", { type: "mouseReleased", x: imageCropPointer.x + 14, y: imageCropPointer.y + 12, button: "left", buttons: 0, clickCount: 1 });
   assert(JSON.stringify(await readDocument()) === JSON.stringify(imageCropCancelBaseline),
     "Escape discards the manipulated image-crop frame without persisting any image edit");
   await click("#crop-resize-image");
@@ -2497,9 +2506,18 @@ try {
   await assertCompositionCropDiscarded("X");
   await reopenCompositionCrop();
   await setCompositionCropPreview();
+  const compositionCropPointer = await selectorCenter("#canvas-crop-preview");
+  await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: compositionCropPointer.x, y: compositionCropPointer.y });
+  await cdp("Input.dispatchMouseEvent", { type: "mousePressed", x: compositionCropPointer.x, y: compositionCropPointer.y, button: "left", buttons: 1, clickCount: 1 });
+  await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: compositionCropPointer.x + 12, y: compositionCropPointer.y + 10, button: "left", buttons: 1 });
+  assert(await evaluate('document.querySelector("#canvas-crop-preview").hasPointerCapture(1)'),
+    "composition crop owns the active pointer while its frame is being dragged");
   await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
   await cdp("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
   await waitFor('document.querySelector("#canvas-crop-dialog").open === false');
+  assert(await evaluate('!document.querySelector("#canvas-crop-preview").hasPointerCapture(1)'),
+    "closing composition crop during a drag explicitly releases pointer capture");
+  await cdp("Input.dispatchMouseEvent", { type: "mouseReleased", x: compositionCropPointer.x + 12, y: compositionCropPointer.y + 10, button: "left", buttons: 0, clickCount: 1 });
   await assertCompositionCropDiscarded("Escape");
   await reopenCompositionCrop();
   await setCompositionCropPreview();
