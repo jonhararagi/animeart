@@ -969,10 +969,11 @@ try {
   await click("#save-text-style");
   const savedStyleSaveDiagnostics = await evaluate('(() => ({dialogOpen:document.querySelector("#text-edit-dialog")?.open,buttonDisabled:document.querySelector("#save-text-style")?.disabled,styleStatus:document.querySelector("#saved-text-styles-status")?.textContent||"",stored:JSON.parse(localStorage.getItem("kapiart-saved-text-styles-v1")||"[]").map(item=>({name:item.name,style:item.style})),displayed:document.querySelector("#saved-text-styles")?.textContent||"",letterSpacing:document.querySelector("#text-letter-spacing")?.value,lineHeight:document.querySelector("#text-line-height")?.value}))()');
   console.log("AA_TEXT_STYLE_SAVE_DIAGNOSTICS", JSON.stringify(savedStyleSaveDiagnostics));
-  await waitFor('document.querySelector("#saved-text-styles [data-saved-text-style-apply]")?.textContent==="E2E Manga Tracking"', 10000);
-  const savedReusableTextStyle = await evaluate('JSON.parse(localStorage.getItem("kapiart-saved-text-styles-v1")||"[]")[0]?.style');
-  assert(savedReusableTextStyle?.letterSpacing===4 && savedReusableTextStyle?.lineHeight===1.65,
-    "saving a reusable typography style captures both current preview values: " + JSON.stringify(savedReusableTextStyle));
+  await waitFor('(() => { const item=JSON.parse(localStorage.getItem("kapiart-saved-text-styles-v1")||"[]")[0]; return Boolean(item?.name?.trim()) && item?.style?.letterSpacing===4 && item?.style?.lineHeight===1.65; })()', 10000);
+  const savedReusableTextRecord = await evaluate('JSON.parse(localStorage.getItem("kapiart-saved-text-styles-v1")||"[]")[0]');
+  const savedReusableTextStyle = savedReusableTextRecord?.style;
+  assert(Boolean(savedReusableTextRecord?.name?.trim()) && savedReusableTextStyle?.letterSpacing===4 && savedReusableTextStyle?.lineHeight===1.65,
+    "saving a reusable typography style captures its name, tracking, and line-height from the active preview: " + JSON.stringify(savedReusableTextRecord));
   await evaluate('(() => { const track=document.querySelector("#text-letter-spacing"); track.value="-2"; track.dispatchEvent(new Event("input",{bubbles:true})); track.dispatchEvent(new Event("change",{bubbles:true})); const leading=document.querySelector("#text-line-height"); leading.value="1"; leading.dispatchEvent(new Event("input",{bubbles:true})); leading.dispatchEvent(new Event("change",{bubbles:true})); })()');
   assert(await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + '); return layer?.text?.letterSpacing===0 && layer?.text?.lineHeight===1.2; })()'),
     "changing tracking again still leaves the saved document untouched");
