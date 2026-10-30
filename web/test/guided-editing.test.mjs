@@ -92,26 +92,27 @@ test("censor light uses a cancellable per-image preview instead of the drawing t
 });
 
 
-test("canceling the new-text dialog removes the provisional text layer", async () => {
+test("canceling the new-text dialog removes the provisional text layer and its Undo entry", async () => {
  const app = await readFile("app.js","utf8");
- assert.match(app, /function cancelNewlyCreatedTextLayer\(\)/);
- assert.match(app, /newlyCreatedTextLayerId = layer\.id/);
- assert.match(app, /if \(newlyCreatedTextLayerId\) \{ cancelNewlyCreatedTextLayer\(\); return; \}/);
- assert.match(app, /event\.preventDefault\(\);\s*cancelNewlyCreatedTextLayer\(\)/);
- assert.match(app, /newlyCreatedTextLayerId = null;\s*textEditDialog\?\.close\(\)/);
+ assert.ok(app.includes("function cancelNewlyCreatedTextLayer()"));
+ assert.ok(app.includes("newlyCreatedTextLayerId = layer.id"));
+ assert.ok(app.includes("function cancelTextEditing()"));
+ assert.ok(app.includes("if (newlyCreatedTextLayerId) return cancelNewlyCreatedTextLayer();"));
+ assert.ok(app.includes("event.preventDefault();\n    cancelNewlyCreatedTextLayer();"));
+ assert.ok(app.includes("state.history.discardLastRecord()"));
+ assert.ok(app.includes('document.querySelector("#cancel-text-layer")?.addEventListener("click", cancelTextEditing)'));
 });
 
-test("closing an existing text editor commits pending previews while provisional cancellation stays separate", async () => {
+test("closing an existing text editor discards pending previews while Apply commits them", async () => {
  const app = await readFile("app.js","utf8");
  const start = app.indexOf('textEditDialog?.addEventListener("close", () => {');
- const end = app.indexOf("\ntextStylePresetButtons.forEach", start);
+ const end = app.indexOf("\\ntextStylePresetButtons.forEach", start);
  assert.ok(start >= 0 && end > start, "text editor close handler is present");
  const closeHandler = app.slice(start, end);
- assert.match(closeHandler, /const preview = state\.textPreview/);
- assert.match(closeHandler, /contentType === "text"/);
- assert.match(closeHandler, /commitLayerText\(preview\.layerId, preview\.values, "Cambios de texto guardados al cerrar el editor"\)/);
+ assert.ok(closeHandler.includes("state.textPreview = null"));
+ assert.ok(!closeHandler.includes("commitLayerText") && !closeHandler.includes("commitTextPreview"));
+ assert.ok(app.includes('commitTextPreview("Texto aplicado al lienzo")'));
 });
-
 
 test("AA-TYPOGRAPHY-CANVA-001 keeps the text modal reachable on mobile and supports title-first editing", async () => {
  const [html, app, css, worker, browserE2E] = await Promise.all([
