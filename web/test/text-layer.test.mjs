@@ -162,3 +162,26 @@ test("text editor keeps all typography changes provisional until Apply and disca
   assert.ok(app.includes("state.history.discardLastRecord()"),
     "canceling a provisional text layer removes its creation transaction from Undo");
 });
+
+
+test("saving a reusable text style snapshots active editor controls into preview without committing the document", async () => {
+  const app = await readFile("app.js", "utf8");
+  const readerStart = app.indexOf("function readTextEditorValues(layer) {");
+  const saveStart = app.indexOf("function saveSelectedTextStyle() {");
+  const saveEnd = app.indexOf("function handleSavedTextStyleClick", saveStart);
+  assert.ok(readerStart >= 0 && saveStart > readerStart && saveEnd > saveStart,
+    "the active text-control snapshot and save handler are present");
+  const reader = app.slice(readerStart, saveStart);
+  const saveHandler = app.slice(saveStart, saveEnd);
+  for (const field of ["textContentInput", "textFontSizeInput", "textFontFamilyInput", "textFontWeightInput",
+    "textColorInput", "textOutlineColorInput", "textOutlineWidthInput", "textAlignInput",
+    "textLetterSpacingInput", "textLineHeightInput", "textShadowColorInput", "textShadowBlurInput",
+    "textShadowXInput", "textShadowYInput"]) {
+    assert.ok(reader.includes(field), "active text snapshot includes " + field);
+  }
+  assert.ok(saveHandler.includes("const previewValues = readTextEditorValues(layer)"));
+  assert.ok(saveHandler.includes("state.textPreview = { layerId: layer.id, values: previewValues }"));
+  assert.ok(saveHandler.includes("extractReusableTextStyle(previewValues)"));
+  assert.ok(!saveHandler.includes("commitTextPreview") && !saveHandler.includes("commitLayerText"),
+    "saving a reusable style must not commit the canvas document");
+});
