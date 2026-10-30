@@ -860,12 +860,14 @@ try {
   assert(textLayerAfterCreate?.contentType === "text" && textLayerAfterCreate.text?.value === "Escribe aquí", "real browser creates an editable text layer");
   const textLayerId = textLayerAfterCreate.id;
   await evaluate('(() => { const el = document.querySelector("#text-content"); el.value = "AnimeArt Studio"; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); })()');
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.id === ' + JSON.stringify(textLayerId) + ' && layer.contentType === "text" && layer.text?.value === "AnimeArt Studio")', 10000);
+  assert(await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + '); return layer?.text?.value==="Escribe aquí" && document.querySelector("#text-content").value==="AnimeArt Studio"; })()'),
+    "typing updates the live preview while the saved text remains unchanged until Apply");
   assert(await evaluate('document.querySelector("#text-font-family").value === "Arial"'), "real browser exposes the selected text layer font controls");
   assert(await evaluate('window.__animeArtTextDrawCount > 0'), "real browser Canvas renderer paints editable text");
   await saveScreenshot("animeart-studio-text-layer.png");
   assert(await evaluate('document.querySelector("#apply-text-layer").getBoundingClientRect().height >= 44'), "text editor offers a visible Apply action");
   assert(await evaluate('document.querySelector("#delete-text-layer").getBoundingClientRect().height >= 44'), "text editor offers a visible Delete action");
+  assert(await evaluate('document.querySelector("#cancel-text-layer").getBoundingClientRect().height >= 44'), "text editor offers a visible Cancel action");
   await click("#apply-text-layer");
   await waitFor('document.querySelector("#text-edit-dialog").open === false');
   assert((await readDocument()).layers.some(layer => layer.id === textLayerId && layer.text?.value === "AnimeArt Studio"), "Apply keeps the selected text as an editable canvas layer");
@@ -882,31 +884,55 @@ try {
     "live text styling remains a preview until the editor is closed or applied");
   await click("#close-text-edit");
   await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.fontSize === ' + JSON.stringify(pendingTextStyle.next), 10000);
-  assert((await readDocument()).layers.some(layer => layer.id === textLayerId && layer.text?.fontSize === pendingTextStyle.next),
-    "closing an existing text editor with X commits its pending preview instead of discarding it");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.fontSize === ' + JSON.stringify(pendingTextStyle.before), 10000);
+  assert((await readDocument()).layers.some(layer => layer.id === textLayerId && layer.text?.fontSize === pendingTextStyle.before),
+    "closing an existing text editor with X discards its pending preview");
   await evaluate('document.querySelector("#selection-mini-edit-text").click()');
   await waitFor('document.querySelector("#text-edit-dialog").open === true', 10000);
-  assert(await evaluate('Number(document.querySelector("#text-font-size").value) === ' + JSON.stringify(pendingTextStyle.next)),
-    "reopening the text editor restores the style committed when it was closed");
+  assert(await evaluate('Number(document.querySelector("#text-font-size").value) === ' + JSON.stringify(pendingTextStyle.before)),
+    "reopening the editor restores the last committed font size after X cancellation");
+  await evaluate('(() => { const input=document.querySelector("#text-font-size"); input.value=String(' + JSON.stringify(pendingTextStyle.next) + '); input.dispatchEvent(new Event("input",{bubbles:true})); })()');
   await click("#apply-text-layer");
   await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.fontSize === ' + JSON.stringify(pendingTextStyle.next), 10000);
+
+  // Explicit Cancel and native Escape discard the same pending preview as X.
+  await evaluate('document.querySelector("#selection-mini-edit-text").click()');
+  await waitFor('document.querySelector("#text-edit-dialog").open === true', 10000);
+  await evaluate('(() => { const input=document.querySelector("#text-font-size"); input.value=String(' + JSON.stringify(Math.min(240,Math.max(8,1))) + '); input.dispatchEvent(new Event("input",{bubbles:true})); })()');
+  await click("#cancel-text-layer");
+  await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.fontSize === ' + JSON.stringify(pendingTextStyle.next)),
+    "Cancel discards the pending font-size preview");
+  await evaluate('document.querySelector("#selection-mini-edit-text").click()');
+  await waitFor('document.querySelector("#text-edit-dialog").open === true', 10000);
+  await evaluate('(() => { const input=document.querySelector("#text-font-size"); input.value=String(' + JSON.stringify(Math.min(240,pendingTextStyle.next+11)) + '); input.dispatchEvent(new Event("input",{bubbles:true})); })()');
+  await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await cdp("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.fontSize === ' + JSON.stringify(pendingTextStyle.next)),
+    "Escape discards the pending font-size preview");
 
   // Typography v2: letter spacing and line height persist, and custom styles are reusable.
   await evaluate('window.prompt=()=> "E2E Manga Tracking"');
   await evaluate('document.querySelector("#selection-mini-edit-text").click()');
   await waitFor('document.querySelector("#text-edit-dialog").open === true', 10000);
   await evaluate('(() => { const track=document.querySelector("#text-letter-spacing"); track.value="4"; track.dispatchEvent(new Event("input",{bubbles:true})); track.dispatchEvent(new Event("change",{bubbles:true})); const leading=document.querySelector("#text-line-height"); leading.value="1.65"; leading.dispatchEvent(new Event("input",{bubbles:true})); leading.dispatchEvent(new Event("change",{bubbles:true})); })()');
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.letterSpacing===4 && JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.lineHeight===1.65', 10000);
+  assert(await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + '); return layer?.text?.letterSpacing===0 && layer?.text?.lineHeight===1.2; })()'),
+    "tracking and line-height controls remain previews before Apply");
   await click("#save-text-style");
   await waitFor('document.querySelector("#saved-text-styles [data-saved-text-style-apply]")?.textContent==="E2E Manga Tracking"', 10000);
   await evaluate('(() => { const track=document.querySelector("#text-letter-spacing"); track.value="-2"; track.dispatchEvent(new Event("input",{bubbles:true})); track.dispatchEvent(new Event("change",{bubbles:true})); const leading=document.querySelector("#text-line-height"); leading.value="1"; leading.dispatchEvent(new Event("input",{bubbles:true})); leading.dispatchEvent(new Event("change",{bubbles:true})); })()');
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.letterSpacing===-2 && JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.lineHeight===1', 10000);
+  assert(await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + '); return layer?.text?.letterSpacing===0 && layer?.text?.lineHeight===1.2; })()'),
+    "changing tracking again still leaves the saved document untouched");
   await click('#saved-text-styles [data-saved-text-style-apply]');
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.letterSpacing===0'),
+    "choosing a reusable style remains a preview until Apply");
+  await click("#apply-text-layer");
+  await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.letterSpacing===4 && JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.lineHeight===1.65', 10000);
   assert(await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + '); return layer?.text?.value==="AnimeArt Studio" && layer.text.letterSpacing===4 && layer.text.lineHeight===1.65; })()'),
-    "reusable text styles restore tracking and line height without replacing text content");
-  await click("#apply-text-layer");
+    "Apply commits the selected reusable style without replacing text content");
   await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
 
   await click("#add-text-layer");
@@ -2213,7 +2239,7 @@ try {
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) === ' + JSON.stringify(transformBeforeOffscreenRecovery), 10000);
   await evaluate('document.querySelector("#magnetic-snapping-toggle")?.click()');
   await waitFor('document.querySelector("#magnetic-snapping-toggle")?.getAttribute("aria-pressed") === "true"');
-  assert(await evaluate('document.querySelector("#magnetic-snapping-toggle")?.getAttribute("aria-pressed") === "true'),
+  assert(await evaluate('document.querySelector("#magnetic-snapping-toggle")?.getAttribute("aria-pressed") === "true"'),
     "magnetic snapping is restored after the isolated free-movement scenario");
 
   // AA-MOBILE-REDESIGN-004: verify that mobile rotation and flip controls mutate the selected image and can be restored.
@@ -2432,11 +2458,13 @@ try {
   assert(mobileTypographyLayer?.contentType === "text", "mobile typography creates a normal editable text layer");
   await evaluate('(() => { const el=document.querySelector("#text-content"); el.value="TÍTULO DE PRUEBA"; el.dispatchEvent(new Event("input",{bubbles:true})); el.dispatchEvent(new Event("change",{bubbles:true})); })()');
   await click('[data-text-style-preset="title"]');
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.id===' + JSON.stringify(mobileTypographyLayer.id) + ' && layer.text?.value==="TÍTULO DE PRUEBA" && layer.text?.fontSize===76)',10000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(mobileTypographyLayer.id) + ')?.text?.value==="Escribe aquí"'),
+    "mobile typography preset keeps persisted text unchanged until Apply");
   assert(await evaluate('document.querySelector("#text-dialog-title").textContent.includes("Diseña tu texto")'),
     "typography dialog presents the title-first text workflow");
   await click("#apply-text-layer");
   await waitFor('document.querySelector("#text-edit-dialog").open === false');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.id===' + JSON.stringify(mobileTypographyLayer.id) + ' && layer.text?.value==="TÍTULO DE PRUEBA" && layer.text?.fontSize===76)',10000);
   assert(await evaluate('(() => { const b=document.querySelector(".mobile-touch-dock [data-touch-action=add-text]"); const r=b.getBoundingClientRect(); const s=getComputedStyle(b); return s.display!=="none" && s.visibility!=="hidden" && r.width>=44 && r.height>=44 && b.getAttribute("aria-label")==="Editar texto seleccionado" && b.querySelector("span:last-child")?.textContent==="Editar texto"; })()'),
     "the persistent mobile dock changes from Add Text to a touch-sized Edit Text action for a selected text layer");
   await click('.mobile-touch-dock [data-touch-action="add-text"]');
