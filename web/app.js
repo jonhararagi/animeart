@@ -8110,7 +8110,7 @@ if (typeof ResizeObserver === "function") {
 
 
 // Multipage PDF export stays local and caps raster work to protect mobile memory.
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v78";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v79";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -8120,11 +8120,20 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/asset-library.mjs",
   "./domain/asset-deduplication.mjs",
   "./domain/asset-library-pagination.mjs",
-  "./domain/creative-catalog.mjs", "./domain/design-alignment.mjs", "./domain/design-snapping.mjs", "./domain/design-resize.mjs", "./domain/design-library.mjs", "./domain/multi-page-project.mjs", "./domain/element-library.mjs",
+  "./domain/creative-catalog.mjs",
+  "./domain/design-alignment.mjs",
+  "./domain/design-snapping.mjs",
+  "./domain/design-resize.mjs",
+  "./domain/design-library.mjs",
+  "./domain/project-recovery.mjs",
+  "./domain/multi-page-project.mjs",
+  "./domain/pdf-export.mjs",
+  "./domain/element-library.mjs",
   "./domain/anime-style-library.mjs",
   "./domain/anime-character-presets.mjs",
   "./manifest.webmanifest",
   "./icons/animeart-mark.svg",
+  "./assets/kapiart-mascot.png",
   "./service-worker.js",
   "./assets/cc0-detailed-anime-character.png.base64",
   "./assets/ASSET_SOURCES.md",
@@ -8140,19 +8149,22 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/image-processing-client.mjs",
   "./workers/image-processing-worker.mjs",
   "./domain/canvas-space.mjs",
+  "./domain/touch-gestures.mjs",
   "./domain/layer-adjustments.mjs",
   "./domain/quick-edit-recipes.mjs",
+  "./domain/guided-editing.mjs",
   "./domain/background-removal.mjs",
   "./domain/background-removal-profiles.mjs",
-  "./domain/model.mjs",
   "./domain/text-layer.mjs",
+  "./domain/model.mjs",
   "./domain/png-export.mjs",
+  "./domain/project-file.mjs",
   "./domain/selection.mjs",
   "./domain/viewport.mjs",
-  "./domain/touch-gestures.mjs",
   "./domain/frame-scheduler.mjs",
   "./domain/stroke-smoothing.mjs",
-  "./domain/freehand-rendering.mjs"
+  "./domain/freehand-rendering.mjs",
+  "./domain/canvas-rendering.mjs",
 ];
 
 async function reportServiceWorkerReadiness() {

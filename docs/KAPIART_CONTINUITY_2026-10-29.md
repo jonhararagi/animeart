@@ -142,3 +142,11 @@ Estado: PARTIAL · rama abierta, sin merge.
 - Añadido E2E real de Chromium en `web/scripts/browser-e2e.mjs`: guardar un punto, añadir una capa, esperar el checkpoint automático, restaurar la versión anterior y comprobar que las capas siguen separadas/editables.
 - README documenta la diferencia entre `Mis diseños` y la bóveda de recuperación. La nueva etapa todavía está pendiente de CI web, E2E real, CI Android, instrumentación y APK. No declarar PASS hasta revisar los workflows.
 - Aceptación física pendiente: probar en Xiaomi `24116RACCG` el guardado de un documento con varias capas, cerrar/reabrir, restaurar un punto anterior y confirmar que los proyectos manuales no se modifican.
+
+
+## 2026-11-02 · Corrección del contrato de caché offline de la Etapa 1
+
+- Diagnóstico de Web CI #41402228759: el build pasó, pero las pruebas de humo conservaban 15 expectativas de caché `animeart-web-shell-v78` cuando el service worker ya había avanzado a `v79`.
+- Diagnóstico de Android CI #41402228668: las 12 pruebas instrumentadas terminaron con **0 fallos** y MainActivity arrancó. El smoke offline falló porque `web/app.js` seguía consultando la caché v78, que devolvió 0 recursos, mientras `web/service-worker.js` instalaba v79.
+- Corrección aplicada: `OFFLINE_CACHE_NAME` ahora coincide con v79; la lista `OFFLINE_REQUIRED_RESOURCES` se genera con el mismo contrato de los 53 recursos del `APP_SHELL`, incluido `domain/project-recovery.mjs`. Se añadieron pruebas para impedir que ambas listas o versiones vuelvan a divergir y se actualizaron las expectativas de humo a v79.
+- Estado después del arreglo: pendiente de nueva ejecución de Web CI, Chromium E2E, Android instrumentation y smoke offline. No se declara PASS hasta revisar ambos workflows sobre el mismo HEAD.

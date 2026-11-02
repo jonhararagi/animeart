@@ -18,6 +18,16 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(worker, /\.\/domain\/layer-adjustments\.mjs/);
   assert.match(worker, /\.\/domain\/text-layer\.mjs/);
   assert.ok(worker.includes("./domain/project-recovery.mjs"));
+  const workerCacheName = worker.match(/const CACHE_NAME = "([^"]+)"/)?.[1];
+  assert.ok(workerCacheName, "the service worker must publish its active cache version");
+  assert.ok(app.includes(`const OFFLINE_CACHE_NAME = "${workerCacheName}"`),
+    "the readiness diagnostic must open the active service-worker cache");
+  const workerShell = worker.match(/const APP_SHELL = \\[([\\s\\S]*?)\\];/)?.[1] || "";
+  const requiredShell = app.match(/const OFFLINE_REQUIRED_RESOURCES = \\[([\\s\\S]*?)\\];/)?.[1] || "";
+  const resourcePaths = source => [...source.matchAll(/"([.]\\/[^"]+)"/g)].map(match => match[1]);
+  assert.deepEqual(resourcePaths(requiredShell), resourcePaths(workerShell),
+    "offline readiness must verify every resource precached by the service worker, including project recovery");
+
   assert.match(worker, /\.\/domain\/guided-editing\.mjs/);
   assert.ok(worker.includes("./assets/cc0-detailed-anime-character.png.base64"));
   assert.ok(worker.includes("./assets/ASSET_SOURCES.md"));
