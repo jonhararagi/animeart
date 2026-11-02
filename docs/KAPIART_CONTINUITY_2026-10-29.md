@@ -150,3 +150,44 @@ Estado: PARTIAL · rama abierta, sin merge.
 - Diagnóstico de Android CI #41402228668: las 12 pruebas instrumentadas terminaron con **0 fallos** y MainActivity arrancó. El smoke offline falló porque `web/app.js` seguía consultando la caché v78, que devolvió 0 recursos, mientras `web/service-worker.js` instalaba v79.
 - Corrección aplicada: `OFFLINE_CACHE_NAME` ahora coincide con v79; la lista `OFFLINE_REQUIRED_RESOURCES` se genera con el mismo contrato de los 53 recursos del `APP_SHELL`, incluido `domain/project-recovery.mjs`. Se añadieron pruebas para impedir que ambas listas o versiones vuelvan a divergir y se actualizaron las expectativas de humo a v79.
 - Estado después del arreglo: pendiente de nueva ejecución de Web CI, Chromium E2E, Android instrumentation y smoke offline. No se declara PASS hasta revisar ambos workflows sobre el mismo HEAD.
+
+## 2026-11-02 · Etapa 1 KapiArt: gestor de proyectos y recuperación validada
+
+- **PR #132:** https://github.com/jonhararagi/animeart/pull/132
+- Rama: `feature/kapiart-project-recovery-001`; apilada sobre la PR #131, sin duplicar sus cambios.
+- **HEAD validado:** `c2558a4c075f53998ca7897eaad3c14460553de0`.
+- Estado: PR abierta en Draft. No se fusionó ni se cerró. `main` permanece en `fc87decb5b23035852cfe9df2fb227b8de8d0275`.
+
+### Comportamiento entregado
+
+- Bóveda local IndexedDB `kapiart-project-recovery`, independiente de la biblioteca manual **Mis diseños** y de los proyectos multipágina.
+- Hasta tres checkpoints editables. El guardado automático espera 1,1 s desde el último cambio persistido; también intenta guardar al pasar la app o pestaña a segundo plano. Hay respaldo manual y restauración explícita.
+- La restauración protege primero el documento que está abierto. Si no puede crear el checkpoint `before-restore`, cancela el reemplazo. La rotación conserva el checkpoint que se eligió restaurar, mantiene los puntos recientes y nunca supera tres entradas.
+- Las capas, textos, imágenes y sus IDs se mantienen por separado. No se aplana el proyecto.
+- Se conservan los límites locales existentes: 2,5 MB por documento, 8192 px por lado, 40 MP y 200 capas. La recuperación no consume las 40 entradas manuales de **Mis diseños**.
+- README y continuidad documentan que la bóveda es local, sin nube obligatoria.
+
+### Validación automatizada del HEAD exacto
+
+- **Web CI #41505636119 PASS:** https://github.com/jonhararagi/animeart/actions/runs/41505636119
+  - Build, suite unitaria, benchmark 4/8/16 MP, verificación del bundle y E2E real de Chromium: PASS.
+  - El E2E cubre checkpoint automático, restauración de la versión anterior, conservación de capas editables y retención del checkpoint elegido.
+- **Android CI #41505636122 PASS:** https://github.com/jonhararagi/animeart/actions/runs/41505636122
+  - Build, verificación del editor empaquetado, unit tests, lint, instrumentación del emulador, smoke de arranque offline, firma, checksum y subida APK: PASS.
+  - Diagnóstico offline: cache `animeart-web-shell-v79`, **53/53 recursos requeridos**, `missing=[]`, con Canvas disponible en inicio y recuperación offline.
+- El contrato de caché se unificó entre la lista comprobada por el editor y los 53 recursos del `APP_SHELL` del service worker. Se añadió una prueba para que versión y lista no vuelvan a divergir.
+
+### APK de pruebas
+
+- Artefacto GitHub ID: `13170704069`.
+- Descarga: https://github.com/jonhararagi/animeart/actions/runs/41505636122/artifacts/13170704069
+- APK: `KapiArt-Android-v0.3.7-f421d30a0263f379c565344f6078727638209ea1.apk`.
+- Paquete `com.jonhararagi.animeart`, `versionName=0.3.7`, `versionCode=10`, tamaño 11.239.743 bytes.
+- SHA-256 APK, cotejado con el sidecar del artefacto y cálculo independiente: `a983a065443233f0597ccebcc3cb9fb10a284f8634697db52e8c156b15bdb5bb`.
+- SHA-256 ZIP del artefacto GitHub: `c0709172b3b4f9bcc87f6a24a5be54868000e48215c772c55ae0bf2001d97193`.
+- Firma `ephemeral-debug`; certificado SHA-256 `0ef62f2b857098f769ed5756865ed27f738b26168cca79b96a1a15ee8f3cf9f8`. La compatibilidad de actualización **no está garantizada** con APK instaladas que tengan otra clave.
+
+### Pendiente de aceptación física
+
+- La CI Web y el emulador Android no sustituyen la prueba física en Xiaomi `24116RACCG`. Sigue pendiente instalar esta APK y verificar guardado, cierre/reapertura, restauración de checkpoint y que **Mis diseños** permanezca intacto.
+- No declarar validación en dispositivo hasta que esa prueba se realice expresamente.

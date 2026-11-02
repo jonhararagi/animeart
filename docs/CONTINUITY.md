@@ -4287,3 +4287,12 @@ Los commits de implementación en la rama son reales, pero todavía no se declar
 - Conserva las capas editables y sus IDs, orden, contenido de texto e imagen, grupos, máscaras, opacidad y rotaciones; usa el historial existente para Deshacer.
 - Límites seguros de 8192 px por lado y 40 megapíxeles, sin ampliar el límite heredado de 2,5 MB del proyecto portable.
 - Accesible desde escritorio y desde «Más herramientas» en móvil. El módulo está incluido en el shell offline y las verificaciones del paquete Android.
+
+ 
+## Estado vigente · KapiArt · 2026-11-02
+
+- Etapa 1 de gestor de proyectos y recuperación: código validado en PR #132, rama `feature/kapiart-project-recovery-001`, HEAD `c2558a4c075f53998ca7897eaad3c14460553de0`.
+- Web CI #41505636119 y Android CI #41505636122: ambos PASS sobre ese mismo HEAD.
+- APK de prueba publicada: artefacto `13170704069`; SHA-256 APK `a983a065443233f0597ccebcc3cb9fb10a284f8634697db52e8c156b15bdb5bb`. Firma debug efímera, por lo que no se garantiza actualización sobre otra firma.
+- La PR #132 sigue abierta en Draft, apilada sobre #131. Sin merge ni modificación directa de `main`; SHA de `main`: `fc87decb5b23035852cfe9df2fb227b8de8d0275`.
+- Pendiente prueba física en Xiaomi `24116RACCG`. CI/Chromium/emulador no se cuentan como aceptación en el dispositivo.
