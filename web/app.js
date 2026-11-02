@@ -7427,11 +7427,18 @@ async function createManualProjectRecoverySnapshot() {
 
 async function restoreProjectRecoverySnapshot(id) {
  if (state.dirty && !window.confirm("¿Restaurar esta versión? KapiArt guardará una copia de lo que tienes abierto antes de sustituir el lienzo actual.")) return false;
+ const record = await loadRecoverySnapshot(id);
+ if (!record) throw new Error("La versión seleccionada ya no está disponible.");
  if (activeMultiPageSession) {
   await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
   activeMultiPageSession = null;
   await multiPagePersistenceQueue.catch(() => null);
  }
+ if (projectRecoveryTimer) {
+  window.clearTimeout(projectRecoveryTimer);
+  projectRecoveryTimer = null;
+ }
+ await projectRecoveryQueue.catch(() => null);
  if (!state.storageRecoveryPending) {
   try {
    await saveRecoverySnapshot(cloneDocument(state.document), { reason: "before-restore" });
@@ -7439,8 +7446,6 @@ async function restoreProjectRecoverySnapshot(id) {
    throw new Error("No se pudo proteger el documento actual antes de restaurar. No se modificó el lienzo. " + (error?.message || ""));
   }
  }
- const record = await loadRecoverySnapshot(id);
- if (!record) throw new Error("La versión seleccionada ya no está disponible.");
  const next = restoreDocument(record.document);
  persistDocumentSnapshot(localStorage, "animeart-web-document", next);
  state.document = next;
