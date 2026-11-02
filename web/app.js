@@ -7387,6 +7387,8 @@ async function renderProjectRecovery() {
   for (const record of records) {
    const card = document.createElement("article");
    card.className = "project-recovery-card";
+   card.dataset.recoveryId = record.id;
+   card.dataset.layerCount = String(record.layerCount);
    const title = document.createElement("strong");
    title.textContent = record.reason === "before-restore" ? "Antes de una restauración" : record.reason === "manual" ? "Respaldo manual" : "Respaldo automático";
    const details = document.createElement("small");
