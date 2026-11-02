@@ -2741,6 +2741,12 @@ try {
   const recoveryBaselineLayers = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.length');
   await click("#design-library-close");
   await waitFor('document.querySelector("#design-library-dialog")?.open!==true');
+  const controlsCollapsed = await evaluate('document.body.classList.contains("mobile-canvas-focus") || document.body.classList.contains("mobile-tools-collapsed")');
+  if (controlsCollapsed) {
+    await click("#mobile-tools-toggle");
+    await waitFor('!document.body.classList.contains("mobile-canvas-focus") && !document.body.classList.contains("mobile-tools-collapsed")');
+  }
+  await waitFor('(() => { const button=document.querySelector("#add-layer"); const rect=button?.getBoundingClientRect(); return Boolean(rect && rect.width>0 && rect.height>0); })()');
   await click("#add-layer");
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.length===' + (recoveryBaselineLayers + 1),10000);
   await sleep(1500);
@@ -2753,6 +2759,11 @@ try {
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.length===' + recoveryBaselineLayers,15000);
   assert(await evaluate('document.querySelector("#status")?.textContent.startsWith("Versión recuperada:")'),
     "restoring a recovery checkpoint reopens the previous editable document");
+  const retainedRecoveryIds = await evaluate('Array.from(document.querySelectorAll("#project-recovery-list .project-recovery-card")).map(card=>card.dataset.recoveryId)');
+  assert(retainedRecoveryIds.includes(recoveryTarget.id),
+    "the selected recovery checkpoint remains available after saving the before-restore version");
+  assert(retainedRecoveryIds.length<=3,
+    "recovery rotation never exceeds the three-checkpoint local limit");
   const restoredRecoveryDocument = await readDocument();
   assert(restoredRecoveryDocument.layers.length===recoveryBaselineLayers &&
     restoredRecoveryDocument.layers.every(layer=>typeof layer.id==="string"),
