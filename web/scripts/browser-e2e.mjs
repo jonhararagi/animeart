@@ -2736,6 +2736,35 @@ try {
 
   await evaluate('window.confirm=()=>true; window.prompt=(message,defaultValue)=>message.startsWith("Nombre de la copia")?(defaultValue||"Copia E2E"):"Nombre renombrado E2E";');
   await openDesignLibrary();
+  await click("#project-recovery-save");
+  await waitFor('document.querySelectorAll("#project-recovery-list .project-recovery-card").length>=1',15000);
+  const recoveryBaselineLayers = await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.length');
+  await click("#design-library-close");
+  await waitFor('document.querySelector("#design-library-dialog")?.open!==true');
+  // The mobile layers panel intentionally hides the toolbar. Trigger the real Add Layer
+  // click handler directly so this regression test focuses on persistence/recovery rather
+  // than on the separate mobile toolbar visibility state.
+  await evaluate('document.querySelector("#add-layer")?.click()');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.length===' + (recoveryBaselineLayers + 1),10000);
+  await sleep(1500);
+  await openDesignLibrary();
+  await waitFor('document.querySelectorAll("#project-recovery-list .project-recovery-card").length>=2',15000);
+  const recoveryCandidates = await evaluate('Array.from(document.querySelectorAll("#project-recovery-list .project-recovery-card")).map(card=>({id:card.dataset.recoveryId,layers:Number(card.dataset.layerCount)}))');
+  const recoveryTarget = recoveryCandidates.find(item=>item.layers===recoveryBaselineLayers);
+  assert(Boolean(recoveryTarget), "automatic recovery keeps an earlier editable checkpoint after a later layer change");
+  await click('#project-recovery-list button[data-recovery-id="' + recoveryTarget.id + '"]');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.length===' + recoveryBaselineLayers,15000);
+  assert(await evaluate('document.querySelector("#status")?.textContent.startsWith("Versión recuperada:")'),
+    "restoring a recovery checkpoint reopens the previous editable document");
+  const retainedRecoveryIds = await evaluate('Array.from(document.querySelectorAll("#project-recovery-list .project-recovery-card")).map(card=>card.dataset.recoveryId)');
+  assert(retainedRecoveryIds.includes(recoveryTarget.id),
+    "the selected recovery checkpoint remains available after saving the before-restore version");
+  assert(retainedRecoveryIds.length<=3,
+    "recovery rotation never exceeds the three-checkpoint local limit");
+  const restoredRecoveryDocument = await readDocument();
+  assert(restoredRecoveryDocument.layers.length===recoveryBaselineLayers &&
+    restoredRecoveryDocument.layers.every(layer=>typeof layer.id==="string"),
+    "recovery restores separate stable layers rather than a flattened image");
   await evaluate('document.querySelector("#design-library-name").value="KapiArt E2E workflow"');
   await click("#design-library-save-current");
   await waitFor('document.querySelector("#design-library-status")?.textContent.includes("Diseño guardado localmente")',15000);
