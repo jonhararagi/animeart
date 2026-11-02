@@ -7,7 +7,8 @@ import {
   PROJECT_RECOVERY_SNAPSHOT_LIMIT,
   createRecoverySnapshot,
   listRecoverySnapshots,
-  saveRecoverySnapshot
+  saveRecoverySnapshot,
+  selectRecoverySnapshotIdsToRetain
 } from "../domain/project-recovery.mjs";
 
 test("recovery snapshots keep an independent editable copy and bounded metadata", () => {
@@ -49,4 +50,25 @@ test("recovery storage is local, bounded and reports unavailable IndexedDB", asy
   assert.equal(PROJECT_RECOVERY_SNAPSHOT_LIMIT, 3);
   await assert.rejects(listRecoverySnapshots({ indexedDBApi: null }), /IndexedDB/i);
   await assert.rejects(saveRecoverySnapshot(createDocument(10, 10), { indexedDBApi: null }), /IndexedDB/i);
+});
+
+test("recovery rotation preserves the checkpoint being restored within the three-slot limit", () => {
+  const existing = [
+    { id: "newest", createdAt: 300 },
+    { id: "selected-oldest", createdAt: 100 },
+    { id: "middle", createdAt: 200 }
+  ];
+
+  assert.deepEqual(
+    selectRecoverySnapshotIdsToRetain(existing, "selected-oldest"),
+    new Set(["selected-oldest", "newest"])
+  );
+  assert.deepEqual(
+    selectRecoverySnapshotIdsToRetain(existing),
+    new Set(["newest", "middle"])
+  );
+  assert.equal(
+    selectRecoverySnapshotIdsToRetain(existing, "missing-checkpoint").size,
+    PROJECT_RECOVERY_SNAPSHOT_LIMIT - 1
+  );
 });

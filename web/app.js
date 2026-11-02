@@ -7441,7 +7441,7 @@ async function restoreProjectRecoverySnapshot(id) {
  await projectRecoveryQueue.catch(() => null);
  if (!state.storageRecoveryPending) {
   try {
-   await saveRecoverySnapshot(cloneDocument(state.document), { reason: "before-restore" });
+   await saveRecoverySnapshot(cloneDocument(state.document), { reason: "before-restore", preserveSnapshotId: id });
   } catch (error) {
    throw new Error("No se pudo proteger el documento actual antes de restaurar. No se modificó el lienzo. " + (error?.message || ""));
   }

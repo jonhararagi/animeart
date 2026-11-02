@@ -93,10 +93,28 @@ function publicSnapshot(record) {
   return metadata;
 }
 
+export function selectRecoverySnapshotIdsToRetain(records, preserveSnapshotId = null) {
+  const ordered = (Array.isArray(records) ? [...records] : [])
+    .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0) ||
+      String(b.id || "").localeCompare(String(a.id || "")));
+  const preserved = preserveSnapshotId == null
+    ? null
+    : ordered.find(record => String(record.id) === String(preserveSnapshotId));
+  const keep = [];
+  if (preserved) keep.push(preserved);
+  for (const record of ordered) {
+    if (preserved && String(record.id) === String(preserved.id)) continue;
+    if (keep.length >= PROJECT_RECOVERY_SNAPSHOT_LIMIT - 1) break;
+    keep.push(record);
+  }
+  return new Set(keep.map(record => String(record.id)));
+}
+
 export async function saveRecoverySnapshot(document, {
   indexedDBApi = globalThis.indexedDB,
   now = Date.now(),
-  reason = "automatic"
+  reason = "automatic",
+  preserveSnapshotId = null
 } = {}) {
   const snapshot = createRecoverySnapshot({ document, now, reason });
   const db = await openDatabase(indexedDBApi);
@@ -121,8 +139,9 @@ export async function saveRecoverySnapshot(document, {
           return;
         }
         store.add(snapshot);
-        for (const stale of existing.slice(PROJECT_RECOVERY_SNAPSHOT_LIMIT - 1)) {
-          store.delete(stale.id);
+        const retainedIds = selectRecoverySnapshotIdsToRetain(existing, preserveSnapshotId);
+        for (const stale of existing) {
+          if (!retainedIds.has(String(stale.id))) store.delete(stale.id);
         }
         result = publicSnapshot(snapshot);
       };
