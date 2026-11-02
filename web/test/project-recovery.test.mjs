@@ -39,9 +39,9 @@ test("recovery snapshot rejects invalid documents and documents above safety lim
     id: "layer-" + index
   }));
   assert.throws(() => createRecoverySnapshot({ document: tooManyLayers }), /200 capas/i);
-  assert.throws(() => createRecoverySnapshot({
-    document: createDocument(10, 10, { title: "x".repeat(MAX_RECOVERY_SNAPSHOT_CHARS) })
-  }), /2,5 MB/i);
+  const tooLarge = createDocument(10, 10);
+  tooLarge.recoveryTestPayload = "x".repeat(MAX_RECOVERY_SNAPSHOT_CHARS);
+  assert.throws(() => createRecoverySnapshot({ document: tooLarge }), /2,5 MB/i);
 });
 
 test("recovery storage is local, bounded and reports unavailable IndexedDB", async () => {
