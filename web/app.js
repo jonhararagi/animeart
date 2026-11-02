@@ -2532,10 +2532,12 @@ function readTextEditorValues(layer) {
 function saveSelectedTextStyle() {
  const layer = selectedLayerExact();
  if (!layer || layer.contentType !== "text" || layer.locked) { setTextStyleStatus("Selecciona una capa de texto desbloqueada para guardar su estilo.", "error"); return; }
- // Snapshot the live editor controls before opening native prompt/confirm dialogs.
- // Browser dialogs can blur or reset the open editor, so reading the controls
- // after prompt() may capture defaults instead of the user's pending typography.
- const previewValues = readTextEditorValues(layer);
+ // Use the editor's transaction preview first. Its event-driven values are
+ // the authoritative pending edit and survive native prompt/confirm focus resets.
+ // Read controls only when there is no pending preview for this text layer.
+ const previewValues = state.textPreview?.layerId === layer.id
+  ? normalizeTextLayer(state.textPreview.values)
+  : readTextEditorValues(layer);
  const nameInput = window.prompt("Nombre para este estilo reutilizable:", "Mi estilo");
  if (nameInput === null) return;
  const name = String(nameInput).replace(/[\\u0000-\\u001f\\u007f]/g, "").trim().slice(0, 48);
