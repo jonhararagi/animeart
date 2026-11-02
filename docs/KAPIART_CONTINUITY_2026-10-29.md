@@ -128,3 +128,17 @@ Estado: PARTIAL · rama abierta, sin merge.
 - **Firma:** ephemeral debug, certificado SHA-256 `826a3a7fd2faf1d91f5a8cc06605a62a8a7d8d4ac140e3d16b637ba0bf5e0ba1`. CI informa `update_compatibility=NOT GUARANTEED`: APK de pruebas; no asumir actualización sobre otra instalación firmada con una clave distinta.
 - La validación instrumentada usa el emulador CI y el E2E usa Chromium, incluido viewport móvil simulado. **No equivale a inspección visual manual ni a prueba física en el Xiaomi 24116RACCG**; ambas siguen pendientes.
 - El bloque de cancelación de imagen/composición/texto ya tiene E2E verde; no se debe repetir esa implementación. Próximo foco: inspección visual manual en emulador y dispositivo Xiaomi, comprobar lienzo limpio/restauración y completar cualquier hallazgo visual de controles, safe areas o gestos. PR #131 continúa en borrador y sin merge hasta autorización explícita.
+
+
+## 2026-11-02 · Etapa 1: gestor de proyectos y recuperación local
+
+- La rama de trabajo para esta etapa es `feature/kapiart-project-recovery-001`, creada desde el HEAD validado `7fcc5d4b7585b4461d85629a6cc4697689ba2834` de `feature/kapiart-smart-snapping-001`. Se mantiene apilada sobre la PR #131 para no duplicar ni reescribir sus cambios pendientes.
+- `main` permanece en `fc87decb5b23035852cfe9df2fb227b8de8d0275`. No se hizo merge ni cambio directo en main.
+- Hallazgo de arquitectura: KapiArt ya tenía `Mis diseños` en IndexedDB (40 proyectos manuales, miniaturas y CRUD), proyectos multipágina (10 proyectos/10 páginas) y recuperación del último documento local. La etapa no reemplaza esos sistemas ni duplica el gestor; añade una bóveda separada para versiones recuperables.
+- Nuevo módulo `web/domain/project-recovery.mjs`: IndexedDB local `kapiart-project-recovery`; máximo 3 puntos por lienzo; hasta 2,5 MB por documento; valida dimensiones, píxeles, capas y documento editable; deduplica la versión más reciente; conserva las capas independientes; lista y carga snapshots sin subir datos a servicios externos.
+- Integración Web en `web/app.js`: los guardados del documento programan un checkpoint tras 1,1 s de inactividad; `visibilitychange` a hidden y `pagehide` intentan guardar un punto inmediato; indicador de estado distingue guardado local y respaldo disponible/no disponible.
+- UI en `Mis diseños`: sección **Recuperación automática**, crear respaldo manual, actualizar, listar fecha/dimensiones/número de capas y restaurar un checkpoint. El flujo exige confirmación cuando hay cambios pendientes, carga primero el punto seleccionado y guarda el documento abierto como `before-restore` antes de reemplazar el lienzo. Si no puede proteger el estado actual, cancela la restauración. La carga elegida no se elimina por el límite de tres puntos.
+- Añadido `web/test/project-recovery.test.mjs` para validar copias independientes, límites seguros y comportamiento cuando IndexedDB no está disponible.
+- Añadido E2E real de Chromium en `web/scripts/browser-e2e.mjs`: guardar un punto, añadir una capa, esperar el checkpoint automático, restaurar la versión anterior y comprobar que las capas siguen separadas/editables.
+- README documenta la diferencia entre `Mis diseños` y la bóveda de recuperación. La nueva etapa todavía está pendiente de CI web, E2E real, CI Android, instrumentación y APK. No declarar PASS hasta revisar los workflows.
+- Aceptación física pendiente: probar en Xiaomi `24116RACCG` el guardado de un documento con varias capas, cerrar/reabrir, restaurar un punto anterior y confirmar que los proyectos manuales no se modifican.
