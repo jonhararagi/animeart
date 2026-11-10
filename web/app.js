@@ -1,6 +1,7 @@
 import { DOCUMENT_VERSION, createId, createDocument, createImageLayer, createLayer, createStroke, createStrokePoint, createTextLayer, restoreDocument } from "./domain/model.mjs";
 import { createLayerAlignmentTransforms } from "./domain/design-alignment.mjs";
 import { resizeDocumentForFormat } from "./domain/design-resize.mjs";
+import { addBrandColor, addBrandLogo, addBrandTextStyle, loadBrandKit, removeBrandColor, removeBrandLogo, removeBrandTextStyle, renameBrandKit, saveBrandKit } from "./domain/brand-kit.mjs";
 import { deleteDesign, duplicateDesign, listDesigns, loadDesign, renameDesign, saveDesign } from "./domain/design-library.mjs";
 import { addMultiPagePage, copyLayerToPage, createMultiPageProject, deleteMultiPagePage, deleteMultiPageProject, listMultiPageProjects, loadMultiPagePage, renameMultiPagePage, renameMultiPageProject, reorderMultiPagePage, saveMultiPagePage, setActiveMultiPagePage } from "./domain/multi-page-project.mjs";
 import { buildMultiPagePdf } from "./domain/pdf-export.mjs";
@@ -29,7 +30,7 @@ import { BUILT_IN_BACKGROUND_PROFILES, deleteBackgroundProfile, listBackgroundPr
 import { applyEraseStrokes, removeConnectedBackground } from "./domain/background-removal.mjs";
 import { fitImportedImageTransform } from "./domain/image-import.mjs";
 import { normalizeTextLayer, TEXT_FONT_FAMILIES } from "./domain/text-layer.mjs";
-import { applyImageFileImport, optimizeImageSource, persistDocumentSnapshot, MAX_IMPORT_FILE_BYTES } from "./domain/image-import.mjs";
+import { applyImageFileImport, importImageFile, optimizeImageSource, persistDocumentSnapshot, MAX_IMPORT_FILE_BYTES } from "./domain/image-import.mjs";
 import { clipboardImageFile, firstValidImageFile } from "./domain/image-input.mjs";
 import { clampSelectionHandles, constrainTranslationToDocument, groupRotationTransforms, groupScaleTransforms, hitTestHandle, hitTestLayer, inverseTransformPoint, layerCorners, multiSelectionGeometry, normalizeLayerSelection, resizeTransformFromCorner, selectionGeometry, toggleLayerSelection } from "./domain/selection.mjs";
 import { canvasToImageBlob, createPngExportCanvas, downloadImageBlob, exportScaleForResolution, renderDocumentToCanvas } from "./domain/png-export.mjs";
@@ -7565,6 +7566,178 @@ function applyUngroupSelection() {
   return true;
 }
 
+
+function initializeBrandKitTools(){
+ const dialog=document.querySelector("#brand-kit-dialog");
+ const toolbox=document.querySelector("#toolbox-dialog");
+ const statusEl=document.querySelector("#brand-kit-status");
+ const nameInput=document.querySelector("#brand-kit-name");
+ const colorNameInput=document.querySelector("#brand-kit-color-name");
+ const colorValueInput=document.querySelector("#brand-kit-color-value");
+ const colorsEl=document.querySelector("#brand-kit-colors");
+ const stylesEl=document.querySelector("#brand-kit-styles");
+ const logosEl=document.querySelector("#brand-kit-logos");
+ const colorCount=document.querySelector("#brand-kit-color-count");
+ const styleCount=document.querySelector("#brand-kit-style-count");
+ const logoCount=document.querySelector("#brand-kit-logo-count");
+ const logoFileInput=document.querySelector("#brand-kit-logo-file");
+ const styleNameInput=document.querySelector("#brand-kit-style-name");
+ let kit=loadBrandKit();
+ const setStatus=(message,kind="info")=>{
+  if(statusEl){statusEl.textContent=message;statusEl.dataset.kind=kind;}
+ };
+ const commitKit=next=>{
+  kit=saveBrandKit(next);
+  render();
+ };
+ const applyTextPatch=(patch,message)=>{
+  const layer=selectedLayerExact();
+  if(!layer||layer.contentType!=="text"){setStatus("Selecciona primero una capa de texto para aplicar este estilo.","error");return false;}
+  if(layer.locked){setStatus("La capa de texto está bloqueada. Desbloquéala antes de aplicar el estilo.","error");return false;}
+  if(state.storageRecoveryPending){setStatus("El proyecto actual está protegido. Guarda o exporta una copia antes de modificarlo.","error");return false;}
+  const before=cloneDocument(state.document);
+  const next=setLayerText(state.document,layer.id,patch);
+  if(!next){setStatus("No se pudo aplicar el estilo al texto seleccionado.","error");return false;}
+  state.document=next;
+  state.textPreview=null;
+  state.history.record(before,next);
+  state.dirty=true;
+  refreshDocument(message);
+  persistDocument();
+  setStatus(message+" El texto continúa editable.","success");
+  return true;
+ };
+ const render=()=>{
+  if(nameInput)nameInput.value=kit.name;
+  if(colorCount)colorCount.textContent=kit.colors.length+"/12";
+  if(styleCount)styleCount.textContent=kit.textStyles.length+"/20";
+  if(logoCount)logoCount.textContent=kit.logos.length+"/4";
+  if(colorsEl){
+   while(colorsEl.firstChild)colorsEl.removeChild(colorsEl.firstChild);
+   for(const item of kit.colors){
+    const card=document.createElement("article");card.className="brand-kit-color-card";
+    const apply=document.createElement("button");apply.type="button";apply.className="brand-kit-color-swatch";apply.style.setProperty("--brand-color",item.value);apply.title=item.name+" · "+item.value;apply.setAttribute("aria-label","Aplicar "+item.name+" "+item.value+" al texto seleccionado");
+    apply.addEventListener("click",()=>applyTextPatch({color:item.value},"Color de marca aplicado: "+item.name+"."));
+    const copy=document.createElement("button");copy.type="button";copy.className="brand-kit-color-copy";copy.textContent=item.name;copy.title="Aplicar color al texto seleccionado";
+    copy.addEventListener("click",()=>applyTextPatch({color:item.value},"Color de marca aplicado: "+item.name+"."));
+    const code=document.createElement("small");code.textContent=item.value.toUpperCase();
+    const remove=document.createElement("button");remove.type="button";remove.className="brand-kit-remove";remove.textContent="Eliminar";remove.dataset.brandAction="remove-color";remove.dataset.brandId=item.id;remove.setAttribute("aria-label","Eliminar color "+item.name);
+    card.append(apply,copy,code,remove);colorsEl.append(card);
+   }
+   if(!kit.colors.length){const empty=document.createElement("p");empty.className="brand-kit-empty";empty.textContent="Guarda tus colores principales, secundarios y de acento.";colorsEl.append(empty);}
+  }
+  if(stylesEl){
+   while(stylesEl.firstChild)stylesEl.removeChild(stylesEl.firstChild);
+   for(const item of kit.textStyles){
+    const card=document.createElement("article");card.className="brand-kit-style-card";
+    const preview=document.createElement("div");preview.className="brand-kit-style-preview";preview.textContent=item.name;preview.style.color=item.style.color;preview.style.fontFamily=item.style.fontFamily;preview.style.fontSize=Math.min(24,Math.max(12,item.style.fontSize/3))+"px";preview.style.fontWeight=item.style.fontWeight;
+    const meta=document.createElement("small");meta.textContent=item.style.fontFamily+" · "+item.style.fontSize+" px";
+    const actions=document.createElement("div");actions.className="brand-kit-card-actions";
+    const apply=document.createElement("button");apply.type="button";apply.textContent="Aplicar al texto";apply.addEventListener("click",()=>applyTextPatch(item.style,"Estilo aplicado: "+item.name+"."));
+    const remove=document.createElement("button");remove.type="button";remove.className="brand-kit-remove";remove.textContent="Eliminar";remove.dataset.brandAction="remove-style";remove.dataset.brandId=item.id;
+    actions.append(apply,remove);card.append(preview,meta,actions);stylesEl.append(card);
+   }
+   if(!kit.textStyles.length){const empty=document.createElement("p");empty.className="brand-kit-empty";empty.textContent="Selecciona una capa de texto con el estilo que quieras reutilizar y guárdalo aquí.";stylesEl.append(empty);}
+  }
+  if(logosEl){
+   while(logosEl.firstChild)logosEl.removeChild(logosEl.firstChild);
+   for(const item of kit.logos){
+    const card=document.createElement("article");card.className="brand-kit-logo-card";
+    const image=document.createElement("img");image.src=item.source;image.alt="Vista previa de "+item.name;image.loading="lazy";image.decoding="async";
+    const title=document.createElement("strong");title.textContent=item.name;
+    const meta=document.createElement("small");meta.textContent=item.width+" × "+item.height+" px";
+    const actions=document.createElement("div");actions.className="brand-kit-card-actions";
+    const insert=document.createElement("button");insert.type="button";insert.textContent="Insertar como capa";insert.addEventListener("click",()=>insertBrandLogo(item));
+    const remove=document.createElement("button");remove.type="button";remove.className="brand-kit-remove";remove.textContent="Eliminar";remove.dataset.brandAction="remove-logo";remove.dataset.brandId=item.id;
+    actions.append(insert,remove);card.append(image,title,meta,actions);logosEl.append(card);
+   }
+   if(!kit.logos.length){const empty=document.createElement("p");empty.className="brand-kit-empty";empty.textContent="Añade tu logo o firma una sola vez y reutilízalo en portadas y páginas.";logosEl.append(empty);}
+  }
+  const addColor=document.querySelector("#brand-kit-add-color");
+  const saveStyle=document.querySelector("#brand-kit-save-style");
+  if(addColor)addColor.disabled=kit.colors.length>=12;
+  if(saveStyle)saveStyle.disabled=kit.textStyles.length>=20;
+  if(logoFileInput)logoFileInput.disabled=kit.logos.length>=4;
+ };
+ const insertBrandLogo=item=>{
+  if(state.storageRecoveryPending){setStatus("El proyecto actual está protegido. Guarda o exporta una copia antes de insertar el logo.","error");return;}
+  const layer=createImageLayer("Marca · "+item.name,item.width,item.height,item.source);
+  layer.transform={...layer.transform,...fitImportedImageTransform(item.width,item.height,Math.max(1,state.document.width),Math.max(1,state.document.height),.38)};
+  const before=cloneDocument(state.document);
+  const next=addLayer(state.document,layer);
+  if(!next){setStatus("No se pudo insertar el logo en el lienzo actual.","error");return;}
+  state.document=next;state.history.record(before,next);state.textPreview=null;
+  setSelection([layer.id],layer.id);state.dirty=true;
+  refreshDocument("Logo insertado como capa editable: "+item.name+".");
+  persistDocument();
+  setStatus("Logo insertado como una capa independiente. Puedes moverlo, escalarlo, girarlo o borrarlo.","success");
+ };
+ const open=()=>{
+  kit=loadBrandKit();
+  render();
+  setStatus("Este kit es local al dispositivo y se puede reutilizar en cualquier diseño que abras aquí.");
+  if(dialog&&!dialog.open)dialog.showModal();
+ };
+ document.querySelector("#open-brand-kit")?.addEventListener("click",open);
+ document.querySelector("#quick-open-brand-kit")?.addEventListener("click",()=>{if(toolbox?.open)toolbox.close();open();});
+ document.querySelector("#brand-kit-close")?.addEventListener("click",()=>dialog?.close());
+ document.querySelector("#brand-kit-done")?.addEventListener("click",()=>dialog?.close());
+ document.querySelector("#brand-kit-name-form")?.addEventListener("submit",event=>{
+  event.preventDefault();
+  try{commitKit(renameBrandKit(kit,nameInput?.value));setStatus("Identidad guardada: "+kit.name+".","success");}
+  catch(error){setStatus(error?.message||"No se pudo guardar el nombre.","error");}
+ });
+ document.querySelector("#brand-kit-color-form")?.addEventListener("submit",event=>{
+  event.preventDefault();
+  try{
+   commitKit(addBrandColor(kit,{name:colorNameInput?.value,value:colorValueInput?.value}));
+   if(colorNameInput)colorNameInput.value="";
+   setStatus("Color guardado. Toca su muestra para aplicarlo al texto seleccionado.","success");
+  }catch(error){setStatus(error?.message||"No se pudo guardar el color.","error");}
+ });
+ document.querySelector("#brand-kit-style-form")?.addEventListener("submit",event=>{
+  event.preventDefault();
+  const layer=selectedLayerExact();
+  if(!layer||layer.contentType!=="text"){setStatus("Selecciona una capa de texto antes de guardar un estilo.","error");return;}
+  if(layer.locked){setStatus("Desbloquea la capa de texto antes de guardar su estilo.","error");return;}
+  try{
+   commitKit(addBrandTextStyle(kit,{name:styleNameInput?.value,style:layer.text}));
+   setStatus("Estilo tipográfico guardado para reutilizarlo en otros textos y páginas.","success");
+  }catch(error){setStatus(error?.message||"No se pudo guardar el estilo.","error");}
+ });
+ logoFileInput?.addEventListener("change",async()=>{
+  const file=logoFileInput.files?.[0];
+  if(!file)return;
+  try{
+   if(!["image/png","image/jpeg","image/webp"].includes(file.type))throw new Error("El logo debe ser PNG, JPEG o WebP.");
+   if(file.size>MAX_IMPORT_FILE_BYTES)throw new Error("El archivo de logo supera el límite de importación de 25 MB.");
+   const imported=await importImageFile(file);
+   commitKit(addBrandLogo(kit,{name:file.name.replace(/\.[^.]+$/,"")||"Logo",source:imported.source,width:imported.layer.image.width,height:imported.layer.image.height}));
+   setStatus("Logo guardado localmente. Puedes insertarlo en cualquier diseño como una capa independiente.","success");
+  }catch(error){setStatus(error?.message||"No se pudo guardar el logo.","error");}
+  finally{logoFileInput.value="";}
+ });
+ document.querySelector("#brand-kit-colors")?.addEventListener("click",event=>{
+  const button=event.target.closest("[data-brand-action]");
+  if(!button)return;
+  try{commitKit(removeBrandColor(kit,button.dataset.brandId));setStatus("Color eliminado del kit.","success");}
+  catch(error){setStatus(error?.message||"No se pudo eliminar el color.","error");}
+ });
+ document.querySelector("#brand-kit-styles")?.addEventListener("click",event=>{
+  const button=event.target.closest("[data-brand-action]");
+  if(!button)return;
+  try{commitKit(removeBrandTextStyle(kit,button.dataset.brandId));setStatus("Estilo eliminado del kit.","success");}
+  catch(error){setStatus(error?.message||"No se pudo eliminar el estilo.","error");}
+ });
+ document.querySelector("#brand-kit-logos")?.addEventListener("click",event=>{
+  const button=event.target.closest("[data-brand-action]");
+  if(!button)return;
+  try{commitKit(removeBrandLogo(kit,button.dataset.brandId));setStatus("Logo eliminado del kit local.","success");}
+  catch(error){setStatus(error?.message||"No se pudo eliminar el logo.","error");}
+ });
+ render();
+}
+
 function initializeCanvaWorkflowTools(){
  const resizeDialog=document.querySelector("#design-resize-dialog");
  const resizeForm=document.querySelector("#design-resize-form");
@@ -7748,7 +7921,7 @@ function initializeBrandLaunchpad() {
     );
   });
 }
-initializeBrandLaunchpad(); initializeCanvaWorkflowTools(); initializeAssetLibrary({ onImportImage: importImageIntoEditor, onStatus: message => { status.textContent = message; } });
+initializeBrandLaunchpad(); initializeBrandKitTools(); initializeCanvaWorkflowTools(); initializeAssetLibrary({ onImportImage: importImageIntoEditor, onStatus: message => { status.textContent = message; } });
 initializeAppearanceSettings();
 setSelection([state.document.layers[0].id], state.document.layers[0].id);
 load();
@@ -7773,7 +7946,7 @@ if (typeof ResizeObserver === "function") {
 
 
 // Multipage PDF export stays local and caps raster work to protect mobile memory.
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v78";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v79";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -7783,7 +7956,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/asset-library.mjs",
   "./domain/asset-deduplication.mjs",
   "./domain/asset-library-pagination.mjs",
-  "./domain/creative-catalog.mjs", "./domain/design-alignment.mjs", "./domain/design-resize.mjs", "./domain/design-library.mjs", "./domain/multi-page-project.mjs", "./domain/element-library.mjs",
+  "./domain/creative-catalog.mjs", "./domain/design-alignment.mjs", "./domain/design-resize.mjs", "./domain/brand-kit.mjs", "./domain/design-library.mjs", "./domain/multi-page-project.mjs", "./domain/element-library.mjs",
   "./domain/anime-style-library.mjs",
   "./domain/anime-character-presets.mjs",
   "./manifest.webmanifest",

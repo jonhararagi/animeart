@@ -551,8 +551,8 @@ test("editor appearance supports custom accent, workspace color and local wallpa
   assert.match(html, /id="appearance-wallpaper-file"/);
   assert.match(html, /id="appearance-open"/);
   assert.match(app, /initializeAppearanceSettings\(\)/);
-  assert.match(app, /animeart-web-shell-v78/);
-  assert.match(worker, /animeart-web-shell-v78/);
+  assert.match(app, /animeart-web-shell-v79/);
+  assert.match(worker, /animeart-web-shell-v79/);
   assert.match(worker, /\.\/appearance-settings\.js/);
   assert.match(appearance, /animeart-editor-appearance-v1/);
   assert.match(appearance, /MAX_WALLPAPER_BYTES = 2 \* 1024 \* 1024/);
@@ -620,7 +620,7 @@ test("Android native export bridge and browser fallback are wired to the canonic
   assert.ok(activity.includes("NativeExportBridge"));
   assert.ok(activity.includes("Intent.ACTION_CREATE_DOCUMENT"));
   assert.match(worker, /\.\/domain\/background-removal-profiles\.mjs/);
-  assert.match(worker, /animeart-web-shell-v78/);
+  assert.match(worker, /animeart-web-shell-v79/);
 });
 
 test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size layer thumbnails", async () => {
@@ -640,7 +640,7 @@ test("mobile image editing exposes Magic Eraser, fit-to-canvas and fixed-size la
   assert.match(css, /\.layer-thumbnail \{ flex: 0 0 56px; width: 56px; height: 56px/);
   assert.match(css, /\.layers #layers \.layer-select \{ min-height: 60px/);
   assert.match(removal, /seedPoints=\[\]/);
-  assert.match(worker, /animeart-web-shell-v78/);
+  assert.match(worker, /animeart-web-shell-v79/);
 });
 
 
@@ -665,8 +665,8 @@ test("AA-PICSART-UX-001 defaults to direct layer selection and exposes simple an
   assert.match(html, /data-editor-mode="interactive"/);
   assert.match(html, /data-tool="select" aria-pressed="true">🖐️ Seleccionar \/ mover/);
   assert.match(css, /\.editor-mode-switch button\.active/);
-  assert.match(worker, /animeart-web-shell-v78/);
-  assert.match(app, /animeart-web-shell-v78/);
+  assert.match(worker, /animeart-web-shell-v79/);
+  assert.match(app, /animeart-web-shell-v79/);
 });
 
 test("Magic Eraser tolerance is user-adjustable instead of hardcoded", async () => {
@@ -819,8 +819,8 @@ test("AA-TEXT-EDITOR-001 opens a dedicated text dialog with typography, outline,
   for (const preset of ["comic", "poster", "manga", "neon"]) assert.match(html, new RegExp('data-text-style-preset="' + preset + '"'));
   assert.match(js, /textEditDialog\.showModal\(\)/);
   assert.match(css, /#text-edit-dialog/);
-  assert.match(app, /animeart-web-shell-v78/);
-  assert.match(worker, /animeart-web-shell-v78/);
+  assert.match(app, /animeart-web-shell-v79/);
+  assert.match(worker, /animeart-web-shell-v79/);
   assert.match(html, /¿Qué quieres escribir\?/);
   assert.match(html, /class="text-simple-controls"/);
   assert.match(html, /<details class="text-advanced-options">/);
@@ -867,7 +867,7 @@ test("AA-EDITOR-UX-002 surfaces image import/library, compact view options, laye
   assert.ok(css.includes(".canvas-view-menu[open] .canvas-view-actions"));
   assert.ok(css.includes(".selection-mini-panel"));
   assert.ok(css.includes(".crop-reset-selection"));
-  assert.match(worker, /animeart-web-shell-v78/);
+  assert.match(worker, /animeart-web-shell-v79/);
 });
 
 
@@ -885,7 +885,7 @@ test("AA-MOBILE-SIMPLE-001 keeps the mobile canvas primary and reveals tools on 
   assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(html, /class="mobile-touch-dock"/);
   assert.match(html, /data-touch-action="more"/);
-  assert.match(worker, /animeart-web-shell-v78/);
+  assert.match(worker, /animeart-web-shell-v79/);
 });
 
 
@@ -922,7 +922,7 @@ test("AA-PICSART-CONTEXT-OBJECT-001 provides closable style and shape windows wi
   assert.match(app,/function openSelectedObjectStyle\(/);
   assert.match(app,/shapeMakerDialog\.close\(\)/);
   assert.match(css,/AA-PICSART-CONTEXT-OBJECT-001/);
-  assert.match(worker,/animeart-web-shell-v78/);
+  assert.match(worker,/animeart-web-shell-v79/);
 });
 
 test("T_TEXT_EDITOR outline controls register only one input handler each", async () => {
@@ -997,7 +997,7 @@ test("AA-TOOLBOX-WORKSPACE-001 keeps the mobile main surface compact and opens a
   assert.match(css, /AA-TOOLBOX-WORKSPACE-001/);
   assert.match(css, /#censor-light-dialog\[open\][\s\S]*?height: 100dvh/);
   assert.match(css, /#canvas-crop-dialog\[open\][\s\S]*?height: 100dvh/);
-  assert.match(worker, /animeart-web-shell-v78/);
+  assert.match(worker, /animeart-web-shell-v79/);
 });
 
 
@@ -1050,7 +1050,7 @@ test("AA-IMAGE-X-DELETE-AND-TOUCH-ANCHOR-001 removes the image with X and anchor
   assert.match(app, /startClient: \{ x: event\.clientX, y: event\.clientY \}/);
   assert.match(app, /interaction\.startDocument\.y \+ \(Number\(event\.clientY\) - interaction\.startClient\.y\) \/ interaction\.screenScaleAtStart/);
   assert.match(app, /A stationary tap selects the object only/);
-  assert.match(worker, /animeart-web-shell-v78/);
+  assert.match(worker, /animeart-web-shell-v79/);
   assert.match(browserE2E, /the canvas X removes the selected mobile image/);
   assert.match(browserE2E, /canvas layout shifts during a stationary touch without changing the image transform/);
   assert.match(browserE2E, /stationary multi-selection gesture does not move selected layers when the canvas rectangle changes/);
@@ -1111,10 +1111,43 @@ test("KAPIART-DESIGN-RESIZE-001 exposes editable format adaptation with undo and
   assert.match(html, /value="reframe"/);
   assert.match(app, /resizeDocumentForFormat\(state\.document,width,height,mode\)/);
   assert.match(app, /state\.history\.record\(before,next\)/);
-  assert.match(app, /animeart-web-shell-v78/);
+  assert.match(app, /animeart-web-shell-v79/);
   assert.match(app, /"\.\/domain\/design-resize\.mjs"/);
-  assert.match(worker, /animeart-web-shell-v78/);
+  assert.match(worker, /animeart-web-shell-v79/);
   assert.match(worker, /"\.\/domain\/design-resize\.mjs"/);
   assert.match(resize, /MAX_DESIGN_RESIZE_PIXELS = 40_000_000/);
   assert.match(resize, /export function resizeDocumentForFormat/);
+});
+
+
+test("KAPIART-BRAND-KIT-001 wires a local brand identity to text layers, logos and the offline shell", async () => {
+  const [html, app, worker, brandKit, brandKitTests] = await Promise.all([
+    readFile("index.html", "utf8"),
+    readFile("app.js", "utf8"),
+    readFile("service-worker.js", "utf8"),
+    readFile("domain/brand-kit.mjs", "utf8"),
+    readFile("test/brand-kit.test.mjs", "utf8")
+  ]);
+  assert.match(html, /id="brand-kit-dialog"/);
+  assert.match(html, /id="open-brand-kit"/);
+  assert.match(html, /id="quick-open-brand-kit"/);
+  assert.match(html, /id="brand-kit-logo-file" type="file" accept="image\/png,image\/jpeg,image\/webp"/);
+  assert.match(app, /initializeBrandKitTools\(\)/);
+  const brandKitRuntime = app.match(/function initializeBrandKitTools\(\)\{[\s\S]*?\n\}\n\nfunction initializeCanvaWorkflowTools\(\)/)?.[0] || "";
+  assert.ok(brandKitRuntime.length > 0, "brand kit runtime initializer is isolated and discoverable");
+  assert.doesNotMatch(brandKitRuntime, /replaceChildren/, "brand kit lists avoid replaceChildren for older Android WebView compatibility");
+  assert.match(app, /addBrandColor\(kit/);
+  assert.match(app, /addBrandTextStyle\(kit/);
+  assert.match(app, /addBrandLogo\(kit/);
+  assert.match(app, /setLayerText\(state\.document,layer\.id,patch\)/);
+  assert.match(app, /createImageLayer\("Marca · "\+item\.name/);
+  assert.match(app, /addLayer\(state\.document,layer\)/);
+  assert.match(app, /animeart-web-shell-v79/);
+  assert.match(app, /"\.\/domain\/brand-kit\.mjs"/);
+  assert.match(worker, /animeart-web-shell-v79/);
+  assert.match(worker, /"\.\/domain\/brand-kit\.mjs"/);
+  assert.match(brandKit, /BRAND_KIT_MAX_COLORS = 12/);
+  assert.match(brandKit, /BRAND_KIT_MAX_TEXT_STYLES = 20/);
+  assert.match(brandKit, /BRAND_KIT_MAX_LOGOS = 4/);
+  assert.match(brandKitTests, /brand kit stores only bounded raster logos/);
 });

@@ -147,3 +147,18 @@ Esta fase añade una herramienta para adaptar una composición ya creada a otro 
 - La prueba física en Xiaomi `24116RACCG` sigue siendo una aceptación separada; los tests de Chromium/emulador no la sustituyen.
 
 Estado al redactar esta sección: cambios preparados en `feature/kapiart-smart-resize-001`; pendiente ejecutar CI sobre el HEAD final. `main` no se modifica directamente.
+
+
+## Kit de marca local · 2026-10-29
+
+El Kit de marca guarda una identidad visual reutilizable en el dispositivo, sin cuentas ni subidas remotas.
+
+- Nombre de identidad editable (hasta 60 caracteres).
+- Paleta de hasta 12 colores HEX nombrados. Al tocar un color, se aplica al texto seleccionado y el cambio entra en el historial normal del documento.
+- Hasta 20 estilos tipográficos reutilizables. Se pueden guardar desde una capa de texto real y aplicar a otra; se conservan familia, peso, tamaño, color, alineación, espaciado, interlineado, contorno y sombra. El estilo no sobrescribe el texto, la posición o la transformación.
+- Hasta 4 logos o firmas PNG/JPEG/WebP raster, 300 KB por recurso. Se insertan como capas independientes y luego pueden moverse, escalarse, rotarse, ocultarse o eliminarse sin aplanar otras capas. Se rechazan SVG arbitrarios, URLs remotas y dimensiones inseguras.
+- Presupuesto global de almacenamiento del kit: 1,5 MB. Los límites son explícitos para proteger el almacenamiento del teléfono.
+- Acceso desde escritorio y desde «Más herramientas» en móvil. El Service Worker pasa a `animeart-web-shell-v79` y precarga el módulo local, de modo que el kit también se puede abrir sin conexión.
+- Cobertura: pruebas de dominio para normalización, límites, persistencia, fuentes válidas, colores, estilos y logos; test de contrato y flujo E2E Chromium con creación de paleta, aplicación de color, guardado de estilo y restauración del estilo sobre una capa de texto editable.
+
+La aceptación final exige Web CI completa, incluyendo el E2E real, y Android CI con empaquetado, instrumentación y arranque offline sobre el mismo SHA. La prueba táctil física en Xiaomi `24116RACCG` sigue siendo independiente de la validación de CI.

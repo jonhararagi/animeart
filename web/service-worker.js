@@ -1,4 +1,4 @@
-const CACHE_NAME = "animeart-web-shell-v78";
+const CACHE_NAME = "animeart-web-shell-v79";
 const APP_SHELL = [
   "./index.html",
   "./styles.css",
@@ -11,6 +11,7 @@ const APP_SHELL = [
   "./domain/creative-catalog.mjs",
   "./domain/design-alignment.mjs",
   "./domain/design-resize.mjs",
+  "./domain/brand-kit.mjs",
   "./domain/design-library.mjs",
   "./domain/multi-page-project.mjs",
   "./domain/pdf-export.mjs",
