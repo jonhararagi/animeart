@@ -3,7 +3,8 @@ import { createLayerAlignmentTransforms, getLayerAlignmentBounds } from "./domai
 import { getSmartSnapAdjustment } from "./domain/design-snapping.mjs";
 import { resizeDocumentForFormat } from "./domain/design-resize.mjs";
 import { deleteDesign, duplicateDesign, listDesigns, loadDesign, renameDesign, saveDesign } from "./domain/design-library.mjs";
-import { addMultiPagePage, copyLayerToPage, createMultiPageProject, deleteMultiPagePage, deleteMultiPageProject, listMultiPageProjects, loadMultiPagePage, renameMultiPagePage, renameMultiPageProject, reorderMultiPagePage, saveMultiPagePage, setActiveMultiPagePage } from "./domain/multi-page-project.mjs";
+import { describeRecoveryStorageError, listRecoverySnapshots, listMultiPageRecoverySnapshots, loadRecoverySnapshot, loadMultiPageRecoverySnapshot, saveRecoverySnapshot, saveMultiPageRecoverySnapshot } from "./domain/project-recovery.mjs";
+import { addMultiPagePage, copyLayerToPage, createMultiPageProject, deleteMultiPagePage, deleteMultiPageProject, listMultiPageProjects, loadMultiPagePage, renameMultiPagePage, renameMultiPageProject, reorderMultiPagePage, restoreMultiPageProjectSnapshot, saveMultiPagePage, setActiveMultiPagePage } from "./domain/multi-page-project.mjs";
 import { buildMultiPagePdf } from "./domain/pdf-export.mjs";
 import { initializeAssetLibrary } from "./asset-library.js";
 import { getEditingHelpPreference, initializeAppearanceSettings, setEditingHelpPreference } from "./appearance-settings.js";
@@ -43,6 +44,7 @@ const canvas = document.querySelector("#canvas");
 const removeSelectedImageButton = document.querySelector("#remove-selected-image");
 const ctx = canvas.getContext("2d", { alpha: true });
 const status = document.querySelector("#status");
+const projectSaveIndicator = document.querySelector("#project-save-indicator");
 const mobileFeedback = document.querySelector("#mobile-feedback");
 let mobileFeedbackTimer = null;
 function showMobileFeedback(message, kind = "info") {
@@ -2530,10 +2532,12 @@ function readTextEditorValues(layer) {
 function saveSelectedTextStyle() {
  const layer = selectedLayerExact();
  if (!layer || layer.contentType !== "text" || layer.locked) { setTextStyleStatus("Selecciona una capa de texto desbloqueada para guardar su estilo.", "error"); return; }
- // Snapshot the live editor controls before opening native prompt/confirm dialogs.
- // Browser dialogs can blur or reset the open editor, so reading the controls
- // after prompt() may capture defaults instead of the user's pending typography.
- const previewValues = readTextEditorValues(layer);
+ // Use the editor's transaction preview first. Its event-driven values are
+ // the authoritative pending edit and survive native prompt/confirm focus resets.
+ // Read controls only when there is no pending preview for this text layer.
+ const previewValues = state.textPreview?.layerId === layer.id
+  ? normalizeTextLayer(state.textPreview.values)
+  : readTextEditorValues(layer);
  const nameInput = window.prompt("Nombre para este estilo reutilizable:", "Mi estilo");
  if (nameInput === null) return;
  const name = String(nameInput).replace(/[\\u0000-\\u001f\\u007f]/g, "").trim().slice(0, 48);
@@ -2796,10 +2800,91 @@ function restoreStoredDocument(saved) {
   return restoreDocument(saved);
 }
 
+let projectRecoveryTimer = null;
+let projectRecoveryQueue = Promise.resolve();
+
+function setProjectSaveIndicator(message, kind = "info") {
+  if (!projectSaveIndicator) return;
+  projectSaveIndicator.textContent = String(message || "");
+  projectSaveIndicator.dataset.kind = kind;
+}
+
+async function saveMultiPageRecoveryCheckpoint(projectId, { reason = "automatic", preserveSnapshotId = null } = {}) {
+  const key = String(projectId || "");
+  if (!key) throw new Error("No hay un proyecto multipágina activo para respaldar.");
+  if (activeMultiPageSession?.id === key && !state.storageRecoveryPending) {
+    await saveActiveMultiPagePage({ withThumbnail: false, announce: false });
+  }
+  await multiPagePersistenceQueue.catch(() => null);
+  const projects = await listMultiPageProjects();
+  const project = projects.find(item => item.id === key);
+  if (!project) throw new Error("El proyecto multipágina ya no está disponible para respaldarlo.");
+  const pages = await Promise.all(project.pages.map(async metadata => {
+    const documentModel = await loadMultiPagePage(key, metadata.id);
+    if (!documentModel) throw new Error("No se pudo leer la página «" + metadata.name + "» para crear el respaldo completo.");
+    return { ...metadata, document: documentModel };
+  }));
+  return saveMultiPageRecoverySnapshot(project, pages, { reason, preserveSnapshotId });
+}
+
+function queueProjectRecoverySnapshot({ reason = "automatic", delay = 1100 } = {}) {
+  if (state.storageRecoveryPending) return;
+  if (projectRecoveryTimer) window.clearTimeout(projectRecoveryTimer);
+  setProjectSaveIndicator("Guardado local · preparando respaldo", "info");
+  projectRecoveryTimer = window.setTimeout(() => {
+    projectRecoveryTimer = null;
+    const multiPageProjectId = activeMultiPageSession?.id || null;
+    const snapshot = multiPageProjectId ? null : cloneDocument(state.document);
+    projectRecoveryQueue = projectRecoveryQueue.catch(() => null)
+      .then(() => multiPageProjectId ? saveMultiPageRecoveryCheckpoint(multiPageProjectId, { reason }) : saveRecoverySnapshot(snapshot, { reason }))
+      .then(record => {
+        const time = record?.createdAt ? new Date(record.createdAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "";
+        const label = record?.kind === "multipage" ? "Proyecto respaldado" : "Respaldo actualizado";
+        setProjectSaveIndicator(time ? label + " · " + time : label, "success");
+        return record;
+      })
+      .catch(error => {
+        setProjectSaveIndicator("Guardado local · respaldo no disponible", "warning");
+        const recoveryStatus = document.querySelector("#project-recovery-status");
+        if (recoveryStatus) {
+          recoveryStatus.textContent = describeRecoveryStorageError(error);
+          recoveryStatus.dataset.kind = "error";
+        }
+        return null;
+      });
+  }, Math.max(0, Number(delay) || 0));
+}
+
+function flushProjectRecoverySnapshot(reason = "automatic") {
+  if (projectRecoveryTimer) {
+    window.clearTimeout(projectRecoveryTimer);
+    projectRecoveryTimer = null;
+  }
+  if (state.storageRecoveryPending) return Promise.resolve(null);
+  const multiPageProjectId = activeMultiPageSession?.id || null;
+  const snapshot = multiPageProjectId ? null : cloneDocument(state.document);
+  projectRecoveryQueue = projectRecoveryQueue.catch(() => null)
+    .then(() => multiPageProjectId ? saveMultiPageRecoveryCheckpoint(multiPageProjectId, { reason }) : saveRecoverySnapshot(snapshot, { reason }))
+    .then(record => {
+      setProjectSaveIndicator(record?.kind === "multipage" ? "Proyecto respaldado" : "Respaldo actualizado", "success");
+      return record;
+    })
+    .catch(error => {
+      setProjectSaveIndicator("Guardado local · respaldo no disponible", "warning");
+      const recoveryStatus = document.querySelector("#project-recovery-status");
+      if (recoveryStatus) {
+        recoveryStatus.textContent = describeRecoveryStorageError(error);
+        recoveryStatus.dataset.kind = "error";
+      }
+      return null;
+    });
+  return projectRecoveryQueue;
+}
 function persistDocument({ markSaved = false } = {}) {
   if (state.storageRecoveryPending && !markSaved) {
     state.dirty = true;
     status.textContent = "Saved project is protected. Choose Save to replace it explicitly.";
+    setProjectSaveIndicator("Proyecto protegido · revisa la recuperación", "warning");
     return false;
   }
   try {
@@ -2807,12 +2892,14 @@ function persistDocument({ markSaved = false } = {}) {
   } catch (error) {
     state.dirty = true;
     status.textContent = error?.message || "No se pudo guardar el proyecto localmente";
+    setProjectSaveIndicator("No se pudo guardar localmente", "error");
     return false;
   }
   state.dirty = !markSaved;
   if (markSaved) setStorageRecoveryPending(false);
   if (activeMultiPageSession && !state.storageRecoveryPending) void queueActiveMultiPagePageSave();
   status.textContent = markSaved ? "Guardado localmente" : "Copia local actualizada";
+  queueProjectRecoverySnapshot();
   return true;
 }
 
@@ -6858,6 +6945,13 @@ recoverButton.addEventListener("click", () => {
   restoreStoredProject();
 });
 
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") void flushProjectRecoverySnapshot("automatic");
+});
+window.addEventListener("pagehide", () => {
+  void flushProjectRecoverySnapshot("automatic");
+});
+
 async function saveBlobToDevice(blob, filename, imageFormat = null) {
   if (!(blob instanceof Blob) || blob.size < 1) throw new Error("There is no file data to export");
   const nativeBridge = globalThis.AnimeArtNative;
@@ -7293,7 +7387,143 @@ async function createDesignThumbnail(documentModel){
   return thumbnail.length<=280000?thumbnail:"";
  }catch{return "";}
 }
+function setProjectRecoveryStatus(message, kind = "info") {
+ const node = document.querySelector("#project-recovery-status");
+ if (node) { node.textContent = String(message || ""); node.dataset.kind = kind; }
+}
+
+async function renderProjectRecovery() {
+ const grid = document.querySelector("#project-recovery-list");
+ if (!grid) return;
+ grid.replaceChildren();
+ const loading = document.createElement("p");
+ loading.className = "project-recovery-empty";
+ loading.textContent = "Leyendo versiones recuperables…";
+ grid.append(loading);
+ try {
+  const records = activeMultiPageSession ? await listMultiPageRecoverySnapshots(activeMultiPageSession.id) : await listRecoverySnapshots();
+  grid.replaceChildren();
+  if (!records.length) {
+   const empty = document.createElement("p");
+   empty.className = "project-recovery-empty";
+   empty.textContent = "Todavía no hay respaldos. KapiArt creará el primero después de guardar un cambio o puedes crear uno ahora.";
+   grid.append(empty);
+   setProjectRecoveryStatus("Sin versiones anteriores guardadas.", "info");
+   return records;
+  }
+  for (const record of records) {
+   const card = document.createElement("article");
+   card.className = "project-recovery-card";
+   card.dataset.recoveryId = record.id;
+   card.dataset.layerCount = String(record.layerCount);
+   card.dataset.kind = record.kind || "canvas";
+   card.dataset.pageCount = String(record.pageCount || 1);
+   const title = document.createElement("strong");
+   title.textContent = record.kind === "multipage"
+    ? "Proyecto multipágina · " + record.projectName
+    : record.reason === "before-restore" ? "Antes de una restauración" : record.reason === "manual" ? "Respaldo manual" : "Respaldo automático";
+   const details = document.createElement("small");
+   details.textContent = new Date(record.createdAt).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" }) +
+    (record.kind === "multipage" ? " · " + record.pageCount + " páginas · " + record.totalLayerCount + " capas editables" : " · " + record.width + " × " + record.height + " px · " + record.layerCount + " capas editables");
+   const action = document.createElement("button");
+   action.type = "button";
+   action.dataset.recoveryAction = "restore";
+   action.dataset.recoveryId = record.id;
+   action.textContent = "Restaurar esta versión";
+   card.append(title, details, action);
+   grid.append(card);
+  }
+  setProjectRecoveryStatus(records.length + " de 3 puntos de recuperación disponibles para " + (activeMultiPageSession ? "este proyecto." : "el lienzo actual."), "success");
+  return records;
+ } catch (error) {
+  grid.replaceChildren();
+  const message = document.createElement("p");
+  message.className = "project-recovery-empty";
+  message.textContent = error?.message || "No se pudo leer la bóveda de recuperación.";
+  grid.append(message);
+  setProjectRecoveryStatus(message.textContent, "error");
+  return [];
+ }
+}
+
+async function createManualProjectRecoverySnapshot() {
+ if (state.storageRecoveryPending) throw new Error("El proyecto actual está protegido por un error de recuperación. Restaura una versión válida antes de crear otro respaldo.");
+ const record = activeMultiPageSession
+  ? await saveMultiPageRecoveryCheckpoint(activeMultiPageSession.id, { reason: "manual" })
+  : await saveRecoverySnapshot(cloneDocument(state.document), { reason: "manual" });
+ setProjectSaveIndicator("Respaldo manual guardado", "success");
+ setProjectRecoveryStatus(record ? "Respaldo creado correctamente." : "Esta versión ya estaba respaldada; no se creó una copia duplicada.", "success");
+ await renderProjectRecovery();
+ return record;
+}
+async function restoreProjectRecoverySnapshot(id) {
+ if (state.dirty && !window.confirm("¿Restaurar esta versión? KapiArt guardará una copia de lo que tienes abierto antes de sustituirlo.")) return false;
+ const record = activeMultiPageSession ? await loadMultiPageRecoverySnapshot(id) : await loadRecoverySnapshot(id);
+ if (!record) throw new Error("La versión seleccionada ya no está disponible.");
+ if (projectRecoveryTimer) { window.clearTimeout(projectRecoveryTimer); projectRecoveryTimer = null; }
+ await projectRecoveryQueue.catch(() => null);
+
+ if (record.kind === "multipage") {
+  if (!state.storageRecoveryPending) {
+   try {
+    if (activeMultiPageSession) {
+     await saveMultiPageRecoveryCheckpoint(activeMultiPageSession.id, {
+      reason: "before-restore",
+      preserveSnapshotId: activeMultiPageSession.id === record.sourceProjectId ? id : null
+     });
+    } else {
+     await saveRecoverySnapshot(cloneDocument(state.document), { reason: "before-restore" });
+    }
+   } catch (error) {
+    throw new Error("No se pudo proteger el trabajo actual antes de restaurar el proyecto. No se modificó ninguna página. " + describeRecoveryStorageError(error));
+   }
+  }
+  const restoredProject = await restoreMultiPageProjectSnapshot(record);
+  const activePage = record.pages.find(page => page.id === record.activePageId) || record.pages[0];
+  if (!activePage) throw new Error("El respaldo no contiene una página activa recuperable.");
+  installMultiPageDocument(restoredProject, activePage.id, restoreDocument(activePage.document),
+   "Proyecto multipágina recuperado: " + record.projectName + " · " + record.pageCount + " páginas.");
+  setProjectSaveIndicator("Proyecto multipágina recuperado", "success");
+  await renderMultiPageDialog();
+  await renderProjectRecovery();
+  return true;
+ }
+
+ if (activeMultiPageSession && !state.storageRecoveryPending) {
+  try { await saveMultiPageRecoveryCheckpoint(activeMultiPageSession.id, { reason: "before-restore" }); }
+  catch (error) { throw new Error("No se pudo proteger el proyecto multipágina abierto. No se modificó el lienzo. " + describeRecoveryStorageError(error)); }
+ }
+ activeMultiPageSession = null;
+ await multiPagePersistenceQueue.catch(() => null);
+ if (!state.storageRecoveryPending) {
+  try { await saveRecoverySnapshot(cloneDocument(state.document), { reason: "before-restore", preserveSnapshotId: id }); }
+  catch (error) { throw new Error("No se pudo proteger el documento actual antes de restaurar. No se modificó el lienzo. " + describeRecoveryStorageError(error)); }
+ }
+ const next = restoreDocument(record.document);
+ persistDocumentSnapshot(localStorage, "animeart-web-document", next);
+ state.document = next;
+ state.history.reset(next);
+ const last = next.layers.at(-1)?.id || null;
+ setSelection(last ? [last] : [], last);
+ state.viewport = createViewport();
+ state.transformInteraction = null;
+ state.multiTransformInteraction = null;
+ state.adjustmentPreview = null;
+ state.imageEraseInteraction = null;
+ state.imageRestoreInteraction = null;
+ state.magicEraseInteraction = null;
+ state.drawing = false;
+ state.strokeBefore = null;
+ state.textPreview = null;
+ state.dirty = false;
+ setStorageRecoveryPending(false);
+ refreshDocument("Versión recuperada: " + new Date(record.createdAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" }));
+ setProjectSaveIndicator("Versión recuperada · documento protegido", "success");
+ await renderProjectRecovery();
+ return true;
+}
 function renderDesignLibrary(){
+ void renderProjectRecovery();
  const grid=document.querySelector("#design-library-list");if(!grid)return Promise.resolve();
  grid.replaceChildren();const loading=document.createElement("p");loading.className="design-library-empty";loading.textContent="Cargando tus diseños…";grid.append(loading);
  return listDesigns().then(records=>{
@@ -7793,6 +8023,24 @@ function initializeCanvaWorkflowTools(){
  document.querySelector("#quick-open-design-library")?.addEventListener("click",()=>{if(toolboxDialog?.open)toolboxDialog.close();showDesignLibraryDialog();});
  document.querySelector("#design-library-close")?.addEventListener("click",()=>{if(dialog?.open)dialog.close();else dialog?.removeAttribute("open");});
  document.querySelector("#design-library-refresh")?.addEventListener("click",renderDesignLibrary);
+ document.querySelector("#project-recovery-refresh")?.addEventListener("click",renderProjectRecovery);
+ document.querySelector("#project-recovery-save")?.addEventListener("click",async event=>{
+  const button=event.currentTarget;button.disabled=true;
+  try{await createManualProjectRecoverySnapshot();}
+  catch(error){setProjectRecoveryStatus(error?.message||"No se pudo crear el respaldo.", "error");setProjectSaveIndicator("Respaldo no disponible","warning");}
+  finally{button.disabled=false;}
+ });
+ document.querySelector("#project-recovery-list")?.addEventListener("click",async event=>{
+  const button=event.target.closest("button[data-recovery-action='restore']");
+  if(!button)return;
+  button.disabled=true;
+  try{
+   const restored=await restoreProjectRecoverySnapshot(button.dataset.recoveryId);
+   if(restored){setProjectRecoveryStatus("Versión restaurada. Sus capas siguen editables; el estado anterior quedó respaldado.","success");}
+  }catch(error){setProjectRecoveryStatus(error?.message||"No se pudo restaurar esta versión.","error");}
+  finally{button.disabled=false;}
+ });
+
  document.querySelector("#design-library-save-form")?.addEventListener("submit",async event=>{
   event.preventDefault();
   if(state.storageRecoveryPending){setDesignLibraryStatus("El guardado actual está protegido. Recupera o exporta sus datos antes de guardar este estado.","error");return;}
@@ -7914,7 +8162,7 @@ if (typeof ResizeObserver === "function") {
 
 
 // Multipage PDF export stays local and caps raster work to protect mobile memory.
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v78";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v80";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -7924,11 +8172,20 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/asset-library.mjs",
   "./domain/asset-deduplication.mjs",
   "./domain/asset-library-pagination.mjs",
-  "./domain/creative-catalog.mjs", "./domain/design-alignment.mjs", "./domain/design-snapping.mjs", "./domain/design-resize.mjs", "./domain/design-library.mjs", "./domain/multi-page-project.mjs", "./domain/element-library.mjs",
+  "./domain/creative-catalog.mjs",
+  "./domain/design-alignment.mjs",
+  "./domain/design-snapping.mjs",
+  "./domain/design-resize.mjs",
+  "./domain/design-library.mjs",
+  "./domain/project-recovery.mjs",
+  "./domain/multi-page-project.mjs",
+  "./domain/pdf-export.mjs",
+  "./domain/element-library.mjs",
   "./domain/anime-style-library.mjs",
   "./domain/anime-character-presets.mjs",
   "./manifest.webmanifest",
   "./icons/animeart-mark.svg",
+  "./assets/kapiart-mascot.png",
   "./service-worker.js",
   "./assets/cc0-detailed-anime-character.png.base64",
   "./assets/ASSET_SOURCES.md",
@@ -7944,19 +8201,22 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/image-processing-client.mjs",
   "./workers/image-processing-worker.mjs",
   "./domain/canvas-space.mjs",
+  "./domain/touch-gestures.mjs",
   "./domain/layer-adjustments.mjs",
   "./domain/quick-edit-recipes.mjs",
+  "./domain/guided-editing.mjs",
   "./domain/background-removal.mjs",
   "./domain/background-removal-profiles.mjs",
-  "./domain/model.mjs",
   "./domain/text-layer.mjs",
+  "./domain/model.mjs",
   "./domain/png-export.mjs",
+  "./domain/project-file.mjs",
   "./domain/selection.mjs",
   "./domain/viewport.mjs",
-  "./domain/touch-gestures.mjs",
   "./domain/frame-scheduler.mjs",
   "./domain/stroke-smoothing.mjs",
-  "./domain/freehand-rendering.mjs"
+  "./domain/freehand-rendering.mjs",
+  "./domain/canvas-rendering.mjs",
 ];
 
 async function reportServiceWorkerReadiness() {

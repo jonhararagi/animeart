@@ -164,7 +164,7 @@ test("text editor keeps all typography changes provisional until Apply and disca
 });
 
 
-test("saving a reusable text style snapshots active editor controls into preview without committing the document", async () => {
+test("saving a reusable text style prefers the active event-driven preview and does not commit the document", async () => {
   const app = await readFile("app.js", "utf8");
   const readerStart = app.indexOf("function readTextEditorValues(layer) {");
   const saveStart = app.indexOf("function saveSelectedTextStyle() {");
@@ -179,7 +179,9 @@ test("saving a reusable text style snapshots active editor controls into preview
     "textShadowXInput", "textShadowYInput"]) {
     assert.ok(reader.includes(field), "active text snapshot includes " + field);
   }
-  assert.ok(saveHandler.includes("const previewValues = readTextEditorValues(layer)"));
+  assert.ok(saveHandler.includes("const previewValues = state.textPreview?.layerId === layer.id"));
+  assert.ok(saveHandler.includes("normalizeTextLayer(state.textPreview.values)"));
+  assert.ok(saveHandler.includes(": readTextEditorValues(layer)"), "editor controls remain the fallback when no active preview exists");
   assert.ok(saveHandler.includes("state.textPreview = { layerId: layer.id, values: previewValues }"));
   assert.ok(saveHandler.includes("extractReusableTextStyle(previewValues)"));
   assert.ok(!saveHandler.includes("commitTextPreview") && !saveHandler.includes("commitLayerText"),

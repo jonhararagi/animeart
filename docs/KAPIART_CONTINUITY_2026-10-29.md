@@ -128,3 +128,66 @@ Estado: PARTIAL · rama abierta, sin merge.
 - **Firma:** ephemeral debug, certificado SHA-256 `826a3a7fd2faf1d91f5a8cc06605a62a8a7d8d4ac140e3d16b637ba0bf5e0ba1`. CI informa `update_compatibility=NOT GUARANTEED`: APK de pruebas; no asumir actualización sobre otra instalación firmada con una clave distinta.
 - La validación instrumentada usa el emulador CI y el E2E usa Chromium, incluido viewport móvil simulado. **No equivale a inspección visual manual ni a prueba física en el Xiaomi 24116RACCG**; ambas siguen pendientes.
 - El bloque de cancelación de imagen/composición/texto ya tiene E2E verde; no se debe repetir esa implementación. Próximo foco: inspección visual manual en emulador y dispositivo Xiaomi, comprobar lienzo limpio/restauración y completar cualquier hallazgo visual de controles, safe areas o gestos. PR #131 continúa en borrador y sin merge hasta autorización explícita.
+
+
+## 2026-11-02 · Etapa 1: gestor de proyectos y recuperación local
+
+- La rama de trabajo para esta etapa es `feature/kapiart-project-recovery-001`, creada desde el HEAD validado `7fcc5d4b7585b4461d85629a6cc4697689ba2834` de `feature/kapiart-smart-snapping-001`. Se mantiene apilada sobre la PR #131 para no duplicar ni reescribir sus cambios pendientes.
+- `main` permanece en `fc87decb5b23035852cfe9df2fb227b8de8d0275`. No se hizo merge ni cambio directo en main.
+- Hallazgo de arquitectura: KapiArt ya tenía `Mis diseños` en IndexedDB (40 proyectos manuales, miniaturas y CRUD), proyectos multipágina (10 proyectos/10 páginas) y recuperación del último documento local. La etapa no reemplaza esos sistemas ni duplica el gestor; añade una bóveda separada para versiones recuperables.
+- Nuevo módulo `web/domain/project-recovery.mjs`: IndexedDB local `kapiart-project-recovery`; máximo 3 puntos por lienzo; hasta 2,5 MB por documento; valida dimensiones, píxeles, capas y documento editable; deduplica la versión más reciente; conserva las capas independientes; lista y carga snapshots sin subir datos a servicios externos.
+- Integración Web en `web/app.js`: los guardados del documento programan un checkpoint tras 1,1 s de inactividad; `visibilitychange` a hidden y `pagehide` intentan guardar un punto inmediato; indicador de estado distingue guardado local y respaldo disponible/no disponible.
+- UI en `Mis diseños`: sección **Recuperación automática**, crear respaldo manual, actualizar, listar fecha/dimensiones/número de capas y restaurar un checkpoint. El flujo exige confirmación cuando hay cambios pendientes, carga primero el punto seleccionado y guarda el documento abierto como `before-restore` antes de reemplazar el lienzo. Si no puede proteger el estado actual, cancela la restauración. La carga elegida no se elimina por el límite de tres puntos.
+- Añadido `web/test/project-recovery.test.mjs` para validar copias independientes, límites seguros y comportamiento cuando IndexedDB no está disponible.
+- Añadido E2E real de Chromium en `web/scripts/browser-e2e.mjs`: guardar un punto, añadir una capa, esperar el checkpoint automático, restaurar la versión anterior y comprobar que las capas siguen separadas/editables.
+- README documenta la diferencia entre `Mis diseños` y la bóveda de recuperación. La nueva etapa todavía está pendiente de CI web, E2E real, CI Android, instrumentación y APK. No declarar PASS hasta revisar los workflows.
+- Aceptación física pendiente: probar en Xiaomi `24116RACCG` el guardado de un documento con varias capas, cerrar/reabrir, restaurar un punto anterior y confirmar que los proyectos manuales no se modifican.
+
+
+## 2026-11-02 · Corrección del contrato de caché offline de la Etapa 1
+
+- Diagnóstico de Web CI #41402228759: el build pasó, pero las pruebas de humo conservaban 15 expectativas de caché `animeart-web-shell-v78` cuando el service worker ya había avanzado a `v79`.
+- Diagnóstico de Android CI #41402228668: las 12 pruebas instrumentadas terminaron con **0 fallos** y MainActivity arrancó. El smoke offline falló porque `web/app.js` seguía consultando la caché v78, que devolvió 0 recursos, mientras `web/service-worker.js` instalaba v79.
+- Corrección aplicada: `OFFLINE_CACHE_NAME` ahora coincide con v79; la lista `OFFLINE_REQUIRED_RESOURCES` se genera con el mismo contrato de los 53 recursos del `APP_SHELL`, incluido `domain/project-recovery.mjs`. Se añadieron pruebas para impedir que ambas listas o versiones vuelvan a divergir y se actualizaron las expectativas de humo a v79.
+- Estado después del arreglo: pendiente de nueva ejecución de Web CI, Chromium E2E, Android instrumentation y smoke offline. No se declara PASS hasta revisar ambos workflows sobre el mismo HEAD.
+
+## 2026-11-02 · Etapa 1 KapiArt: gestor de proyectos y recuperación validada
+
+- **PR #132:** https://github.com/jonhararagi/animeart/pull/132
+- Rama: `feature/kapiart-project-recovery-001`; apilada sobre la PR #131, sin duplicar sus cambios.
+- **HEAD validado:** `c2558a4c075f53998ca7897eaad3c14460553de0`.
+- Estado: PR abierta en Draft. No se fusionó ni se cerró. `main` permanece en `fc87decb5b23035852cfe9df2fb227b8de8d0275`.
+
+### Comportamiento entregado
+
+- Bóveda local IndexedDB `kapiart-project-recovery`, independiente de la biblioteca manual **Mis diseños** y de los proyectos multipágina.
+- Hasta tres checkpoints editables. El guardado automático espera 1,1 s desde el último cambio persistido; también intenta guardar al pasar la app o pestaña a segundo plano. Hay respaldo manual y restauración explícita.
+- La restauración protege primero el documento que está abierto. Si no puede crear el checkpoint `before-restore`, cancela el reemplazo. La rotación conserva el checkpoint que se eligió restaurar, mantiene los puntos recientes y nunca supera tres entradas.
+- Las capas, textos, imágenes y sus IDs se mantienen por separado. No se aplana el proyecto.
+- Se conservan los límites locales existentes: 2,5 MB por documento, 8192 px por lado, 40 MP y 200 capas. La recuperación no consume las 40 entradas manuales de **Mis diseños**.
+- README y continuidad documentan que la bóveda es local, sin nube obligatoria.
+
+### Validación automatizada del HEAD exacto
+
+- **Web CI #41505636119 PASS:** https://github.com/jonhararagi/animeart/actions/runs/41505636119
+  - Build, suite unitaria, benchmark 4/8/16 MP, verificación del bundle y E2E real de Chromium: PASS.
+  - El E2E cubre checkpoint automático, restauración de la versión anterior, conservación de capas editables y retención del checkpoint elegido.
+- **Android CI #41505636122 PASS:** https://github.com/jonhararagi/animeart/actions/runs/41505636122
+  - Build, verificación del editor empaquetado, unit tests, lint, instrumentación del emulador, smoke de arranque offline, firma, checksum y subida APK: PASS.
+  - Diagnóstico offline: cache `animeart-web-shell-v79`, **53/53 recursos requeridos**, `missing=[]`, con Canvas disponible en inicio y recuperación offline.
+- El contrato de caché se unificó entre la lista comprobada por el editor y los 53 recursos del `APP_SHELL` del service worker. Se añadió una prueba para que versión y lista no vuelvan a divergir.
+
+### APK de pruebas
+
+- Artefacto GitHub ID: `13170704069`.
+- Descarga: https://github.com/jonhararagi/animeart/actions/runs/41505636122/artifacts/13170704069
+- APK: `KapiArt-Android-v0.3.7-f421d30a0263f379c565344f6078727638209ea1.apk`.
+- Paquete `com.jonhararagi.animeart`, `versionName=0.3.7`, `versionCode=10`, tamaño 11.239.743 bytes.
+- SHA-256 APK, cotejado con el sidecar del artefacto y cálculo independiente: `a983a065443233f0597ccebcc3cb9fb10a284f8634697db52e8c156b15bdb5bb`.
+- SHA-256 ZIP del artefacto GitHub: `c0709172b3b4f9bcc87f6a24a5be54868000e48215c772c55ae0bf2001d97193`.
+- Firma `ephemeral-debug`; certificado SHA-256 `0ef62f2b857098f769ed5756865ed27f738b26168cca79b96a1a15ee8f3cf9f8`. La compatibilidad de actualización **no está garantizada** con APK instaladas que tengan otra clave.
+
+### Pendiente de aceptación física
+
+- La CI Web y el emulador Android no sustituyen la prueba física en Xiaomi `24116RACCG`. Sigue pendiente instalar esta APK y verificar guardado, cierre/reapertura, restauración de checkpoint y que **Mis diseños** permanezca intacto.
+- No declarar validación en dispositivo hasta que esa prueba se realice expresamente.

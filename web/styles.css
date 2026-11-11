@@ -4912,3 +4912,72 @@ dialog {
     font-size: 1.5rem;
   }
 }
+
+
+/* KAPIART-PROJECT-RECOVERY-001 */
+.project-save-indicator {
+  display: inline-flex;
+  align-items: center;
+  max-width: 190px;
+  min-height: 28px;
+  overflow: hidden;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid #6d514a;
+  border-radius: 999px;
+  color: #d7c8c0;
+  background: #2b211f;
+  font-size: 0.68rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.project-save-indicator[data-kind="success"] { border-color: #527b5b; color: #c7f0cf; }
+.project-save-indicator[data-kind="warning"] { border-color: #9a7441; color: #ffe1b8; }
+.project-save-indicator[data-kind="error"] { border-color: #8d4e49; color: #ffc0b7; }
+.project-recovery-panel {
+  display: grid;
+  gap: 0.7rem;
+  padding: 1rem;
+  border: 1px solid #6d514a;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #302321, #241a19);
+}
+.project-recovery-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+.project-recovery-header h3 { margin: 0.15rem 0 0.35rem; color: #fff4eb; font-size: 1.05rem; }
+.project-recovery-header p:last-child { max-width: 58ch; margin: 0; color: #d7c8c0; font-size: 0.8rem; line-height: 1.45; }
+.project-recovery-panel button {
+  min-height: 44px;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid #6d514a;
+  border-radius: 10px;
+  color: #fff4eb;
+  background: #392b29;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.project-recovery-panel button:focus-visible { outline: 2px solid #f2a2a0; outline-offset: 2px; }
+.project-recovery-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0.65rem; }
+#project-recovery-save { border-color: #e6817b; background: #673a38; }
+.project-recovery-actions span, #project-recovery-status { margin: 0; color: #d7c8c0; font-size: 0.76rem; line-height: 1.4; }
+#project-recovery-status[data-kind="error"] { color: #ffc0b7; }
+#project-recovery-status[data-kind="success"] { color: #c7f0cf; }
+.project-recovery-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.6rem; }
+.project-recovery-card { display: grid; gap: 0.5rem; min-width: 0; padding: 0.7rem; border: 1px solid #4c352f; border-radius: 12px; background: #2b211f; }
+.project-recovery-card strong { color: #fff4eb; font-size: 0.83rem; }
+.project-recovery-card small { color: #d7c8c0; font-size: 0.72rem; line-height: 1.4; overflow-wrap: anywhere; }
+.project-recovery-card button { width: 100%; }
+.project-recovery-empty { margin: 0; padding: 0.85rem; border: 1px dashed #6d514a; border-radius: 10px; color: #d7c8c0; font-size: 0.8rem; line-height: 1.45; }
+@media (max-width: 620px) {
+  .project-save-indicator { max-width: 112px; padding: 0.2rem 0.4rem; font-size: 0.58rem; }
+  .project-recovery-panel { padding: 0.8rem; }
+  .project-recovery-header { align-items: stretch; flex-direction: column; }
+  .project-recovery-header button { align-self: flex-start; }
+  .project-recovery-list { grid-template-columns: 1fr; }
+}

@@ -15,7 +15,7 @@
       <img class="brand-mascot" src="./assets/kapiart-mascot.png" alt="Mascota de KapiArt">
       <span class="brand-copy"><strong>KapiArt</strong><small>ARTE ANIME · CUTE STUDIO</small></span>
     </a>
-    <div class="topbar-actions"><button id="editor-mode-toggle" type="button" aria-label="Cambiar modo de edición">Modo simple</button><button id="appearance-open" type="button" aria-label="Personalizar apariencia">Apariencia</button><div class="status" id="status">Edición local</div></div>
+    <div class="topbar-actions"><button id="editor-mode-toggle" type="button" aria-label="Cambiar modo de edición">Modo simple</button><button id="appearance-open" type="button" aria-label="Personalizar apariencia">Apariencia</button><div class="status" id="status">Edición local<span id="project-save-indicator" class="project-save-indicator" role="status" aria-live="polite" data-kind="info">Guardado local · respaldo pendiente</span></div></div>
     <div class="mobile-top-actions" role="group" aria-label="Acciones del editor">
       <button type="button" data-mobile-top-action="undo" aria-label="Deshacer" title="Deshacer">↶</button>
       <button type="button" data-mobile-top-action="redo" aria-label="Rehacer" title="Rehacer">↷</button>
@@ -1140,6 +1140,18 @@
       <button type="submit" id="design-library-save-current">Guardar diseño actual</button>
       <button type="button" id="design-library-refresh">Actualizar lista</button>
     </form>
+    <section class="project-recovery-panel" aria-labelledby="project-recovery-title">
+      <header class="project-recovery-header">
+        <div><p class="eyebrow">PROTECCIÓN LOCAL</p><h3 id="project-recovery-title">Recuperación automática</h3><p>Hasta tres versiones recientes con sus capas editables. Los respaldos permanecen en este dispositivo.</p></div>
+        <button type="button" id="project-recovery-refresh">Actualizar</button>
+      </header>
+      <div class="project-recovery-actions">
+        <button type="button" id="project-recovery-save">Crear respaldo ahora</button>
+        <span>Se crea otro punto al guardar cambios y al dejar de editar.</span>
+      </div>
+      <p id="project-recovery-status" role="status" aria-live="polite">Buscando respaldos locales…</p>
+      <div id="project-recovery-list" class="project-recovery-list" aria-label="Versiones recuperables"></div>
+    </section>
     <p id="design-library-status" class="design-library-status" role="status" aria-live="polite"></p>
     <div id="design-library-list" class="design-library-list" aria-label="Diseños guardados"></div>
     <footer class="design-library-footer"><p>Los diseños se almacenan en este dispositivo, sin subirlos a una nube. Exporta también un archivo de proyecto para tener una copia externa.</p></footer>
