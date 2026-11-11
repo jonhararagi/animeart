@@ -2927,7 +2927,7 @@ try {
   await click("#design-library-close");
   await openMultiPageManager();
   await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===3',15000);
-  const restoredMultipageInfo = await evaluate('({pageCount:document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length,active:document.querySelector("#multi-page-active-page")?.textContent||"",layers:Array.from(document.querySelectorAll("#multi-page-page-list .multi-page-page-info small")).map(node=>Number(node.textContent.match(/(\\\\d+) capas/)?.[1]||0))})');
+  const restoredMultipageInfo = await evaluate('({pageCount:document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length,active:document.querySelector("#multi-page-active-page")?.textContent||"",layers:Array.from(document.querySelectorAll("#multi-page-page-list .multi-page-page-info small")).map(node=>Number(node.textContent.match(/(\\d+) capas/)?.[1]||0))})');
   assert(restoredMultipageInfo.pageCount===3 && /de 3/.test(restoredMultipageInfo.active),
     "multipage recovery restores page count, active page and page order");
   assert(restoredMultipageInfo.layers.length===3 && restoredMultipageInfo.layers.every(Number.isFinite),
