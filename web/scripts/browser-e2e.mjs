@@ -2735,6 +2735,14 @@ try {
   await click("#creative-studio-x");
 
   await evaluate('window.confirm=()=>true; window.prompt=(message,defaultValue)=>message.startsWith("Nombre de la copia")?(defaultValue||"Copia E2E"):"Nombre renombrado E2E";');
+  await evaluate('document.querySelector("#add-layer")?.click()');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.length>=1',10000);
+  await evaluate('Object.defineProperty(document,"visibilityState",{configurable:true,value:"hidden"}); document.dispatchEvent(new Event("visibilitychange"));');
+  await waitFor('new Promise(resolve=>{const request=indexedDB.open("kapiart-project-recovery",1);request.onsuccess=()=>{const db=request.result;const get=db.transaction("snapshots","readonly").objectStore("snapshots").getAll();get.onsuccess=()=>{const count=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.length;resolve(get.result.some(item=>item.layerCount===count));db.close();};};request.onerror=()=>resolve(false);})',15000);
+  await evaluate('Object.defineProperty(document,"visibilityState",{configurable:true,value:"visible"});');
+  await evaluate('document.querySelector("#add-layer")?.click()');
+  await evaluate('window.dispatchEvent(new Event("pagehide"))');
+  await waitFor('new Promise(resolve=>{const request=indexedDB.open("kapiart-project-recovery",1);request.onsuccess=()=>{const db=request.result;const get=db.transaction("snapshots","readonly").objectStore("snapshots").getAll();get.onsuccess=()=>{const count=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.length;resolve(get.result.some(item=>item.layerCount===count));db.close();};};request.onerror=()=>resolve(false);})',15000);
   await openDesignLibrary();
   await click("#project-recovery-save");
   await waitFor('document.querySelectorAll("#project-recovery-list .project-recovery-card").length>=1',15000);
@@ -2899,6 +2907,31 @@ try {
   const activeAfterReorder = await evaluate('document.querySelector("#multi-page-active-page")?.textContent||""');
   assert(/2 de 3/.test(activeAfterReorder),
     "pages can be renamed and reordered without losing the active page");
+
+  await click("#multi-page-close");
+  await waitFor('document.querySelector("#multi-page-dialog")?.open !== true');
+  await openDesignLibrary();
+  await click("#project-recovery-save");
+  await waitFor('Array.from(document.querySelectorAll("#project-recovery-list .project-recovery-card")).some(card=>card.dataset.kind==="multipage"&&Number(card.dataset.pageCount)===3)',15000);
+  const multipageCheckpointId = await evaluate('document.querySelector("#project-recovery-list .project-recovery-card[data-kind=\\"multipage\\"]")?.dataset.recoveryId||""');
+  assert(Boolean(multipageCheckpointId), "manual recovery stores every page in the active multipage project");
+  await click("#design-library-close");
+  await openMultiPageManager();
+  await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===3');
+  await click('#multi-page-page-list .multi-page-page-card:last-child button[data-multi-page-action="delete"]');
+  await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===2',10000);
+  await click("#multi-page-close");
+  await openDesignLibrary();
+  await click('#project-recovery-list button[data-recovery-action="restore"][data-recovery-id="' + multipageCheckpointId + '"]');
+  await waitFor('document.querySelector("#status")?.textContent.includes("Proyecto multipágina recuperado")',15000);
+  await click("#design-library-close");
+  await openMultiPageManager();
+  await waitFor('document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length===3',15000);
+  const restoredMultipageInfo = await evaluate('({pageCount:document.querySelectorAll("#multi-page-page-list .multi-page-page-card").length,active:document.querySelector("#multi-page-active-page")?.textContent||"",layers:Array.from(document.querySelectorAll("#multi-page-page-list .multi-page-page-info small")).map(node=>Number(node.textContent.match(/(\\\\d+) capas/)?.[1]||0))})');
+  assert(restoredMultipageInfo.pageCount===3 && /de 3/.test(restoredMultipageInfo.active),
+    "multipage recovery restores page count, active page and page order");
+  assert(restoredMultipageInfo.layers.length===3 && restoredMultipageInfo.layers.every(Number.isFinite),
+    "multipage recovery restores editable layer metadata for every page");
 
   await click("#multi-page-export-pdf");
   await waitFor('document.querySelector("#multi-page-status")?.textContent.includes("PDF exportado correctamente")',30000);

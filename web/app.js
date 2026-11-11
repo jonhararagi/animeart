@@ -3,8 +3,8 @@ import { createLayerAlignmentTransforms, getLayerAlignmentBounds } from "./domai
 import { getSmartSnapAdjustment } from "./domain/design-snapping.mjs";
 import { resizeDocumentForFormat } from "./domain/design-resize.mjs";
 import { deleteDesign, duplicateDesign, listDesigns, loadDesign, renameDesign, saveDesign } from "./domain/design-library.mjs";
-import { listRecoverySnapshots, loadRecoverySnapshot, saveRecoverySnapshot } from "./domain/project-recovery.mjs";
-import { addMultiPagePage, copyLayerToPage, createMultiPageProject, deleteMultiPagePage, deleteMultiPageProject, listMultiPageProjects, loadMultiPagePage, renameMultiPagePage, renameMultiPageProject, reorderMultiPagePage, saveMultiPagePage, setActiveMultiPagePage } from "./domain/multi-page-project.mjs";
+import { describeRecoveryStorageError, listRecoverySnapshots, listMultiPageRecoverySnapshots, loadRecoverySnapshot, loadMultiPageRecoverySnapshot, saveRecoverySnapshot, saveMultiPageRecoverySnapshot } from "./domain/project-recovery.mjs";
+import { addMultiPagePage, copyLayerToPage, createMultiPageProject, deleteMultiPagePage, deleteMultiPageProject, listMultiPageProjects, loadMultiPagePage, renameMultiPagePage, renameMultiPageProject, reorderMultiPagePage, restoreMultiPageProjectSnapshot, saveMultiPagePage, setActiveMultiPagePage } from "./domain/multi-page-project.mjs";
 import { buildMultiPagePdf } from "./domain/pdf-export.mjs";
 import { initializeAssetLibrary } from "./asset-library.js";
 import { getEditingHelpPreference, initializeAppearanceSettings, setEditingHelpPreference } from "./appearance-settings.js";
@@ -2809,25 +2809,45 @@ function setProjectSaveIndicator(message, kind = "info") {
   projectSaveIndicator.dataset.kind = kind;
 }
 
+async function saveMultiPageRecoveryCheckpoint(projectId, { reason = "automatic", preserveSnapshotId = null } = {}) {
+  const key = String(projectId || "");
+  if (!key) throw new Error("No hay un proyecto multipágina activo para respaldar.");
+  if (activeMultiPageSession?.id === key && !state.storageRecoveryPending) {
+    await saveActiveMultiPagePage({ withThumbnail: false, announce: false });
+  }
+  await multiPagePersistenceQueue.catch(() => null);
+  const projects = await listMultiPageProjects();
+  const project = projects.find(item => item.id === key);
+  if (!project) throw new Error("El proyecto multipágina ya no está disponible para respaldarlo.");
+  const pages = await Promise.all(project.pages.map(async metadata => {
+    const documentModel = await loadMultiPagePage(key, metadata.id);
+    if (!documentModel) throw new Error("No se pudo leer la página «" + metadata.name + "» para crear el respaldo completo.");
+    return { ...metadata, document: documentModel };
+  }));
+  return saveMultiPageRecoverySnapshot(project, pages, { reason, preserveSnapshotId });
+}
+
 function queueProjectRecoverySnapshot({ reason = "automatic", delay = 1100 } = {}) {
   if (state.storageRecoveryPending) return;
   if (projectRecoveryTimer) window.clearTimeout(projectRecoveryTimer);
   setProjectSaveIndicator("Guardado local · preparando respaldo", "info");
   projectRecoveryTimer = window.setTimeout(() => {
     projectRecoveryTimer = null;
-    const snapshot = cloneDocument(state.document);
+    const multiPageProjectId = activeMultiPageSession?.id || null;
+    const snapshot = multiPageProjectId ? null : cloneDocument(state.document);
     projectRecoveryQueue = projectRecoveryQueue.catch(() => null)
-      .then(() => saveRecoverySnapshot(snapshot, { reason }))
+      .then(() => multiPageProjectId ? saveMultiPageRecoveryCheckpoint(multiPageProjectId, { reason }) : saveRecoverySnapshot(snapshot, { reason }))
       .then(record => {
         const time = record?.createdAt ? new Date(record.createdAt).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) : "";
-        setProjectSaveIndicator(time ? "Respaldo actualizado · " + time : "Respaldo actualizado", "success");
+        const label = record?.kind === "multipage" ? "Proyecto respaldado" : "Respaldo actualizado";
+        setProjectSaveIndicator(time ? label + " · " + time : label, "success");
         return record;
       })
       .catch(error => {
         setProjectSaveIndicator("Guardado local · respaldo no disponible", "warning");
         const recoveryStatus = document.querySelector("#project-recovery-status");
         if (recoveryStatus) {
-          recoveryStatus.textContent = error?.message || "No se pudo actualizar el respaldo automático.";
+          recoveryStatus.textContent = describeRecoveryStorageError(error);
           recoveryStatus.dataset.kind = "error";
         }
         return null;
@@ -2841,20 +2861,25 @@ function flushProjectRecoverySnapshot(reason = "automatic") {
     projectRecoveryTimer = null;
   }
   if (state.storageRecoveryPending) return Promise.resolve(null);
-  const snapshot = cloneDocument(state.document);
+  const multiPageProjectId = activeMultiPageSession?.id || null;
+  const snapshot = multiPageProjectId ? null : cloneDocument(state.document);
   projectRecoveryQueue = projectRecoveryQueue.catch(() => null)
-    .then(() => saveRecoverySnapshot(snapshot, { reason }))
+    .then(() => multiPageProjectId ? saveMultiPageRecoveryCheckpoint(multiPageProjectId, { reason }) : saveRecoverySnapshot(snapshot, { reason }))
     .then(record => {
-      setProjectSaveIndicator("Respaldo actualizado", "success");
+      setProjectSaveIndicator(record?.kind === "multipage" ? "Proyecto respaldado" : "Respaldo actualizado", "success");
       return record;
     })
     .catch(error => {
       setProjectSaveIndicator("Guardado local · respaldo no disponible", "warning");
+      const recoveryStatus = document.querySelector("#project-recovery-status");
+      if (recoveryStatus) {
+        recoveryStatus.textContent = describeRecoveryStorageError(error);
+        recoveryStatus.dataset.kind = "error";
+      }
       return null;
     });
   return projectRecoveryQueue;
 }
-
 function persistDocument({ markSaved = false } = {}) {
   if (state.storageRecoveryPending && !markSaved) {
     state.dirty = true;
@@ -6918,13 +6943,13 @@ projectForm.addEventListener("submit", event => {
 
 recoverButton.addEventListener("click", () => {
   restoreStoredProject();
-document.addEventListener("visibilitychange",()=>{
- if(document.visibilityState==="hidden") void flushProjectRecoverySnapshot("automatic");
-});
-window.addEventListener("pagehide",()=>{
- void flushProjectRecoverySnapshot("automatic");
 });
 
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") void flushProjectRecoverySnapshot("automatic");
+});
+window.addEventListener("pagehide", () => {
+  void flushProjectRecoverySnapshot("automatic");
 });
 
 async function saveBlobToDevice(blob, filename, imageFormat = null) {
@@ -7376,7 +7401,7 @@ async function renderProjectRecovery() {
  loading.textContent = "Leyendo versiones recuperables…";
  grid.append(loading);
  try {
-  const records = await listRecoverySnapshots();
+  const records = activeMultiPageSession ? await listMultiPageRecoverySnapshots(activeMultiPageSession.id) : await listRecoverySnapshots();
   grid.replaceChildren();
   if (!records.length) {
    const empty = document.createElement("p");
@@ -7391,11 +7416,15 @@ async function renderProjectRecovery() {
    card.className = "project-recovery-card";
    card.dataset.recoveryId = record.id;
    card.dataset.layerCount = String(record.layerCount);
+   card.dataset.kind = record.kind || "canvas";
+   card.dataset.pageCount = String(record.pageCount || 1);
    const title = document.createElement("strong");
-   title.textContent = record.reason === "before-restore" ? "Antes de una restauración" : record.reason === "manual" ? "Respaldo manual" : "Respaldo automático";
+   title.textContent = record.kind === "multipage"
+    ? "Proyecto multipágina · " + record.projectName
+    : record.reason === "before-restore" ? "Antes de una restauración" : record.reason === "manual" ? "Respaldo manual" : "Respaldo automático";
    const details = document.createElement("small");
    details.textContent = new Date(record.createdAt).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" }) +
-    " · " + record.width + " × " + record.height + " px · " + record.layerCount + " capas editables";
+    (record.kind === "multipage" ? " · " + record.pageCount + " páginas · " + record.totalLayerCount + " capas editables" : " · " + record.width + " × " + record.height + " px · " + record.layerCount + " capas editables");
    const action = document.createElement("button");
    action.type = "button";
    action.dataset.recoveryAction = "restore";
@@ -7404,7 +7433,7 @@ async function renderProjectRecovery() {
    card.append(title, details, action);
    grid.append(card);
   }
-  setProjectRecoveryStatus(records.length + " de 3 puntos de recuperación disponibles en este dispositivo.", "success");
+  setProjectRecoveryStatus(records.length + " de 3 puntos de recuperación disponibles para " + (activeMultiPageSession ? "este proyecto." : "el lienzo actual."), "success");
   return records;
  } catch (error) {
   grid.replaceChildren();
@@ -7419,34 +7448,56 @@ async function renderProjectRecovery() {
 
 async function createManualProjectRecoverySnapshot() {
  if (state.storageRecoveryPending) throw new Error("El proyecto actual está protegido por un error de recuperación. Restaura una versión válida antes de crear otro respaldo.");
- const snapshot = cloneDocument(state.document);
- const record = await saveRecoverySnapshot(snapshot, { reason: "manual" });
+ const record = activeMultiPageSession
+  ? await saveMultiPageRecoveryCheckpoint(activeMultiPageSession.id, { reason: "manual" })
+  : await saveRecoverySnapshot(cloneDocument(state.document), { reason: "manual" });
  setProjectSaveIndicator("Respaldo manual guardado", "success");
  setProjectRecoveryStatus(record ? "Respaldo creado correctamente." : "Esta versión ya estaba respaldada; no se creó una copia duplicada.", "success");
  await renderProjectRecovery();
  return record;
 }
-
 async function restoreProjectRecoverySnapshot(id) {
- if (state.dirty && !window.confirm("¿Restaurar esta versión? KapiArt guardará una copia de lo que tienes abierto antes de sustituir el lienzo actual.")) return false;
- const record = await loadRecoverySnapshot(id);
+ if (state.dirty && !window.confirm("¿Restaurar esta versión? KapiArt guardará una copia de lo que tienes abierto antes de sustituirlo.")) return false;
+ const record = activeMultiPageSession ? await loadMultiPageRecoverySnapshot(id) : await loadRecoverySnapshot(id);
  if (!record) throw new Error("La versión seleccionada ya no está disponible.");
- if (activeMultiPageSession) {
-  await saveActiveMultiPagePage({ withThumbnail: true, announce: false });
-  activeMultiPageSession = null;
-  await multiPagePersistenceQueue.catch(() => null);
- }
- if (projectRecoveryTimer) {
-  window.clearTimeout(projectRecoveryTimer);
-  projectRecoveryTimer = null;
- }
+ if (projectRecoveryTimer) { window.clearTimeout(projectRecoveryTimer); projectRecoveryTimer = null; }
  await projectRecoveryQueue.catch(() => null);
- if (!state.storageRecoveryPending) {
-  try {
-   await saveRecoverySnapshot(cloneDocument(state.document), { reason: "before-restore", preserveSnapshotId: id });
-  } catch (error) {
-   throw new Error("No se pudo proteger el documento actual antes de restaurar. No se modificó el lienzo. " + (error?.message || ""));
+
+ if (record.kind === "multipage") {
+  if (!state.storageRecoveryPending) {
+   try {
+    if (activeMultiPageSession) {
+     await saveMultiPageRecoveryCheckpoint(activeMultiPageSession.id, {
+      reason: "before-restore",
+      preserveSnapshotId: activeMultiPageSession.id === record.sourceProjectId ? id : null
+     });
+    } else {
+     await saveRecoverySnapshot(cloneDocument(state.document), { reason: "before-restore" });
+    }
+   } catch (error) {
+    throw new Error("No se pudo proteger el trabajo actual antes de restaurar el proyecto. No se modificó ninguna página. " + describeRecoveryStorageError(error));
+   }
   }
+  const restoredProject = await restoreMultiPageProjectSnapshot(record);
+  const activePage = record.pages.find(page => page.id === record.activePageId) || record.pages[0];
+  if (!activePage) throw new Error("El respaldo no contiene una página activa recuperable.");
+  installMultiPageDocument(restoredProject, activePage.id, restoreDocument(activePage.document),
+   "Proyecto multipágina recuperado: " + record.projectName + " · " + record.pageCount + " páginas.");
+  setProjectSaveIndicator("Proyecto multipágina recuperado", "success");
+  await renderMultiPageDialog();
+  await renderProjectRecovery();
+  return true;
+ }
+
+ if (activeMultiPageSession && !state.storageRecoveryPending) {
+  try { await saveMultiPageRecoveryCheckpoint(activeMultiPageSession.id, { reason: "before-restore" }); }
+  catch (error) { throw new Error("No se pudo proteger el proyecto multipágina abierto. No se modificó el lienzo. " + describeRecoveryStorageError(error)); }
+ }
+ activeMultiPageSession = null;
+ await multiPagePersistenceQueue.catch(() => null);
+ if (!state.storageRecoveryPending) {
+  try { await saveRecoverySnapshot(cloneDocument(state.document), { reason: "before-restore", preserveSnapshotId: id }); }
+  catch (error) { throw new Error("No se pudo proteger el documento actual antes de restaurar. No se modificó el lienzo. " + describeRecoveryStorageError(error)); }
  }
  const next = restoreDocument(record.document);
  persistDocumentSnapshot(localStorage, "animeart-web-document", next);
@@ -7471,7 +7522,6 @@ async function restoreProjectRecoverySnapshot(id) {
  await renderProjectRecovery();
  return true;
 }
-
 function renderDesignLibrary(){
  void renderProjectRecovery();
  const grid=document.querySelector("#design-library-list");if(!grid)return Promise.resolve();
@@ -8112,7 +8162,7 @@ if (typeof ResizeObserver === "function") {
 
 
 // Multipage PDF export stays local and caps raster work to protect mobile memory.
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v79";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v80";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",

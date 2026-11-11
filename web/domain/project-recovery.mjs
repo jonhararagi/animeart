@@ -4,6 +4,8 @@ export const PROJECT_RECOVERY_DATABASE = "kapiart-project-recovery";
 export const PROJECT_RECOVERY_DATABASE_VERSION = 1;
 export const PROJECT_RECOVERY_SNAPSHOT_LIMIT = 3;
 export const MAX_RECOVERY_SNAPSHOT_CHARS = 2_500_000;
+export const MAX_RECOVERY_MULTIPAGE_PAGES = 10;
+export const MAX_RECOVERY_MULTIPAGE_CHARS = 25_000_000;
 
 const SNAPSHOTS_STORE = "snapshots";
 const RECOVERY_PROJECT_ID = "active-canvas";
@@ -89,7 +91,7 @@ function attachTransactionErrors(transaction, reject) {
 }
 
 function publicSnapshot(record) {
-  const { document, ...metadata } = record;
+  const { document, pages, ...metadata } = record;
   return metadata;
 }
 
@@ -193,6 +195,207 @@ export async function loadRecoverySnapshot(id, { indexedDBApi = globalThis.index
         try {
           validateRecoveryDocument(record.document);
           resolve({ ...publicSnapshot(record), document: restoreDocument(record.document) });
+        } catch (error) {
+          reject(error);
+        }
+      };
+    });
+  } finally {
+    db.close();
+  }
+}
+
+
+function multipageRecoveryProjectKey(projectId) {
+  const key = String(projectId || "").trim();
+  if (!key) throw new TypeError("Falta el identificador del proyecto multipágina.");
+  return "multipage:" + key;
+}
+
+export function describeRecoveryStorageError(error) {
+  if (error?.name === "QuotaExceededError") {
+    return "El almacenamiento local está lleno. KapiArt conservó los respaldos anteriores; exporta una copia y libera espacio antes de volver a guardar.";
+  }
+  if (error?.name === "InvalidStateError" || error?.name === "UnknownError") {
+    return "El almacenamiento local no está disponible en este momento. KapiArt no eliminará tus proyectos; intenta exportar una copia cuando el almacenamiento vuelva a funcionar.";
+  }
+  if (error?.name === "AbortError") {
+    return "El respaldo se interrumpió antes de completarse. Los puntos anteriores se conservaron.";
+  }
+  return error?.message || "No se pudo completar la operación de recuperación.";
+}
+
+export function createMultiPageRecoverySnapshot({ project, pages, id = makeId(), now = Date.now(), reason = "automatic" } = {}) {
+  if (!project || typeof project !== "object") throw new TypeError("Falta el proyecto multipágina que se quiere respaldar.");
+  const sourceProjectId = String(project.id || "").trim();
+  const projectName = String(project.name || "").trim().slice(0, 90);
+  if (!sourceProjectId || !projectName) throw new TypeError("El proyecto multipágina no tiene un identificador y nombre válidos.");
+  if (!Array.isArray(project.pages) || project.pages.length < 1 || project.pages.length > MAX_RECOVERY_MULTIPAGE_PAGES) {
+    throw new RangeError("Un respaldo multipágina debe contener entre 1 y 10 páginas.");
+  }
+  if (!Array.isArray(pages)) throw new TypeError("Faltan los documentos editables de las páginas.");
+  const byId = new Map();
+  for (const item of pages) {
+    const key = String(item?.id || "").trim();
+    if (!key || byId.has(key)) throw new TypeError("El respaldo contiene identificadores de página vacíos o duplicados.");
+    byId.set(key, item);
+  }
+  const seen = new Set();
+  let serializedChars = 0;
+  const normalizedPages = project.pages.map((metadata, order) => {
+    const pageId = String(metadata?.id || "").trim();
+    if (!pageId || seen.has(pageId)) throw new TypeError("El proyecto contiene páginas duplicadas o sin identificador.");
+    seen.add(pageId);
+    const source = byId.get(pageId);
+    if (!source?.document) throw new TypeError("No se pudo leer el contenido de la página «" + String(metadata?.name || pageId) + "».");
+    const validated = validateRecoveryDocument(source.document);
+    serializedChars += validated.serialized.length;
+    return {
+      id: pageId,
+      name: String(metadata?.name || "Página " + (order + 1)).slice(0, 90),
+      order,
+      width: validated.document.width,
+      height: validated.document.height,
+      layerCount: validated.document.layers.length,
+      thumbnail: typeof metadata?.thumbnail === "string" && metadata.thumbnail.startsWith("data:image/")
+        ? metadata.thumbnail.slice(0, 280_000) : "",
+      createdAt: Number(metadata?.createdAt) || Number(now) || Date.now(),
+      updatedAt: Number(metadata?.updatedAt) || Number(now) || Date.now(),
+      document: validated.document
+    };
+  });
+  if (byId.size !== normalizedPages.length) throw new TypeError("El respaldo contiene páginas que no pertenecen al proyecto.");
+  if (serializedChars > MAX_RECOVERY_MULTIPAGE_CHARS) {
+    throw new RangeError("El proyecto supera el límite seguro de 25 MB por respaldo multipágina. Exporta el proyecto por separado.");
+  }
+  const activePageId = normalizedPages.some(page => page.id === String(project.activePageId))
+    ? String(project.activePageId) : normalizedPages[0].id;
+  const activePage = normalizedPages.find(page => page.id === activePageId) || normalizedPages[0];
+  const timestamp = Number(now);
+  const createdAt = Number.isFinite(timestamp) && timestamp > 0 ? timestamp : Date.now();
+  const safeReason = RECOVERY_REASONS.has(reason) ? reason : "automatic";
+  return {
+    id: String(id),
+    kind: "multipage",
+    projectId: multipageRecoveryProjectKey(sourceProjectId),
+    sourceProjectId,
+    projectName,
+    version: Number(project.version) || 1,
+    projectCreatedAt: Number(project.createdAt) || createdAt,
+    projectUpdatedAt: Number(project.updatedAt) || createdAt,
+    activePageId,
+    pageCount: normalizedPages.length,
+    totalLayerCount: normalizedPages.reduce((total, page) => total + page.layerCount, 0),
+    serializedChars,
+    reason: safeReason,
+    createdAt,
+    width: activePage.width,
+    height: activePage.height,
+    layerCount: activePage.layerCount,
+    pages: normalizedPages
+  };
+}
+
+export async function saveMultiPageRecoverySnapshot(project, pages, {
+  indexedDBApi = globalThis.indexedDB,
+  now = Date.now(),
+  reason = "automatic",
+  preserveSnapshotId = null
+} = {}) {
+  const snapshot = createMultiPageRecoverySnapshot({ project, pages, now, reason });
+  const db = await openDatabase(indexedDBApi);
+  try {
+    return await new Promise((resolve, reject) => {
+      const transaction = db.transaction(SNAPSHOTS_STORE, "readwrite");
+      attachTransactionErrors(transaction, reject);
+      const store = transaction.objectStore(SNAPSHOTS_STORE);
+      const request = store.getAll();
+      let result = null;
+      request.onerror = () => {
+        try { transaction.abort(); } catch {}
+        reject(request.error || new Error("No se pudieron consultar los respaldos multipágina anteriores."));
+      };
+      request.onsuccess = () => {
+        const existing = (request.result || [])
+          .filter(item => item.projectId === snapshot.projectId)
+          .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0) || String(b.id).localeCompare(String(a.id)));
+        const latest = existing[0];
+        if (latest && JSON.stringify(latest.pages) === JSON.stringify(snapshot.pages) &&
+            latest.activePageId === snapshot.activePageId && latest.projectName === snapshot.projectName) {
+          result = publicSnapshot(latest);
+          return;
+        }
+        store.add(snapshot);
+        const retainedIds = selectRecoverySnapshotIdsToRetain(existing, preserveSnapshotId);
+        for (const stale of existing) {
+          if (!retainedIds.has(String(stale.id))) store.delete(stale.id);
+        }
+        result = publicSnapshot(snapshot);
+      };
+      transaction.oncomplete = () => resolve(result);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+export async function listMultiPageRecoverySnapshots(projectId, { indexedDBApi = globalThis.indexedDB } = {}) {
+  const key = multipageRecoveryProjectKey(projectId);
+  const db = await openDatabase(indexedDBApi);
+  try {
+    return await new Promise((resolve, reject) => {
+      const transaction = db.transaction(SNAPSHOTS_STORE, "readonly");
+      attachTransactionErrors(transaction, reject);
+      const request = transaction.objectStore(SNAPSHOTS_STORE).getAll();
+      let result = [];
+      request.onerror = () => reject(request.error || new Error("No se pudieron listar los respaldos del proyecto multipágina."));
+      request.onsuccess = () => {
+        result = (request.result || [])
+          .filter(item => item.projectId === key && item.kind === "multipage")
+          .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0))
+          .map(publicSnapshot);
+      };
+      transaction.oncomplete = () => resolve(result);
+    });
+  } finally {
+    db.close();
+  }
+}
+
+export async function loadMultiPageRecoverySnapshot(id, { indexedDBApi = globalThis.indexedDB } = {}) {
+  const key = String(id || "").trim();
+  if (!key) throw new TypeError("Falta el identificador del respaldo multipágina.");
+  const db = await openDatabase(indexedDBApi);
+  try {
+    return await new Promise((resolve, reject) => {
+      const transaction = db.transaction(SNAPSHOTS_STORE, "readonly");
+      attachTransactionErrors(transaction, reject);
+      const request = transaction.objectStore(SNAPSHOTS_STORE).get(key);
+      request.onerror = () => reject(request.error || new Error("No se pudo abrir el respaldo multipágina."));
+      request.onsuccess = () => {
+        const record = request.result;
+        if (!record || record.kind !== "multipage" ||
+            record.projectId !== multipageRecoveryProjectKey(record.sourceProjectId)) {
+          resolve(null);
+          return;
+        }
+        try {
+          const project = {
+            id: record.sourceProjectId,
+            name: record.projectName,
+            version: record.version,
+            createdAt: record.projectCreatedAt,
+            updatedAt: record.projectUpdatedAt,
+            activePageId: record.activePageId,
+            pages: record.pages
+          };
+          resolve(createMultiPageRecoverySnapshot({
+            project,
+            pages: record.pages,
+            id: record.id,
+            now: record.createdAt,
+            reason: record.reason
+          }));
         } catch (error) {
           reject(error);
         }

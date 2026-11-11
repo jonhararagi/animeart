@@ -73,3 +73,5 @@ The editor now includes an **Editar fácilmente** panel with shortcuts for cropp
 ### Layer groups
 
 Select two or more layers in the **Capas** panel and choose **Agrupar selección** to move, scale or rotate them as a single selection. The group stores a stable local ID in the editable document, so membership survives saving, reopening and undo/redo; each image, text layer or drawing remains independent rather than being flattened. Select a member to select the group, or choose **Desagrupar** to return to individual editing. Locked layers and fixed backgrounds cannot be added to a group. Duplicating one member creates an independent layer, not an accidental member of the original group.
+
+- Protect complete multipage projects with a separate recovery checkpoint per project. Each checkpoint stores page IDs, names, order, active page and every editable page document (up to 10 pages, 2.5 MB per page); restoring replaces the project pages atomically and does not flatten layers. Background and page-hide events also request a checkpoint. IndexedDB quota failures are reported without rotating out older valid checkpoints.
