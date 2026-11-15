@@ -2759,6 +2759,19 @@ try {
   await waitFor('document.querySelectorAll("#project-recovery-list .project-recovery-card").length>=2',15000);
   const recoveryCandidates = await evaluate('Array.from(document.querySelectorAll("#project-recovery-list .project-recovery-card")).map(card=>({id:card.dataset.recoveryId,layers:Number(card.dataset.layerCount)}))');
   const recoveryTarget = recoveryCandidates.find(item=>item.layers===recoveryBaselineLayers);
+
+  const compareIds = recoveryCandidates.slice(0,2).map(item=>item.id);
+  for (const id of compareIds) await click('#project-recovery-list button[data-compare-id="' + id + '"]');
+  await waitFor('document.querySelector("#project-recovery-compare")?.disabled===false');
+  await click("#project-recovery-compare");
+  await waitFor('document.querySelector("#project-recovery-compare-dialog")?.open===true',15000);
+  await waitFor('document.querySelectorAll("#project-recovery-compare-visual img").length===2',15000);
+  assert(await evaluate('document.querySelector("#project-recovery-compare-summary")?.textContent.includes("capas")'),
+    "recovery history compares two editable snapshots visually and summarizes layer differences");
+  assert(await evaluate('document.querySelector("#project-recovery-compare-status")?.textContent.includes("solo lectura")'),
+    "version comparison is read-only and leaves both recovery snapshots intact");
+  await click("#project-recovery-compare-close");
+  await waitFor('document.querySelector("#project-recovery-compare-dialog")?.open===false');
   assert(Boolean(recoveryTarget), "automatic recovery keeps an earlier editable checkpoint after a later layer change");
   await click('#project-recovery-list button[data-recovery-id="' + recoveryTarget.id + '"]');
   await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.length===' + recoveryBaselineLayers,15000);

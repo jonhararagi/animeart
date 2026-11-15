@@ -4,6 +4,7 @@ import { getSmartSnapAdjustment } from "./domain/design-snapping.mjs";
 import { resizeDocumentForFormat } from "./domain/design-resize.mjs";
 import { deleteDesign, duplicateDesign, listDesigns, loadDesign, renameDesign, saveDesign } from "./domain/design-library.mjs";
 import { describeRecoveryStorageError, listRecoverySnapshots, listMultiPageRecoverySnapshots, loadRecoverySnapshot, loadMultiPageRecoverySnapshot, saveRecoverySnapshot, saveMultiPageRecoverySnapshot } from "./domain/project-recovery.mjs";
+import { compareRecoverySnapshots } from "./domain/recovery-comparison.mjs";
 import { addMultiPagePage, copyLayerToPage, createMultiPageProject, deleteMultiPagePage, deleteMultiPageProject, listMultiPageProjects, loadMultiPagePage, renameMultiPagePage, renameMultiPageProject, reorderMultiPagePage, restoreMultiPageProjectSnapshot, saveMultiPagePage, setActiveMultiPagePage } from "./domain/multi-page-project.mjs";
 import { buildMultiPagePdf } from "./domain/pdf-export.mjs";
 import { initializeAssetLibrary } from "./asset-library.js";
@@ -2801,6 +2802,7 @@ function restoreStoredDocument(saved) {
 }
 
 let projectRecoveryTimer = null;
+const projectRecoveryCompareSelection = new Set();
 let projectRecoveryQueue = Promise.resolve();
 
 function setProjectSaveIndicator(message, kind = "info") {
@@ -7382,7 +7384,7 @@ async function createDesignThumbnail(documentModel){
   const context=preview.getContext("2d",{alpha:true});
   if(!context)return "";
   context.scale(scale,scale);
-  drawDocument({context,document:documentModel,center:documentCenter(documentModel),transformForLayer:layer=>layer.transform,allowOffDocumentPreview:false});
+  drawDocument({context,document:documentModel,center:documentCenter(documentModel),transformForLayer:layer=>layer.transform,allowOffDocumentPreview:false,includeLivePreviews:false});
   const thumbnail=preview.toDataURL("image/webp",0.7);
   return thumbnail.length<=280000?thumbnail:"";
  }catch{return "";}
@@ -7392,60 +7394,79 @@ function setProjectRecoveryStatus(message, kind = "info") {
  if (node) { node.textContent = String(message || ""); node.dataset.kind = kind; }
 }
 
-async function renderProjectRecovery() {
- const grid = document.querySelector("#project-recovery-list");
- if (!grid) return;
- grid.replaceChildren();
- const loading = document.createElement("p");
- loading.className = "project-recovery-empty";
- loading.textContent = "Leyendo versiones recuperables…";
- grid.append(loading);
- try {
-  const records = activeMultiPageSession ? await listMultiPageRecoverySnapshots(activeMultiPageSession.id) : await listRecoverySnapshots();
-  grid.replaceChildren();
-  if (!records.length) {
-   const empty = document.createElement("p");
-   empty.className = "project-recovery-empty";
-   empty.textContent = "Todavía no hay respaldos. KapiArt creará el primero después de guardar un cambio o puedes crear uno ahora.";
-   grid.append(empty);
-   setProjectRecoveryStatus("Sin versiones anteriores guardadas.", "info");
-   return records;
-  }
-  for (const record of records) {
-   const card = document.createElement("article");
-   card.className = "project-recovery-card";
-   card.dataset.recoveryId = record.id;
-   card.dataset.layerCount = String(record.layerCount);
-   card.dataset.kind = record.kind || "canvas";
-   card.dataset.pageCount = String(record.pageCount || 1);
-   const title = document.createElement("strong");
-   title.textContent = record.kind === "multipage"
-    ? "Proyecto multipágina · " + record.projectName
-    : record.reason === "before-restore" ? "Antes de una restauración" : record.reason === "manual" ? "Respaldo manual" : "Respaldo automático";
-   const details = document.createElement("small");
-   details.textContent = new Date(record.createdAt).toLocaleString("es-AR", { dateStyle: "medium", timeStyle: "short" }) +
-    (record.kind === "multipage" ? " · " + record.pageCount + " páginas · " + record.totalLayerCount + " capas editables" : " · " + record.width + " × " + record.height + " px · " + record.layerCount + " capas editables");
-   const action = document.createElement("button");
-   action.type = "button";
-   action.dataset.recoveryAction = "restore";
-   action.dataset.recoveryId = record.id;
-   action.textContent = "Restaurar esta versión";
-   card.append(title, details, action);
-   grid.append(card);
-  }
-  setProjectRecoveryStatus(records.length + " de 3 puntos de recuperación disponibles para " + (activeMultiPageSession ? "este proyecto." : "el lienzo actual."), "success");
-  return records;
- } catch (error) {
-  grid.replaceChildren();
-  const message = document.createElement("p");
-  message.className = "project-recovery-empty";
-  message.textContent = error?.message || "No se pudo leer la bóveda de recuperación.";
-  grid.append(message);
-  setProjectRecoveryStatus(message.textContent, "error");
-  return [];
- }
+async function createRecoveryCardPreview(record) {
+ if(record.kind==="multipage"){const snapshot=await loadMultiPageRecoverySnapshot(record.id);const page=snapshot?.pages?.find(item=>item.id===snapshot.activePageId)||snapshot?.pages?.[0];if(!page)return "";return page.thumbnail||await createDesignThumbnail(page.document);}
+ const snapshot=await loadRecoverySnapshot(record.id);return snapshot?.document?createDesignThumbnail(snapshot.document):"";
 }
-
+function updateRecoveryCompareControls(){
+ const action=document.querySelector("#project-recovery-compare");
+ if(action){action.disabled=projectRecoveryCompareSelection.size!==2;action.textContent=projectRecoveryCompareSelection.size===2?"Comparar las dos versiones":"Selecciona dos versiones ("+projectRecoveryCompareSelection.size+"/2)";}
+ document.querySelectorAll("#project-recovery-list [data-compare-id]").forEach(button=>{const selected=projectRecoveryCompareSelection.has(button.dataset.compareId);button.setAttribute("aria-pressed",String(selected));button.textContent=selected?"Quitar de comparación":"Elegir para comparar";});
+}
+function appendRecoveryComparisonSide(container,heading,page){
+ const figure=document.createElement("figure");figure.className="project-recovery-compare-side";
+ const caption=document.createElement("figcaption");caption.textContent=heading+(page?.name?" · "+page.name:"");figure.append(caption);
+ if(page?.preview){const image=document.createElement("img");image.src=page.preview;image.alt=heading+(page.name?" · "+page.name:"");image.loading="lazy";figure.append(image);}
+ else{const empty=document.createElement("p");empty.className="project-recovery-empty";empty.textContent="Esta página no existe en la versión seleccionada.";figure.append(empty);}
+ if(page){const details=document.createElement("small");details.textContent=page.width+" × "+page.height+" px · "+page.layerCount+" capas";figure.append(details);}
+ container.append(figure);
+}
+function recoveryComparisonLabel(snapshot,position){return "Versión "+position+" · "+new Date(snapshot.createdAt).toLocaleString("es-AR",{dateStyle:"medium",timeStyle:"short"});}
+async function openProjectRecoveryComparison(){
+ const ids=[...projectRecoveryCompareSelection];if(ids.length!==2)return;
+ const dialog=document.querySelector("#project-recovery-compare-dialog"),visual=document.querySelector("#project-recovery-compare-visual"),summaryNode=document.querySelector("#project-recovery-compare-summary"),statusNode=document.querySelector("#project-recovery-compare-status");
+ if(!dialog||!visual||!summaryNode||!statusNode)return;
+ visual.replaceChildren();summaryNode.textContent="";statusNode.textContent="Preparando vistas previas locales…";
+ try{
+  const snapshots=await Promise.all(ids.map(id=>activeMultiPageSession?loadMultiPageRecoverySnapshot(id):loadRecoverySnapshot(id)));
+  if(snapshots.some(snapshot=>!snapshot))throw new Error("Una de las versiones ya no está disponible.");
+  snapshots.sort((a,b)=>Number(a.createdAt)-Number(b.createdAt));
+  const [left,right]=snapshots,comparison=compareRecoverySnapshots(left,right),leftLabel=recoveryComparisonLabel(left,"A"),rightLabel=recoveryComparisonLabel(right,"B");
+  const changes=comparison.kind==="multipage"?{added:comparison.addedLayerIds.length,removed:comparison.removedLayerIds.length,changed:comparison.changedLayerIds.length}:{added:comparison.document.addedLayerIds.length,removed:comparison.document.removedLayerIds.length,changed:comparison.document.changedLayerIds.length};
+  const layerText=changes.added+" capas añadidas · "+changes.removed+" eliminadas · "+changes.changed+" modificadas";
+  if(comparison.kind==="canvas"){
+   const [leftPreview,rightPreview]=await Promise.all([createDesignThumbnail(left.document),createDesignThumbnail(right.document)]);
+   const row=document.createElement("div");row.className="project-recovery-compare-row";
+   appendRecoveryComparisonSide(row,leftLabel,{name:"Lienzo",preview:leftPreview,width:comparison.document.leftDimensions.width,height:comparison.document.leftDimensions.height,layerCount:comparison.document.leftLayerCount});
+   appendRecoveryComparisonSide(row,rightLabel,{name:"Lienzo",preview:rightPreview,width:comparison.document.rightDimensions.width,height:comparison.document.rightDimensions.height,layerCount:comparison.document.rightLayerCount});
+   visual.append(row);summaryNode.textContent=layerText+(comparison.document.dimensionsChanged?" · También cambió el tamaño del lienzo.":" · El tamaño del lienzo se conserva.");
+  }else{
+   const rows=await Promise.all(comparison.pages.map(async item=>{
+    const section=document.createElement("section");section.className="project-recovery-compare-page";
+    const heading=document.createElement("h4");heading.textContent=(item.status==="added"?"Página nueva":item.status==="removed"?"Página eliminada":item.status==="changed"?"Página modificada":"Sin cambios")+" · "+(item.rightPage?.name||item.leftPage?.name||"Página");section.append(heading);
+    const sides=document.createElement("div");sides.className="project-recovery-compare-row";
+    const leftPage=item.leftPage?{...item.leftPage}:null,rightPage=item.rightPage?{...item.rightPage}:null;
+    if(leftPage)leftPage.preview=leftPage.thumbnail||await createDesignThumbnail(leftPage.document);
+    if(rightPage)rightPage.preview=rightPage.thumbnail||await createDesignThumbnail(rightPage.document);
+    appendRecoveryComparisonSide(sides,leftLabel,leftPage);appendRecoveryComparisonSide(sides,rightLabel,rightPage);section.append(sides);return section;
+   }));
+   rows.forEach(row=>visual.append(row));summaryNode.textContent=comparison.pageCount.left+" → "+comparison.pageCount.right+" páginas · "+comparison.pageCount.added+" nuevas · "+comparison.pageCount.removed+" eliminadas · "+comparison.changedPageIds.length+" modificadas · "+layerText+".";
+  }
+  statusNode.textContent="Comparación de solo lectura. Ninguna versión ni capa fue modificada.";if(!dialog.open)dialog.showModal();
+ }catch(error){statusNode.textContent=error?.message||"No se pudieron comparar las versiones.";if(!dialog.open)dialog.showModal();}
+}
+async function renderProjectRecovery(){
+ const grid=document.querySelector("#project-recovery-list");if(!grid)return;grid.replaceChildren();
+ const loading=document.createElement("p");loading.className="project-recovery-empty";loading.textContent="Leyendo versiones recuperables…";grid.append(loading);
+ try{
+  const records=activeMultiPageSession?await listMultiPageRecoverySnapshots(activeMultiPageSession.id):await listRecoverySnapshots();
+  const availableIds=new Set(records.map(record=>String(record.id)));
+  for(const id of [...projectRecoveryCompareSelection])if(!availableIds.has(String(id)))projectRecoveryCompareSelection.delete(id);
+  grid.replaceChildren();
+  if(!records.length){const empty=document.createElement("p");empty.className="project-recovery-empty";empty.textContent="Todavía no hay respaldos. KapiArt creará el primero después de guardar un cambio o puedes crear uno ahora.";grid.append(empty);setProjectRecoveryStatus("Sin versiones anteriores guardadas.","info");updateRecoveryCompareControls();return records;}
+  for(const record of records){
+   const card=document.createElement("article");card.className="project-recovery-card";card.dataset.recoveryId=record.id;card.dataset.layerCount=String(record.layerCount);card.dataset.kind=record.kind||"canvas";card.dataset.pageCount=String(record.pageCount||1);
+   const preview=document.createElement("div");preview.className="project-recovery-preview";
+   try{const source=await createRecoveryCardPreview(record);if(source){const image=document.createElement("img");image.src=source;image.alt=record.kind==="multipage"?"Vista previa de la página activa":"Vista previa de la versión recuperable";image.loading="lazy";preview.append(image);}else preview.textContent="Vista previa no disponible";}catch{preview.textContent="Vista previa no disponible";}
+   const title=document.createElement("strong");title.textContent=record.kind==="multipage"?"Proyecto multipágina · "+record.projectName:record.reason==="before-restore"?"Antes de una restauración":record.reason==="manual"?"Respaldo manual":"Respaldo automático";
+   const details=document.createElement("small");details.textContent=new Date(record.createdAt).toLocaleString("es-AR",{dateStyle:"medium",timeStyle:"short"})+(record.kind==="multipage"?" · "+record.pageCount+" páginas · "+record.totalLayerCount+" capas editables":" · "+record.width+" × "+record.height+" px · "+record.layerCount+" capas editables");
+   const compare=document.createElement("button");compare.type="button";compare.dataset.recoveryAction="compare-select";compare.dataset.compareId=record.id;compare.setAttribute("aria-pressed",String(projectRecoveryCompareSelection.has(String(record.id))));compare.textContent=projectRecoveryCompareSelection.has(String(record.id))?"Quitar de comparación":"Elegir para comparar";
+   const restore=document.createElement("button");restore.type="button";restore.dataset.recoveryAction="restore";restore.dataset.recoveryId=record.id;restore.textContent="Restaurar esta versión";
+   card.append(preview,title,details,compare,restore);grid.append(card);
+  }
+  setProjectRecoveryStatus(records.length+" de 3 puntos de recuperación disponibles para "+(activeMultiPageSession?"este proyecto.":"el lienzo actual."),"success");updateRecoveryCompareControls();return records;
+ }catch(error){grid.replaceChildren();const message=document.createElement("p");message.className="project-recovery-empty";message.textContent=error?.message||"No se pudo leer la bóveda de recuperación.";grid.append(message);setProjectRecoveryStatus(message.textContent,"error");updateRecoveryCompareControls();return [];}
+}
 async function createManualProjectRecoverySnapshot() {
  if (state.storageRecoveryPending) throw new Error("El proyecto actual está protegido por un error de recuperación. Restaura una versión válida antes de crear otro respaldo.");
  const record = activeMultiPageSession
@@ -8031,15 +8052,21 @@ function initializeCanvaWorkflowTools(){
   finally{button.disabled=false;}
  });
  document.querySelector("#project-recovery-list")?.addEventListener("click",async event=>{
-  const button=event.target.closest("button[data-recovery-action='restore']");
-  if(!button)return;
-  button.disabled=true;
-  try{
-   const restored=await restoreProjectRecoverySnapshot(button.dataset.recoveryId);
-   if(restored){setProjectRecoveryStatus("Versión restaurada. Sus capas siguen editables; el estado anterior quedó respaldado.","success");}
-  }catch(error){setProjectRecoveryStatus(error?.message||"No se pudo restaurar esta versión.","error");}
+  const button=event.target.closest("button[data-recovery-action]");if(!button)return;
+  const action=button.dataset.recoveryAction;
+  if(action==="compare-select"){
+   const id=String(button.dataset.compareId||"");if(!id)return;
+   if(projectRecoveryCompareSelection.has(id))projectRecoveryCompareSelection.delete(id);
+   else{if(projectRecoveryCompareSelection.size>=2)projectRecoveryCompareSelection.delete(projectRecoveryCompareSelection.values().next().value);projectRecoveryCompareSelection.add(id);}
+   updateRecoveryCompareControls();return;
+  }
+  if(action!=="restore")return;button.disabled=true;
+  try{const restored=await restoreProjectRecoverySnapshot(button.dataset.recoveryId);if(restored)setProjectRecoveryStatus("Versión restaurada. Sus capas siguen editables; el estado anterior quedó respaldado.","success");}
+  catch(error){setProjectRecoveryStatus(error?.message||"No se pudo restaurar esta versión.","error");}
   finally{button.disabled=false;}
  });
+ document.querySelector("#project-recovery-compare")?.addEventListener("click",openProjectRecoveryComparison);
+ document.querySelector("#project-recovery-compare-close")?.addEventListener("click",()=>document.querySelector("#project-recovery-compare-dialog")?.close());
 
  document.querySelector("#design-library-save-form")?.addEventListener("submit",async event=>{
   event.preventDefault();
@@ -8162,7 +8189,7 @@ if (typeof ResizeObserver === "function") {
 
 
 // Multipage PDF export stays local and caps raster work to protect mobile memory.
-const OFFLINE_CACHE_NAME = "animeart-web-shell-v80";
+const OFFLINE_CACHE_NAME = "animeart-web-shell-v81";
 const OFFLINE_REQUIRED_RESOURCES = [
   "./index.html",
   "./styles.css",
@@ -8178,6 +8205,7 @@ const OFFLINE_REQUIRED_RESOURCES = [
   "./domain/design-resize.mjs",
   "./domain/design-library.mjs",
   "./domain/project-recovery.mjs",
+  "./domain/recovery-comparison.mjs",
   "./domain/multi-page-project.mjs",
   "./domain/pdf-export.mjs",
   "./domain/element-library.mjs",
