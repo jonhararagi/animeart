@@ -19,5 +19,5 @@ test("multipage comparison rejects snapshots from different projects",()=>{
 test("comparison rejects same, missing and mixed-kind snapshots",()=>{
  const one=canvas("one",[["a","A"]]);assert.throws(()=>compareRecoverySnapshots(one,one),/dos versiones diferentes/);assert.throws(()=>compareRecoverySnapshots(one,null),/Selecciona dos versiones/);
  const multi={id:"multi",kind:"multipage",sourceProjectId:"p",pages:[{id:"page",document:doc([["a","A"]])}]};
- assert.throws(()=>compareRecoverySnapshots(one,multi),/no se pueden comparar/);
+ assert.throws(()=>compareRecoverySnapshots(one,multi),/no se pueden comparar/i);
 });
