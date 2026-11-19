@@ -4309,3 +4309,15 @@ Los commits de implementación en la rama son reales, pero todavía no se declar
 - Pruebas añadidas para validación y copia independiente multipágina, límites de páginas, mensajes de cuota y ubicación de listeners. E2E añadido para el evento de segundo plano sin pulsar el botón de recuperación y para borrar/restaurar un conjunto multipágina.
 - Shell offline incrementado a v80 y contrato sincronizado con Web/Android CI.
 - Pendiente: Web CI, E2E real, Android build/unit/lint/instrumentation/offline smoke y APK sobre el SHA final. La validación física en Xiaomi 24116RACCG sigue siendo independiente.
+
+
+# 2026-11-15 · Etapa 2A · Historial visual y comparación de versiones
+
+- Rama de trabajo: `feature/kapiart-visual-version-history-001`, basada en el HEAD validado de `feature/kapiart-project-recovery-001` para reutilizar la bóveda existente sin duplicar persistencia.
+- Alcance: miniaturas locales de checkpoints recientes; selección de dos versiones; comparación visual en paralelo; resumen de páginas y capas añadidas, eliminadas o modificadas; comparación de todas las páginas de un proyecto multipágina.
+- La comparación es de solo lectura: no modifica documentos, checkpoints ni el proyecto abierto.
+- La retención continúa limitada a tres checkpoints por proyecto. Favoritos/protección, paquetes externos y recuperación guiada desde el inicio siguen fuera de este incremento.
+- El contrato de comparación reside en `web/domain/recovery-comparison.mjs`; la interfaz reutiliza los cargadores de snapshots existentes.
+- Caché offline incrementada a v81; Service Worker y diagnóstico declaran el módulo nuevo.
+- PR #131 y #132 permanecen como dependencias abiertas. No se modifica ni fusiona `main`.
+- La aceptación física en el Xiaomi sigue pendiente. Web CI y Android CI deben validarse sobre el mismo HEAD de esta rama antes de declarar PASS.

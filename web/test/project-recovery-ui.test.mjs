@@ -26,3 +26,18 @@ test("multipage checkpoints persist and restore the full page collection", async
   assert.match(recovery, /MAX_RECOVERY_MULTIPAGE_PAGES = 10/);
   assert.match(multipage, /export async function restoreMultiPageProjectSnapshot/);
 });
+
+
+test("recovery history renders local previews and selects two snapshots for comparison", async () => {
+  const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const worker = await readFile(new URL("../service-worker.js", import.meta.url), "utf8");
+  const comparison = await readFile(new URL("../domain/recovery-comparison.mjs", import.meta.url), "utf8");
+  assert.match(app, /createRecoveryCardPreview/);
+  assert.match(app, /openProjectRecoveryComparison/);
+  assert.match(app, /compareRecoverySnapshots/);
+  assert.match(html, /project-recovery-compare-dialog/);
+  assert.match(html, /project-recovery-compare/);
+  assert.ok(worker.includes("./domain/recovery-comparison.mjs"));
+  assert.match(comparison, /export function compareRecoverySnapshots/);
+});

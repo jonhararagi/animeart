@@ -1151,11 +1151,23 @@
       </div>
       <p id="project-recovery-status" role="status" aria-live="polite">Buscando respaldos locales…</p>
       <div id="project-recovery-list" class="project-recovery-list" aria-label="Versiones recuperables"></div>
+      <div class="project-recovery-compare-actions"><span>Elige dos versiones para ver sus diferencias sin restaurarlas.</span><button type="button" id="project-recovery-compare" disabled>Selecciona dos versiones (0/2)</button></div>
     </section>
     <p id="design-library-status" class="design-library-status" role="status" aria-live="polite"></p>
     <div id="design-library-list" class="design-library-list" aria-label="Diseños guardados"></div>
     <footer class="design-library-footer"><p>Los diseños se almacenan en este dispositivo, sin subirlos a una nube. Exporta también un archivo de proyecto para tener una copia externa.</p></footer>
   </section>
+</dialog>
+<dialog id="project-recovery-compare-dialog" class="project-recovery-compare-dialog" aria-labelledby="project-recovery-compare-title">
+ <section class="project-recovery-compare-shell">
+  <header class="project-recovery-compare-header">
+   <div><p class="eyebrow">KAPIART · HISTORIAL VISUAL</p><h2 id="project-recovery-compare-title">Comparar versiones</h2><p>Comparación local de solo lectura. El documento original permanece intacto.</p></div>
+   <button type="button" id="project-recovery-compare-close" class="mini-dialog-close" aria-label="Cerrar comparación">✕</button>
+  </header>
+  <p id="project-recovery-compare-status" role="status" aria-live="polite">Preparando comparación…</p>
+  <p id="project-recovery-compare-summary" class="project-recovery-compare-summary"></p>
+  <div id="project-recovery-compare-visual" class="project-recovery-compare-visual" aria-label="Comparación visual de versiones"></div>
+ </section>
 </dialog>
 <dialog id="multi-page-dialog" class="multi-page-dialog" aria-labelledby="multi-page-title">
   <section class="multi-page-shell">
