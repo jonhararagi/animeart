@@ -741,6 +741,49 @@ try {
   assert(await evaluate('document.querySelector("#image-crop-width").value === "755" && document.querySelector("#image-crop-height").value === "944" && document.querySelector("#image-crop-x").value === "94"'), "4:5 aspect preset computes a centered crop within image bounds");
   await evaluate('(() => { const ratio = document.querySelector("#image-crop-aspect"); ratio.value = ""; ratio.dispatchEvent(new Event("change", { bubbles: true })); })()');
   await saveScreenshot("animeart-studio-crop-preview.png");
+
+  // Every exit path discards a manipulated pixel-crop preview without touching the document.
+  const imageCropCancelBaseline = await readDocument();
+  const editPixelCropFrame = async () => evaluate('(() => { for (const [id,value] of [["#image-crop-x","5"],["#image-crop-y","7"],["#image-crop-width","400"],["#image-crop-height","500"]]) { const input=document.querySelector(id); input.value=value; input.dispatchEvent(new Event("input",{bubbles:true})); } return {x:document.querySelector("#image-crop-x").value,y:document.querySelector("#image-crop-y").value,width:document.querySelector("#image-crop-width").value,height:document.querySelector("#image-crop-height").value}; })()');
+  const assertPixelCropReset = async (reason) => {
+    const reset = await evaluate('(() => ({x:document.querySelector("#image-crop-x").value,y:document.querySelector("#image-crop-y").value,width:document.querySelector("#image-crop-width").value,height:document.querySelector("#image-crop-height").value,shape:document.querySelector("#image-crop-shape").value}))()');
+    assert(reset.x === "0" && reset.y === "0" && reset.width === "944" && reset.height === "944" && reset.shape === "rectangle",
+      reason + " reopens from the unchanged source image, not the discarded crop: " + JSON.stringify(reset));
+  };
+  await editPixelCropFrame();
+  await click("#cancel-image-edit");
+  await waitFor('document.querySelector("#image-edit-dialog").open === false');
+  assert(JSON.stringify(await readDocument()) === JSON.stringify(imageCropCancelBaseline),
+    "Cancel discards the manipulated image-crop frame without changing document pixels, layer data, or transform");
+  await click("#crop-resize-image");
+  await waitFor('document.querySelector("#image-edit-dialog").open === true');
+  await assertPixelCropReset("Cancel");
+  await editPixelCropFrame();
+  await click("#close-image-edit");
+  await waitFor('document.querySelector("#image-edit-dialog").open === false');
+  assert(JSON.stringify(await readDocument()) === JSON.stringify(imageCropCancelBaseline),
+    "X discards the manipulated image-crop frame without persisting any image edit");
+  await click("#crop-resize-image");
+  await waitFor('document.querySelector("#image-edit-dialog").open === true');
+  await assertPixelCropReset("X");
+  await editPixelCropFrame();
+  const imageCropPointer = await selectorCenter("#crop-preview");
+  await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: imageCropPointer.x, y: imageCropPointer.y });
+  await cdp("Input.dispatchMouseEvent", { type: "mousePressed", x: imageCropPointer.x, y: imageCropPointer.y, button: "left", buttons: 1, clickCount: 1 });
+  await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: imageCropPointer.x + 14, y: imageCropPointer.y + 12, button: "left", buttons: 1 });
+  assert(await evaluate('document.querySelector("#crop-preview").hasPointerCapture(1)'),
+    "image crop owns the active pointer while its frame is being dragged");
+  await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await cdp("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await waitFor('document.querySelector("#image-edit-dialog").open === false');
+  await cdp("Input.dispatchMouseEvent", { type: "mouseReleased", x: imageCropPointer.x + 14, y: imageCropPointer.y + 12, button: "left", buttons: 0, clickCount: 1 });
+  await waitFor('!document.querySelector("#crop-preview").hasPointerCapture(1)');
+  assert(JSON.stringify(await readDocument()) === JSON.stringify(imageCropCancelBaseline),
+    "Escape discards the manipulated image-crop frame without persisting any image edit");
+  await click("#crop-resize-image");
+  await waitFor('document.querySelector("#image-edit-dialog").open === true');
+  await assertPixelCropReset("Escape");
+
   await evaluate('(() => { for (const [id,value] of [["#image-crop-x","5"],["#image-crop-y","7"],["#image-crop-width","400"],["#image-crop-height","500"]]) { const input=document.querySelector(id); input.value=value; input.dispatchEvent(new Event("input",{bubbles:true})); } })()');
   await click("#apply-image-edit");
   await waitFor('document.querySelector("#status").textContent === "Image cropped"', 15000);
@@ -860,12 +903,14 @@ try {
   assert(textLayerAfterCreate?.contentType === "text" && textLayerAfterCreate.text?.value === "Escribe aquí", "real browser creates an editable text layer");
   const textLayerId = textLayerAfterCreate.id;
   await evaluate('(() => { const el = document.querySelector("#text-content"); el.value = "AnimeArt Studio"; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); })()');
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document") || "{}").layers.some(layer => layer.id === ' + JSON.stringify(textLayerId) + ' && layer.contentType === "text" && layer.text?.value === "AnimeArt Studio")', 10000);
+  assert(await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + '); return layer?.text?.value==="Escribe aquí" && document.querySelector("#text-content").value==="AnimeArt Studio"; })()'),
+    "typing updates the live preview while the saved text remains unchanged until Apply");
   assert(await evaluate('document.querySelector("#text-font-family").value === "Arial"'), "real browser exposes the selected text layer font controls");
   assert(await evaluate('window.__animeArtTextDrawCount > 0'), "real browser Canvas renderer paints editable text");
   await saveScreenshot("animeart-studio-text-layer.png");
   assert(await evaluate('document.querySelector("#apply-text-layer").getBoundingClientRect().height >= 44'), "text editor offers a visible Apply action");
   assert(await evaluate('document.querySelector("#delete-text-layer").getBoundingClientRect().height >= 44'), "text editor offers a visible Delete action");
+  assert(await evaluate('document.querySelector("#cancel-text-layer").getBoundingClientRect().height >= 44'), "text editor offers a visible Cancel action");
   await click("#apply-text-layer");
   await waitFor('document.querySelector("#text-edit-dialog").open === false');
   assert((await readDocument()).layers.some(layer => layer.id === textLayerId && layer.text?.value === "AnimeArt Studio"), "Apply keeps the selected text as an editable canvas layer");
@@ -882,31 +927,66 @@ try {
     "live text styling remains a preview until the editor is closed or applied");
   await click("#close-text-edit");
   await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.fontSize === ' + JSON.stringify(pendingTextStyle.next), 10000);
-  assert((await readDocument()).layers.some(layer => layer.id === textLayerId && layer.text?.fontSize === pendingTextStyle.next),
-    "closing an existing text editor with X commits its pending preview instead of discarding it");
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.fontSize === ' + JSON.stringify(pendingTextStyle.before), 10000);
+  assert((await readDocument()).layers.some(layer => layer.id === textLayerId && layer.text?.fontSize === pendingTextStyle.before),
+    "closing an existing text editor with X discards its pending preview");
   await evaluate('document.querySelector("#selection-mini-edit-text").click()');
   await waitFor('document.querySelector("#text-edit-dialog").open === true', 10000);
-  assert(await evaluate('Number(document.querySelector("#text-font-size").value) === ' + JSON.stringify(pendingTextStyle.next)),
-    "reopening the text editor restores the style committed when it was closed");
+  assert(await evaluate('Number(document.querySelector("#text-font-size").value) === ' + JSON.stringify(pendingTextStyle.before)),
+    "reopening the editor restores the last committed font size after X cancellation");
+  await evaluate('(() => { const input=document.querySelector("#text-font-size"); input.value=String(' + JSON.stringify(pendingTextStyle.next) + '); input.dispatchEvent(new Event("input",{bubbles:true})); })()');
   await click("#apply-text-layer");
   await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.fontSize === ' + JSON.stringify(pendingTextStyle.next), 10000);
+
+  // Explicit Cancel and native Escape discard the same pending preview as X.
+  await evaluate('document.querySelector("#selection-mini-edit-text").click()');
+  await waitFor('document.querySelector("#text-edit-dialog").open === true', 10000);
+  await evaluate('(() => { const input=document.querySelector("#text-font-size"); input.value=String(' + JSON.stringify(Math.min(240,Math.max(8,1))) + '); input.dispatchEvent(new Event("input",{bubbles:true})); })()');
+  await click("#cancel-text-layer");
+  await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.fontSize === ' + JSON.stringify(pendingTextStyle.next)),
+    "Cancel discards the pending font-size preview");
+  await evaluate('document.querySelector("#selection-mini-edit-text").click()');
+  await waitFor('document.querySelector("#text-edit-dialog").open === true', 10000);
+  await evaluate('(() => { const input=document.querySelector("#text-font-size"); input.value=String(' + JSON.stringify(Math.min(240,pendingTextStyle.next+11)) + '); input.dispatchEvent(new Event("input",{bubbles:true})); })()');
+  await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await cdp("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.fontSize === ' + JSON.stringify(pendingTextStyle.next)),
+    "Escape discards the pending font-size preview");
 
   // Typography v2: letter spacing and line height persist, and custom styles are reusable.
-  await evaluate('window.prompt=()=> "E2E Manga Tracking"');
+  await evaluate('window.prompt=()=> "E2E Manga Tracking"; window.confirm=()=>true');
   await evaluate('document.querySelector("#selection-mini-edit-text").click()');
   await waitFor('document.querySelector("#text-edit-dialog").open === true', 10000);
   await evaluate('(() => { const track=document.querySelector("#text-letter-spacing"); track.value="4"; track.dispatchEvent(new Event("input",{bubbles:true})); track.dispatchEvent(new Event("change",{bubbles:true})); const leading=document.querySelector("#text-line-height"); leading.value="1.65"; leading.dispatchEvent(new Event("input",{bubbles:true})); leading.dispatchEvent(new Event("change",{bubbles:true})); })()');
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.letterSpacing===4 && JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.lineHeight===1.65', 10000);
+  const typographyControlSnapshot = await evaluate('(() => ({dialogOpen:document.querySelector("#text-edit-dialog").open,letterSpacing:document.querySelector("#text-letter-spacing")?.value,lineHeight:document.querySelector("#text-line-height")?.value,letterSpacingLabel:document.querySelector("#text-letter-spacing-value")?.textContent,lineHeightLabel:document.querySelector("#text-line-height-value")?.textContent,saveDisabled:document.querySelector("#save-text-style")?.disabled,selectedText:document.querySelector("#text-content")?.value}))()');
+  assert(typographyControlSnapshot.dialogOpen && typographyControlSnapshot.letterSpacing==="4" && typographyControlSnapshot.lineHeight==="1.65",
+    "reusable typography controls retain the requested preview values before saving: " + JSON.stringify(typographyControlSnapshot));
+  assert(await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + '); return layer?.text?.letterSpacing===0 && layer?.text?.lineHeight===1.2; })()'),
+    "tracking and line-height controls remain previews before Apply");
   await click("#save-text-style");
-  await waitFor('document.querySelector("#saved-text-styles [data-saved-text-style-apply]")?.textContent==="E2E Manga Tracking"', 10000);
+  const savedStyleSaveDiagnostics = await evaluate('(() => ({dialogOpen:document.querySelector("#text-edit-dialog")?.open,buttonDisabled:document.querySelector("#save-text-style")?.disabled,styleStatus:document.querySelector("#saved-text-styles-status")?.textContent||"",stored:JSON.parse(localStorage.getItem("kapiart-saved-text-styles-v1")||"[]").map(item=>({name:item.name,style:item.style})),displayed:document.querySelector("#saved-text-styles")?.textContent||"",letterSpacing:document.querySelector("#text-letter-spacing")?.value,lineHeight:document.querySelector("#text-line-height")?.value}))()');
+  console.log("AA_TEXT_STYLE_SAVE_DIAGNOSTICS", JSON.stringify(savedStyleSaveDiagnostics));
+  await waitFor('(() => { const item=JSON.parse(localStorage.getItem("kapiart-saved-text-styles-v1")||"[]")[0]; return Boolean(item?.name?.trim()) && item?.style?.letterSpacing===4 && item?.style?.lineHeight===1.65; })()', 10000);
+  const savedReusableTextRecord = await evaluate('JSON.parse(localStorage.getItem("kapiart-saved-text-styles-v1")||"[]")[0]');
+  const savedReusableTextStyle = savedReusableTextRecord?.style;
+  assert(Boolean(savedReusableTextRecord?.name?.trim()) && savedReusableTextStyle?.letterSpacing===4 && savedReusableTextStyle?.lineHeight===1.65,
+    "saving a reusable typography style captures its name, tracking, and line-height from the active preview: " + JSON.stringify(savedReusableTextRecord));
   await evaluate('(() => { const track=document.querySelector("#text-letter-spacing"); track.value="-2"; track.dispatchEvent(new Event("input",{bubbles:true})); track.dispatchEvent(new Event("change",{bubbles:true})); const leading=document.querySelector("#text-line-height"); leading.value="1"; leading.dispatchEvent(new Event("input",{bubbles:true})); leading.dispatchEvent(new Event("change",{bubbles:true})); })()');
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.letterSpacing===-2 && JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.lineHeight===1', 10000);
+  assert(await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + '); return layer?.text?.letterSpacing===0 && layer?.text?.lineHeight===1.2; })()'),
+    "changing tracking again still leaves the saved document untouched");
   await click('#saved-text-styles [data-saved-text-style-apply]');
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.letterSpacing===4 && JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.lineHeight===1.65', 10000);
-  assert(await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + '); return layer?.text?.value==="AnimeArt Studio" && layer.text.letterSpacing===4 && layer.text.lineHeight===1.65; })()'),
-    "reusable text styles restore tracking and line height without replacing text content");
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + ')?.text?.letterSpacing===0'),
+    "choosing a reusable style remains a preview until Apply");
   await click("#apply-text-layer");
+  await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
+  const reusableTextCommitDiagnostics = await evaluate('(() => { const doc=JSON.parse(localStorage.getItem("animeart-web-document")||"{}"); const layer=doc.layers.find(item=>item.id===' + JSON.stringify(textLayerId) + '); return {text:layer?.text, savedStyles:JSON.parse(localStorage.getItem("kapiart-saved-text-styles-v1")||"[]").map(item=>({name:item.name,style:item.style})), controls:{letterSpacing:document.querySelector("#text-letter-spacing")?.value,lineHeight:document.querySelector("#text-line-height")?.value},status:document.querySelector("#status")?.textContent}; })()');
+  assert(reusableTextCommitDiagnostics.text?.letterSpacing===4 && reusableTextCommitDiagnostics.text?.lineHeight===1.65,
+    "Apply commits the selected reusable typography values: " + JSON.stringify(reusableTextCommitDiagnostics));
+  assert(await evaluate('(() => { const layer=JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(textLayerId) + '); return layer?.text?.value==="AnimeArt Studio" && layer.text.letterSpacing===4 && layer.text.lineHeight===1.65; })()'),
+    "Apply commits the selected reusable style without replacing text content");
   await waitFor('document.querySelector("#text-edit-dialog").open === false', 10000);
 
   await click("#add-text-layer");
@@ -2127,6 +2207,15 @@ try {
   assert(await evaluate('document.querySelector("[data-frame-boundary-mode=free]").getAttribute("aria-pressed") === "true"'),
     "Ver margen explicitly enables free movement");
 
+  // Free-movement boundary checks require deterministic, unsnapped deltas.
+  // Keep the magnet contract separate: snapping is covered by its own tests.
+  assert(await evaluate('document.querySelector("#magnetic-snapping-toggle")?.getAttribute("aria-pressed") === "true"'),
+    "magnetic snapping starts enabled before the isolated free-movement scenario");
+  await evaluate('document.querySelector("#magnetic-snapping-toggle")?.click()');
+  await waitFor('document.querySelector("#magnetic-snapping-toggle")?.getAttribute("aria-pressed") === "false"');
+  assert(await evaluate('document.querySelector("#magnetic-snapping-toggle")?.getAttribute("aria-pressed") === "false"'),
+    "free-movement E2E disables magnetic corrections explicitly");
+
   // AA-CANVAS-FREE-MOVE-001: layer content may cross all four document edges.
   // Each move is reversed from the transformed object's actual center, so the
   // test verifies the boundary crossing without polluting the following steps.
@@ -2202,6 +2291,10 @@ try {
   await clickMoreGoal("undo");
   // Retain the pre-test transform after backing out the recovery and off-screen move.
   await waitFor('JSON.stringify(JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.name==="e2e-mobile-import").transform) === ' + JSON.stringify(transformBeforeOffscreenRecovery), 10000);
+  await evaluate('document.querySelector("#magnetic-snapping-toggle")?.click()');
+  await waitFor('document.querySelector("#magnetic-snapping-toggle")?.getAttribute("aria-pressed") === "true"');
+  assert(await evaluate('document.querySelector("#magnetic-snapping-toggle")?.getAttribute("aria-pressed") === "true"'),
+    "magnetic snapping is restored after the isolated free-movement scenario");
 
   // AA-MOBILE-REDESIGN-004: verify that mobile rotation and flip controls mutate the selected image and can be restored.
   await clickMoreGoal("layers");
@@ -2386,8 +2479,52 @@ try {
     width: beforeCompositionCrop.width - 20,
     height: beforeCompositionCrop.height - 20
   };
-  await evaluate('(() => { const values=' + JSON.stringify(requestedCompositionCrop) + '; for (const [key,value] of Object.entries(values)) { const input=document.querySelector("#canvas-crop-"+key); input.value=String(value); input.dispatchEvent(new Event("change",{bubbles:true})); } })()');
-  assert(await evaluate('document.querySelector("#apply-canvas-crop").disabled === false'), "numeric crop fields enable Apply for a valid smaller composition frame");
+  const setCompositionCropPreview = async () => {
+    await evaluate('(() => { const values=' + JSON.stringify(requestedCompositionCrop) + '; for (const [key,value] of Object.entries(values)) { const input=document.querySelector("#canvas-crop-"+key); input.value=String(value); input.dispatchEvent(new Event("change",{bubbles:true})); } })()');
+    assert(await evaluate('document.querySelector("#apply-canvas-crop").disabled === false'), "numeric crop fields enable Apply for a valid smaller composition frame");
+  };
+  const assertCompositionCropDiscarded = async (reason) => {
+    assert(JSON.stringify(await readDocument()) === JSON.stringify(beforeCompositionCrop),
+      reason + " discards the composition frame without changing document dimensions, layers, or transforms");
+  };
+  const reopenCompositionCrop = async () => {
+    await click('.mobile-touch-dock [data-touch-action="more"]');
+    await waitFor('document.body.classList.contains("mobile-tools-open")');
+    await click('[data-edit-goal="crop"]');
+    await waitFor('document.querySelector("#crop-mode-dialog")?.open === true');
+    await click("#crop-whole-canvas");
+    await waitFor('document.querySelector("#canvas-crop-dialog")?.open === true', 15000);
+  };
+
+  await setCompositionCropPreview();
+  await click("#cancel-canvas-crop");
+  await waitFor('document.querySelector("#canvas-crop-dialog").open === false');
+  await assertCompositionCropDiscarded("Cancel");
+  await reopenCompositionCrop();
+  const compositionFrameAfterCancel = await evaluate('(() => ({x:Number(document.querySelector("#canvas-crop-x").value),y:Number(document.querySelector("#canvas-crop-y").value),width:Number(document.querySelector("#canvas-crop-width").value),height:Number(document.querySelector("#canvas-crop-height").value)}))()');
+  assert(compositionFrameAfterCancel.x === Math.round(beforeCompositionCrop.width * 0.06) &&
+    compositionFrameAfterCancel.y === Math.round(beforeCompositionCrop.height * 0.06),
+    "reopening after Cancel restores the fresh default composition frame instead of the discarded preview");
+  await setCompositionCropPreview();
+  await click("#close-canvas-crop");
+  await waitFor('document.querySelector("#canvas-crop-dialog").open === false');
+  await assertCompositionCropDiscarded("X");
+  await reopenCompositionCrop();
+  await setCompositionCropPreview();
+  const compositionCropPointer = await selectorCenter("#canvas-crop-preview");
+  await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: compositionCropPointer.x, y: compositionCropPointer.y });
+  await cdp("Input.dispatchMouseEvent", { type: "mousePressed", x: compositionCropPointer.x, y: compositionCropPointer.y, button: "left", buttons: 1, clickCount: 1 });
+  await cdp("Input.dispatchMouseEvent", { type: "mouseMoved", x: compositionCropPointer.x + 12, y: compositionCropPointer.y + 10, button: "left", buttons: 1 });
+  assert(await evaluate('document.querySelector("#canvas-crop-preview").hasPointerCapture(1)'),
+    "composition crop owns the active pointer while its frame is being dragged");
+  await cdp("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await cdp("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 });
+  await waitFor('document.querySelector("#canvas-crop-dialog").open === false');
+  await cdp("Input.dispatchMouseEvent", { type: "mouseReleased", x: compositionCropPointer.x + 12, y: compositionCropPointer.y + 10, button: "left", buttons: 0, clickCount: 1 });
+  await waitFor('!document.querySelector("#canvas-crop-preview").hasPointerCapture(1)');
+  await assertCompositionCropDiscarded("Escape");
+  await reopenCompositionCrop();
+  await setCompositionCropPreview();
   await click("#apply-canvas-crop");
   await waitFor('document.querySelector("#canvas-crop-dialog").open === false');
   const afterCompositionCrop = await readDocument();
@@ -2419,11 +2556,13 @@ try {
   assert(mobileTypographyLayer?.contentType === "text", "mobile typography creates a normal editable text layer");
   await evaluate('(() => { const el=document.querySelector("#text-content"); el.value="TÍTULO DE PRUEBA"; el.dispatchEvent(new Event("input",{bubbles:true})); el.dispatchEvent(new Event("change",{bubbles:true})); })()');
   await click('[data-text-style-preset="title"]');
-  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.id===' + JSON.stringify(mobileTypographyLayer.id) + ' && layer.text?.value==="TÍTULO DE PRUEBA" && layer.text?.fontSize===76)',10000);
+  assert(await evaluate('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.find(layer=>layer.id===' + JSON.stringify(mobileTypographyLayer.id) + ')?.text?.value==="Escribe aquí"'),
+    "mobile typography preset keeps persisted text unchanged until Apply");
   assert(await evaluate('document.querySelector("#text-dialog-title").textContent.includes("Diseña tu texto")'),
     "typography dialog presents the title-first text workflow");
   await click("#apply-text-layer");
   await waitFor('document.querySelector("#text-edit-dialog").open === false');
+  await waitFor('JSON.parse(localStorage.getItem("animeart-web-document")||"{}").layers.some(layer=>layer.id===' + JSON.stringify(mobileTypographyLayer.id) + ' && layer.text?.value==="TÍTULO DE PRUEBA" && layer.text?.fontSize===76)',10000);
   assert(await evaluate('(() => { const b=document.querySelector(".mobile-touch-dock [data-touch-action=add-text]"); const r=b.getBoundingClientRect(); const s=getComputedStyle(b); return s.display!=="none" && s.visibility!=="hidden" && r.width>=44 && r.height>=44 && b.getAttribute("aria-label")==="Editar texto seleccionado" && b.querySelector("span:last-child")?.textContent==="Editar texto"; })()'),
     "the persistent mobile dock changes from Add Text to a touch-sized Edit Text action for a selected text layer");
   await click('.mobile-touch-dock [data-touch-action="add-text"]');
