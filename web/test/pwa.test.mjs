@@ -11,12 +11,24 @@ test("T045 Web offline shell is wired without creating a second editor runtime",
   assert.match(html, /rel="manifest" href="\.\/manifest\.webmanifest"/);
   assert.match(app, /navigator\.serviceWorker\.register\("\.\/service-worker\.js"\)/);
   assert.match(manifest, /"display": "standalone"/);
-  assert.match(worker, /animeart-web-shell-v78/);
+  assert.match(worker, /animeart-web-shell-v80/);
   assert.match(worker, /caches\.open/);
   assert.match(worker, /caches\.match/);
   assert.match(app, /layerAdjustmentsToCanvasFilter/);
   assert.match(worker, /\.\/domain\/layer-adjustments\.mjs/);
   assert.match(worker, /\.\/domain\/text-layer\.mjs/);
+  assert.ok(worker.includes("./domain/project-recovery.mjs"));
+  const workerCacheName = worker.match(/const CACHE_NAME = "([^"]+)"/)?.[1];
+  assert.ok(workerCacheName, "the service worker must publish its active cache version");
+  assert.ok(app.includes(`const OFFLINE_CACHE_NAME = "${workerCacheName}"`),
+    "the readiness diagnostic must open the active service-worker cache");
+  const workerShell = worker.split("const APP_SHELL = [")[1]?.split("];")[0] || "";
+  const requiredShell = app.split("const OFFLINE_REQUIRED_RESOURCES = [")[1]?.split("];")[0] || "";
+  const resourcePaths = source => [...source.matchAll(/"([^"]+)"/g)]
+    .map(match => match[1]).filter(path => path.startsWith("./"));
+  assert.deepEqual(resourcePaths(requiredShell), resourcePaths(workerShell),
+    "offline readiness must verify every resource precached by the service worker, including project recovery");
+
   assert.match(worker, /\.\/domain\/guided-editing\.mjs/);
   assert.ok(worker.includes("./assets/cc0-detailed-anime-character.png.base64"));
   assert.ok(worker.includes("./assets/ASSET_SOURCES.md"));
@@ -107,7 +119,7 @@ test("canvas coordinate mapping is cached for offline rendering and editing", as
   assert.match(app, /documentFitScale/);
   assert.match(app, /screenViewportForDocument/);
   assert.match(worker, /\.\/domain\/canvas-space\.mjs/);
-  assert.match(worker, /animeart-web-shell-v78/);
+  assert.match(worker, /animeart-web-shell-v80/);
 });
 
  
@@ -123,7 +135,7 @@ test("mobile touch gestures use bounded two-finger pan/zoom and the offline shel
   assert.match(app, /pointercancel/);
   assert.match(gestures, /updatePinchPanViewport/);
   assert.match(gestures, /Math\.min\(maxZoom, Math\.max\(minZoom/);
-  assert.match(worker, /animeart-web-shell-v78/);
+  assert.match(worker, /animeart-web-shell-v80/);
   assert.match(worker, /\.\/domain\/touch-gestures\.mjs/);
   assert.match(css, /#canvas \{ touch-action: none; \}/);
   assert.match(html, /class="mobile-touch-dock"/);

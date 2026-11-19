@@ -4287,3 +4287,25 @@ Los commits de implementación en la rama son reales, pero todavía no se declar
 - Conserva las capas editables y sus IDs, orden, contenido de texto e imagen, grupos, máscaras, opacidad y rotaciones; usa el historial existente para Deshacer.
 - Límites seguros de 8192 px por lado y 40 megapíxeles, sin ampliar el límite heredado de 2,5 MB del proyecto portable.
 - Accesible desde escritorio y desde «Más herramientas» en móvil. El módulo está incluido en el shell offline y las verificaciones del paquete Android.
+
+ 
+## Estado vigente · KapiArt · 2026-11-02
+
+- Etapa 1 de gestor de proyectos y recuperación: código validado en PR #132, rama `feature/kapiart-project-recovery-001`, HEAD `c2558a4c075f53998ca7897eaad3c14460553de0`.
+- Web CI #41505636119 y Android CI #41505636122: ambos PASS sobre ese mismo HEAD.
+- APK de prueba publicada: artefacto `13170704069`; SHA-256 APK `a983a065443233f0597ccebcc3cb9fb10a284f8634697db52e8c156b15bdb5bb`. Firma debug efímera, por lo que no se garantiza actualización sobre otra firma.
+- La PR #132 sigue abierta en Draft, apilada sobre #131. Sin merge ni modificación directa de `main`; SHA de `main`: `fc87decb5b23035852cfe9df2fb227b8de8d0275`.
+- Pendiente prueba física en Xiaomi `24116RACCG`. CI/Chromium/emulador no se cuentan como aceptación en el dispositivo.
+
+
+## 2026-11-11 · Etapa 1 ampliada: ciclo de vida y recuperación multipágina
+
+- Rama de trabajo: `feature/kapiart-project-recovery-001`, apilada sobre PR #131. Los cambios se mantienen fuera de `main`.
+- Corrección crítica: los listeners `visibilitychange` y `pagehide` se registran una sola vez al iniciar la aplicación, fuera del manejador de `recoverButton`. Minimizar, cambiar de pestaña y abandonar la vista ejecutan el intento de checkpoint sin abrir el diálogo.
+- El flush espera la cola de persistencia multipágina y guarda un checkpoint del proyecto completo cuando hay una sesión activa. Los guardados con debounce siguen siendo independientes y secuenciales.
+- Nuevo contrato de respaldo multipágina en `web/domain/project-recovery.mjs`: separa bóvedas por ID real de proyecto; conserva nombre, IDs de página, orden, página activa, miniaturas y documentos editables; valida cada página con los límites existentes (2,5 MB, 8192 px, 40 MP y 200 capas) y limita a 10 páginas / 25 MB por checkpoint.
+- Nuevo `restoreMultiPageProjectSnapshot()`: restaura el índice del proyecto y todos sus documentos en una única transacción IndexedDB. Si el proyecto fue eliminado, comprueba el límite de 10 proyectos antes de reinsertarlo. No aplana capas ni modifica otros proyectos.
+- Los errores de cuota, interrupción y almacenamiento se muestran con mensajes accionables; la transacción conserva snapshots anteriores si una escritura no se completa.
+- Pruebas añadidas para validación y copia independiente multipágina, límites de páginas, mensajes de cuota y ubicación de listeners. E2E añadido para el evento de segundo plano sin pulsar el botón de recuperación y para borrar/restaurar un conjunto multipágina.
+- Shell offline incrementado a v80 y contrato sincronizado con Web/Android CI.
+- Pendiente: Web CI, E2E real, Android build/unit/lint/instrumentation/offline smoke y APK sobre el SHA final. La validación física en Xiaomi 24116RACCG sigue siendo independiente.

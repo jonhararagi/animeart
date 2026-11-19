@@ -422,3 +422,92 @@ export function copyLayerToPage(sourceDocument, targetDocument, layerId) {
   if (JSON.stringify(next).length > MULTIPAGE_PAGE_CHARS_LIMIT) return { ok: false, error: "La página de destino superaría el límite de 2,5 MB al copiar esta capa.", document: null };
   return { ok: true, error: "", document: next, layerId: copiedLayer.id };
 }
+
+
+export async function restoreMultiPageProjectSnapshot(snapshot, {
+  indexedDBApi = globalThis.indexedDB,
+  now = Date.now()
+} = {}) {
+  if (!snapshot || snapshot.kind !== "multipage") {
+    throw new TypeError("El respaldo seleccionado no es un proyecto multipágina.");
+  }
+  const projectId = String(snapshot.sourceProjectId || "").trim();
+  const projectName = validateProjectName(snapshot.projectName);
+  if (!projectId || !Array.isArray(snapshot.pages) ||
+      snapshot.pages.length < 1 || snapshot.pages.length > MULTIPAGE_PAGE_LIMIT) {
+    throw new RangeError("El respaldo multipágina no contiene una estructura de páginas válida.");
+  }
+  const timestamp = normalizeTimestamp(now);
+  const seen = new Set();
+  const restoredPages = snapshot.pages.map((item, index) => {
+    const id = String(item?.id || "").trim();
+    if (!id || seen.has(id)) throw new TypeError("El respaldo contiene páginas duplicadas o sin identificador.");
+    seen.add(id);
+    const document = validatePageDocument(item.document);
+    const metadata = pageMetadata({
+      id,
+      name: item.name || "Página " + (index + 1),
+      document,
+      thumbnail: item.thumbnail || "",
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt
+    });
+    return { metadata, document };
+  });
+  const activePageId = restoredPages.some(page => page.metadata.id === String(snapshot.activePageId))
+    ? String(snapshot.activePageId) : restoredPages[0].metadata.id;
+  const createdAt = normalizeTimestamp(snapshot.projectCreatedAt, timestamp);
+  const project = {
+    id: projectId,
+    name: projectName,
+    version: 1,
+    createdAt,
+    updatedAt: timestamp,
+    activePageId,
+    pages: restoredPages.map(page => page.metadata)
+  };
+  const db = await openDatabase(indexedDBApi);
+  try {
+    return await new Promise((resolve, reject) => {
+      const transaction = db.transaction([PROJECTS_STORE, PAGES_STORE], "readwrite");
+      attachTransactionErrors(transaction, reject);
+      const projectsStore = transaction.objectStore(PROJECTS_STORE);
+      const pagesStore = transaction.objectStore(PAGES_STORE);
+      const projectsRequest = projectsStore.getAll();
+      const existingPagesRequest = pagesStore.index("projectId").getAll(projectId);
+      let projects = null;
+      let existingPages = null;
+      let pending = 2;
+      let failed = false;
+      let result = null;
+      const fail = error => {
+        if (failed) return;
+        failed = true;
+        try { transaction.abort(); } catch {}
+        reject(error);
+      };
+      const ready = () => {
+        pending -= 1;
+        if (pending !== 0 || failed) return;
+        const exists = projects.some(item => item.id === projectId);
+        if (!exists && projects.length >= MULTIPAGE_PROJECT_LIMIT) {
+          fail(new Error("La biblioteca ya contiene 10 proyectos. No se puede recuperar otro sin liberar espacio."));
+          return;
+        }
+        for (const page of existingPages) pagesStore.delete(page.id);
+        projectsStore.put(project);
+        for (const page of restoredPages) {
+          pagesStore.put({ id: page.metadata.id, projectId, document: page.document });
+        }
+        result = summarizeProject(project);
+      };
+      projectsRequest.onerror = () => fail(projectsRequest.error || new Error("No se pudo comprobar la biblioteca multipágina."));
+      existingPagesRequest.onerror = () => fail(existingPagesRequest.error || new Error("No se pudieron preparar las páginas anteriores."));
+      projectsRequest.onsuccess = () => { projects = projectsRequest.result || []; ready(); };
+      existingPagesRequest.onsuccess = () => { existingPages = existingPagesRequest.result || []; ready(); };
+      transaction.oncomplete = () => resolve(result);
+    });
+  } finally {
+    db.close();
+  }
+}
