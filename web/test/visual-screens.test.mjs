@@ -37,7 +37,7 @@ test("KapiArt home, design library and creative catalog share one visual identit
 
   assert.ok(app.includes("function renderDesignLibrary()"));
   assert.ok(app.includes("function renderCreativeCatalog()"));
-  assert.ok(app.includes("data-design-action"));
-  assert.ok(app.includes("data-creative-action"));
+  assert.ok(app.includes("button.dataset.designAction=action"));
+  assert.ok(app.includes("card.dataset.creativeAction=actionName"));
   assert.ok(css.includes("#design-library-dialog[open]"));
 });
