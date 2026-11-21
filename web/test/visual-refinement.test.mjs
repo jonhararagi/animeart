@@ -26,4 +26,11 @@ test("KapiArt visual refinement keeps a coherent cocoa-and-blush design system",
   assert.ok(worker.includes('animeart-web-shell-v82'));
   assert.ok(app.includes('animeart-web-shell-v82'));
   assert.ok(brandTest.includes('animeart-web-shell-v82'));
+  assert.ok(html.includes("KAPIART STUDIO · TU ESPACIO CREATIVO"));
+  assert.ok(html.includes('id="design-library-dialog"'));
+  assert.ok(html.includes('id="creative-studio-dialog"'));
+  assert.ok(css.includes("KAPIART-VISUAL-REFINEMENT-002"));
+  assert.ok(css.includes("#design-library-dialog[open]"));
+  assert.ok(css.includes('.creative-studio-tabs button[aria-selected="true"]'));
+  assert.ok(css.includes(".design-library-card-actions"));
 });
